@@ -1,0 +1,8 @@
+node_modules
+yarn-error.log
+lib/
+
+.idea/
+.*.swp
+.vscode/
+
