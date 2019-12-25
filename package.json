@@ -1,7 +1,7 @@
 {
   "name": "react-native-drax",
   "version": "0.2.0",
-  "description": "A drag and drop system for React Native",
+  "description": "A drag-and-drop system for React Native",
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/nuclearpasta/react-native-drax.git"
