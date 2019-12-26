@@ -43,13 +43,13 @@ To give an idea of the problem this library is trying to solve, here is some inf
 >
 > I figured there must already be a library out there that would
 > suit our needs. I tried out a few different packages, which each
-> looked to have pros and cons, but nothing quite worked right for
-> my needs. To complicate things further, our application used
+> looked to have pros and cons, but nothing quite worked right how
+> we expected. To complicate things further, our application used
 > `react-navigation`, which seemed to conflict with some of them.
 >
 > We also had future features on our roadmap which would necessitate
 > a more generic drag-and-drop solution. I found it a bit odd that,
-> although reorderable lists and drag-and-drop have functional
+> although reorderable lists and drag-and-drop have much functional
 > overlap, there didn't seem to be a package for React Native which
 > did both. It looked like React for the web was a little more mature
 > in this arena, but that didn't help us. I asked some other
@@ -58,7 +58,7 @@ To give an idea of the problem this library is trying to solve, here is some inf
 >
 > I decided to create my own drag-and-drop library, including
 > stock components for common behaviors. The goal, first and
-> foremost, was to fulfill our draggable reorderable list needs.
+> foremost, was to fulfill our draggable reorderable list wish.
 > But beyond that, I wanted a robust foundation that could be
 > used to flexibly implement various drag-and-drop-related
 > solutions. I am sure that there are scenarios I have not
