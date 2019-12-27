@@ -57,7 +57,7 @@ export const DraxList = <T extends unknown>(
 		itemStyles,
 		renderItemContent,
 		renderItemHoverContent,
-		onListItemMoved,
+		onItemReorder,
 		id: idProp,
 		reorderable: reorderableProp,
 		...props
@@ -70,7 +70,7 @@ export const DraxList = <T extends unknown>(
 	const itemCount = data?.length ?? 0;
 
 	// Set a sensible default for reorderable prop.
-	const reorderable = reorderableProp ?? (onListItemMoved !== undefined);
+	const reorderable = reorderableProp ?? (onItemReorder !== undefined);
 
 	// The unique identifer for this list's Drax view, initialized below.
 	const id = useDraxId(idProp);
@@ -465,7 +465,7 @@ export const DraxList = <T extends unknown>(
 							const newOriginalIndexes = originalIndexes.slice();
 							newOriginalIndexes.splice(toIndex, 0, newOriginalIndexes.splice(fromIndex, 1)[0]);
 							setOriginalIndexes(newOriginalIndexes);
-							onListItemMoved?.({
+							onItemReorder?.({
 								fromIndex,
 								toIndex,
 								fromItem: data[fromOriginalIndex],
@@ -487,7 +487,7 @@ export const DraxList = <T extends unknown>(
 			resetShifts,
 			calculateSnapbackTarget,
 			originalIndexes,
-			onListItemMoved,
+			onItemReorder,
 		],
 	);
 
