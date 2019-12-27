@@ -720,8 +720,8 @@ export interface DraxScrollViewProps extends ScrollViewProps, DraxAutoScrollProp
 	id?: string;
 }
 
-/** Event data for when an item is moved within a DraxList */
-export interface DraxListOnListItemMovedEventData<TItem> {
+/** Event data for when an item is moved within a DraxList, reordering the list */
+export interface DraxListOnItemReorderEventData<TItem> {
 	/* The item that was moved */
 	fromItem: TItem;
 	/* The list index of the item that was moved */
@@ -746,9 +746,9 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 	/** Render function for content of an item's hovering copy, defaults to renderItemContent */
 	renderItemHoverContent?: (info: ListRenderItemInfo<TItem>, props: DraxRenderHoverContentProps) => ReactNode;
 
-	/** Callback handler for when a list item is moved, if reorderable */
-	onListItemMoved?: (eventData: DraxListOnListItemMovedEventData<TItem>) => void;
+	/** Callback handler for when a list item is moved within a DraxList, reordering the list */
+	onItemReorder?: (eventData: DraxListOnItemReorderEventData<TItem>) => void;
 
-	/** Can the list be reordered by dragging items? Defaults to true if onListItemMoved is set. */
+	/** Can the list be reordered by dragging items? Defaults to true if onItemReorder is set. */
 	reorderable?: boolean;
 }
