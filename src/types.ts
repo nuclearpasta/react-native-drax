@@ -651,13 +651,23 @@ export interface DraxViewStyleProps {
 	otherDraggingWithoutReceiverStyle?: AnimatedViewStyleProp;
 }
 
+/** Custom render function for content of a DraxView */
+export interface DraxViewRenderContent {
+	(props: DraxRenderContentProps): ReactNode;
+}
+
+/** Custom render function for content of hovering copy of a DraxView */
+export interface DraxViewRenderHoverContent {
+	(props: DraxRenderHoverContentProps): ReactNode;
+}
+
 /** Props for a DraxView; combines protocol props and standard view props */
 export interface DraxViewProps extends Omit<ViewProps, 'style'>, DraxProtocolProps, DraxViewStyleProps {
 	/** Custom render function for content of this view */
-	renderContent?: (props: DraxRenderContentProps) => ReactNode;
+	renderContent?: DraxViewRenderContent;
 
 	/** Custom render function for content of hovering copy of this view, defaults to renderContent */
-	renderHoverContent?: (props: DraxRenderHoverContentProps) => ReactNode;
+	renderHoverContent?: DraxViewRenderHoverContent;
 
 	/** If true, do not render hover view copies for this view when dragging */
 	noHover?: boolean;
@@ -732,6 +742,21 @@ export interface DraxListOnItemReorderEventData<TItem> {
 	toIndex: number;
 }
 
+/** Render function for content of a DraxList item's DraxView */
+export interface DraxListRenderItemContent<TItem> {
+	(info: ListRenderItemInfo<TItem>, props: DraxRenderContentProps): ReactNode;
+}
+
+/** Render function for content of a DraxList item's hovering copy */
+export interface DraxListRenderItemHoverContent<TItem> {
+	(info: ListRenderItemInfo<TItem>, props: DraxRenderHoverContentProps): ReactNode;
+}
+
+/** Callback handler for when a list item is moved within a DraxList, reordering the list */
+export interface DraxListOnItemReorder<TItem> {
+	(eventData: DraxListOnItemReorderEventData<TItem>): void;
+}
+
 /** Props for a DraxList; extends standard FlatList props */
 export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'renderItem'>, DraxAutoScrollProps {
 	/** Unique drax view id, auto-generated if omitted */
@@ -741,13 +766,13 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 	itemStyles?: DraxViewStyleProps;
 
 	/** Render function for content of an item's DraxView */
-	renderItemContent: (info: ListRenderItemInfo<TItem>, props: DraxRenderContentProps) => ReactNode;
+	renderItemContent: DraxListRenderItemContent<TItem>;
 
 	/** Render function for content of an item's hovering copy, defaults to renderItemContent */
-	renderItemHoverContent?: (info: ListRenderItemInfo<TItem>, props: DraxRenderHoverContentProps) => ReactNode;
+	renderItemHoverContent?: DraxListRenderItemHoverContent<TItem>;
 
-	/** Callback handler for when a list item is moved within a DraxList, reordering the list */
-	onItemReorder?: (eventData: DraxListOnItemReorderEventData<TItem>) => void;
+	/** Callback handler for when a list item is moved within the list, reordering the list */
+	onItemReorder?: DraxListOnItemReorder<TItem>;
 
 	/** Can the list be reordered by dragging items? Defaults to true if onItemReorder is set. */
 	reorderable?: boolean;
