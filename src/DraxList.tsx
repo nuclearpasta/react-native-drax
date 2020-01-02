@@ -135,7 +135,7 @@ export const DraxList = <T extends unknown>(
 		[itemCount],
 	);
 
-	// Clear reorders when data changes, but wait for drag to complete.
+	// Clear reorders when data changes.
 	useLayoutEffect(
 		() => {
 			// console.log('clear reorders');
@@ -151,6 +151,9 @@ export const DraxList = <T extends unknown>(
 			if (!id || data === null) {
 				return null;
 			}
+			if (data.length !== originalIndexes.length) {
+				return data;
+			}
 			return originalIndexes.map((index) => data[index]);
 		},
 		[id, data, originalIndexes],
@@ -159,7 +162,7 @@ export const DraxList = <T extends unknown>(
 	// Get shift transform for list item at index.
 	const getShiftTransform = useCallback(
 		(index: number) => {
-			const shift = shiftsRef.current[index].animatedValue;
+			const shift = shiftsRef.current[index]?.animatedValue ?? 0;
 			return horizontal
 				? [{ translateX: shift }]
 				: [{ translateY: shift }];
