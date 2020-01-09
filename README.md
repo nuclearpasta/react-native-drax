@@ -68,7 +68,7 @@ To give an idea of the problem this library is trying to solve, here is some inf
 <a name="concept"></a>
 ## Concept
 
-*coming soon*
+Details on the underlying approach, basic terms, and drag-and-drop event lifecycle can be found in the [Concept Document](docs/concept.md).
 
 <a name="installation"></a>
 ## Installation
