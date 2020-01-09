@@ -1,6 +1,6 @@
 ## Concept
 
-The basic idea behind Drax is to augment the familiar React Native `View` component with attributes that enable it to be dragged around the screen, or to receive or monitor others that are dragged over it. These attributes should include handlers for a wide variety of events in the drag-and-drop lifecycle and styling or rendering based on drag status, allowing for flexibility and power via a simple declarative approach.
+The essential idea behind Drax is to augment the familiar React Native `View` component with attributes that enable it to be dragged around the screen, or to receive or monitor others that are dragged over it. These attributes include handlers for a wide variety of events in the drag-and-drop lifecycle, data payloads for dragging and receiving, and conditional styling and rendering based on drag status. This combination of features provides great flexibility and power via a declarative approach, with sensible default behaviors for simple use cases.
 
 Drax consists of two fundamental components, `DraxProvider` and `DraxView`. The `DraxProvider` wraps the entire app (or at least the area of the app in which drag-and-drop behavior will occur). It provides the React context for all drag handling which each `DraxView` interfaces with. The `DraxView` is a view which can be dragged, can receive other drags, can monitor other drags, or any combination of those behaviors. The Drax library includes more complex components such as `DraxList` (a drag-reorderable `FlatList`), but they are implemented with `DraxView` internally.
 
@@ -61,7 +61,7 @@ The following image demonstrates examples of common drag-and-drop behavior:
 
 **`Example IV`** is an exceptional case included for the sake of thoroughness. It is essentially the same as **`Example II`** but ends with the drag being cancelled by the gesture system for some reason. In this situation, no drop is considered to have happened. An `onDragEnd (6)` occurs in the dragged view, and an `onReceiveDragExit (C)` occurs in the receiver.
 
-### Monitors
+### Monitor Events
 
 For more complex use cases, Drax has the concept of a monitoring `DraxView`. A monitor is similar to a receiver but has several important differences:
 
