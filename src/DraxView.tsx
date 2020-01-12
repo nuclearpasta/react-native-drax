@@ -13,6 +13,8 @@ import {
 	View,
 	StyleSheet,
 	findNodeHandle,
+	Dimensions,
+	ScaledSize,
 } from 'react-native';
 import {
 	LongPressGestureHandlerStateChangeEvent,
@@ -474,6 +476,19 @@ export const DraxView = (
 		() => {
 			// console.log(`onLayout ${id}`);
 			measureWithHandler();
+		},
+		[measureWithHandler],
+	);
+
+	// Establish dimensions/orientation change handler when necessary.
+	useEffect(
+		() => {
+			const handler = (/* { screen: { width, height } }: { screen: ScaledSize } */) => {
+				// console.log(`Dimensions changed to ${width}/${height}`);
+				measureWithHandler();
+			}
+			Dimensions.addEventListener('change', handler);
+			return () => Dimensions.removeEventListener('change', handler);
 		},
 		[measureWithHandler],
 	);
