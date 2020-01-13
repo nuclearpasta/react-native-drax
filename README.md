@@ -13,6 +13,7 @@ Drax is a declarative drag-and-drop system for React Native, written in TypeScri
 
 #### Contents
 
+* [Screenshots](#screenshots)
 * [Status](#status)
 * [Background](#background)
 * [Concept](#concept)
@@ -24,6 +25,15 @@ Drax is a declarative drag-and-drop system for React Native, written in TypeScri
 * [Code of Conduct](#code-of-conduct)
 * [License](#license)
 * [Acknowledgments](#acknowledgments)
+
+<a name="screenshots"></a>
+## Screenshots
+
+<a href="docs/images/color-drag-drop.gif"><img src="docs/images/color-drag-drop.gif" width="200" alt="Color Drag-and-Drop" /></a>
+<a href="docs/images/reorderable-list.gif"><img src="docs/images/reorderable-list.gif" width="200" alt="Reorderable List" /></a>
+<a href="docs/images/knight-moves.gif"><img src="docs/images/knight-moves.gif" width="200" alt="Knight Moves" /></a>
+
+(Click images to see larger versions.)
 
 <a name="status"></a>
 ## Status
