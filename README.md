@@ -88,12 +88,76 @@ There is no Cocoapods or native linking step here. You've already covered those 
 <a name="usage"></a>
 ## Usage
 
-*coming soon*
+### Basic Usage
+
+Import the library components:
+
+```
+import { DraxProvider, DraxView } from 'react-native-drax';
+```
+
+Wrap the area of your app that will use Drax with a `DraxProvider`, and create a couple `DraxView`s, one draggable and one receptive:
+
+```
+<DraxProvider>
+    <View style={styles.container}>
+        <DraxView
+            style={styles.draggable}
+            onDragStart={() => {
+                console.log('start drag');
+            }}
+            payload="world"
+        />
+        <DraxView
+            style={styles.receiver}
+            onReceiveDragEnter={({ dragged: { payload } }) => {
+                console.log(`hello ${payload}`);
+            }}
+            onReceiveDragExit={({ dragged: { payload } }) => {
+                console.log(`goodbye ${payload}`);
+            }}
+            onReceiveDragDrop={({ dragged: { payload } }) => {
+                console.log(`received ${payload}`);
+            }}
+        />
+    </View>
+</DraxProvider>
+```
+
+The styles are provided here for completeness:
+
+```
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    draggable: {
+        width: 100,
+        height: 100,
+        backgroundColor: 'blue',
+    },
+    receiver: {
+        width: 100,
+        height: 100,
+        backgroundColor: 'green',
+    },
+});
+```
+
+This will give you a blue box which can be dragged around and a green box which it can be dragged into. Watch the console log messages while you drag the blue box around, releasing the drag either in or out of the green box.
+
+### API
+
+*Full API description coming soon*
 
 <a name="caveats"></a>
 ## Caveats
 
-*coming soon*
+This library has several [known issues and limitations](https://github.com/nuclearpasta/react-native-drax/issues?q=is%3Aissue+is%3Aopen+label%3Areproduced), particularly around the [Android](https://github.com/nuclearpasta/react-native-drax/issues?q=is%3Aissue+is%3Aopen+label%3Aandroid) platform. We hope to address these and improve the library over time. For most use cases, the current functionality is probably fine.
+
+This library has been developed with React Native 0.61 and React Native Gesture Handler 1.5, and due to complexity, its use with older versions of them will not be supported.
 
 <a name="examples"></a>
 ## Examples
