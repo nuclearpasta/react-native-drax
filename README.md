@@ -98,7 +98,9 @@ There is no Cocoapods or native linking step here. You've already covered those 
 <a name="examples"></a>
 ## Examples
 
-For now, here are two simple Snack examples:
+A reference application can be found at [`react-native-drax-example`](https://github.com/nuclearpasta/react-native-drax-example) demonstrating several use cases.
+
+If you don't want to download and run the sample application, here are two Snack examples:
 
 - [Basic drag-and-drop](https://snack.expo.io/@lafiosca/react-native-drax---basic-drag-and-drop?platform=ios)
 - [Basic reorderable list](https://snack.expo.io/@lafiosca/react-native-drax---basic-reorderable-list?platform=ios)
