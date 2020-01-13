@@ -484,7 +484,7 @@ export const DraxView = (
 		() => {
 			const handler = (/* { screen: { width, height } }: { screen: ScaledSize } */) => {
 				// console.log(`Dimensions changed to ${width}/${height}`);
-				measureWithHandler();
+				setTimeout(measureWithHandler, 100);
 			};
 			Dimensions.addEventListener('change', handler);
 			return () => Dimensions.removeEventListener('change', handler);
