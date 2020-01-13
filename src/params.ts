@@ -5,7 +5,10 @@ export const defaultSnapbackDelay = 100;
 export const defaultSnapbackDuration = 250;
 
 /** Default pre-drag long press delay in milliseconds */
-export const defaultLongPressDelay = 250;
+export const defaultLongPressDelay = 0;
+
+/** Default pre-drag long press delay in milliseconds for DraxList items */
+export const defaultListItemLongPressDelay = 250;
 
 /** Default scroll event throttle (number of events per second) for DraxScrollView */
 export const defaultScrollEventThrottle = 8;

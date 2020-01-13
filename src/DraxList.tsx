@@ -34,6 +34,7 @@ import {
 	DraxProtocolDragEndResponse,
 	DraxSnapbackTargetPreset,
 } from './types';
+import { defaultListItemLongPressDelay } from './params';
 
 interface Shift {
 	targetValue: number;
@@ -220,6 +221,7 @@ export const DraxList = <T extends unknown>(
 					}}
 					renderContent={(props) => renderItemContent(info, props)}
 					renderHoverContent={renderItemHoverContent && ((props) => renderItemHoverContent(info, props))}
+					longPressDelay={defaultListItemLongPressDelay}
 				/>
 			);
 		},
