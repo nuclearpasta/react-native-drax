@@ -676,7 +676,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 	return (
 		<DraxContext.Provider value={contextValue}>
 			<View
-				style={StyleSheet.absoluteFill}
+				style={styles.provider}
 				ref={setRootNodeHandleRef}
 			>
 				{children}
@@ -690,3 +690,9 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 		</DraxContext.Provider>
 	);
 };
+
+const styles = StyleSheet.create({
+	provider: {
+		flex: 1,
+	},
+});
