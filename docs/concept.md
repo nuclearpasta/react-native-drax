@@ -75,5 +75,5 @@ The monitor drag-and-drop lifecycle event handler attributes are:
 * `onMonitorDragEnter`: when a drag enters this view
 * `onMonitorDragOver`: while a drag is over this view
 * `onMonitorDragExit`: when a drag exits this view
-* `onMonitorDragEnd`: when a drag ends over a receiver (or is cancelled) within this view
+* `onMonitorDragEnd`: when a drag ends outside of a receiver (or is cancelled) within this view
 * `onMonitorDragDrop`: when a drag ends successfully over a receiver within this view
