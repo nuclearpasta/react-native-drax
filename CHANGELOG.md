@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 ### Added
 - Include relative position data in receiver objects for non-receiver events (#15)
+- Added screenshots to README
 - Created initial CHANGELOG
 
 ### Fixed
@@ -15,7 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [0.4.0] - 2020-01-13
 ### Added
 - Added Basic Usage and Caveats to README
-- Added screenshots to README
 - Added link to example project to README
 
 ### Changed
