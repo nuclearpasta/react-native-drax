@@ -196,12 +196,19 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 				if (receiverData && shouldDrop) {
 					// It's a successful drop into a receiver, let them both know, and check for response.
 					let responded = false;
+
+					const receiverRelativePositionData = getRelativePosition(
+						screenPosition,
+						receiverData.absoluteMeasurements,
+					);
+
 					let response = draggedData.protocol.onDragDrop?.({
 						screenPosition,
 						receiver: {
 							id: receiverId!,
 							parentId: receiverData.parentId,
 							payload: receiverData.protocol.receiverPayload,
+							...receiverRelativePositionData,
 						},
 					});
 					if (response !== undefined) {
@@ -211,7 +218,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 
 					response = receiverData.protocol.onReceiveDragDrop?.({
 						screenPosition,
-						...getRelativePosition(screenPosition, receiverData.absoluteMeasurements),
+						...receiverRelativePositionData,
 						dragged: {
 							id,
 							parentId: draggedData.parentId,
@@ -457,7 +464,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 			const { monitors, receiver } = findMonitorsAndReceiver(screenPosition, draggedId);
 
 			// Get the previous receiver, if any.
-			const { id: oldReceiverId, data: oldReceiverData } = getTrackingReceiver() ?? {};
+			const oldReceiver = getTrackingReceiver();
 
 			// Always update the drag screen position.
 			updateDragPosition(screenPosition);
@@ -472,6 +479,8 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 				id: receiver.id,
 				parentId: receiver.data.parentId,
 				payload: receiver.data.protocol.receiverPayload,
+				relativePosition: receiver.relativePosition,
+				relativePositionRatio: receiver.relativePositionRatio,
 			};
 
 			// Notify monitors and update monitor tracking, if necessary.
@@ -545,8 +554,8 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 				// Update the receiver.
 				updateReceiver(receiver, dragged);
 
-				if (oldReceiverId) {
-					if (receiverId === oldReceiverId) {
+				if (oldReceiver?.id) {
+					if (receiverId === oldReceiver.id) {
 						// Case 1: new exists, old exists, new is the same as old
 
 						// Call the protocol event callbacks for dragging over the receiver.
@@ -556,22 +565,25 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 						// Case 2: new exists, old exists, new is different from old
 
 						// Call the protocol event callbacks for exiting the old receiver...
+						const oldReceiverRelativePositionData = getRelativePosition(
+							screenPosition,
+							oldReceiver.data.absoluteMeasurements,
+						);
 						draggedProtocol.onDragExit?.({
 							screenPosition,
 							receiver: {
-								id: oldReceiverId,
-								parentId: oldReceiverData?.parentId,
-								payload: oldReceiverData?.protocol.receiverPayload,
+								id: oldReceiver.id,
+								parentId: oldReceiver.data.parentId,
+								payload: oldReceiver.data.protocol.receiverPayload,
+								...oldReceiverRelativePositionData,
 							},
 						});
-						if (oldReceiverData) {
-							oldReceiverData.protocol.onReceiveDragExit?.({
-								screenPosition,
-								...getRelativePosition(screenPosition, oldReceiverData.absoluteMeasurements),
-								dragged: eventDataDragged,
-								cancelled: false,
-							});
-						}
+						oldReceiver.data.protocol.onReceiveDragExit?.({
+							screenPosition,
+							...oldReceiverRelativePositionData,
+							dragged: eventDataDragged,
+							cancelled: false,
+						});
 
 						// ...and entering the new receiver.
 						draggedProtocol.onDragEnter?.(dragEventData);
@@ -584,29 +596,32 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 					draggedProtocol.onDragEnter?.(dragEventData);
 					receiverProtocol.onReceiveDragEnter?.(receiveEventData);
 				}
-			} else if (oldReceiverId) {
+			} else if (oldReceiver?.id) {
 				// Case 4: new does not exist, old exists
 
 				// Reset the old receiver.
 				resetReceiver();
 
 				// Call the protocol event callbacks for exiting the old receiver.
+				const oldReceiverRelativePositionData = getRelativePosition(
+					screenPosition,
+					oldReceiver.data.absoluteMeasurements,
+				);
 				draggedProtocol.onDragExit?.({
 					screenPosition,
 					receiver: {
-						id: oldReceiverId,
-						parentId: oldReceiverData?.parentId,
-						payload: oldReceiverData?.protocol.receiverPayload,
+						id: oldReceiver.id,
+						parentId: oldReceiver.data.parentId,
+						payload: oldReceiver.data.protocol.receiverPayload,
+						...oldReceiverRelativePositionData,
 					},
 				});
-				if (oldReceiverData) {
-					oldReceiverData.protocol.onReceiveDragExit?.({
-						screenPosition,
-						...getRelativePosition(screenPosition, oldReceiverData.absoluteMeasurements),
-						dragged: eventDataDragged,
-						cancelled: false,
-					});
-				}
+				oldReceiver.data.protocol.onReceiveDragExit?.({
+					screenPosition,
+					...oldReceiverRelativePositionData,
+					dragged: eventDataDragged,
+					cancelled: false,
+				});
 			} else {
 				// Case 5: new does not exist, old does not exist
 

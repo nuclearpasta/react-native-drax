@@ -80,10 +80,18 @@ export interface DraxEventViewData {
 	payload: any;
 }
 
+/** Data about a receiver view involved in a Drax event */
+export interface DraxEventReceiverViewData extends DraxEventViewData {
+	/** Event position relative to the receiver */
+	relativePosition: Position;
+	/** Event position/dimensions ratio relative to the receiver */
+	relativePositionRatio: Position;
+}
+
 /** Data about a Drax drag event that involves a receiver */
 export interface DraxDragWithReceiverEventData extends DraxDragEventData {
 	/** The receiver for the drag event */
-	receiver: DraxEventViewData;
+	receiver: DraxEventReceiverViewData;
 }
 
 /** Data about a Drax receive event */
