@@ -437,6 +437,7 @@ const resetDragInRegistry = (
 	if (snapbackTarget !== DraxSnapbackTargetPreset.None && draggedData) {
 		const {
 			internalRenderHoverView,
+			onSnapbackEnd,
 			animateSnapback = true,
 			snapbackDelay = defaultSnapbackDelay,
 			snapbackDuration = defaultSnapbackDuration,
@@ -470,6 +471,8 @@ const resetDragInRegistry = (
 				).start(({ finished }) => {
 					// Remove the release from tracking, regardless of whether animation finished.
 					deleteReleaseInRegistry(registry, releaseId);
+					// Call the snapback end handler, regardless of whether animation of finished.
+					onSnapbackEnd?.();
 					// If the animation finished, update the view state for the released view to be inactive.
 					if (finished) {
 						stateDispatch(actions.updateViewState({

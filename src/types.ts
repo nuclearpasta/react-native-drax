@@ -202,6 +202,9 @@ export interface DraxProtocol {
 	/** Called in the dragged view when drag ends over a receiver */
 	onDragDrop?: (data: DraxDragWithReceiverEventData) => DraxProtocolDragEndResponse;
 
+	/** Called in the dragged view when drag release snapback ends */
+	onSnapbackEnd?: () => void;
+
 	/** Called in the receiver view each time an item is initially dragged over it */
 	onReceiveDragEnter?: (data: DraxReceiveEventData) => void;
 
