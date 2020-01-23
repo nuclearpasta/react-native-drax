@@ -52,7 +52,7 @@ export const isPosition = (something: any): something is Position => (
 	typeof something === 'object' && something !== null && typeof something.x === 'number' && typeof something.y === 'number'
 );
 
-/** Data about a Drax event common to all protocol callbacks */
+/** Data about a Drax event common to most protocol callbacks */
 export interface DraxEventData {
 	/** Position of the event in screen coordinates */
 	screenPosition: Position;
