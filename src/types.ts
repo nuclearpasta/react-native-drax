@@ -347,6 +347,8 @@ export interface DraxTrackingDrag {
 	dragOffset: Animated.ValueXY;
 	/** The relative offset within the dragged view of where it was grabbed */
 	grabOffset: Position;
+	/** The relative offset/dimensions ratio within the dragged view of where it was grabbed */
+	grabOffsetRatio: Position;
 	/** The position in screen coordinates of the dragged hover view (dragScreenPosition - grabOffset) */
 	hoverPosition: Animated.ValueXY;
 	/** Tracking information about the current drag receiver, if any */

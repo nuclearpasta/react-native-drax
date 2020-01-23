@@ -540,6 +540,7 @@ const startDragInRegistry = (
 		dragScreenPosition,
 		dragOffset,
 		grabOffset,
+		grabOffsetRatio,
 		hoverPosition,
 		receiver: undefined,
 		monitorIds: [],
