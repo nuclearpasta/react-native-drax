@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+## [0.4.1] - 2020-01-22
 ### Added
 - Include relative position data in receiver objects for non-receiver events (#15)
 - Added screenshots to README
@@ -32,7 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 *(More history to be added later)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.3.6...v0.4.0
 [0.3.6]: https://github.com/nuclearpasta/react-native-drax/compare/v0.3.5...v0.3.6
 [0.3.5]: https://github.com/nuclearpasta/react-native-drax/compare/v0.3.4...v0.3.5
