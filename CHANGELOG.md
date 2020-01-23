@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+- Added .editorconfig file to render tabs with indent size 4 on GitHub
 
 ## [0.4.2] - 2020-01-23
 ### Added
