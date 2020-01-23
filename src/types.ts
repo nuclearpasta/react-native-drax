@@ -49,7 +49,7 @@ export interface DraxViewMeasurements extends Position, ViewDimensions {}
 
 /** Predicate for checking if something is a Position */
 export const isPosition = (something: any): something is Position => (
-	something !== undefined && typeof something.x === 'number' && typeof something.y === 'number'
+	typeof something === 'object' && something !== null && typeof something.x === 'number' && typeof something.y === 'number'
 );
 
 /** Data about a Drax event common to all protocol callbacks */

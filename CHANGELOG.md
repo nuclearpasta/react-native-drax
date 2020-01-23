@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 - Added .editorconfig file to render tabs with indent size 4 on GitHub
 
+### Fixed
+- Improved `isPosition` logic to avoid potential TypeErrors
+
 ## [0.4.2] - 2020-01-23
 ### Added
 - Added `onSnapbackEnd` property to DraxView (#16)
