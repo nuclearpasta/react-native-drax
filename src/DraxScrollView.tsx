@@ -173,18 +173,18 @@ export const DraxScrollView = ({
 	// Monitor drag-over events to react with auto-scrolling.
 	const onMonitorDragOver = useCallback(
 		(event: DraxMonitorEventData) => {
-			const { relativePositionRatio } = event;
+			const { monitorOffsetRatio } = event;
 			const autoScrollState = autoScrollStateRef.current;
-			if (relativePositionRatio.x >= autoScrollForwardThreshold) {
+			if (monitorOffsetRatio.x >= autoScrollForwardThreshold) {
 				autoScrollState.x = AutoScrollDirection.Forward;
-			} else if (relativePositionRatio.x <= autoScrollBackThreshold) {
+			} else if (monitorOffsetRatio.x <= autoScrollBackThreshold) {
 				autoScrollState.x = AutoScrollDirection.Back;
 			} else {
 				autoScrollState.x = AutoScrollDirection.None;
 			}
-			if (relativePositionRatio.y >= autoScrollForwardThreshold) {
+			if (monitorOffsetRatio.y >= autoScrollForwardThreshold) {
 				autoScrollState.y = AutoScrollDirection.Forward;
-			} else if (relativePositionRatio.y <= autoScrollBackThreshold) {
+			} else if (monitorOffsetRatio.y <= autoScrollBackThreshold) {
 				autoScrollState.y = AutoScrollDirection.Back;
 			} else {
 				autoScrollState.y = AutoScrollDirection.None;

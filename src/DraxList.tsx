@@ -498,7 +498,7 @@ export const DraxList = <T extends unknown>(
 
 	// Monitor drags to react with item shifts and auto-scrolling.
 	const onMonitorDragOver = useCallback(
-		({ dragged, receiver, relativePositionRatio }: DraxMonitorEventData) => {
+		({ dragged, receiver, monitorOffsetRatio }: DraxMonitorEventData) => {
 			// First, check if we need to shift items.
 			if (reorderable && dragged.parentId === id) {
 				// One of our list items is being dragged.
@@ -511,7 +511,7 @@ export const DraxList = <T extends unknown>(
 			}
 
 			// Next, see if we need to auto-scroll.
-			const ratio = horizontal ? relativePositionRatio.x : relativePositionRatio.y;
+			const ratio = horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y;
 			if (ratio > 0.1 && ratio < 0.9) {
 				scrollStateRef.current = AutoScrollDirection.None;
 				stopScroll();
