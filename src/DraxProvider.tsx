@@ -16,6 +16,7 @@ import {
 	DraxGestureEvent,
 	DraxSnapbackTarget,
 	DraxSnapbackTargetPreset,
+	DraxMonitorEventData,
 } from './types';
 import { getRelativePosition } from './math';
 
@@ -184,8 +185,24 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 					return;
 				}
 
+				// Prepare supplemental state data for dragged view.
+				const draggedViewState = {
+					dragOffset: dragged.tracking.dragOffset,
+					grabOffset: dragged.tracking.grabOffset,
+					grabOffsetRatio: dragged.tracking.grabOffsetRatio,
+					hoverPosition: dragged.tracking.hoverPosition,
+				};
+
+				// Prepare packaged data for dragged view.
+				const draggedViewData = {
+					id,
+					parentId: draggedData.parentId,
+					payload: draggedData.protocol.dragPayload,
+					...draggedViewState,
+				};
+
 				// Get data for receiver view (if any) before we reset.
-				const { id: receiverId, data: receiverData } = getTrackingReceiver() ?? {};
+				const receiver = getTrackingReceiver();
 
 				// Get the monitors (if any) before we reset.
 				const monitors = getTrackingMonitors();
@@ -193,37 +210,38 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 				// Snapback target, which may be modified by responses from protocols.
 				let snapbackTarget: DraxSnapbackTarget = DraxSnapbackTargetPreset.Default;
 
-				if (receiverData && shouldDrop) {
+				if (receiver && shouldDrop) {
 					// It's a successful drop into a receiver, let them both know, and check for response.
 					let responded = false;
 
-					const receiverRelativePositionData = getRelativePosition(
-						screenPosition,
-						receiverData.absoluteMeasurements,
-					);
+					// Prepare supplemental state data for receiver view.
+					const receiverViewState = {
+						receiveOffset: receiver.tracking.receiveOffset,
+						receiveOffsetRatio: receiver.tracking.receiveOffsetRatio,
+					};
+
+					// Prepare packaged data for receiver view.
+					const receiverViewData = {
+						id: receiver.id,
+						parentId: receiver.data.parentId,
+						payload: receiver.data.protocol.receiverPayload,
+						...receiverViewState,
+					};
 
 					let response = draggedData.protocol.onDragDrop?.({
 						screenPosition,
-						receiver: {
-							id: receiverId!,
-							parentId: receiverData.parentId,
-							payload: receiverData.protocol.receiverPayload,
-							...receiverRelativePositionData,
-						},
+						...draggedViewState,
+						receiver: receiverViewData,
 					});
 					if (response !== undefined) {
 						snapbackTarget = response;
 						responded = true;
 					}
 
-					response = receiverData.protocol.onReceiveDragDrop?.({
+					response = receiver.data.protocol.onReceiveDragDrop?.({
 						screenPosition,
-						...receiverRelativePositionData,
-						dragged: {
-							id,
-							parentId: draggedData.parentId,
-							payload: draggedData.protocol.dragPayload,
-						},
+						...receiverViewState,
+						dragged: draggedViewData,
 					});
 					if (!responded && response !== undefined) {
 						snapbackTarget = response;
@@ -234,22 +252,19 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 					if (monitors.length > 0) {
 						const monitorEventData = {
 							screenPosition,
-							dragged: {
-								id,
-								parentId: draggedData.parentId,
-								payload: draggedData.protocol.dragPayload,
-							},
-							receiver: {
-								id: receiverId!,
-								parentId: receiverData.parentId,
-								payload: receiverData.protocol.receiverPayload,
-							},
+							dragged: draggedViewData,
+							receiver: receiverViewData,
 						};
 						monitors.forEach(({ data: monitorData }) => {
 							if (monitorData) {
+								const {
+									relativePosition: monitorOffset,
+									relativePositionRatio: monitorOffsetRatio,
+								} = getRelativePosition(screenPosition, monitorData.absoluteMeasurements);
 								response = monitorData.protocol.onMonitorDragDrop?.({
 									...monitorEventData,
-									...getRelativePosition(screenPosition, monitorData.absoluteMeasurements),
+									monitorOffset,
+									monitorOffsetRatio,
 								});
 							}
 							if (!responded && response !== undefined) {
@@ -263,23 +278,24 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 
 					// Let the dragged item know the drag ended, and capture any response.
 					let responded = false;
-					let response = draggedData.protocol.onDragEnd?.({ screenPosition, cancelled });
+					let response = draggedData.protocol.onDragEnd?.({
+						screenPosition,
+						cancelled,
+						...draggedViewState,
+					});
 					if (response !== undefined) {
 						snapbackTarget = response;
 						responded = true;
 					}
 
 					// If there is a receiver but drag was cancelled, let it know the drag exited it.
-					if (receiverData) {
-						receiverData.protocol.onReceiveDragExit?.({
+					if (receiver) {
+						receiver.data.protocol.onReceiveDragExit?.({
 							screenPosition,
-							...getRelativePosition(screenPosition, receiverData.absoluteMeasurements),
-							dragged: {
-								id,
-								parentId: draggedData.parentId,
-								payload: draggedData.protocol.dragPayload,
-							},
 							cancelled,
+							receiveOffset: receiver.tracking.receiveOffset,
+							receiveOffsetRatio: receiver.tracking.receiveOffsetRatio,
+							dragged: draggedViewData,
 						});
 					}
 
@@ -287,22 +303,25 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 					if (monitors.length > 0) {
 						const monitorEventData = {
 							screenPosition,
-							dragged: {
-								id,
-								parentId: draggedData.parentId,
-								payload: draggedData.protocol.dragPayload,
-							},
-							receiver: receiverData && {
-								id: receiverId!,
-								parentId: receiverData.parentId,
-								payload: receiverData.protocol.receiverPayload,
+							dragged: draggedViewData,
+							receiver: receiver && {
+								id: receiver.id,
+								parentId: receiver.data.parentId,
+								payload: receiver.data.protocol.receiverPayload,
+								receiveOffset: receiver.tracking.receiveOffset,
+								receiveOffsetRatio: receiver.tracking.receiveOffsetRatio,
 							},
 						};
 						monitors.forEach(({ data: monitorData }) => {
 							if (cancelled) {
+								const {
+									relativePosition: monitorOffset,
+									relativePositionRatio: monitorOffsetRatio,
+								} = getRelativePosition(screenPosition, monitorData.absoluteMeasurements);
 								response = monitorData.protocol.onMonitorDragEnd?.({
 									...monitorEventData,
-									...getRelativePosition(screenPosition, monitorData.absoluteMeasurements),
+									monitorOffset,
+									monitorOffsetRatio,
 									cancelled,
 								});
 							}
@@ -376,20 +395,28 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 					x: screenX + grabX,
 					y: screenY + grabY,
 				};
-				startDrag({
+				const grabOffset = { x: grabX, y: grabY };
+				const grabOffsetRatio = {
+					x: grabX / width,
+					y: grabY / height,
+				};
+				const { dragOffset, hoverPosition } = startDrag({
+					grabOffset,
+					grabOffsetRatio,
 					screenStartPosition: screenPosition,
 					parentStartPosition: parentPosition,
 					draggedId: id,
-					grabOffset: { x: grabX, y: grabY },
-					grabOffsetRatio: {
-						x: grabX / width,
-						y: grabY / height,
-					},
 				});
 				if (debug) {
 					console.log(`Start dragging view id ${id} at screen position (${screenPosition.x}, ${screenPosition.y})`);
 				}
-				draggedData.protocol.onDragStart?.({ screenPosition });
+				draggedData.protocol.onDragStart?.({
+					screenPosition,
+					dragOffset,
+					grabOffset,
+					grabOffsetRatio,
+					hoverPosition,
+				});
 
 				// TODO: find monitors and call onMonitorDragStart
 			}
@@ -414,7 +441,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 
 			const dragged = getTrackingDragged();
 
-			if (!dragged) {
+			if (dragged === undefined) {
 				// We're not tracking any gesture yet.
 				if (debug) {
 					console.log('Ignoring gesture event because we have not initialized a drag');
@@ -422,19 +449,11 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 				return;
 			}
 
-			const { id: draggedId, data: draggedData } = dragged;
-
-			if (draggedId !== id) {
+			if (dragged.id !== id) {
 				// This is not a gesture we're tracking. We don't support multiple simultaneous drags.
 				if (debug) {
 					console.log('Ignoring gesture event because this is not the view being dragged');
 				}
-				return;
-			}
-
-			if (!draggedData) {
-				// The drag we're tracking is for a view that's no longer registered. Reset.
-				resetDrag();
 				return;
 			}
 
@@ -449,19 +468,19 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 			const { screenPosition, translation } = getDragPositionData(parentPosition) ?? {};
 
 			if (debug) {
-				console.log(`Dragged item screen coordinates (${draggedData.absoluteMeasurements.x}, ${draggedData.absoluteMeasurements.y})`);
+				console.log(`Dragged item screen coordinates (${dragged.data.absoluteMeasurements.x}, ${dragged.data.absoluteMeasurements.y})`);
 				console.log(`Native event in-view touch coordinates: (${event.x}, ${event.y})`);
 				console.log(`Drag translation (${translation?.x}, ${translation?.y})`);
 				console.log(`Drag at screen coordinates (${screenPosition?.x}, ${screenPosition?.y})\n`);
 			}
 
-			if (!screenPosition || !translation) {
+			if (!screenPosition) {
 				// Failed to get drag position data. This should never happen.
 				return;
 			}
 
 			// Find which monitors and receiver this drag is over.
-			const { monitors, receiver } = findMonitorsAndReceiver(screenPosition, draggedId);
+			const { monitors, receiver } = findMonitorsAndReceiver(screenPosition, dragged.id);
 
 			// Get the previous receiver, if any.
 			const oldReceiver = getTrackingReceiver();
@@ -469,61 +488,29 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 			// Always update the drag screen position.
 			updateDragPosition(screenPosition);
 
-			const draggedProtocol = draggedData.protocol;
-			const eventDataDragged = {
-				id: draggedId,
-				parentId: draggedData.parentId,
-				payload: draggedData.protocol.dragPayload,
-			};
-			const eventDataReceiver = receiver && {
-				id: receiver.id,
-				parentId: receiver.data.parentId,
-				payload: receiver.data.protocol.receiverPayload,
-				relativePosition: receiver.relativePosition,
-				relativePositionRatio: receiver.relativePositionRatio,
+			const draggedProtocol = dragged.data.protocol;
+
+			// Prepare supplemental state data for dragged view.
+			const eventDataDraggedState = {
+				dragOffset: dragged.tracking.dragOffset,
+				grabOffset: dragged.tracking.grabOffset,
+				grabOffsetRatio: dragged.tracking.grabOffsetRatio,
+				hoverPosition: dragged.tracking.hoverPosition,
 			};
 
-			// Notify monitors and update monitor tracking, if necessary.
-			const prevMonitorIds = getTrackingMonitorIds();
-			if (monitors.length > 0 || prevMonitorIds.length > 0) {
-				const baseMonitorEventData = {
-					screenPosition,
-					dragged: eventDataDragged,
-					receiver: eventDataReceiver,
-				};
-				const newMonitorIds = monitors.map(({
-					relativePosition,
-					relativePositionRatio,
-					id: monitorId,
-					data: monitorData,
-				}) => {
-					const monitorEventData = {
-						...baseMonitorEventData,
-						relativePosition,
-						relativePositionRatio,
-					};
-					if (prevMonitorIds.includes(monitorId)) {
-						// Drag was already over this monitor.
-						monitorData.protocol.onMonitorDragOver?.(monitorEventData);
-					} else {
-						// Drag is entering monitor.
-						monitorData.protocol.onMonitorDragEnter?.(monitorEventData);
-					}
-					return monitorId;
-				});
-				prevMonitorIds.filter((monitorId) => !newMonitorIds.includes(monitorId))
-					.forEach((monitorId) => {
-						// Drag has exited monitor.
-						const monitorData = getAbsoluteViewData(monitorId);
-						if (monitorData) {
-							monitorData.protocol.onMonitorDragExit?.({
-								...baseMonitorEventData,
-								...getRelativePosition(screenPosition, monitorData.absoluteMeasurements),
-							});
-						}
-					});
-				setMonitorIds(newMonitorIds);
-			}
+			// Prepare packaged data for dragged view.
+			const eventDataDragged = {
+				id: dragged.id,
+				parentId: dragged.data.parentId,
+				payload: dragged.data.protocol.dragPayload,
+				...eventDataDraggedState,
+			};
+
+			// Prepare packaged data stub for monitor updates later so we can optionally add receiver.
+			const monitorEventDataStub: Omit<DraxMonitorEventData, 'monitorOffset' | 'monitorOffsetRatio'> = {
+				screenPosition,
+				dragged: eventDataDragged,
+			};
 
 			/*
 			 * Consider the following cases for new and old receiver ids:
@@ -536,26 +523,52 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 
 			if (receiver) {
 				// New receiver exists.
-				const { id: receiverId, data: receiverData } = receiver;
-				const receiverProtocol = receiverData.protocol;
+				const receiverProtocol = receiver.data.protocol;
 
-				const dragEventData = {
-					screenPosition,
-					receiver: eventDataReceiver!,
+				// Update the receiver.
+				const trackingReceiver = updateReceiver(receiver, dragged);
+
+				if (trackingReceiver === undefined) {
+					// This should never happen, but just in case.
+					if (debug) {
+						console.log('Failed to update tracking receiver');
+					}
+					return;
+				}
+
+				// Prepare supplemental state data for receiver view.
+				const eventDataReceiverState = {
+					receiveOffset: trackingReceiver.receiveOffset,
+					receiveOffsetRatio: trackingReceiver.receiveOffsetRatio,
 				};
 
+				// Prepare packaged data for receiver view.
+				const eventDataReceiver = {
+					id: receiver.id,
+					parentId: receiver.data.parentId,
+					payload: receiver.data.protocol.receiverPayload,
+					...eventDataReceiverState,
+				};
+
+				// Add receiver data to monitor event stub.
+				monitorEventDataStub.receiver = eventDataReceiver;
+
+				// Prepare drag event data for onDrag callbacks.
+				const dragEventData = {
+					screenPosition,
+					...eventDataDraggedState,
+					receiver: eventDataReceiver,
+				};
+
+				// Prepare receive event data for onReceive callbacks.
 				const receiveEventData = {
 					screenPosition,
-					relativePosition: receiver.relativePosition,
-					relativePositionRatio: receiver.relativePositionRatio,
+					...eventDataReceiverState,
 					dragged: eventDataDragged,
 				};
 
-				// Update the receiver.
-				updateReceiver(receiver, dragged);
-
-				if (oldReceiver?.id) {
-					if (receiverId === oldReceiver.id) {
+				if (oldReceiver) {
+					if (receiver.id === oldReceiver.id) {
 						// Case 1: new exists, old exists, new is the same as old
 
 						// Call the protocol event callbacks for dragging over the receiver.
@@ -564,23 +577,25 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 					} else {
 						// Case 2: new exists, old exists, new is different from old
 
+						// Prepare supplemental state data for old receiver view.
+						const eventDataOldReceiverState = {
+							receiveOffset: oldReceiver.tracking.receiveOffset,
+							receiveOffsetRatio: oldReceiver.tracking.receiveOffsetRatio,
+						};
+
 						// Call the protocol event callbacks for exiting the old receiver...
-						const oldReceiverRelativePositionData = getRelativePosition(
-							screenPosition,
-							oldReceiver.data.absoluteMeasurements,
-						);
 						draggedProtocol.onDragExit?.({
-							screenPosition,
+							...dragEventData,
 							receiver: {
 								id: oldReceiver.id,
 								parentId: oldReceiver.data.parentId,
 								payload: oldReceiver.data.protocol.receiverPayload,
-								...oldReceiverRelativePositionData,
+								...eventDataOldReceiverState,
 							},
 						});
 						oldReceiver.data.protocol.onReceiveDragExit?.({
 							screenPosition,
-							...oldReceiverRelativePositionData,
+							...eventDataOldReceiverState,
 							dragged: eventDataDragged,
 							cancelled: false,
 						});
@@ -596,37 +611,85 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 					draggedProtocol.onDragEnter?.(dragEventData);
 					receiverProtocol.onReceiveDragEnter?.(receiveEventData);
 				}
-			} else if (oldReceiver?.id) {
+			} else if (oldReceiver) {
 				// Case 4: new does not exist, old exists
 
 				// Reset the old receiver.
 				resetReceiver();
 
+				// Prepare supplemental state data for old receiver view.
+				const eventDataOldReceiverState = {
+					receiveOffset: oldReceiver.tracking.receiveOffset,
+					receiveOffsetRatio: oldReceiver.tracking.receiveOffsetRatio,
+				};
+
 				// Call the protocol event callbacks for exiting the old receiver.
-				const oldReceiverRelativePositionData = getRelativePosition(
-					screenPosition,
-					oldReceiver.data.absoluteMeasurements,
-				);
 				draggedProtocol.onDragExit?.({
 					screenPosition,
+					...eventDataDraggedState,
 					receiver: {
 						id: oldReceiver.id,
 						parentId: oldReceiver.data.parentId,
 						payload: oldReceiver.data.protocol.receiverPayload,
-						...oldReceiverRelativePositionData,
+						...eventDataOldReceiverState,
 					},
 				});
 				oldReceiver.data.protocol.onReceiveDragExit?.({
 					screenPosition,
-					...oldReceiverRelativePositionData,
 					dragged: eventDataDragged,
 					cancelled: false,
+					...eventDataOldReceiverState,
 				});
 			} else {
 				// Case 5: new does not exist, old does not exist
 
 				// Call the protocol event callback for dragging.
-				draggedProtocol.onDrag?.({ screenPosition });
+				draggedProtocol.onDrag?.({
+					screenPosition,
+					...eventDataDraggedState,
+				});
+			}
+
+			// Notify monitors and update monitor tracking, if necessary.
+			const prevMonitorIds = getTrackingMonitorIds();
+			if (monitors.length > 0 || prevMonitorIds.length > 0) {
+				const newMonitorIds = monitors.map(({
+					id: monitorId,
+					data: monitorData,
+					relativePosition: monitorOffset,
+					relativePositionRatio: monitorOffsetRatio,
+				}) => {
+					const monitorEventData = {
+						...monitorEventDataStub,
+						monitorOffset,
+						monitorOffsetRatio,
+					};
+					if (prevMonitorIds.includes(monitorId)) {
+						// Drag was already over this monitor.
+						monitorData.protocol.onMonitorDragOver?.(monitorEventData);
+					} else {
+						// Drag is entering monitor.
+						monitorData.protocol.onMonitorDragEnter?.(monitorEventData);
+					}
+					return monitorId;
+				});
+				prevMonitorIds.filter((monitorId) => !newMonitorIds.includes(monitorId))
+					.forEach((monitorId) => {
+						// Drag has exited monitor.
+						const monitorData = getAbsoluteViewData(monitorId);
+						if (monitorData) {
+							const {
+								relativePosition: monitorOffset,
+								relativePositionRatio: monitorOffsetRatio,
+							} = getRelativePosition(screenPosition, monitorData.absoluteMeasurements);
+							monitorData.protocol.onMonitorDragExit?.({
+								...monitorEventDataStub,
+								monitorOffset,
+								monitorOffsetRatio,
+							});
+						}
+					});
+				setMonitorIds(newMonitorIds);
 			}
 		},
 		[
@@ -636,7 +699,6 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 			getTrackingReceiver,
 			getTrackingMonitorIds,
 			findMonitorsAndReceiver,
-			resetDrag,
 			resetReceiver,
 			updateDragPosition,
 			updateReceiver,

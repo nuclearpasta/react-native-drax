@@ -52,6 +52,26 @@ export const isPosition = (something: any): something is Position => (
 	typeof something === 'object' && something !== null && typeof something.x === 'number' && typeof something.y === 'number'
 );
 
+/** State data about a dragged view involved in a Drax event */
+export interface DraxEventDraggedViewState {
+	/** The relative offset of the drag point from the view */
+	dragOffset: Animated.ValueXY;
+	/** The relative offset of where the view was grabbed */
+	grabOffset: Position;
+	/** The relative offset/dimensions ratio of where the view was grabbed */
+	grabOffsetRatio: Position;
+	/** The position in screen coordinates of the dragged hover view (screenPosition - grabOffset) */
+	hoverPosition: Animated.ValueXY;
+}
+
+/** State data about a receiver view involved in a Drax event */
+export interface DraxEventReceiverViewState {
+	/** The relative offset of the drag point in the receiving view */
+	receiveOffset: Animated.ValueXY;
+	/** The relative offset/dimensions ratio of the drag point in the receiving view */
+	receiveOffsetRatio: Animated.ValueXY;
+}
+
 /** Data about a Drax event common to most protocol callbacks */
 export interface DraxEventData {
 	/** Position of the event in screen coordinates */
@@ -59,7 +79,7 @@ export interface DraxEventData {
 }
 
 /** Data about a Drax drag event */
-export interface DraxDragEventData extends DraxEventData {}
+export interface DraxDragEventData extends DraxEventData, DraxEventDraggedViewState {}
 
 /** Supplemental type for adding a cancelled flag */
 interface WithCancelledFlag {
@@ -80,13 +100,11 @@ export interface DraxEventViewData {
 	payload: any;
 }
 
+/** Data about a dragged view involved in a Drax event */
+export interface DraxEventDraggedViewData extends DraxEventViewData, DraxEventDraggedViewState {}
+
 /** Data about a receiver view involved in a Drax event */
-export interface DraxEventReceiverViewData extends DraxEventViewData {
-	/** Event position relative to the receiver */
-	relativePosition: Position;
-	/** Event position/dimensions ratio relative to the receiver */
-	relativePositionRatio: Position;
-}
+export interface DraxEventReceiverViewData extends DraxEventViewData, DraxEventReceiverViewState {}
 
 /** Data about a Drax drag event that involves a receiver */
 export interface DraxDragWithReceiverEventData extends DraxDragEventData {
@@ -95,13 +113,9 @@ export interface DraxDragWithReceiverEventData extends DraxDragEventData {
 }
 
 /** Data about a Drax receive event */
-export interface DraxReceiveEventData extends DraxEventData {
+export interface DraxReceiveEventData extends DraxEventData, DraxEventReceiverViewState {
 	/** The dragged view for the receive event */
-	dragged: DraxEventViewData;
-	/** Event position relative to the receiver */
-	relativePosition: Position;
-	/** Event position/dimensions ratio relative to the receiver */
-	relativePositionRatio: Position;
+	dragged: DraxEventDraggedViewData;
 }
 
 /** Data about a Drax receive end event */
@@ -110,13 +124,13 @@ export interface DraxReceiveEndEventData extends DraxReceiveEventData, WithCance
 /** Data about a Drax monitor event */
 export interface DraxMonitorEventData extends DraxEventData {
 	/** The dragged view for the monitor event */
-	dragged: DraxEventViewData;
+	dragged: DraxEventDraggedViewData;
 	/** The receiver for the monitor event, if any */
-	receiver?: DraxEventViewData;
+	receiver?: DraxEventReceiverViewData;
 	/** Event position relative to the monitor */
-	relativePosition: Position;
+	monitorOffset: Position;
 	/** Event position/dimensions ratio relative to the monitor */
-	relativePositionRatio: Position;
+	monitorOffsetRatio: Position;
 }
 
 /** Data about a Drax monitor drag end event */
@@ -327,7 +341,7 @@ export interface DraxFoundAbsoluteViewEntry extends DraxAbsoluteViewEntry {
 export interface DraxTrackingReceiver {
 	/** View id of the current receiver */
 	receiverId: string;
-	/** The relative offset the drag point in the receiving view */
+	/** The relative offset of the drag point in the receiving view */
 	receiveOffset: Animated.ValueXY;
 	/** The relative offset/dimensions ratio of the drag point in the receiving view */
 	receiveOffsetRatio: Animated.ValueXY;
@@ -397,7 +411,7 @@ export interface DraxViewState {
 	/** Current receive status of the view: Receiving or Inactive */
 	receiveStatus: DraxViewReceiveStatus;
 
-	/** If receiving a drag, the relative offset the drag point in the view */
+	/** If receiving a drag, the relative offset of the drag point in the view */
 	receiveOffset?: Animated.ValueXY;
 	/** If receiving a drag, the relative offset/dimensions ratio of the drag point in the view */
 	receiveOffsetRatio?: Animated.ValueXY;

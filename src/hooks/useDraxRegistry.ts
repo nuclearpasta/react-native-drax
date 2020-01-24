@@ -224,17 +224,34 @@ const findMonitorsAndReceiverInRegistry = (
 };
 
 /** Get id and data for the currently dragged view, if any. */
-const getTrackingDraggedFromRegistry = (registry: DraxRegistry) => (
-	registry.drag
-		&& getAbsoluteViewEntryFromRegistry(registry, registry.drag.draggedId)
-);
+const getTrackingDraggedFromRegistry = (registry: DraxRegistry) => {
+	const tracking = registry.drag;
+	if (tracking !== undefined) {
+		const viewEntry = getAbsoluteViewEntryFromRegistry(registry, tracking.draggedId);
+		if (viewEntry !== undefined) {
+			return {
+				...viewEntry,
+				tracking,
+			};
+		}
+	}
+	return undefined;
+};
 
 /** Get id and data for the currently receiving view, if any. */
-const getTrackingReceiverFromRegistry = (registry: DraxRegistry) => (
-	registry.drag?.receiver?.receiverId
-		? getAbsoluteViewEntryFromRegistry(registry, registry.drag.receiver.receiverId)
-		: undefined
-);
+const getTrackingReceiverFromRegistry = (registry: DraxRegistry) => {
+	const tracking = registry.drag?.receiver;
+	if (tracking !== undefined) {
+		const viewEntry = getAbsoluteViewEntryFromRegistry(registry, tracking.receiverId);
+		if (viewEntry !== undefined) {
+			return {
+				...viewEntry,
+				tracking,
+			};
+		}
+	}
+	return undefined;
+};
 
 /** Get ids for all currently monitoring views. */
 const getTrackingMonitorIdsFromRegistry = (registry: DraxRegistry) => (
@@ -557,6 +574,11 @@ const startDragInRegistry = (
 			dragStatus: DraxViewDragStatus.Dragging,
 		},
 	}));
+	return {
+		dragScreenPosition,
+		dragOffset,
+		hoverPosition,
+	};
 };
 
 /** Update drag position. */
@@ -597,7 +619,7 @@ const updateReceiverInRegistry = (
 ) => {
 	const { drag, stateDispatch } = registry;
 	if (!drag) {
-		return;
+		return undefined;
 	}
 	const {
 		relativePosition,
@@ -665,6 +687,7 @@ const updateReceiverInRegistry = (
 			},
 		},
 	}));
+	return drag.receiver;
 };
 
 /** Set the monitors for a drag. */
