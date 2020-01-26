@@ -55,7 +55,7 @@ export const isPosition = (something: any): something is Position => (
 /** State data about a dragged view involved in a Drax event */
 export interface DraxEventDraggedViewState {
 	/** The relative offset of the drag point from the view */
-	dragOffset: Animated.ValueXY;
+	dragOffset: Position;
 	/** The relative offset of where the view was grabbed */
 	grabOffset: Position;
 	/** The relative offset/dimensions ratio of where the view was grabbed */
@@ -67,9 +67,9 @@ export interface DraxEventDraggedViewState {
 /** State data about a receiver view involved in a Drax event */
 export interface DraxEventReceiverViewState {
 	/** The relative offset of the drag point in the receiving view */
-	receiveOffset: Animated.ValueXY;
+	receiveOffset: Position;
 	/** The relative offset/dimensions ratio of the drag point in the receiving view */
-	receiveOffsetRatio: Animated.ValueXY;
+	receiveOffsetRatio: Position;
 }
 
 /** Data about a Drax event common to most protocol callbacks */
@@ -342,9 +342,9 @@ export interface DraxTrackingReceiver {
 	/** View id of the current receiver */
 	receiverId: string;
 	/** The relative offset of the drag point in the receiving view */
-	receiveOffset: Animated.ValueXY;
+	receiveOffset: Position;
 	/** The relative offset/dimensions ratio of the drag point in the receiving view */
-	receiveOffsetRatio: Animated.ValueXY;
+	receiveOffsetRatio: Position;
 }
 
 /** Tracking information about the current drag, used internally by the Drax provider */
@@ -356,9 +356,9 @@ export interface DraxTrackingDrag {
 	/** Start position of the drag relative to dragged view's immediate parent */
 	parentStartPosition: Position;
 	/** The position in screen coordinates of the drag point */
-	dragScreenPosition: Animated.ValueXY;
+	dragScreenPosition: Position;
 	/** The relative offset of the drag point from the view */
-	dragOffset: Animated.ValueXY;
+	dragOffset: Position;
 	/** The relative offset within the dragged view of where it was grabbed */
 	grabOffset: Position;
 	/** The relative offset/dimensions ratio within the dragged view of where it was grabbed */
@@ -393,9 +393,9 @@ export interface DraxViewState {
 	dragStatus: DraxViewDragStatus;
 
 	/** If being dragged or released, the position in screen coordinates of the drag point */
-	dragScreenPosition?: Animated.ValueXY;
+	dragScreenPosition?: Position;
 	/** If being dragged or released, the relative offset of the drag point from the view */
-	dragOffset?: Animated.ValueXY;
+	dragOffset?: Position;
 
 	/** If being dragged, the relative offset of where the view was grabbed */
 	grabOffset?: Position;
@@ -412,9 +412,9 @@ export interface DraxViewState {
 	receiveStatus: DraxViewReceiveStatus;
 
 	/** If receiving a drag, the relative offset of the drag point in the view */
-	receiveOffset?: Animated.ValueXY;
+	receiveOffset?: Position;
 	/** If receiving a drag, the relative offset/dimensions ratio of the drag point in the view */
-	receiveOffsetRatio?: Animated.ValueXY;
+	receiveOffsetRatio?: Position;
 
 	/** Data about the dragged item this view is receiving, if any */
 	receivingDrag?: DraxEventViewData;

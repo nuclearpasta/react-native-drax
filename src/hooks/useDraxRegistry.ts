@@ -544,8 +544,8 @@ const startDragInRegistry = (
 ) => {
 	const { stateDispatch } = registry;
 	resetDragInRegistry(registry);
-	const dragScreenPosition = new Animated.ValueXY(screenStartPosition);
-	const dragOffset = new Animated.ValueXY(grabOffset);
+	const dragScreenPosition = screenStartPosition;
+	const dragOffset = grabOffset;
 	const hoverPosition = new Animated.ValueXY({
 		x: screenStartPosition.x - grabOffset.x,
 		y: screenStartPosition.y - grabOffset.y,
@@ -586,7 +586,7 @@ const updateDragPositionInRegistry = (
 	registry: DraxRegistry,
 	screenPosition: Position,
 ) => {
-	const { drag } = registry;
+	const { drag, stateDispatch } = registry;
 	if (!drag) {
 		return;
 	}
@@ -594,21 +594,25 @@ const updateDragPositionInRegistry = (
 	if (!absoluteMeasurements) {
 		return;
 	}
-	const {
-		dragScreenPosition,
-		dragOffset,
-		grabOffset,
-		hoverPosition,
-	} = drag;
-	dragScreenPosition.setValue(screenPosition);
-	dragOffset.setValue({
+	const { draggedId, grabOffset, hoverPosition } = drag;
+	const dragScreenPosition = screenPosition;
+	const dragOffset = {
 		x: screenPosition.x - absoluteMeasurements.x,
 		y: screenPosition.y - absoluteMeasurements.y,
-	});
+	};
+	drag.dragScreenPosition = dragScreenPosition;
+	drag.dragOffset = dragOffset;
 	hoverPosition.setValue({
 		x: screenPosition.x - grabOffset.x,
 		y: screenPosition.y - grabOffset.y,
 	});
+	stateDispatch(actions.updateViewState({
+		id: draggedId,
+		viewStateUpdate: {
+			dragScreenPosition,
+			dragOffset,
+		},
+	}));
 };
 
 /** Update receiver for a drag. */
@@ -640,37 +644,33 @@ const updateReceiverInRegistry = (
 		protocol: { dragPayload },
 	} = draggedData;
 	const oldReceiver = drag.receiver;
-	let receiverUpdate: Partial<DraxViewState> = {
+	const receiveOffset = relativePosition;
+	const receiveOffsetRatio = relativePositionRatio;
+	const receiverUpdate: Partial<DraxViewState> = {
 		receivingDrag: {
 			id: draggedId,
 			parentId: draggedParentId,
 			payload: dragPayload,
 		},
+		receiveOffset,
+		receiveOffsetRatio,
 	};
 	if (oldReceiver?.receiverId === receiverId) {
-		// Same receiver, update existing offsets.
-		oldReceiver.receiveOffset.setValue(relativePosition);
-		oldReceiver.receiveOffsetRatio.setValue(relativePositionRatio);
+		// Same receiver, update offsets.
+		oldReceiver.receiveOffset = receiveOffset;
+		oldReceiver.receiveOffsetRatio = receiveOffsetRatio;
 	} else {
 		// New receiver.
 		if (oldReceiver) {
 			// Clear the old receiver.
 			resetReceiverInRegistry(registry);
 		}
-		// Create new offsets.
-		const receiveOffset = new Animated.ValueXY(relativePosition);
-		const receiveOffsetRatio = new Animated.ValueXY(relativePositionRatio);
 		drag.receiver = {
 			receiverId,
 			receiveOffset,
 			receiveOffsetRatio,
 		};
-		receiverUpdate = {
-			...receiverUpdate,
-			receiveOffset,
-			receiveOffsetRatio,
-			receiveStatus: DraxViewReceiveStatus.Receiving,
-		};
+		receiverUpdate.receiveStatus = DraxViewReceiveStatus.Receiving;
 		stateDispatch(actions.updateTrackingStatus({ receiving: true }));
 	}
 	stateDispatch(actions.updateViewState({
