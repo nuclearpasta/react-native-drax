@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 - Added .editorconfig file to render tabs with indent size 4 on GitHub
 
+### Changed
+- (BREAKING) All `Animated.ValueXY`s except `hoverPosition` are now `Position`s (#18)
+
 ### Fixed
 - Improved `isPosition` logic to avoid potential TypeErrors
 
@@ -30,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Added link to example project to README
 
 ### Changed
-- Changed default `longPressDelay` from 250ms to 0ms for DraxView (#11)
+- (BREAKING) Changed default `longPressDelay` from 250ms to 0ms for DraxView (#11)
 - Updated copyright year range
 
 ## [0.3.6] - 2020-01-12
