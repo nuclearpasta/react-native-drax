@@ -382,7 +382,7 @@ export const DraxList = <T extends unknown>(
 		[originalIndexes, horizontal],
 	);
 
-	// Calculate screen position of list item for snapback.
+	// Calculate absolute position of list item for snapback.
 	const calculateSnapbackTarget = useCallback(
 		(
 			{ index: fromIndex, originalIndex: fromOriginalIndex }: ListItemPayload,

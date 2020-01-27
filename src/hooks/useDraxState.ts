@@ -23,7 +23,7 @@ import {
 /** Create the initial empty view state data for a newly registered view. */
 const createInitialViewState = (): DraxViewState => ({
 	dragStatus: DraxViewDragStatus.Inactive,
-	dragScreenPosition: undefined,
+	dragAbsolutePosition: undefined,
 	dragOffset: undefined,
 	grabOffset: undefined,
 	grabOffsetRatio: undefined,

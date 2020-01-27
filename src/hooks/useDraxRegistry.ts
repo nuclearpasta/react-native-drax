@@ -68,7 +68,7 @@ const getViewDataFromRegistry = (registry: DraxRegistry, id: string | undefined)
 	(id && registry.viewIds.includes(id)) ? registry.viewDataById[id] : undefined
 );
 
-/** Get absolute screen measurements for a registered view, incorporating parents and clipping. */
+/** Get absolute measurements for a registered view, incorporating parents and clipping. */
 const getAbsoluteMeasurementsForViewFromRegistry = (
 	registry: DraxRegistry,
 	{ measurements, parentId }: DraxViewData,
@@ -151,13 +151,13 @@ const getAbsoluteViewEntryFromRegistry = (
  */
 const findMonitorsAndReceiverInRegistry = (
 	registry: DraxRegistry,
-	screenPosition: Position,
+	absolutePosition: Position,
 	excludeViewId: string,
 ) => {
 	const monitors: DraxFoundAbsoluteViewEntry[] = [];
 	let receiver: DraxFoundAbsoluteViewEntry | undefined;
 
-	// console.log(`find monitors and receiver for screen position (${screenPosition.x}, ${screenPosition.y})`);
+	// console.log(`find monitors and receiver for absolute position (${absolutePosition.x}, ${absolutePosition.y})`);
 	registry.viewIds.forEach((targetId) => {
 		// console.log(`checking target id ${targetId}`);
 		if (targetId === excludeViewId) {
@@ -192,7 +192,7 @@ const findMonitorsAndReceiverInRegistry = (
 
 		// console.log(`absolute measurements: ${JSON.stringify(absoluteMeasurements, null, 2)}`);
 
-		if (isPointInside(screenPosition, absoluteMeasurements)) {
+		if (isPointInside(absolutePosition, absoluteMeasurements)) {
 			// Drag point is within this target.
 			const foundView: DraxFoundAbsoluteViewEntry = {
 				id: targetId,
@@ -201,7 +201,7 @@ const findMonitorsAndReceiverInRegistry = (
 					measurements: target.measurements!, // It must exist, since absoluteMeasurements is defined.
 					absoluteMeasurements,
 				},
-				...getRelativePosition(screenPosition, absoluteMeasurements),
+				...getRelativePosition(absolutePosition, absoluteMeasurements),
 			};
 
 			if (monitoring) {
@@ -310,7 +310,7 @@ const getHoverItemsFromRegistry = (registry: DraxRegistry) => {
 };
 
 /**
- * Get the screen position of a drag already in progress from touch
+ * Get the absolute position of a drag already in progress from touch
  * coordinates within the immediate parent view of the dragged view.
  */
 const getDragPositionDataFromRegistry = (registry: DraxRegistry, parentPosition: Position) => {
@@ -318,20 +318,20 @@ const getDragPositionDataFromRegistry = (registry: DraxRegistry, parentPosition:
 		return undefined;
 	}
 	/*
-	 * To determine drag position in screen coordinates, we add:
-	 *   screen coordinates of drag start
+	 * To determine drag position in absolute coordinates, we add:
+	 *   absolute coordinates of drag start
 	 *   + translation offset of drag
 	 */
-	const { screenStartPosition, parentStartPosition } = registry.drag;
+	const { absoluteStartPosition, parentStartPosition } = registry.drag;
 	const translation = {
 		x: parentPosition.x - parentStartPosition.x,
 		y: parentPosition.y - parentStartPosition.y,
 	};
-	const screenPosition = {
-		x: screenStartPosition.x + translation.x,
-		y: screenStartPosition.y + translation.y,
+	const dragAbsolutePosition = {
+		x: absoluteStartPosition.x + translation.x,
+		y: absoluteStartPosition.y + translation.y,
 	};
-	return { screenPosition, translation };
+	return { dragAbsolutePosition, translation };
 };
 
 /** Register a Drax view. */
@@ -512,7 +512,7 @@ const resetDragInRegistry = (
 
 	// Update the view state, dependent on whether snapping back.
 	const viewStateUpdate: Partial<DraxViewState> = {
-		dragScreenPosition: undefined,
+		dragAbsolutePosition: undefined,
 		dragOffset: undefined,
 	};
 
@@ -535,8 +535,8 @@ const resetDragInRegistry = (
 const startDragInRegistry = (
 	registry: DraxRegistry,
 	{
-		screenStartPosition,
-		parentStartPosition,
+		dragAbsolutePosition,
+		dragParentPosition,
 		draggedId,
 		grabOffset,
 		grabOffsetRatio,
@@ -544,17 +544,16 @@ const startDragInRegistry = (
 ) => {
 	const { stateDispatch } = registry;
 	resetDragInRegistry(registry);
-	const dragScreenPosition = screenStartPosition;
 	const dragOffset = grabOffset;
 	const hoverPosition = new Animated.ValueXY({
-		x: screenStartPosition.x - grabOffset.x,
-		y: screenStartPosition.y - grabOffset.y,
+		x: dragAbsolutePosition.x - grabOffset.x,
+		y: dragAbsolutePosition.y - grabOffset.y,
 	});
 	registry.drag = {
-		screenStartPosition,
-		parentStartPosition,
+		absoluteStartPosition: dragAbsolutePosition,
+		parentStartPosition: dragParentPosition,
 		draggedId,
-		dragScreenPosition,
+		dragAbsolutePosition,
 		dragOffset,
 		grabOffset,
 		grabOffsetRatio,
@@ -566,7 +565,7 @@ const startDragInRegistry = (
 	stateDispatch(actions.updateViewState({
 		id: draggedId,
 		viewStateUpdate: {
-			dragScreenPosition,
+			dragAbsolutePosition,
 			dragOffset,
 			grabOffset,
 			grabOffsetRatio,
@@ -575,7 +574,7 @@ const startDragInRegistry = (
 		},
 	}));
 	return {
-		dragScreenPosition,
+		dragAbsolutePosition,
 		dragOffset,
 		hoverPosition,
 	};
@@ -584,7 +583,7 @@ const startDragInRegistry = (
 /** Update drag position. */
 const updateDragPositionInRegistry = (
 	registry: DraxRegistry,
-	screenPosition: Position,
+	dragAbsolutePosition: Position,
 ) => {
 	const { drag, stateDispatch } = registry;
 	if (!drag) {
@@ -595,21 +594,20 @@ const updateDragPositionInRegistry = (
 		return;
 	}
 	const { draggedId, grabOffset, hoverPosition } = drag;
-	const dragScreenPosition = screenPosition;
 	const dragOffset = {
-		x: screenPosition.x - absoluteMeasurements.x,
-		y: screenPosition.y - absoluteMeasurements.y,
+		x: dragAbsolutePosition.x - absoluteMeasurements.x,
+		y: dragAbsolutePosition.y - absoluteMeasurements.y,
 	};
-	drag.dragScreenPosition = dragScreenPosition;
+	drag.dragAbsolutePosition = dragAbsolutePosition;
 	drag.dragOffset = dragOffset;
 	hoverPosition.setValue({
-		x: screenPosition.x - grabOffset.x,
-		y: screenPosition.y - grabOffset.y,
+		x: dragAbsolutePosition.x - grabOffset.x,
+		y: dragAbsolutePosition.y - grabOffset.y,
 	});
 	stateDispatch(actions.updateViewState({
 		id: draggedId,
 		viewStateUpdate: {
-			dragScreenPosition,
+			dragAbsolutePosition,
 			dragOffset,
 		},
 	}));
@@ -769,7 +767,7 @@ export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
 	);
 
 	/**
-	 * Get the screen position of a drag already in progress from touch
+	 * Get the absolute position of a drag already in progress from touch
 	 * coordinates within the immediate parent view of the dragged view.
 	 */
 	const getDragPositionData = useCallback(
@@ -782,8 +780,8 @@ export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
 	 * contain the touch coordinates, excluding the specified view.
 	 */
 	const findMonitorsAndReceiver = useCallback(
-		(screenPosition: Position, excludeViewId: string) => (
-			findMonitorsAndReceiverInRegistry(registryRef.current, screenPosition, excludeViewId)
+		(absolutePosition: Position, excludeViewId: string) => (
+			findMonitorsAndReceiverInRegistry(registryRef.current, absolutePosition, excludeViewId)
 		),
 		[],
 	);
@@ -844,8 +842,8 @@ export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
 
 	/** Update drag position. */
 	const updateDragPosition = useCallback(
-		(screenPosition: Position) => (
-			updateDragPositionInRegistry(registryRef.current, screenPosition)
+		(dragAbsolutePosition: Position) => (
+			updateDragPositionInRegistry(registryRef.current, dragAbsolutePosition)
 		),
 		[],
 	);

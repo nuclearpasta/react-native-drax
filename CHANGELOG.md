@@ -4,15 +4,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic only if you are explicitly using Drax's exported TypeScript type definitions in your code.
+
 ## [Unreleased]
 ### Added
 - Added .editorconfig file to render tabs with indent size 4 on GitHub
+- (BREAKING-TS) Drag/drop lifecycle events include supplemental data such as dragOffset/grabOffset (#17)
+- Added explanation of BREAKING and BREAKING TYPES to changelog.
 
 ### Changed
 - (BREAKING) All `Animated.ValueXY`s except `hoverPosition` are now `Position`s (#18)
+- (BREAKING) Drag/drop lifecycle event payloads have been unified for consistency (#20)
+- (BREAKING) Renamed `screenPosition` to `dragAbsolutePosition` (#19)
 
 ### Fixed
 - Improved `isPosition` logic to avoid potential TypeErrors
+- Call `onMonitorDragEnd` even if drag is not cancelled (#21)
 
 ## [0.4.2] - 2020-01-23
 ### Added

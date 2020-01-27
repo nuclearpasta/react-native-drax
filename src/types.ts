@@ -44,51 +44,13 @@ export interface ViewDimensions {
 	height: number;
 }
 
-/** Measurements of a Drax view for bounds checking purposes, relative to Drax parent view or screen */
+/** Measurements of a Drax view for bounds checking purposes, relative to Drax parent view or DraxProvider (absolute) */
 export interface DraxViewMeasurements extends Position, ViewDimensions {}
 
 /** Predicate for checking if something is a Position */
 export const isPosition = (something: any): something is Position => (
 	typeof something === 'object' && something !== null && typeof something.x === 'number' && typeof something.y === 'number'
 );
-
-/** State data about a dragged view involved in a Drax event */
-export interface DraxEventDraggedViewState {
-	/** The relative offset of the drag point from the view */
-	dragOffset: Position;
-	/** The relative offset of where the view was grabbed */
-	grabOffset: Position;
-	/** The relative offset/dimensions ratio of where the view was grabbed */
-	grabOffsetRatio: Position;
-	/** The position in screen coordinates of the dragged hover view (screenPosition - grabOffset) */
-	hoverPosition: Animated.ValueXY;
-}
-
-/** State data about a receiver view involved in a Drax event */
-export interface DraxEventReceiverViewState {
-	/** The relative offset of the drag point in the receiving view */
-	receiveOffset: Position;
-	/** The relative offset/dimensions ratio of the drag point in the receiving view */
-	receiveOffsetRatio: Position;
-}
-
-/** Data about a Drax event common to most protocol callbacks */
-export interface DraxEventData {
-	/** Position of the event in screen coordinates */
-	screenPosition: Position;
-}
-
-/** Data about a Drax drag event */
-export interface DraxDragEventData extends DraxEventData, DraxEventDraggedViewState {}
-
-/** Supplemental type for adding a cancelled flag */
-interface WithCancelledFlag {
-	/** True if the event was cancelled */
-	cancelled: boolean;
-}
-
-/** Data about a Drax drag end event */
-export interface DraxDragEndEventData extends DraxDragEventData, WithCancelledFlag {}
 
 /** Data about a view involved in a Drax event */
 export interface DraxEventViewData {
@@ -101,30 +63,52 @@ export interface DraxEventViewData {
 }
 
 /** Data about a dragged view involved in a Drax event */
-export interface DraxEventDraggedViewData extends DraxEventViewData, DraxEventDraggedViewState {}
+export interface DraxEventDraggedViewData extends DraxEventViewData {
+	/** The relative offset of the drag point from the view */
+	dragOffset: Position;
+	/** The relative offset of where the view was grabbed */
+	grabOffset: Position;
+	/** The relative offset/dimensions ratio of where the view was grabbed */
+	grabOffsetRatio: Position;
+	/** The position in absolute coordinates of the dragged hover view (dragAbsolutePosition - grabOffset) */
+	hoverPosition: Animated.ValueXY;
+}
 
 /** Data about a receiver view involved in a Drax event */
-export interface DraxEventReceiverViewData extends DraxEventViewData, DraxEventReceiverViewState {}
+export interface DraxEventReceiverViewData extends DraxEventViewData {
+	/** The relative offset of the drag point in the receiving view */
+	receiveOffset: Position;
+	/** The relative offset/dimensions ratio of the drag point in the receiving view */
+	receiveOffsetRatio: Position;
+}
+
+/** Data about a Drax drag event */
+export interface DraxDragEventData {
+	/** Position of the drag event in absolute coordinates */
+	dragAbsolutePosition: Position;
+	/** Data about the dragged view */
+	dragged: DraxEventDraggedViewData;
+}
+
+/** Supplemental type for adding a cancelled flag */
+interface WithCancelledFlag {
+	/** True if the event was cancelled */
+	cancelled: boolean;
+}
+
+/** Data about a Drax drag end event */
+export interface DraxDragEndEventData extends DraxDragEventData, WithCancelledFlag {}
 
 /** Data about a Drax drag event that involves a receiver */
 export interface DraxDragWithReceiverEventData extends DraxDragEventData {
 	/** The receiver for the drag event */
 	receiver: DraxEventReceiverViewData;
 }
-
-/** Data about a Drax receive event */
-export interface DraxReceiveEventData extends DraxEventData, DraxEventReceiverViewState {
-	/** The dragged view for the receive event */
-	dragged: DraxEventDraggedViewData;
-}
-
-/** Data about a Drax receive end event */
-export interface DraxReceiveEndEventData extends DraxReceiveEventData, WithCancelledFlag {}
+/** Data about a Drax drag/receive end event */
+export interface DraxDragWithReceiverEndEventData extends DraxDragWithReceiverEventData, WithCancelledFlag {}
 
 /** Data about a Drax monitor event */
-export interface DraxMonitorEventData extends DraxEventData {
-	/** The dragged view for the monitor event */
-	dragged: DraxEventDraggedViewData;
+export interface DraxMonitorEventData extends DraxDragEventData {
 	/** The receiver for the monitor event, if any */
 	receiver?: DraxEventReceiverViewData;
 	/** Event position relative to the monitor */
@@ -220,16 +204,16 @@ export interface DraxProtocol {
 	onSnapbackEnd?: () => void;
 
 	/** Called in the receiver view each time an item is initially dragged over it */
-	onReceiveDragEnter?: (data: DraxReceiveEventData) => void;
+	onReceiveDragEnter?: (data: DraxDragWithReceiverEventData) => void;
 
 	/** Called in the receiver view repeatedly while an item is dragged over it */
-	onReceiveDragOver?: (data: DraxReceiveEventData) => void;
+	onReceiveDragOver?: (data: DraxDragWithReceiverEventData) => void;
 
 	/** Called in the receiver view when item is dragged off of it or drag is cancelled */
-	onReceiveDragExit?: (data: DraxReceiveEndEventData) => void;
+	onReceiveDragExit?: (data: DraxDragWithReceiverEndEventData) => void;
 
 	/** Called in the receiver view when drag ends over it */
-	onReceiveDragDrop?: (data: DraxReceiveEventData) => DraxProtocolDragEndResponse;
+	onReceiveDragDrop?: (data: DraxDragWithReceiverEventData) => DraxProtocolDragEndResponse;
 
 	/** Called in the monitor view when a drag action begins over it */
 	onMonitorDragStart?: (data: DraxMonitorEventData) => void;
@@ -351,19 +335,19 @@ export interface DraxTrackingReceiver {
 export interface DraxTrackingDrag {
 	/** View id of the dragged view */
 	draggedId: string;
-	/** Start position of the drag in screen coordinates */
-	screenStartPosition: Position;
+	/** Start position of the drag in absolute coordinates */
+	absoluteStartPosition: Position;
 	/** Start position of the drag relative to dragged view's immediate parent */
 	parentStartPosition: Position;
-	/** The position in screen coordinates of the drag point */
-	dragScreenPosition: Position;
+	/** The position in absolute coordinates of the drag point */
+	dragAbsolutePosition: Position;
 	/** The relative offset of the drag point from the view */
 	dragOffset: Position;
 	/** The relative offset within the dragged view of where it was grabbed */
 	grabOffset: Position;
 	/** The relative offset/dimensions ratio within the dragged view of where it was grabbed */
 	grabOffsetRatio: Position;
-	/** The position in screen coordinates of the dragged hover view (dragScreenPosition - grabOffset) */
+	/** The position in absolute coordinates of the dragged hover view (dragAbsolutePosition - grabOffset) */
 	hoverPosition: Animated.ValueXY;
 	/** Tracking information about the current drag receiver, if any */
 	receiver?: DraxTrackingReceiver;
@@ -375,7 +359,7 @@ export interface DraxTrackingDrag {
 export interface DraxTrackingRelease {
 	/** View id of the released view */
 	viewId: string;
-	/** The position in screen coordinates of the released hover view */
+	/** The position in absolute coordinates of the released hover view */
 	hoverPosition: Animated.ValueXY;
 }
 
@@ -392,8 +376,8 @@ export interface DraxViewState {
 	/** Current drag status of the view: Dragged, Released, or Inactive */
 	dragStatus: DraxViewDragStatus;
 
-	/** If being dragged or released, the position in screen coordinates of the drag point */
-	dragScreenPosition?: Position;
+	/** If being dragged or released, the position in absolute coordinates of the drag point */
+	dragAbsolutePosition?: Position;
 	/** If being dragged or released, the relative offset of the drag point from the view */
 	dragOffset?: Position;
 
@@ -402,7 +386,7 @@ export interface DraxViewState {
 	/** If being dragged, the relative offset/dimensions ratio of where the view was grabbed */
 	grabOffsetRatio?: Position;
 
-	/** The position in screen coordinates of the dragged hover view (dragScreenPosition - grabOffset) */
+	/** The position in absolute coordinates of the dragged hover view (dragAbsolutePosition - grabOffset) */
 	hoverPosition?: Animated.ValueXY;
 
 	/** Data about the receiver this view is being dragged over, if any */
@@ -433,10 +417,10 @@ export interface DraxState {
 
 /** Payload to start tracking a drag */
 export interface StartDragPayload {
-	/** Absolute screen position of where the drag started */
-	screenStartPosition: Position;
+	/** Absolute position of where the drag started */
+	dragAbsolutePosition: Position;
 	/** Position relative to the dragged view's immediate parent where the drag started */
-	parentStartPosition: Position;
+	dragParentPosition: Position;
 	/** The dragged view's unique identifier */
 	draggedId: string;
 	/** The relative offset within the view of where it was grabbed */
