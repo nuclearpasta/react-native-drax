@@ -10,7 +10,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ### Added
 - Added .editorconfig file to render tabs with indent size 4 on GitHub
 - (BREAKING-TS) Drag/drop lifecycle events include supplemental data such as dragOffset/grabOffset (#17)
-- Added explanation of BREAKING and BREAKING TYPES to changelog.
+- Added explanation of BREAKING and BREAKING-TS to changelog.
 - (BREAKING-TS) Add `dragTranslation` and `dragTranslationRatio` to drag/drop lifecycle event payloads and view states (#23)
 
 ### Changed
