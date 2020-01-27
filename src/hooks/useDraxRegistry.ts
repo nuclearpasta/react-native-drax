@@ -313,7 +313,11 @@ const getHoverItemsFromRegistry = (registry: DraxRegistry) => {
  * Get the absolute position of a drag already in progress from touch
  * coordinates within the immediate parent view of the dragged view.
  */
-const getDragPositionDataFromRegistry = (registry: DraxRegistry, parentPosition: Position) => {
+const getDragPositionDataFromRegistry = (
+	registry: DraxRegistry,
+	parentPosition: Position,
+	draggedMeasurements: DraxViewMeasurements,
+) => {
 	if (!registry.drag) {
 		return undefined;
 	}
@@ -327,11 +331,19 @@ const getDragPositionDataFromRegistry = (registry: DraxRegistry, parentPosition:
 		x: parentPosition.x - parentStartPosition.x,
 		y: parentPosition.y - parentStartPosition.y,
 	};
+	const dragTranslationRatio = {
+		x: dragTranslation.x / draggedMeasurements.width,
+		y: dragTranslation.y / draggedMeasurements.height,
+	};
 	const dragAbsolutePosition = {
 		x: absoluteStartPosition.x + dragTranslation.x,
 		y: absoluteStartPosition.y + dragTranslation.y,
 	};
-	return { dragAbsolutePosition, dragTranslation };
+	return {
+		dragAbsolutePosition,
+		dragTranslation,
+		dragTranslationRatio,
+	};
 };
 
 /** Register a Drax view. */
@@ -514,6 +526,7 @@ const resetDragInRegistry = (
 	const viewStateUpdate: Partial<DraxViewState> = {
 		dragAbsolutePosition: undefined,
 		dragTranslation: undefined,
+		dragTranslationRatio: undefined,
 		dragOffset: undefined,
 	};
 
@@ -546,6 +559,7 @@ const startDragInRegistry = (
 	const { stateDispatch } = registry;
 	resetDragInRegistry(registry);
 	const dragTranslation = { x: 0, y: 0 };
+	const dragTranslationRatio = { x: 0, y: 0 };
 	const dragOffset = grabOffset;
 	const hoverPosition = new Animated.ValueXY({
 		x: dragAbsolutePosition.x - grabOffset.x,
@@ -557,6 +571,7 @@ const startDragInRegistry = (
 		draggedId,
 		dragAbsolutePosition,
 		dragTranslation,
+		dragTranslationRatio,
 		dragOffset,
 		grabOffset,
 		grabOffsetRatio,
@@ -570,6 +585,7 @@ const startDragInRegistry = (
 		viewStateUpdate: {
 			dragAbsolutePosition,
 			dragTranslation,
+			dragTranslationRatio,
 			dragOffset,
 			grabOffset,
 			grabOffsetRatio,
@@ -580,6 +596,7 @@ const startDragInRegistry = (
 	return {
 		dragAbsolutePosition,
 		dragTranslation,
+		dragTranslationRatio,
 		dragOffset,
 		hoverPosition,
 	};
@@ -603,12 +620,17 @@ const updateDragPositionInRegistry = (
 		x: dragAbsolutePosition.x - drag.absoluteStartPosition.x,
 		y: dragAbsolutePosition.y - drag.absoluteStartPosition.y,
 	};
+	const dragTranslationRatio = {
+		x: dragTranslation.x / absoluteMeasurements.width,
+		y: dragTranslation.y / absoluteMeasurements.height,
+	};
 	const dragOffset = {
 		x: dragAbsolutePosition.x - absoluteMeasurements.x,
 		y: dragAbsolutePosition.y - absoluteMeasurements.y,
 	};
 	drag.dragAbsolutePosition = dragAbsolutePosition;
 	drag.dragTranslation = dragTranslation;
+	drag.dragTranslationRatio = dragTranslationRatio;
 	drag.dragOffset = dragOffset;
 	hoverPosition.setValue({
 		x: dragAbsolutePosition.x - grabOffset.x,
@@ -619,6 +641,7 @@ const updateDragPositionInRegistry = (
 		viewStateUpdate: {
 			dragAbsolutePosition,
 			dragTranslation,
+			dragTranslationRatio,
 			dragOffset,
 		},
 	}));
@@ -782,7 +805,9 @@ export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
 	 * coordinates within the immediate parent view of the dragged view.
 	 */
 	const getDragPositionData = useCallback(
-		(parentPosition: Position) => getDragPositionDataFromRegistry(registryRef.current, parentPosition),
+		(parentPosition: Position, draggedMeasurements: DraxViewMeasurements) => (
+			getDragPositionDataFromRegistry(registryRef.current, parentPosition, draggedMeasurements)
+		),
 		[],
 	);
 
