@@ -323,15 +323,15 @@ const getDragPositionDataFromRegistry = (registry: DraxRegistry, parentPosition:
 	 *   + translation offset of drag
 	 */
 	const { absoluteStartPosition, parentStartPosition } = registry.drag;
-	const translation = {
+	const dragTranslation = {
 		x: parentPosition.x - parentStartPosition.x,
 		y: parentPosition.y - parentStartPosition.y,
 	};
 	const dragAbsolutePosition = {
-		x: absoluteStartPosition.x + translation.x,
-		y: absoluteStartPosition.y + translation.y,
+		x: absoluteStartPosition.x + dragTranslation.x,
+		y: absoluteStartPosition.y + dragTranslation.y,
 	};
-	return { dragAbsolutePosition, translation };
+	return { dragAbsolutePosition, dragTranslation };
 };
 
 /** Register a Drax view. */
@@ -510,9 +510,10 @@ const resetDragInRegistry = (
 	// Update the drag tracking status.
 	stateDispatch(actions.updateTrackingStatus({ dragging: false }));
 
-	// Update the view state, dependent on whether snapping back.
+	// Update the view state, data dependent on whether snapping back.
 	const viewStateUpdate: Partial<DraxViewState> = {
 		dragAbsolutePosition: undefined,
+		dragTranslation: undefined,
 		dragOffset: undefined,
 	};
 
@@ -544,6 +545,7 @@ const startDragInRegistry = (
 ) => {
 	const { stateDispatch } = registry;
 	resetDragInRegistry(registry);
+	const dragTranslation = { x: 0, y: 0 };
 	const dragOffset = grabOffset;
 	const hoverPosition = new Animated.ValueXY({
 		x: dragAbsolutePosition.x - grabOffset.x,
@@ -554,6 +556,7 @@ const startDragInRegistry = (
 		parentStartPosition: dragParentPosition,
 		draggedId,
 		dragAbsolutePosition,
+		dragTranslation,
 		dragOffset,
 		grabOffset,
 		grabOffsetRatio,
@@ -566,6 +569,7 @@ const startDragInRegistry = (
 		id: draggedId,
 		viewStateUpdate: {
 			dragAbsolutePosition,
+			dragTranslation,
 			dragOffset,
 			grabOffset,
 			grabOffsetRatio,
@@ -575,6 +579,7 @@ const startDragInRegistry = (
 	}));
 	return {
 		dragAbsolutePosition,
+		dragTranslation,
 		dragOffset,
 		hoverPosition,
 	};
@@ -594,11 +599,16 @@ const updateDragPositionInRegistry = (
 		return;
 	}
 	const { draggedId, grabOffset, hoverPosition } = drag;
+	const dragTranslation = {
+		x: dragAbsolutePosition.x - drag.absoluteStartPosition.x,
+		y: dragAbsolutePosition.y - drag.absoluteStartPosition.y,
+	};
 	const dragOffset = {
 		x: dragAbsolutePosition.x - absoluteMeasurements.x,
 		y: dragAbsolutePosition.y - absoluteMeasurements.y,
 	};
 	drag.dragAbsolutePosition = dragAbsolutePosition;
+	drag.dragTranslation = dragTranslation;
 	drag.dragOffset = dragOffset;
 	hoverPosition.setValue({
 		x: dragAbsolutePosition.x - grabOffset.x,
@@ -608,6 +618,7 @@ const updateDragPositionInRegistry = (
 		id: draggedId,
 		viewStateUpdate: {
 			dragAbsolutePosition,
+			dragTranslation,
 			dragOffset,
 		},
 	}));

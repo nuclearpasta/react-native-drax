@@ -177,13 +177,15 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 
 				// Case 3b: The drag is ending.
 
-				// Get the absolute position of the drag touch.
-				const { dragAbsolutePosition } = getDragPositionData(dragParentPosition) ?? {};
+				// Get the absolute position data for the drag touch.
+				const dragPositionData = getDragPositionData(dragParentPosition);
 
-				if (!dragAbsolutePosition) {
+				if (!dragPositionData) {
 					// Failed to get absolute position of drag. This should never happen.
 					return;
 				}
+
+				const { dragAbsolutePosition, dragTranslation } = dragPositionData;
 
 				// Prepare event data for dragged view.
 				const eventDataDragged = {
@@ -220,6 +222,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 
 					const eventData = {
 						dragAbsolutePosition,
+						dragTranslation,
 						dragged: eventDataDragged,
 						receiver: eventDataReceiver,
 					};
@@ -262,6 +265,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 					// Prepare common event data.
 					const eventData = {
 						dragAbsolutePosition,
+						dragTranslation,
 						cancelled,
 						dragged: eventDataDragged,
 					};
@@ -381,7 +385,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 					x: grabX / width,
 					y: grabY / height,
 				};
-				const { dragOffset, hoverPosition } = startDrag({
+				const { dragOffset, dragTranslation, hoverPosition } = startDrag({
 					grabOffset,
 					grabOffsetRatio,
 					dragAbsolutePosition,
@@ -393,6 +397,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 				}
 				draggedData.protocol.onDragStart?.({
 					dragAbsolutePosition,
+					dragTranslation,
 					dragged: {
 						id,
 						dragOffset,
@@ -448,21 +453,27 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 				absoluteY: parentY, // y position of touch relative to parent of dragged view
 			} = event;
 
-			/** Position of touch relative to parent of dragged view */
-			const parentPosition = { x: parentX, y: parentY };
-
-			const { dragAbsolutePosition, translation } = getDragPositionData(parentPosition) ?? {};
-
 			if (debug) {
 				console.log(`Dragged item absolute coordinates (${dragged.data.absoluteMeasurements.x}, ${dragged.data.absoluteMeasurements.y})`);
 				console.log(`Native event in-view touch coordinates: (${event.x}, ${event.y})`);
-				console.log(`Drag translation (${translation?.x}, ${translation?.y})`);
-				console.log(`Drag at absolute coordinates (${dragAbsolutePosition?.x}, ${dragAbsolutePosition?.y})\n`);
 			}
 
-			if (!dragAbsolutePosition) {
+			/** Position of touch relative to parent of dragged view */
+			const parentPosition = { x: parentX, y: parentY };
+
+			// Get the absolute position data for the drag touch.
+			const dragPositionData = getDragPositionData(parentPosition);
+
+			if (!dragPositionData) {
 				// Failed to get drag position data. This should never happen.
 				return;
+			}
+
+			const { dragAbsolutePosition, dragTranslation } = dragPositionData;
+
+			if (debug) {
+				console.log(`Drag translation (${dragTranslation?.x}, ${dragTranslation?.y})`);
+				console.log(`Drag at absolute coordinates (${dragAbsolutePosition?.x}, ${dragAbsolutePosition?.y})\n`);
 			}
 
 			// Find which monitors and receiver this drag is over.
@@ -490,13 +501,13 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 			// Prepare base drag event data.
 			const dragEventData = {
 				dragAbsolutePosition,
+				dragTranslation,
 				dragged: eventDataDragged,
 			};
 
 			// Prepare event data stub for monitor updates later so we can optionally add receiver.
 			const monitorEventDataStub: Omit<DraxMonitorEventData, 'monitorOffset' | 'monitorOffsetRatio'> = {
-				dragAbsolutePosition,
-				dragged: eventDataDragged,
+				...dragEventData,
 			};
 
 			/*

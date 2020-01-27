@@ -86,6 +86,8 @@ export interface DraxEventReceiverViewData extends DraxEventViewData {
 export interface DraxDragEventData {
 	/** Position of the drag event in absolute coordinates */
 	dragAbsolutePosition: Position;
+	/** The absolute drag distance from where the drag started */
+	dragTranslation: Position;
 	/** Data about the dragged view */
 	dragged: DraxEventDraggedViewData;
 }
@@ -341,6 +343,8 @@ export interface DraxTrackingDrag {
 	parentStartPosition: Position;
 	/** The position in absolute coordinates of the drag point */
 	dragAbsolutePosition: Position;
+	/** The absolute drag distance from where the drag started (dragAbsolutePosition - absoluteStartPosition) */
+	dragTranslation: Position;
 	/** The relative offset of the drag point from the view */
 	dragOffset: Position;
 	/** The relative offset within the dragged view of where it was grabbed */
@@ -376,9 +380,11 @@ export interface DraxViewState {
 	/** Current drag status of the view: Dragged, Released, or Inactive */
 	dragStatus: DraxViewDragStatus;
 
-	/** If being dragged or released, the position in absolute coordinates of the drag point */
+	/** If being dragged, the position in absolute coordinates of the drag point */
 	dragAbsolutePosition?: Position;
-	/** If being dragged or released, the relative offset of the drag point from the view */
+	/** If being dragged, the absolute drag distance from where the drag started (dragAbsolutePosition - absoluteStartPosition) */
+	dragTranslation?: Position;
+	/** If being dragged, the relative offset of the drag point from the view */
 	dragOffset?: Position;
 
 	/** If being dragged, the relative offset of where the view was grabbed */
