@@ -4,9 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
-Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic only if you are explicitly using Drax's exported TypeScript type definitions in your code.
+Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
 ## [Unreleased]
+
+## [0.5.0] - 2020-01-28
 ### Added
 - Added .editorconfig file to render tabs with indent size 4 on GitHub
 - (BREAKING-TS) Drag/drop lifecycle events include supplemental data such as dragOffset/grabOffset (#17)
@@ -54,7 +56,8 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.3.6...v0.4.0
