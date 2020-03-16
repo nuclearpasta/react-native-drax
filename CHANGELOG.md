@@ -8,6 +8,10 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 ## [Unreleased]
 
+## [0.5.1] - 2020-03-16
+### Changed
+- Bump acorn from 7.1.0 to 7.1.1 (dependabot)
+
 ## [0.5.0] - 2020-01-28
 ### Added
 - Added .editorconfig file to render tabs with indent size 4 on GitHub
@@ -56,7 +60,8 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.4.2...v0.5.0
 [0.4.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.4.0...v0.4.1
