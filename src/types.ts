@@ -600,10 +600,10 @@ type AnimatedScalar = string | number;
 /** Type augmentation to allow a style to support animated values */
 export type AnimatedStyle<T> = {
 	[Key in keyof T]: T[Key] extends AnimatedScalar
-	? MaybeAnimated<T[Key]>
-	: T[Key] extends Array<infer U>
-	? Array<AnimatedStyle<U>>
-	: AnimatedStyle<T[Key]>
+		? MaybeAnimated<T[Key]>
+		: T[Key] extends Array<infer U>
+			? Array<AnimatedStyle<U>>
+			: AnimatedStyle<T[Key]>
 };
 
 /** Style for an Animated.View */
