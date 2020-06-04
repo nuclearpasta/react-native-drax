@@ -600,10 +600,10 @@ type AnimatedScalar = string | number;
 /** Type augmentation to allow a style to support animated values */
 export type AnimatedStyle<T> = {
 	[Key in keyof T]: T[Key] extends AnimatedScalar
-		? MaybeAnimated<T[Key]>
-		: T[Key] extends Array<infer U>
-			? Array<AnimatedStyle<U>>
-			: AnimatedStyle<T[Key]>
+	? MaybeAnimated<T[Key]>
+	: T[Key] extends Array<infer U>
+	? Array<AnimatedStyle<U>>
+	: AnimatedStyle<T[Key]>
 };
 
 /** Style for an Animated.View */
@@ -801,4 +801,7 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 
 	/** Can the list be reordered by dragging items? Defaults to true if onItemReorder is set. */
 	reorderable?: boolean;
+
+	/** Callback handler for when a currently dragging list item changes position */
+	onDragPositionChanged?: (toIndex: number) => void;
 }

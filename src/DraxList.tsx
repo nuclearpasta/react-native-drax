@@ -61,6 +61,7 @@ export const DraxList = <T extends unknown>(
 		onItemReorder,
 		id: idProp,
 		reorderable: reorderableProp,
+		onDragPositionChanged,
 		...props
 	}: PropsWithChildren<DraxListProps<T>>,
 ): ReactElement | null => {
@@ -111,6 +112,9 @@ export const DraxList = <T extends unknown>(
 
 	// Maintain cache of reordered list indexes until data updates.
 	const [originalIndexes, setOriginalIndexes] = useState<number[]>([]);
+
+	// Maintain the index the item is currently dragged to
+	const draggedToIndex = useRef<number | undefined>(undefined);
 
 	// Adjust measurements and shift value arrays as item count changes.
 	useEffect(
@@ -507,6 +511,14 @@ export const DraxList = <T extends unknown>(
 				const toPayload: ListItemPayload = receiver?.parentId === id
 					? receiver.payload
 					: fromPayload;
+
+				if (draggedToIndex.current !== undefined
+					&& toPayload.index !== draggedToIndex.current
+					&& onDragPositionChanged) {
+					onDragPositionChanged(toPayload.index);
+				}
+
+				draggedToIndex.current = toPayload.index;
 				updateShifts(fromPayload, toPayload);
 			}
 
@@ -531,6 +543,7 @@ export const DraxList = <T extends unknown>(
 			horizontal,
 			stopScroll,
 			startScroll,
+			onDragPositionChanged,
 		],
 	);
 
