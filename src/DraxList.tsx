@@ -62,6 +62,8 @@ export const DraxList = <T extends unknown>(
 		id: idProp,
 		reorderable: reorderableProp,
 		onDragPositionChanged,
+		onDragStart,
+		onDragEnd,
 		...props
 	}: PropsWithChildren<DraxListProps<T>>,
 ): ReactElement | null => {
@@ -209,8 +211,14 @@ export const DraxList = <T extends unknown>(
 					dragReleasedStyle={dragReleasedStyle}
 					{...otherStyleProps}
 					payload={{ index, originalIndex }}
-					onDragStart={() => setDraggedItem(originalIndex)}
-					onDragEnd={resetDraggedItem}
+					onDragStart={(evt) => {
+						if (onDragStart) onDragStart(evt);
+						setDraggedItem(originalIndex);
+					}}
+					onDragEnd={(evt) => {
+						if (onDragEnd) onDragEnd(evt);
+						resetDraggedItem();
+					}}
 					onDragDrop={resetDraggedItem}
 					onMeasure={(measurements) => {
 						// console.log(`measuring [${index}, ${originalIndex}]: (${measurements?.x}, ${measurements?.y})`);
@@ -237,6 +245,8 @@ export const DraxList = <T extends unknown>(
 			itemStyles,
 			renderItemContent,
 			renderItemHoverContent,
+			onDragStart,
+			onDragEnd,
 		],
 	);
 

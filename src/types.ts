@@ -804,4 +804,10 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 
 	/** Callback handler for when a currently dragging list item changes position */
 	onDragPositionChanged?: (toIndex: number) => void;
+
+	/** Called in the dragged view when a drag action begins */
+	onDragStart?: (data: DraxDragEventData) => void;
+
+	/** Called in the dragged view when drag ends not over any receiver or is cancelled */
+	onDragEnd?: (data: DraxDragEndEventData) => DraxProtocolDragEndResponse;
 }
