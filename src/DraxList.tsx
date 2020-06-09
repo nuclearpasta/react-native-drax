@@ -375,6 +375,7 @@ export const DraxList = <T extends unknown>(
 					Animated.timing(shift.animatedValue, {
 						duration: 200,
 						toValue: newTargetValue,
+						useNativeDriver: true,
 					}).start();
 				}
 			});

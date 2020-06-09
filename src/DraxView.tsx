@@ -392,7 +392,7 @@ export const DraxView = (
 				// Pass the event up to the Drax context.
 				handleGestureEvent(id, event);
 			},
-			33,
+			10,
 		),
 		[id, handleGestureEvent],
 	);

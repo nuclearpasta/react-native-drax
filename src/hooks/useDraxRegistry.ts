@@ -496,6 +496,7 @@ const resetDragInRegistry = (
 						toValue,
 						delay: snapbackDelay,
 						duration: snapbackDuration,
+						useNativeDriver: true,
 					},
 				).start(({ finished }) => {
 					// Remove the release from tracking, regardless of whether animation finished.
