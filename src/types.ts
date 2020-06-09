@@ -809,5 +809,5 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 	onDragStart?: (data: DraxDragEventData) => void;
 
 	/** Called in the dragged view when drag ends not over any receiver or is cancelled */
-	onDragEnd?: (data: DraxDragEndEventData) => DraxProtocolDragEndResponse;
+	onDragEnd?: (data: DraxDragEndEventData) => void;
 }
