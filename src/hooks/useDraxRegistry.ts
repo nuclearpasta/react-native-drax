@@ -467,6 +467,7 @@ const resetDragInRegistry = (
 		const {
 			internalRenderHoverView,
 			onSnapbackEnd,
+			snapbackAnimator,
 			animateSnapback = true,
 			snapbackDelay = defaultSnapbackDelay,
 			snapbackDuration = defaultSnapbackDuration,
@@ -490,15 +491,26 @@ const resetDragInRegistry = (
 				// Add a release to tracking.
 				const releaseId = createReleaseInRegistry(registry, { hoverPosition, viewId: draggedId });
 				// Animate the released hover snapback.
-				Animated.timing(
-					hoverPosition,
-					{
+				let animation: Animated.CompositeAnimation;
+				if (snapbackAnimator) {
+					animation = snapbackAnimator({
+						hoverPosition,
 						toValue,
 						delay: snapbackDelay,
 						duration: snapbackDuration,
-						useNativeDriver: true,
-					},
-				).start(({ finished }) => {
+					});
+				} else {
+					animation = Animated.timing(
+						hoverPosition,
+						{
+							toValue,
+							delay: snapbackDelay,
+							duration: snapbackDuration,
+							useNativeDriver: true,
+						},
+					);
+				}
+				animation.start(({ finished }) => {
 					// Remove the release from tracking, regardless of whether animation finished.
 					deleteReleaseInRegistry(registry, releaseId);
 					// Call the snapback end handler, regardless of whether animation of finished.

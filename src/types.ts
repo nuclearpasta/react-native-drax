@@ -116,6 +116,14 @@ export interface DraxDragWithReceiverEventData extends DraxDragEventData {
 /** Data about a Drax drag/receive end event */
 export interface DraxDragWithReceiverEndEventData extends DraxDragWithReceiverEventData, WithCancelledFlag {}
 
+/** Data about a Drax snapback, used for custom animations */
+export interface DraxSnapbackData {
+	hoverPosition: Animated.ValueXY;
+	toValue: Position;
+	delay: number;
+	duration: number;
+}
+
 /** Data about a Drax monitor event */
 export interface DraxMonitorEventData extends DraxDragEventData {
 	/** The receiver for the monitor event, if any */
@@ -250,6 +258,9 @@ export interface DraxProtocol {
 
 	/** Duration in ms for hover view snapback to complete */
 	snapbackDuration?: number;
+
+	/** Function returning custom hover view snapback animation */
+	snapbackAnimator?: (data: DraxSnapbackData) => Animated.CompositeAnimation;
 
 	/** Payload that will be delivered to receiver views when this view is dragged; overrides `payload` */
 	dragPayload?: any;
