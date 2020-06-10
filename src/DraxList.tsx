@@ -112,7 +112,7 @@ export const DraxList = <T extends unknown>(
 	// Maintain cache of reordered list indexes until data updates.
 	const [originalIndexes, setOriginalIndexes] = useState<number[]>([]);
 
-	// Adjust measurements and shift value arrays as item count changes.
+	// Adjust measurements, registrations, and shift value arrays as item count changes.
 	useEffect(
 		() => {
 			const itemMeasurements = itemMeasurementsRef.current;
@@ -348,6 +348,7 @@ export const DraxList = <T extends unknown>(
 	const resetShifts = useCallback(
 		() => {
 			shiftsRef.current.forEach((shift) => {
+				shift.targetValue = 0;
 				shift.animatedValue.setValue(0);
 			});
 		},
