@@ -861,6 +861,9 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 	/** Unique drax view id, auto-generated if omitted */
 	id?: string;
 
+	/** Styles that go on the view wrapping the FlatList component */
+	wrapperStyles: StyleProp<ViewStyle>;
+
 	/** Style props to apply to all DraxView items in the list */
 	itemStyles?: DraxViewStyleProps;
 
