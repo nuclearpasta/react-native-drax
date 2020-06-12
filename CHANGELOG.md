@@ -8,9 +8,24 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 ## [Unreleased]
 
+## [0.5.5] - 2020-06-09
+### Changed
+- Bump devDependency react-native to 0.62 to address logkitty vulnerability (dependabot; #30)
+
+## [0.5.4] - 2020-06-09
+### Changed
+- Fixed bug with DraxList item shift values when dragging outside list (#27)
+
+## [0.5.3] - 2020-05-23
+### Added
+- Added devDependency @types/node@^14.0.5
+
+### Changed
+- Bump library versions (dependabot)
+
 ## [0.5.2] - 2020-03-16
 ### Changed
-- Bump minimist from 1.2.0 to 1.2.5 (security alert)
+- Bump minimist from 1.2.0 to 1.2.5 (dependabot)
 
 ## [0.5.1] - 2020-03-16
 ### Changed
@@ -64,7 +79,10 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.5...HEAD
+[0.5.5]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.4...v0.5.5
+[0.5.4]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.3...v0.5.4
+[0.5.3]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.4.2...v0.5.0
