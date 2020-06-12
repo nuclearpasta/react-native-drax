@@ -36,6 +36,11 @@ export interface Position {
 	y: number;
 }
 
+/** Predicate for checking if something is a Position */
+export const isPosition = (something: any): something is Position => (
+	typeof something === 'object' && something !== null && typeof something.x === 'number' && typeof something.y === 'number'
+);
+
 /** Dimensions of a view */
 export interface ViewDimensions {
 	/** Width of view */
@@ -46,11 +51,6 @@ export interface ViewDimensions {
 
 /** Measurements of a Drax view for bounds checking purposes, relative to Drax parent view or DraxProvider (absolute) */
 export interface DraxViewMeasurements extends Position, ViewDimensions {}
-
-/** Predicate for checking if something is a Position */
-export const isPosition = (something: any): something is Position => (
-	typeof something === 'object' && something !== null && typeof something.x === 'number' && typeof something.y === 'number'
-);
 
 /** Data about a view involved in a Drax event */
 export interface DraxEventViewData {
@@ -95,10 +95,15 @@ export interface DraxDragEventData {
 }
 
 /** Supplemental type for adding a cancelled flag */
-interface WithCancelledFlag {
+export interface WithCancelledFlag {
 	/** True if the event was cancelled */
 	cancelled: boolean;
 }
+
+/** Predicate for checking if something has a cancelled flag */
+export const isWithCancelledFlag = (something: any): something is WithCancelledFlag => (
+	typeof something === 'object' && something !== null && typeof something.cancelled === 'boolean'
+);
 
 /** Data about a Drax drag end event */
 export interface DraxDragEndEventData extends DraxDragEventData, WithCancelledFlag {}
@@ -755,7 +760,37 @@ export interface DraxScrollViewProps extends ScrollViewProps, DraxAutoScrollProp
 	id?: string;
 }
 
-/** Event data for when an item is moved within a DraxList, reordering the list */
+/** DraxList item being dragged */
+export interface DraxListDraggedItemData<TItem> {
+	/* The list index of the item that is being dragged */
+	index: number;
+	/* The item that is being dragged (or undefined if data is not found) */
+	item?: TItem;
+}
+
+/** Event data for when a list item reorder drag action begins */
+export interface DraxListOnItemDragStartEventData<TItem>
+	extends DraxDragEventData, DraxListDraggedItemData<TItem> {}
+
+/** Event data for when a list item position (index) changes during a reorder drag */
+export interface DraxListOnItemDragPositionChangeEventData<TItem>
+	extends DraxMonitorEventData, DraxListDraggedItemData<TItem> {
+	/* The list index of the item position dragged over, or undefined if none */
+	toIndex: number | undefined;
+	/* The previous list index of the item position dragged over, or undefined if none */
+	previousIndex: number | undefined;
+}
+
+/** Event data for when a list item reorder drag action ends */
+export interface DraxListOnItemDragEndEventData<TItem>
+	extends DraxMonitorEventData, WithCancelledFlag, DraxListDraggedItemData<TItem> {
+	/* The list index of the item it was moved onto, if any */
+	toIndex?: number;
+	/* The item it was moved onto, if */
+	toItem?: TItem;
+}
+
+/** Event data for when an item is released in a new position within a DraxList, reordering the list */
 export interface DraxListOnItemReorderEventData<TItem> {
 	/* The item that was moved */
 	fromItem: TItem;
@@ -796,18 +831,18 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 	/** Render function for content of an item's hovering copy, defaults to renderItemContent */
 	renderItemHoverContent?: DraxListRenderItemHoverContent<TItem>;
 
+	/** Callback handler for when a list item reorder drag action begins */
+	onItemDragStart?: (eventData: DraxListOnItemDragStartEventData<TItem>) => void;
+
+	/** Callback handler for when a list item position (index) changes during a reorder drag */
+	onItemDragPositionChange?: (eventData: DraxListOnItemDragPositionChangeEventData<TItem>) => void;
+
+	/** Callback handler for when a list item reorder drag action ends */
+	onItemDragEnd?: (eventData: DraxListOnItemDragEndEventData<TItem>) => void;
+
 	/** Callback handler for when a list item is moved within the list, reordering the list */
 	onItemReorder?: DraxListOnItemReorder<TItem>;
 
 	/** Can the list be reordered by dragging items? Defaults to true if onItemReorder is set. */
 	reorderable?: boolean;
-
-	/** Callback handler for when a currently dragging list item changes position */
-	onDragPositionChanged?: (toIndex: number) => void;
-
-	/** Called in the dragged view when a drag action begins */
-	onDragStart?: (data: DraxDragEventData) => void;
-
-	/** Called in the dragged view when drag ends not over any receiver or is cancelled */
-	onDragEnd?: (data: DraxDragEndEventData) => void;
 }
