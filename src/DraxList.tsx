@@ -59,7 +59,7 @@ export const DraxList = <T extends unknown>(
 		renderItemContent,
 		renderItemHoverContent,
 		onItemDragStart,
-		onItemDragPositionChange: onItemDragPositionChanged,
+		onItemDragPositionChange,
 		onItemDragEnd,
 		onItemReorder,
 		id: idProp,
@@ -482,7 +482,7 @@ export const DraxList = <T extends unknown>(
 				// Reset currently dragged over position index to undefined.
 				if (draggedToIndex.current !== undefined) { // (This check is hopefully redundant.)
 					if (!totalDragEnd) {
-						onItemDragPositionChanged?.({
+						onItemDragPositionChange?.({
 							...eventData,
 							index: fromIndex,
 							item: data?.[fromOriginalIndex],
@@ -523,7 +523,7 @@ export const DraxList = <T extends unknown>(
 			calculateSnapbackTarget,
 			originalIndexes,
 			onItemDragEnd,
-			onItemDragPositionChanged,
+			onItemDragPositionChange,
 			onItemReorder,
 		],
 	);
@@ -570,7 +570,7 @@ export const DraxList = <T extends unknown>(
 				// Check and update currently dragged over position index.
 				const toIndex = toPayload?.index;
 				if (toIndex !== draggedToIndex.current) {
-					onItemDragPositionChanged?.({
+					onItemDragPositionChange?.({
 						...eventData,
 						toIndex,
 						index: fromPayload.index,
@@ -606,7 +606,7 @@ export const DraxList = <T extends unknown>(
 			horizontal,
 			stopScroll,
 			startScroll,
-			onItemDragPositionChanged,
+			onItemDragPositionChange,
 		],
 	);
 
