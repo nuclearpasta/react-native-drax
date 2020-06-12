@@ -442,23 +442,11 @@ export const DraxList = <T extends unknown>(
 		[horizontal, itemCount, originalIndexes],
 	);
 
-
-	/*
-	 * Stop auto-scrolling, and potentially update shifts and reorder data.
-	 *
-	 * This is a multi-purpose monitor callback handler for:
-	 *
-	 *  onMonitorDragExit: Monitor drag exits to stop scrolling and update shifts.
-	 *
-	 *  onMonitorDragEnd: Monitor drag ends to stop scrolling, update shifts, and possibly reorder.
-	 *  This addresses the Android case where if we drag a list item and auto-scroll
-	 *  too far, the drag gets cancelled.
-	 *
-	 *  onMonitorDragDrop: Monitor drag drops to stop scrolling, update shifts, and possibly reorder.
-	 */
-	const handleDragEnd = useCallback(
+	// Stop auto-scrolling, and potentially update shifts and reorder data.
+	const handleInternalDragEnd = useCallback(
 		(
 			eventData: DraxMonitorEventData | DraxMonitorEndEventData | DraxMonitorDragDropEventData,
+			totalDragEnd: boolean,
 		): DraxProtocolDragEndResponse => {
 			// Always stop auto-scroll on drag end.
 			scrollStateRef.current = AutoScrollDirection.None;
@@ -480,24 +468,28 @@ export const DraxList = <T extends unknown>(
 
 				// Reset all shifts and call callback, regardless of whether toPayload exists.
 				resetShifts();
-				onItemDragEnd?.({
-					...eventData,
-					toIndex,
-					toItem,
-					cancelled: isWithCancelledFlag(eventData) ? eventData.cancelled : false,
-					index: fromIndex,
-					item: data?.[fromOriginalIndex],
-				});
+				if (totalDragEnd) {
+					onItemDragEnd?.({
+						...eventData,
+						toIndex,
+						toItem,
+						cancelled: isWithCancelledFlag(eventData) ? eventData.cancelled : false,
+						index: fromIndex,
+						item: data?.[fromOriginalIndex],
+					});
+				}
 
 				// Reset currently dragged over position index to undefined.
 				if (draggedToIndex.current !== undefined) { // (This check is hopefully redundant.)
-					onItemDragPositionChanged?.({
-						...eventData,
-						index: fromIndex,
-						item: data?.[fromOriginalIndex],
-						toIndex: undefined,
-						previousIndex: draggedToIndex.current,
-					});
+					if (!totalDragEnd) {
+						onItemDragPositionChanged?.({
+							...eventData,
+							index: fromIndex,
+							item: data?.[fromOriginalIndex],
+							toIndex: undefined,
+							previousIndex: draggedToIndex.current,
+						});
+					}
 					draggedToIndex.current = undefined;
 				}
 
@@ -618,6 +610,34 @@ export const DraxList = <T extends unknown>(
 		],
 	);
 
+	// Monitor drag exits to stop scrolling, update shifts, and update draggedToIndex.
+	const onMonitorDragExit = useCallback(
+		(eventData: DraxMonitorEventData) => {
+			handleInternalDragEnd(eventData, false);
+		},
+		[handleInternalDragEnd],
+	);
+
+	/*
+	 * Monitor drag ends to stop scrolling, update shifts, and possibly reorder.
+	 * This addresses the Android case where if we drag a list item and auto-scroll
+	 * too far, the drag gets cancelled.
+	 */
+	const onMonitorDragEnd = useCallback(
+		(eventData: DraxMonitorEndEventData) => {
+			handleInternalDragEnd(eventData, true);
+		},
+		[handleInternalDragEnd],
+	);
+
+	// Monitor drag drops to stop scrolling, update shifts, and possibly reorder.
+	const onMonitorDragDrop = useCallback(
+		(eventData: DraxMonitorDragDropEventData) => {
+			handleInternalDragEnd(eventData, true);
+		},
+		[handleInternalDragEnd],
+	);
+
 	return id ? (
 		<DraxView
 			id={id}
@@ -626,9 +646,9 @@ export const DraxList = <T extends unknown>(
 			onMeasure={onMeasureContainer}
 			onMonitorDragStart={onMonitorDragStart}
 			onMonitorDragOver={onMonitorDragOver}
-			onMonitorDragExit={handleDragEnd}
-			onMonitorDragEnd={handleDragEnd}
-			onMonitorDragDrop={handleDragEnd}
+			onMonitorDragExit={onMonitorDragExit}
+			onMonitorDragEnd={onMonitorDragEnd}
+			onMonitorDragDrop={onMonitorDragDrop}
 		>
 			<DraxSubprovider parent={{ id, nodeHandleRef }}>
 				<FlatList
