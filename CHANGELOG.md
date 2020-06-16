@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
 ## [Unreleased]
+### Changed
+- Speed up dragging animation to be at least 60fps (#29)
 
 ## [0.5.5] - 2020-06-09
 ### Changed
