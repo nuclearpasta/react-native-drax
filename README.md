@@ -103,13 +103,13 @@ There is no Cocoapods or native linking step here. You've already covered those 
 
 Import the library components:
 
-```
+```js
 import { DraxProvider, DraxView } from 'react-native-drax';
 ```
 
 Wrap the area of your app that will use Drax with a `DraxProvider`, and create a couple `DraxView`s, one draggable and one receptive:
 
-```
+```jsx
 <DraxProvider>
     <View style={styles.container}>
         <DraxView
@@ -137,7 +137,7 @@ Wrap the area of your app that will use Drax with a `DraxProvider`, and create a
 
 The styles are provided here for completeness:
 
-```
+```js
 const styles = StyleSheet.create({
     container: {
         flex: 1,
