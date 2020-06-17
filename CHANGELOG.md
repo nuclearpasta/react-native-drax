@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
 ## [Unreleased]
+
+## [0.6.0] - 2020-06-16
 ### Changed
 - Speed up dragging animation to be at least 60fps (#29)
 
@@ -89,7 +91,8 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.5...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.5...v0.6.0
 [0.5.5]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.3...v0.5.4
 [0.5.3]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.2...v0.5.3
