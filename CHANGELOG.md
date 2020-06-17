@@ -16,6 +16,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 ### Added
 - New DraxList item drag lifecycle callbacks: `onItemDragStart`, `onItemDragPositionChange`, `onItemDragEnd` (#25)
+- New DraxView prop `snapbackAnimator` for custom snapback animations (#28)
 
 ## [0.5.5] - 2020-06-09
 ### Changed
