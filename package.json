@@ -1,6 +1,6 @@
 {
   "name": "react-native-drax",
-  "version": "0.5.5",
+  "version": "0.6.0",
   "description": "A drag-and-drop system for React Native",
   "repository": {
     "type": "git",
