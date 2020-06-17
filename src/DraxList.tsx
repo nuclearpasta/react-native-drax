@@ -465,7 +465,7 @@ export const DraxList = <T extends unknown>(
 
 				const { index: fromIndex, originalIndex: fromOriginalIndex } = fromPayload;
 				const { index: toIndex, originalIndex: toOriginalIndex } = toPayload ?? {};
-				const toItem = toOriginalIndex ? data?.[toOriginalIndex] : undefined;
+				const toItem = (toOriginalIndex !== undefined) ? data?.[toOriginalIndex] : undefined;
 
 				// Reset all shifts and call callback, regardless of whether toPayload exists.
 				resetShifts();
@@ -481,7 +481,7 @@ export const DraxList = <T extends unknown>(
 				}
 
 				// Reset currently dragged over position index to undefined.
-				if (draggedToIndex.current !== undefined) { // (This check is hopefully redundant.)
+				if (draggedToIndex.current !== undefined) {
 					if (!totalDragEnd) {
 						onItemDragPositionChange?.({
 							...eventData,
@@ -613,9 +613,7 @@ export const DraxList = <T extends unknown>(
 
 	// Monitor drag exits to stop scrolling, update shifts, and update draggedToIndex.
 	const onMonitorDragExit = useCallback(
-		(eventData: DraxMonitorEventData) => {
-			handleInternalDragEnd(eventData, false);
-		},
+		(eventData: DraxMonitorEventData) => handleInternalDragEnd(eventData, false),
 		[handleInternalDragEnd],
 	);
 
@@ -625,17 +623,13 @@ export const DraxList = <T extends unknown>(
 	 * too far, the drag gets cancelled.
 	 */
 	const onMonitorDragEnd = useCallback(
-		(eventData: DraxMonitorEndEventData) => {
-			handleInternalDragEnd(eventData, true);
-		},
+		(eventData: DraxMonitorEndEventData) => handleInternalDragEnd(eventData, true),
 		[handleInternalDragEnd],
 	);
 
 	// Monitor drag drops to stop scrolling, update shifts, and possibly reorder.
 	const onMonitorDragDrop = useCallback(
-		(eventData: DraxMonitorDragDropEventData) => {
-			handleInternalDragEnd(eventData, true);
-		},
+		(eventData: DraxMonitorDragDropEventData) => handleInternalDragEnd(eventData, true),
 		[handleInternalDragEnd],
 	);
 
