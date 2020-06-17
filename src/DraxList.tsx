@@ -30,9 +30,9 @@ import {
 	DraxMonitorDragDropEventData,
 	DraxMonitorEndEventData,
 	DraxViewRegistration,
-	DraxEventViewData,
 	DraxProtocolDragEndResponse,
 	DraxSnapbackTargetPreset,
+	isWithCancelledFlag,
 } from './types';
 import { defaultListItemLongPressDelay } from './params';
 
@@ -58,6 +58,9 @@ export const DraxList = <T extends unknown>(
 		itemStyles,
 		renderItemContent,
 		renderItemHoverContent,
+		onItemDragStart,
+		onItemDragPositionChange,
+		onItemDragEnd,
 		onItemReorder,
 		id: idProp,
 		reorderable: reorderableProp,
@@ -111,6 +114,9 @@ export const DraxList = <T extends unknown>(
 
 	// Maintain cache of reordered list indexes until data updates.
 	const [originalIndexes, setOriginalIndexes] = useState<number[]>([]);
+
+	// Maintain the index the item is currently dragged to.
+	const draggedToIndex = useRef<number | undefined>(undefined);
 
 	// Adjust measurements, registrations, and shift value arrays as item count changes.
 	useEffect(
@@ -205,7 +211,6 @@ export const DraxList = <T extends unknown>(
 					dragReleasedStyle={dragReleasedStyle}
 					{...otherStyleProps}
 					payload={{ index, originalIndex }}
-					onDragStart={() => setDraggedItem(originalIndex)}
 					onDragEnd={resetDraggedItem}
 					onDragDrop={resetDraggedItem}
 					onMeasure={(measurements) => {
@@ -228,7 +233,6 @@ export const DraxList = <T extends unknown>(
 		[
 			originalIndexes,
 			getShiftTransform,
-			setDraggedItem,
 			resetDraggedItem,
 			itemStyles,
 			renderItemContent,
@@ -439,48 +443,73 @@ export const DraxList = <T extends unknown>(
 		[horizontal, itemCount, originalIndexes],
 	);
 
-	// Stop scrolling, and potentially update shifts and reorder data.
+	// Stop auto-scrolling, and potentially update shifts and reorder data.
 	const handleInternalDragEnd = useCallback(
 		(
-			dragged?: DraxEventViewData,
-			receiver?: DraxEventViewData,
+			eventData: DraxMonitorEventData | DraxMonitorEndEventData | DraxMonitorDragDropEventData,
+			totalDragEnd: boolean,
 		): DraxProtocolDragEndResponse => {
 			// Always stop auto-scroll on drag end.
 			scrollStateRef.current = AutoScrollDirection.None;
 			stopScroll();
 
-			// If the list is reorderable, handle shifts and reordering.
-			if (reorderable) {
+			const { dragged, receiver } = eventData;
+
+			// Check if we need to handle this drag end.
+			if (reorderable && dragged.parentId === id) {
 				// Determine list indexes of dragged/received items, if any.
-				const fromPayload = dragged && (dragged.parentId === id)
-					? (dragged.payload as ListItemPayload)
-					: undefined;
-				const toPayload = (fromPayload !== undefined && receiver && receiver.parentId === id)
+				const fromPayload = dragged.payload as ListItemPayload;
+				const toPayload = receiver?.parentId === id
 					? (receiver.payload as ListItemPayload)
 					: undefined;
 
-				if (fromPayload !== undefined) {
-					// If dragged item was ours, reset shifts.
-					resetShifts();
-					if (toPayload !== undefined) {
-						// If dragged item and received item were ours, reorder data.
-						// console.log(`moving ${fromPayload.index} -> ${toPayload.index}`);
-						const snapbackTarget = calculateSnapbackTarget(fromPayload, toPayload);
-						const { index: fromIndex, originalIndex: fromOriginalIndex } = fromPayload;
-						const { index: toIndex, originalIndex: toOriginalIndex } = toPayload;
-						if (data) {
-							const newOriginalIndexes = originalIndexes.slice();
-							newOriginalIndexes.splice(toIndex, 0, newOriginalIndexes.splice(fromIndex, 1)[0]);
-							setOriginalIndexes(newOriginalIndexes);
-							onItemReorder?.({
-								fromIndex,
-								toIndex,
-								fromItem: data[fromOriginalIndex],
-								toItem: data[toOriginalIndex],
-							});
-						}
-						return snapbackTarget;
+				const { index: fromIndex, originalIndex: fromOriginalIndex } = fromPayload;
+				const { index: toIndex, originalIndex: toOriginalIndex } = toPayload ?? {};
+				const toItem = toOriginalIndex ? data?.[toOriginalIndex] : undefined;
+
+				// Reset all shifts and call callback, regardless of whether toPayload exists.
+				resetShifts();
+				if (totalDragEnd) {
+					onItemDragEnd?.({
+						...eventData,
+						toIndex,
+						toItem,
+						cancelled: isWithCancelledFlag(eventData) ? eventData.cancelled : false,
+						index: fromIndex,
+						item: data?.[fromOriginalIndex],
+					});
+				}
+
+				// Reset currently dragged over position index to undefined.
+				if (draggedToIndex.current !== undefined) { // (This check is hopefully redundant.)
+					if (!totalDragEnd) {
+						onItemDragPositionChange?.({
+							...eventData,
+							index: fromIndex,
+							item: data?.[fromOriginalIndex],
+							toIndex: undefined,
+							previousIndex: draggedToIndex.current,
+						});
 					}
+					draggedToIndex.current = undefined;
+				}
+
+				if (toPayload !== undefined) {
+					// If dragged item and received item were ours, reorder data.
+					// console.log(`moving ${fromPayload.index} -> ${toPayload.index}`);
+					const snapbackTarget = calculateSnapbackTarget(fromPayload, toPayload);
+					if (data) {
+						const newOriginalIndexes = originalIndexes.slice();
+						newOriginalIndexes.splice(toIndex!, 0, newOriginalIndexes.splice(fromIndex, 1)[0]);
+						setOriginalIndexes(newOriginalIndexes);
+						onItemReorder?.({
+							fromIndex,
+							fromItem: data[fromOriginalIndex],
+							toIndex: toIndex!,
+							toItem: data[toOriginalIndex!],
+						});
+					}
+					return snapbackTarget;
 				}
 			}
 
@@ -494,22 +523,66 @@ export const DraxList = <T extends unknown>(
 			resetShifts,
 			calculateSnapbackTarget,
 			originalIndexes,
+			onItemDragEnd,
+			onItemDragPositionChange,
 			onItemReorder,
+		],
+	);
+
+	// Monitor drag starts to handle callbacks.
+	const onMonitorDragStart = useCallback(
+		(eventData: DraxMonitorEventData) => {
+			const { dragged } = eventData;
+			// First, check if we need to do anything.
+			if (reorderable && dragged.parentId === id) {
+				// One of our list items is starting to be dragged.
+				const { index, originalIndex }: ListItemPayload = dragged.payload;
+				setDraggedItem(originalIndex);
+				onItemDragStart?.({
+					...eventData,
+					index,
+					item: data?.[originalIndex],
+				});
+			}
+		},
+		[
+			id,
+			reorderable,
+			data,
+			setDraggedItem,
+			onItemDragStart,
 		],
 	);
 
 	// Monitor drags to react with item shifts and auto-scrolling.
 	const onMonitorDragOver = useCallback(
-		({ dragged, receiver, monitorOffsetRatio }: DraxMonitorEventData) => {
+		(eventData: DraxMonitorEventData) => {
+			const { dragged, receiver, monitorOffsetRatio } = eventData;
 			// First, check if we need to shift items.
 			if (reorderable && dragged.parentId === id) {
 				// One of our list items is being dragged.
 				const fromPayload: ListItemPayload = dragged.payload;
-				// Find its current index in the list for the purpose of shifting.
-				const toPayload: ListItemPayload = receiver?.parentId === id
+
+				// Find its current position index in the list, if any.
+				const toPayload: ListItemPayload | undefined = receiver?.parentId === id
 					? receiver.payload
-					: fromPayload;
-				updateShifts(fromPayload, toPayload);
+					: undefined;
+
+				// Check and update currently dragged over position index.
+				const toIndex = toPayload?.index;
+				if (toIndex !== draggedToIndex.current) {
+					onItemDragPositionChange?.({
+						...eventData,
+						toIndex,
+						index: fromPayload.index,
+						item: data?.[fromPayload.originalIndex],
+						previousIndex: draggedToIndex.current,
+					});
+					draggedToIndex.current = toIndex;
+				}
+
+				// Update shift transforms for items in the list.
+				updateShifts(fromPayload, toPayload ?? fromPayload);
 			}
 
 			// Next, see if we need to auto-scroll.
@@ -529,16 +602,20 @@ export const DraxList = <T extends unknown>(
 		[
 			id,
 			reorderable,
+			data,
 			updateShifts,
 			horizontal,
 			stopScroll,
 			startScroll,
+			onItemDragPositionChange,
 		],
 	);
 
-	// Monitor drag exits to stop scrolling and update shifts.
+	// Monitor drag exits to stop scrolling, update shifts, and update draggedToIndex.
 	const onMonitorDragExit = useCallback(
-		({ dragged }: DraxMonitorEventData) => handleInternalDragEnd(dragged),
+		(eventData: DraxMonitorEventData) => {
+			handleInternalDragEnd(eventData, false);
+		},
 		[handleInternalDragEnd],
 	);
 
@@ -548,13 +625,17 @@ export const DraxList = <T extends unknown>(
 	 * too far, the drag gets cancelled.
 	 */
 	const onMonitorDragEnd = useCallback(
-		({ dragged, receiver }: DraxMonitorEndEventData) => handleInternalDragEnd(dragged, receiver),
+		(eventData: DraxMonitorEndEventData) => {
+			handleInternalDragEnd(eventData, true);
+		},
 		[handleInternalDragEnd],
 	);
 
 	// Monitor drag drops to stop scrolling, update shifts, and possibly reorder.
 	const onMonitorDragDrop = useCallback(
-		({ dragged, receiver }: DraxMonitorDragDropEventData) => handleInternalDragEnd(dragged, receiver),
+		(eventData: DraxMonitorDragDropEventData) => {
+			handleInternalDragEnd(eventData, true);
+		},
 		[handleInternalDragEnd],
 	);
 
@@ -564,6 +645,7 @@ export const DraxList = <T extends unknown>(
 			style={style}
 			scrollPositionRef={scrollPositionRef}
 			onMeasure={onMeasureContainer}
+			onMonitorDragStart={onMonitorDragStart}
 			onMonitorDragOver={onMonitorDragOver}
 			onMonitorDragExit={onMonitorDragExit}
 			onMonitorDragEnd={onMonitorDragEnd}

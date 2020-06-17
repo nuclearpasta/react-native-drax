@@ -405,7 +405,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 				if (debug) {
 					console.log(`Start dragging view id ${id} at absolute position (${dragAbsolutePosition.x}, ${dragAbsolutePosition.y})`);
 				}
-				draggedData.protocol.onDragStart?.({
+				const eventData = {
 					dragAbsolutePosition,
 					dragTranslation,
 					dragged: {
@@ -418,9 +418,30 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 						parentId: draggedData.parentId,
 						payload: draggedData.protocol.dragPayload,
 					},
-				});
+				};
+				draggedData.protocol.onDragStart?.(eventData);
 
-				// TODO: find monitors and call onMonitorDragStart
+				// Find which monitors and receiver this drag is over.
+				const { monitors } = findMonitorsAndReceiver(dragAbsolutePosition, id);
+
+				// Notify monitors and update monitor tracking.
+				if (monitors.length > 0) {
+					const newMonitorIds = monitors.map(({
+						id: monitorId,
+						data: monitorData,
+						relativePosition: monitorOffset,
+						relativePositionRatio: monitorOffsetRatio,
+					}) => {
+						const monitorEventData = {
+							...eventData,
+							monitorOffset,
+							monitorOffsetRatio,
+						};
+						monitorData.protocol.onMonitorDragStart?.(monitorEventData);
+						return monitorId;
+					});
+					setMonitorIds(newMonitorIds);
+				}
 			}
 		},
 		[
@@ -431,6 +452,8 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 			getTrackingMonitors,
 			resetDrag,
 			startDrag,
+			findMonitorsAndReceiver,
+			setMonitorIds,
 			debug,
 		],
 	);
@@ -505,10 +528,10 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 
 			// Prepare event data for dragged view.
 			const eventDataDragged = {
+				dragTranslationRatio,
 				id: dragged.id,
 				parentId: dragged.data.parentId,
 				payload: dragged.data.protocol.dragPayload,
-				dragTranslationRatio,
 				dragOffset: dragged.tracking.dragOffset,
 				grabOffset: dragged.tracking.grabOffset,
 				grabOffsetRatio: dragged.tracking.grabOffsetRatio,
