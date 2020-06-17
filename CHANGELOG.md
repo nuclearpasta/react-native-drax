@@ -10,6 +10,12 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ### Changed
 - Speed up dragging animation to be at least 60fps (#29)
 
+### Fixed
+- Implement `onMonitorDragStart` in DraxView (#22)
+
+### Added
+- New DraxList item drag lifecycle callbacks: `onItemDragStart`, `onItemDragPositionChange`, `onItemDragEnd` (#25)
+
 ## [0.5.5] - 2020-06-09
 ### Changed
 - Bump devDependency react-native to 0.62 to address logkitty vulnerability (dependabot; #30)
