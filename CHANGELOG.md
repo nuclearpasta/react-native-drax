@@ -12,6 +12,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 ### Fixed
 - Implement `onMonitorDragStart` in DraxView (#22)
+- Fix regression with DraxList reorder item snapback position (#46)
 
 ### Added
 - New DraxList item drag lifecycle callbacks: `onItemDragStart`, `onItemDragPositionChange`, `onItemDragEnd` (#25)
