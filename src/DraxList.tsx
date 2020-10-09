@@ -155,7 +155,7 @@ export const DraxList = <T extends unknown>(
 	const reorderedData = useMemo(
 		() => {
 			// console.log('refresh sorted data');
-			if (!id || data === null) {
+			if (!id || !data) {
 				return null;
 			}
 			if (data.length !== originalIndexes.length) {
@@ -199,14 +199,14 @@ export const DraxList = <T extends unknown>(
 			const { index } = info;
 			const originalIndex = originalIndexes[index];
 			const {
-				style,
+				style: itemStyle,
 				draggingStyle = defaultStyles.draggingStyle,
 				dragReleasedStyle = defaultStyles.dragReleasedStyle,
 				...otherStyleProps
 			} = itemStyles ?? {};
 			return (
 				<DraxView
-					style={[style, { transform: getShiftTransform(originalIndex) }]}
+					style={[itemStyle, { transform: getShiftTransform(originalIndex) }]}
 					draggingStyle={draggingStyle}
 					dragReleasedStyle={dragReleasedStyle}
 					{...otherStyleProps}
@@ -224,8 +224,9 @@ export const DraxList = <T extends unknown>(
 							registration.measure();
 						}
 					}}
-					renderContent={(props) => renderItemContent(info, props)}
-					renderHoverContent={renderItemHoverContent && ((props) => renderItemHoverContent(info, props))}
+					renderContent={(contentProps) => renderItemContent(info, contentProps)}
+					renderHoverContent={renderItemHoverContent
+						&& ((hoverContentProps) => renderItemHoverContent(info, hoverContentProps))}
 					longPressDelay={defaultListItemLongPressDelay}
 				/>
 			);
@@ -352,6 +353,7 @@ export const DraxList = <T extends unknown>(
 	const resetShifts = useCallback(
 		() => {
 			shiftsRef.current.forEach((shift) => {
+				// eslint-disable-next-line no-param-reassign
 				shift.targetValue = 0;
 				shift.animatedValue.setValue(0);
 			});
