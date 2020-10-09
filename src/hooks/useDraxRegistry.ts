@@ -5,7 +5,7 @@ import {
 	useEffect,
 } from 'react';
 import { Animated } from 'react-native';
-import uuid from 'uuid/v4';
+import { v4 as uuid } from 'uuid';
 
 import { actions } from './useDraxState';
 import {
