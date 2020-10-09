@@ -389,8 +389,8 @@ export const DraxView = (
 	);
 
 	// Create throttled gesture event handler, tied to this id.
-	const throttledHandleGestureEvent = useCallback(
-		throttle(
+	const throttledHandleGestureEvent = useMemo(
+		() => throttle(
 			(event: DraxGestureEvent) => {
 				// Pass the event up to the Drax context.
 				handleGestureEvent(id, event);
@@ -601,7 +601,7 @@ export const DraxView = (
 	);
 
 	// The rendered React children of this view.
-	const content = useMemo(
+	const renderedChildren = useMemo(
 		() => {
 			let content: ReactNode;
 			if (renderContent) {
@@ -655,7 +655,7 @@ export const DraxView = (
 				onLayout={onLayout}
 				collapsable={false}
 			>
-				{content}
+				{renderedChildren}
 			</Animated.View>
 		</LongPressGestureHandler>
 	);
