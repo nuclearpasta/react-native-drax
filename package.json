@@ -9,6 +9,7 @@
 	"main": "build/index.js",
 	"types": "build/index.d.ts",
 	"scripts": {
+		"lint": "yarn run eslint src",
 		"build": "yarn run tsc",
 		"prepublish": "yarn run build"
 	},
