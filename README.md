@@ -11,6 +11,8 @@
 
 Drax is a declarative drag-and-drop system for React Native, written in TypeScript. It is designed to be flexible and powerful with the goal of supporting many use cases, while its stock components and default settings should cover the most common scenarios with minimal configuration.
 
+**Note: as of version 0.7.0, React Native 0.62 or higher is required. For RN 0.61 projects, you may be able to use 0.6.0, but it will no longer be supported.**
+
 #### Contents
 
 * [Screenshots](#screenshots)
@@ -84,7 +86,7 @@ Descriptions of the library's approach, underlying implementation, and drag-and-
 <a name="installation"></a>
 ## Installation
 
-First you must have a project using `react-native` version `>=0.61`, including `react-native-gesture-handler` version `>=1.5.0`. For further information on installing the latter, see [that library's documentation](https://software-mansion.github.io/react-native-gesture-handler/docs/getting-started.html).
+First you must have a project using `react-native` version `>=0.62`, including `react-native-gesture-handler` version `>=1.8.0`. For further information on installing the latter, see [that library's documentation](https://software-mansion.github.io/react-native-gesture-handler/docs/getting-started.html).
 
 Then simply install Drax with:
 
