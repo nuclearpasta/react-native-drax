@@ -8,6 +8,9 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 ## [Unreleased]
 
+### Fixed
+- (BREAKING) Stop calling getNode on Animated.View; requires React Native >=0.62.0 (#54)
+
 ### Changed
 - (BREAKING) Changed peerDependency react-native from * to >=0.62.0
 - (BREAKING) Changed peerDependency react-native-gesture-handler from ^1.5.0 to >=1.8.0

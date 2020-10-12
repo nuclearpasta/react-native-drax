@@ -33,7 +33,6 @@ import {
 	DraxViewMeasurementHandler,
 	DraxRenderContentProps,
 	DraxInternalRenderHoverViewProps,
-	AnimatedViewRefType,
 	AnimatedTransform,
 	AnimatedViewStyleProp,
 } from './types';
@@ -158,7 +157,7 @@ export const DraxView = (
 
 	// Identify Drax parent view (if any) from context or prop override.
 	const parent = parentProp ?? contextParent;
-	const parentId = parent && parent.id;
+	const parentId = parent?.id;
 
 	// Identify parent node handle ref.
 	const parentNodeHandleRef = parent ? parent.nodeHandleRef : rootNodeHandleRef;
@@ -631,10 +630,9 @@ export const DraxView = (
 	);
 
 	const setViewRefs = useCallback(
-		(ref: AnimatedViewRefType | null) => {
-			const view = ref && ref.getNode();
-			viewRef.current = view;
-			nodeHandleRef.current = view && findNodeHandle(view);
+		(ref: View | null) => {
+			viewRef.current = ref;
+			nodeHandleRef.current = ref && findNodeHandle(ref);
 		},
 		[],
 	);

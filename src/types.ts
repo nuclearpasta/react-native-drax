@@ -631,11 +631,6 @@ export type AnimatedViewStyleProp = StyleProp<AnimatedViewStyle>;
 /** Helper type for coercing the output of Animated.ValueXY.getTranslateTransform() */
 export type AnimatedTransform = AnimatedStyle<ViewStyle['transform']>;
 
-/** Type workaround for lack of Animated.View type, used in DraxView */
-export interface AnimatedViewRefType {
-	getNode: () => View;
-}
-
 /** Function that receives a Drax view measurement */
 export interface DraxViewMeasurementHandler {
 	(measurements: DraxViewMeasurements | undefined): void
