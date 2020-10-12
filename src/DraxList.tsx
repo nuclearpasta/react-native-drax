@@ -76,7 +76,7 @@ export const DraxList = <T extends unknown>(
 	// Set a sensible default for reorderable prop.
 	const reorderable = reorderableProp ?? (onItemReorder !== undefined);
 
-	// The unique identifer for this list's Drax view, initialized below.
+	// The unique identifer for this list's Drax view.
 	const id = useDraxId(idProp);
 
 	// FlatList, used for scrolling.

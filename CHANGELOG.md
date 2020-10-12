@@ -10,11 +10,16 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 ### Fixed
 - (BREAKING) Stop calling getNode on Animated.View; requires React Native >=0.62.0 (#54)
+- Fixed various newly uncovered warnings/errors due to upgrades
 
 ### Changed
+- Changed internal logic so that views never have empty Drax ids even for a moment
+- Moved useDrax into hooks directory
 - (BREAKING) Changed peerDependency react-native from * to >=0.62.0
 - (BREAKING) Changed peerDependency react-native-gesture-handler from ^1.5.0 to >=1.8.0
-- Upgraded dependency uuid from ^3.3.3 to ^8.3.1
+- Removed dependency uuid
+- Removed devDependency @types/uuid
+- Removed devDependency @types/react
 - Removed devDependency @babel/core
 - Removed devDependency @babel/runtime
 - Removed devDependency hoist-non-react-statics
@@ -33,12 +38,8 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - Upgraded devDependency eslint-plugin-react from ^7.16.0 to ^7.21.3
 - Upgraded devDependency eslint-plugin-react-hooks from ^2.3.0 to ^4.1.2
 - Upgraded devDependency eslint-plugin-react-native from ^3.8.1 to ^3.10.0
-- Upgraded devDependency @types/uuid from ^3.4.6 to ^8.3.0
 - Upgraded devDependency react-native-gesture-handler from ^1.5.0 to ^1.8.0
 - Changed TypeScript output directory from lib to build
-
-### Fixed
-- Fixed various newly uncovered warnings/errors due to upgrades
 
 ### Added
 - Added lint script to package.json

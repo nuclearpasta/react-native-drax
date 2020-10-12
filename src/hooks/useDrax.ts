@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 
-import { DraxContext } from './DraxContext';
+import { DraxContext } from '../DraxContext';
 
 export const useDrax = () => {
 	const drax = useContext(DraxContext);

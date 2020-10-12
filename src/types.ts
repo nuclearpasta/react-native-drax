@@ -6,7 +6,6 @@ import {
 	ViewStyle,
 	StyleProp,
 	ScrollViewProps,
-	View,
 	ListRenderItemInfo,
 } from 'react-native';
 import {

@@ -81,3 +81,12 @@ export const getRelativePosition = (
 
 export const extractPosition = ({ x, y }: DraxViewMeasurements) => ({ x, y });
 export const extractDimensions = ({ width, height }: DraxViewMeasurements) => ({ width, height });
+
+/*
+ * Previously we were using the uuid library to generate unique identifiers for Drax
+ * components. Since we do not need them to be cryptographically secure and likely
+ * won't need very many of them, let's just use this simple function.
+ */
+export const generateRandomId = () => (
+	`${Math.random().toString(36).substr(2)}${Math.random().toString(36).substr(2)}`
+);

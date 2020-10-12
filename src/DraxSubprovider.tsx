@@ -2,7 +2,7 @@ import React, { FunctionComponent } from 'react';
 
 import { DraxContext } from './DraxContext';
 import { DraxSubproviderProps } from './types';
-import { useDrax } from './useDrax';
+import { useDrax } from './hooks';
 
 export const DraxSubprovider: FunctionComponent<DraxSubproviderProps> = ({ parent, children }) => {
 	const contextValue = useDrax();

@@ -62,6 +62,6 @@
 
 		/* Advanced Options */
 		"forceConsistentCasingInFileNames": true,  /* Disallow inconsistently-cased references to the same file. */
-		"skipLibCheck": true,  /* Ignore conflicts between @types/react-native and @types/node, which is imported by @types/uuid */
+		// "skipLibCheck": true,
 	}
 }

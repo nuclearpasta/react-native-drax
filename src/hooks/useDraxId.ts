@@ -1,23 +1,11 @@
-import { useState, useEffect } from 'react';
-import { v4 as uuid } from 'uuid';
+import { useState } from 'react';
 
-export const useDraxId = (idProp?: string) => {
-	// The unique identifer for this view, initialized below.
-	const [id, setId] = useState('');
+import { generateRandomId } from '../math';
 
-	// Initialize id.
-	useEffect(
-		() => {
-			if (idProp) {
-				if (id !== idProp) {
-					setId(idProp);
-				}
-			} else if (!id) {
-				setId(uuid());
-			}
-		},
-		[id, idProp],
-	);
-
-	return id;
+// Return explicitId, or a consistent randomly generated identifier if explicitId is falsy.
+export const useDraxId = (explicitId?: string) => {
+	// A generated unique identifier for this view, for use if id prop is not specified.
+	const [randomId] = useState(generateRandomId);
+	// We use || rather than ?? for the return value in case explicitId is an empty string.
+	return explicitId || randomId;
 };
