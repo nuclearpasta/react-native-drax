@@ -6,7 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
-## [Unreleased]
+## [0.7.1] - 2020-10-12
+
+### Changed
+- Upgraded lodash dependency from 4.17.15 to 4.17.19 for security
+
+## [0.7.0] - 2020-10-12
 
 ### Fixed
 - (BREAKING) Stop calling getNode on Animated.View; requires React Native >=0.62.0 (#54)
