@@ -6,7 +6,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
-## [Unreleased]
+## [0.7.1] - 2020-10-12
+
+### Changed
+- Upgraded lodash dependency from 4.17.15 to 4.17.19 for security
+
+## [0.7.0] - 2020-10-12
+
+### Fixed
+- (BREAKING) Stop calling getNode on Animated.View; requires React Native >=0.62.0 (#54)
+- Fixed various newly uncovered warnings/errors due to upgrades
+
+### Changed
+- Changed internal logic so that views never have empty Drax ids even for a moment
+- Moved useDrax into hooks directory
+- (BREAKING) Changed peerDependency react-native from * to >=0.62.0
+- (BREAKING) Changed peerDependency react-native-gesture-handler from ^1.5.0 to >=1.8.0
+- Removed dependency uuid
+- Removed devDependency @types/uuid
+- Removed devDependency @types/react
+- Removed devDependency @babel/core
+- Removed devDependency @babel/runtime
+- Removed devDependency hoist-non-react-statics
+- Upgraded devDependency @types/node from ^14.0.5 to ^14.11.8
+- Upgraded devDependency @types/react from ^16.9.17 to ^16.9.51
+- Upgraded devDependency @types/react-native from ^0.60.25 to ^0.63.25
+- Upgraded devDependency react from ^16.9.0 to ^16.13.1
+- Upgraded devDependency react-native from ^0.62.2 to ^0.63.3
+- Upgraded devDependency typescript from ^3.7.2 to ^4.0.3
+- Upgraded devDependency eslint from ^6.7.0 to ^7.10.0
+- Upgraded devDependency @typescript-eslint/eslint-plugin from ^2.8.0 to ^4.4.0
+- Upgraded devDependency @typescript-eslint/parser from ^2.8.0 to ^4.4.0
+- Upgraded devDependency eslint-config-airbnb-typescript from ^6.3.0 to ^11.0.0
+- Upgraded devDependency eslint-plugin-import from ^2.18.2 to ^2.22.1
+- Upgraded devDependency eslint-plugin-jsx-a11y from ^6.2.3 to ^6.3.1
+- Upgraded devDependency eslint-plugin-react from ^7.16.0 to ^7.21.3
+- Upgraded devDependency eslint-plugin-react-hooks from ^2.3.0 to ^4.1.2
+- Upgraded devDependency eslint-plugin-react-native from ^3.8.1 to ^3.10.0
+- Upgraded devDependency react-native-gesture-handler from ^1.5.0 to ^1.8.0
+- Changed TypeScript output directory from lib to build
+
+### Added
+- Added lint script to package.json
 
 ## [0.6.0] - 2020-06-16
 ### Changed

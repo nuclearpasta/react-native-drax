@@ -1,7 +1,6 @@
 import React, {
 	PropsWithChildren,
 	ReactElement,
-	useState,
 	useRef,
 	useEffect,
 	useCallback,
@@ -19,10 +18,9 @@ import {
 	LongPressGestureHandlerStateChangeEvent,
 	LongPressGestureHandler,
 } from 'react-native-gesture-handler';
-import uuid from 'uuid/v4';
 import throttle from 'lodash.throttle';
 
-import { useDrax } from './useDrax';
+import { useDraxId, useDrax } from './hooks';
 import {
 	LongPressGestureHandlerGestureEvent,
 	DraxViewProps,
@@ -33,13 +31,12 @@ import {
 	DraxViewMeasurementHandler,
 	DraxRenderContentProps,
 	DraxInternalRenderHoverViewProps,
-	AnimatedViewRefType,
 	AnimatedTransform,
 	AnimatedViewStyleProp,
 } from './types';
 import { defaultLongPressDelay } from './params';
-import { DraxSubprovider } from './DraxSubprovider';
 import { extractDimensions } from './math';
+import { DraxSubprovider } from './DraxSubprovider';
 
 export const DraxView = (
 	{
@@ -130,8 +127,8 @@ export const DraxView = (
 		|| !!onMonitorDragDrop
 	);
 
-	// The unique identifer for this view, initialized below.
-	const [id, setId] = useState('');
+	// The unique identifier for this view.
+	const id = useDraxId(idProp);
 
 	// The underlying View, for measuring.
 	const viewRef = useRef<View | null>(null);
@@ -158,36 +155,19 @@ export const DraxView = (
 
 	// Identify Drax parent view (if any) from context or prop override.
 	const parent = parentProp ?? contextParent;
-	const parentId = parent && parent.id;
+	const parentId = parent?.id;
 
 	// Identify parent node handle ref.
 	const parentNodeHandleRef = parent ? parent.nodeHandleRef : rootNodeHandleRef;
 
-	// Initialize id.
-	useEffect(
-		() => {
-			if (idProp) {
-				if (id !== idProp) {
-					setId(idProp);
-				}
-			} else if (!id) {
-				setId(uuid());
-			}
-		},
-		[id, idProp],
-	);
-
 	// Register and unregister with Drax context when necessary.
 	useEffect(
 		() => {
-			if (id) {
-				// Register with Drax context after we have an id.
-				registerView({ id, parentId, scrollPositionRef });
+			// Register with Drax context after we have an id.
+			registerView({ id, parentId, scrollPositionRef });
 
-				// Unregister when we unmount.
-				return () => unregisterView({ id });
-			}
-			return undefined;
+			// Unregister when we unmount or id changes.
+			return () => unregisterView({ id });
 		},
 		[
 			id,
@@ -310,41 +290,39 @@ export const DraxView = (
 	// Report updates to our protocol callbacks when we have an id and whenever the props change.
 	useEffect(
 		() => {
-			if (id) {
-				updateViewProtocol({
-					id,
-					protocol: {
-						onDragStart,
-						onDrag,
-						onDragEnter,
-						onDragOver,
-						onDragExit,
-						onDragEnd,
-						onDragDrop,
-						onSnapbackEnd,
-						onReceiveDragEnter,
-						onReceiveDragOver,
-						onReceiveDragExit,
-						onReceiveDragDrop,
-						onMonitorDragStart,
-						onMonitorDragEnter,
-						onMonitorDragOver,
-						onMonitorDragExit,
-						onMonitorDragEnd,
-						onMonitorDragDrop,
-						animateSnapback,
-						snapbackDelay,
-						snapbackDuration,
-						snapbackAnimator,
-						internalRenderHoverView,
-						draggable,
-						receptive,
-						monitoring,
-						dragPayload: dragPayload ?? payload,
-						receiverPayload: receiverPayload ?? payload,
-					},
-				});
-			}
+			updateViewProtocol({
+				id,
+				protocol: {
+					onDragStart,
+					onDrag,
+					onDragEnter,
+					onDragOver,
+					onDragExit,
+					onDragEnd,
+					onDragDrop,
+					onSnapbackEnd,
+					onReceiveDragEnter,
+					onReceiveDragOver,
+					onReceiveDragExit,
+					onReceiveDragDrop,
+					onMonitorDragStart,
+					onMonitorDragEnter,
+					onMonitorDragOver,
+					onMonitorDragExit,
+					onMonitorDragEnd,
+					onMonitorDragDrop,
+					animateSnapback,
+					snapbackDelay,
+					snapbackDuration,
+					snapbackAnimator,
+					internalRenderHoverView,
+					draggable,
+					receptive,
+					monitoring,
+					dragPayload: dragPayload ?? payload,
+					receiverPayload: receiverPayload ?? payload,
+				},
+			});
 		},
 		[
 			id,
@@ -389,8 +367,8 @@ export const DraxView = (
 	);
 
 	// Create throttled gesture event handler, tied to this id.
-	const throttledHandleGestureEvent = useCallback(
-		throttle(
+	const throttledHandleGestureEvent = useMemo(
+		() => throttle(
 			(event: DraxGestureEvent) => {
 				// Pass the event up to the Drax context.
 				handleGestureEvent(id, event);
@@ -402,7 +380,7 @@ export const DraxView = (
 
 	// Connect gesture event handling into Drax context, extracting nativeEvent.
 	const onGestureEvent = useCallback(
-		(event: LongPressGestureHandlerGestureEvent) => throttledHandleGestureEvent(event.nativeEvent),
+		({ nativeEvent }: LongPressGestureHandlerGestureEvent) => throttledHandleGestureEvent(nativeEvent),
 		[throttledHandleGestureEvent],
 	);
 
@@ -501,7 +479,7 @@ export const DraxView = (
 	// Register and unregister externally when necessary.
 	useEffect(
 		() => {
-			if (id && registration) { // Register externally when we have an id and registration is set.
+			if (registration) { // Register externally when registration is set.
 				registration({
 					id,
 					measure: measureWithHandler,
@@ -601,7 +579,7 @@ export const DraxView = (
 	);
 
 	// The rendered React children of this view.
-	const content = useMemo(
+	const renderedChildren = useMemo(
 		() => {
 			let content: ReactNode;
 			if (renderContent) {
@@ -631,10 +609,9 @@ export const DraxView = (
 	);
 
 	const setViewRefs = useCallback(
-		(ref: AnimatedViewRefType | null) => {
-			const view = ref && ref.getNode();
-			viewRef.current = view;
-			nodeHandleRef.current = view && findNodeHandle(view);
+		(ref: View | null) => {
+			viewRef.current = ref;
+			nodeHandleRef.current = ref && findNodeHandle(ref);
 		},
 		[],
 	);
@@ -655,7 +632,7 @@ export const DraxView = (
 				onLayout={onLayout}
 				collapsable={false}
 			>
-				{content}
+				{renderedChildren}
 			</Animated.View>
 		</LongPressGestureHandler>
 	);

@@ -5,7 +5,6 @@ import {
 	useEffect,
 } from 'react';
 import { Animated } from 'react-native';
-import uuid from 'uuid/v4';
 
 import { actions } from './useDraxState';
 import {
@@ -36,6 +35,7 @@ import {
 	isPointInside,
 	getRelativePosition,
 	extractDimensions,
+	generateRandomId,
 } from '../math';
 import { defaultSnapbackDelay, defaultSnapbackDuration } from '../params';
 
@@ -428,7 +428,7 @@ const resetReceiverInRegistry = ({ drag, stateDispatch }: DraxRegistry) => {
 
 /** Track a new release, returning its unique identifier. */
 const createReleaseInRegistry = (registry: DraxRegistry, release: DraxTrackingRelease) => {
-	const releaseId = uuid();
+	const releaseId = generateRandomId();
 	registry.releaseIds.push(releaseId);
 	registry.releaseById[releaseId] = release;
 	return releaseId;
