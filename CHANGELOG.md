@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
+## [0.7.2] - 2020-10-13
+
+### Changed
+- Upgraded node-fetch indirect dependency from 2.6.0 to 2.6.1 for security
+
 ## [0.7.1] - 2020-10-12
 
 ### Changed
