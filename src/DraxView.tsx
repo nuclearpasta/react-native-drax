@@ -20,7 +20,7 @@ import {
 } from 'react-native-gesture-handler';
 import throttle from 'lodash.throttle';
 
-import { useDraxId, useDrax } from './hooks';
+import { useDraxId, useDraxContext } from './hooks';
 import {
 	LongPressGestureHandlerGestureEvent,
 	DraxViewProps,
@@ -151,7 +151,7 @@ export const DraxView = (
 		handleGestureStateChange,
 		rootNodeHandleRef,
 		parent: contextParent,
-	} = useDrax();
+	} = useDraxContext();
 
 	// Identify Drax parent view (if any) from context or prop override.
 	const parent = parentProp ?? contextParent;

@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
+## Unreleased
+
+### Changed
+- (BREAKING) Rename `useDrax` to `useDraxContext`
+- Simplify DraxList rendering because Drax ids cannot be empty since 0.7.0
+
 ## [0.7.2] - 2020-10-13
 
 ### Changed

@@ -635,7 +635,7 @@ export const DraxList = <T extends unknown>(
 		[handleInternalDragEnd],
 	);
 
-	return id ? (
+	return (
 		<DraxView
 			id={id}
 			style={style}
@@ -658,5 +658,5 @@ export const DraxList = <T extends unknown>(
 				/>
 			</DraxSubprovider>
 		</DraxView>
-	) : null;
+	);
 };
