@@ -64,6 +64,7 @@ export const DraxList = <T extends unknown>(
 		onItemReorder,
 		id: idProp,
 		reorderable: reorderableProp,
+		draggable: draggableProp,
 		...props
 	}: PropsWithChildren<DraxListProps<T>>,
 ): ReactElement | null => {
@@ -75,6 +76,9 @@ export const DraxList = <T extends unknown>(
 
 	// Set a sensible default for reorderable prop.
 	const reorderable = reorderableProp ?? (onItemReorder !== undefined);
+
+	// Set a sensible default for reorderable prop.
+	const draggable = draggableProp ?? (onItemReorder !== undefined);
 
 	// The unique identifer for this list's Drax view.
 	const id = useDraxId(idProp);
@@ -213,6 +217,7 @@ export const DraxList = <T extends unknown>(
 					payload={{ index, originalIndex }}
 					onDragEnd={resetDraggedItem}
 					onDragDrop={resetDraggedItem}
+					draggable={draggable}
 					onMeasure={(measurements) => {
 						// console.log(`measuring [${index}, ${originalIndex}]: (${measurements?.x}, ${measurements?.y})`);
 						itemMeasurementsRef.current[originalIndex] = measurements;
