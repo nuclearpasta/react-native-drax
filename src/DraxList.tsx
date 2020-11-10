@@ -65,6 +65,7 @@ export const DraxList = <T extends unknown>(
 		id: idProp,
 		reorderable: reorderableProp,
 		draggable: draggableProp,
+		onScroll: onScrollProp,
 		...props
 	}: PropsWithChildren<DraxListProps<T>>,
 ): ReactElement | null => {
@@ -657,7 +658,10 @@ export const DraxList = <T extends unknown>(
 					{...props}
 					ref={setFlatListRefs}
 					renderItem={renderItem}
-					onScroll={onScroll}
+					onScroll={(scrollEvent) => {
+						onScroll(scrollEvent);
+						onScrollProp && onScrollProp(scrollEvent);
+					}}
 					onContentSizeChange={onContentSizeChange}
 					data={reorderedData}
 				/>
