@@ -382,10 +382,10 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 				 * NOTE: if view is transformed, these will be wrong.
 				 */
 				const dragAbsolutePosition = {
-					x: absoluteX + grabX,
+					x: absoluteX,
 					y: absoluteY + grabY,
 				};
-				const grabOffset = { x: grabX, y: grabY };
+				const grabOffset = { x: 0, y: grabY };
 				const grabOffsetRatio = {
 					x: grabX / width,
 					y: grabY / height,
