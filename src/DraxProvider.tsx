@@ -20,7 +20,7 @@ import {
 } from './types';
 import { getRelativePosition } from './math';
 
-export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = false, children }) => {
+export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = false, multicolumn = false, children }) => {
 	const {
 		getViewState,
 		getTrackingStatus,
@@ -382,10 +382,10 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 				 * NOTE: if view is transformed, these will be wrong.
 				 */
 				const dragAbsolutePosition = {
-					x: absoluteX,
+					x: multicolumn ? absoluteX : absoluteX + grabX,
 					y: absoluteY + grabY,
 				};
-				const grabOffset = { x: 0, y: grabY };
+				const grabOffset = { x: multicolumn ? 0 : grabX, y: grabY };
 				const grabOffsetRatio = {
 					x: grabX / width,
 					y: grabY / height,
