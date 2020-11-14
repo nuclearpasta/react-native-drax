@@ -619,6 +619,8 @@ const startDragInRegistry = (
 const updateDragPositionInRegistry = (
 	registry: DraxRegistry,
 	dragAbsolutePosition: Position,
+	staticXaxis: number | undefined,
+	staticYaxis: number | undefined,
 ) => {
 	const { drag, stateDispatch } = registry;
 	if (!drag) {
@@ -646,8 +648,8 @@ const updateDragPositionInRegistry = (
 	drag.dragTranslationRatio = dragTranslationRatio;
 	drag.dragOffset = dragOffset;
 	hoverPosition.setValue({
-		x: dragAbsolutePosition.x - grabOffset.x,
-		y: dragAbsolutePosition.y - grabOffset.y,
+		x: staticXaxis !== undefined ? staticXaxis : dragAbsolutePosition.x - grabOffset.x,
+		y: staticYaxis !== undefined ? staticYaxis : dragAbsolutePosition.y - grabOffset.y,
 	});
 	stateDispatch(actions.updateViewState({
 		id: draggedId,
@@ -891,8 +893,8 @@ export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
 
 	/** Update drag position. */
 	const updateDragPosition = useCallback(
-		(dragAbsolutePosition: Position) => (
-			updateDragPositionInRegistry(registryRef.current, dragAbsolutePosition)
+		(dragAbsolutePosition: Position, staticXaxis: number | undefined, staticYaxis: number | undefined) => (
+			updateDragPositionInRegistry(registryRef.current, dragAbsolutePosition, staticXaxis, staticYaxis)
 		),
 		[],
 	);

@@ -20,7 +20,7 @@ import {
 } from './types';
 import { getRelativePosition } from './math';
 
-export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = false, children }) => {
+export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = false, staticXaxis = undefined, staticYaxis = undefined, children }) => {
 	const {
 		getViewState,
 		getTrackingStatus,
@@ -522,7 +522,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 			const oldReceiver = getTrackingReceiver();
 
 			// Always update the drag position.
-			updateDragPosition(dragAbsolutePosition);
+			updateDragPosition(dragAbsolutePosition, staticXaxis, staticYaxis);
 
 			const draggedProtocol = dragged.data.protocol;
 

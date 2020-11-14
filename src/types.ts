@@ -584,6 +584,8 @@ export interface DraxContextValue {
 /** Optional props that can be passed to a DraxProvider to modify its behavior */
 export interface DraxProviderProps {
 	debug?: boolean;
+	staticXaxis?: number | undefined;
+	staticYaxis?: number | undefined;
 }
 
 /** Props that are passed to a DraxSubprovider, used internally for nesting views */
