@@ -309,14 +309,25 @@ const getHoverItemsFromRegistry = (registry: DraxRegistry) => {
 	return hoverItems;
 };
 
+interface GetDragPositionDataParams {
+	parentPosition: Position,
+	draggedMeasurements: DraxViewMeasurements,
+	lockXPosition?: boolean,
+	lockYPosition?: boolean,
+}
+
 /**
  * Get the absolute position of a drag already in progress from touch
  * coordinates within the immediate parent view of the dragged view.
  */
 const getDragPositionDataFromRegistry = (
 	registry: DraxRegistry,
-	parentPosition: Position,
-	draggedMeasurements: DraxViewMeasurements,
+	{
+		parentPosition,
+		draggedMeasurements,
+		lockXPosition = false,
+		lockYPosition = false,
+	}: GetDragPositionDataParams,
 ) => {
 	if (!registry.drag) {
 		return undefined;
@@ -326,10 +337,13 @@ const getDragPositionDataFromRegistry = (
 	 *   absolute coordinates of drag start
 	 *   + translation offset of drag
 	 */
-	const { absoluteStartPosition, parentStartPosition } = registry.drag;
+	const {
+		absoluteStartPosition,
+		parentStartPosition,
+	} = registry.drag;
 	const dragTranslation = {
-		x: parentPosition.x - parentStartPosition.x,
-		y: parentPosition.y - parentStartPosition.y,
+		x: lockXPosition ? 0 : (parentPosition.x - parentStartPosition.x),
+		y: lockYPosition ? 0 : (parentPosition.y - parentStartPosition.y),
 	};
 	const dragTranslationRatio = {
 		x: dragTranslation.x / draggedMeasurements.width,
@@ -624,10 +638,11 @@ const updateDragPositionInRegistry = (
 	if (!drag) {
 		return;
 	}
-	const { absoluteMeasurements } = getTrackingDraggedFromRegistry(registry)?.data ?? {};
-	if (!absoluteMeasurements) {
+	const dragged = getTrackingDraggedFromRegistry(registry);
+	if (!dragged) {
 		return;
 	}
+	const { absoluteMeasurements } = dragged.data;
 	const { draggedId, grabOffset, hoverPosition } = drag;
 	const dragTranslation = {
 		x: dragAbsolutePosition.x - drag.absoluteStartPosition.x,
@@ -818,8 +833,8 @@ export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
 	 * coordinates within the immediate parent view of the dragged view.
 	 */
 	const getDragPositionData = useCallback(
-		(parentPosition: Position, draggedMeasurements: DraxViewMeasurements) => (
-			getDragPositionDataFromRegistry(registryRef.current, parentPosition, draggedMeasurements)
+		(params: GetDragPositionDataParams) => (
+			getDragPositionDataFromRegistry(registryRef.current, params)
 		),
 		[],
 	);

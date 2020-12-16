@@ -1,6 +1,5 @@
 import React, {
 	PropsWithChildren,
-	ReactElement,
 	useRef,
 	useEffect,
 	useCallback,
@@ -15,14 +14,14 @@ import {
 	Dimensions,
 } from 'react-native';
 import {
-	LongPressGestureHandlerStateChangeEvent,
 	LongPressGestureHandler,
+	LongPressGestureHandlerGestureEvent,
+	LongPressGestureHandlerStateChangeEvent,
 } from 'react-native-gesture-handler';
 import throttle from 'lodash.throttle';
 
 import { useDraxId, useDraxContext } from './hooks';
 import {
-	LongPressGestureHandlerGestureEvent,
 	DraxViewProps,
 	DraxViewDragStatus,
 	DraxViewReceiveStatus,
@@ -37,6 +36,7 @@ import {
 import { defaultLongPressDelay } from './params';
 import { extractDimensions } from './math';
 import { DraxSubprovider } from './DraxSubprovider';
+import { flattenStylesWithoutLayout, mergeStyleTransform } from './transform';
 
 export const DraxView = (
 	{
@@ -86,6 +86,8 @@ export const DraxView = (
 		registration,
 		onMeasure,
 		scrollPositionRef,
+		lockDragXPosition,
+		lockDragYPosition,
 		children,
 		noHover = false,
 		isParent = false,
@@ -97,7 +99,7 @@ export const DraxView = (
 		monitoring: monitoringProp,
 		...props
 	}: PropsWithChildren<DraxViewProps>,
-): ReactElement => {
+): JSX.Element => {
 	// Coalesce protocol props into capabilities.
 	const draggable = draggableProp ?? (
 		dragPayload !== undefined
@@ -205,34 +207,13 @@ export const DraxView = (
 				hoverStyles.push(hoverDragReleasedStyle);
 			}
 
+			// Remove any layout styles.
+			const flattenedHoverStyle = flattenStylesWithoutLayout(hoverStyles);
+
 			// Apply hover transform.
 			const transform = hoverPosition.getTranslateTransform() as AnimatedTransform;
-			hoverStyles.push({ transform });
 
-			// Remove any positioning/sizing styles.
-			const {
-				margin,
-				marginHorizontal,
-				marginVertical,
-				marginLeft,
-				marginRight,
-				marginTop,
-				marginBottom,
-				marginStart,
-				marginEnd,
-				left,
-				right,
-				top,
-				bottom,
-				flex,
-				flexBasis,
-				flexDirection,
-				flexGrow,
-				flexShrink,
-				...combinedHoverStyle
-			} = StyleSheet.flatten(hoverStyles);
-
-			return combinedHoverStyle;
+			return mergeStyleTransform(flattenedHoverStyle, transform);
 		},
 		[
 			style,
@@ -319,6 +300,8 @@ export const DraxView = (
 					draggable,
 					receptive,
 					monitoring,
+					lockDragXPosition,
+					lockDragYPosition,
 					dragPayload: dragPayload ?? payload,
 					receiverPayload: receiverPayload ?? payload,
 				},
@@ -356,6 +339,8 @@ export const DraxView = (
 			draggable,
 			receptive,
 			monitoring,
+			lockDragXPosition,
+			lockDragYPosition,
 			internalRenderHoverView,
 		],
 	);

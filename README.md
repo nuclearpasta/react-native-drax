@@ -170,7 +170,7 @@ This will give you a blue box which can be dragged around and a green box which 
 
 This library has several [known issues and limitations](https://github.com/nuclearpasta/react-native-drax/issues?q=is%3Aissue+is%3Aopen+label%3Areproduced), particularly around the [Android](https://github.com/nuclearpasta/react-native-drax/issues?q=is%3Aissue+is%3Aopen+label%3Aandroid) platform. We hope to address these and improve the library over time. For most use cases, the current functionality is probably fine.
 
-This library has been developed with React Native 0.61 and React Native Gesture Handler 1.5, and due to complexity, its use with older versions of them will not be supported.
+This library currently expects React Native >=0.62 and React Native Gesture Handler >=1.8. Due to complexity, we cannot support the use of the library with older versions.
 
 <a name="examples"></a>
 ## Examples
