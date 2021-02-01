@@ -40,6 +40,7 @@ export const DraxScrollView = ({
 	autoScrollBackThreshold = defaultAutoScrollBackThreshold,
 	autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
 	id: idProp,
+	refreshControl,
 	...props
 }: PropsWithChildren<DraxScrollViewProps>) => {
 	// The unique identifer for this view.
@@ -248,6 +249,7 @@ export const DraxScrollView = ({
 					onContentSizeChange={onContentSizeChange}
 					onScroll={onScroll}
 					scrollEventThrottle={scrollEventThrottle}
+					refreshControl={refreshControl}
 				>
 					{children}
 				</ScrollView>
