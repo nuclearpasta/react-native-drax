@@ -8,7 +8,7 @@ Drax consists of two fundamental components, `DraxProvider` and `DraxView`. The 
 
 Drax works by tracking the measurements of all `DraxViews` in relation to the `DraxProvider`, keeping an internal record of all their absolute screen positions and sizes. In the case of `DraxViews` nested inside of scrollable Drax components (e.g., `DraxList`), it does this by tracking their relationships to their parents as well as the parents' scroll offsets. Drax uses `react-native-gesture-handler` to determine when drags begin and end, converting the event data from that library into absolute screen coordinates to determine interactions between `DraxViews`.
 
-*(More documentation on this, including diagrams, to come later.)*
+_(More documentation on this, including diagrams, to come later.)_
 
 ## Drag-and-Drop Lifecycle
 
@@ -65,15 +65,15 @@ The following image demonstrates examples of common drag-and-drop behavior:
 
 For more complex use cases, Drax has the concept of a monitoring `DraxView`. A monitor is similar to a receiver but has several important differences:
 
-* A view is informed when it is dragged over a receiver by receiving specific events such as `onDragOver`, but it is not informed about monitors that it is dragged over.
-* If multiple receivers overlap at the drag point, only the top-most receiver will receive drag events, but any number of overlapping monitors can simultaneously receive them.
-* Monitors can receive additional events for drag start and end, which receivers do not. (This is to support the use case where a monitor fills the entire area underneath the other `DraxViews` so that drags can be tracked centrally.)
+- A view is informed when it is dragged over a receiver by receiving specific events such as `onDragOver`, but it is not informed about monitors that it is dragged over.
+- If multiple receivers overlap at the drag point, only the top-most receiver will receive drag events, but any number of overlapping monitors can simultaneously receive them.
+- Monitors can receive additional events for drag start and end, which receivers do not. (This is to support the use case where a monitor fills the entire area underneath the other `DraxViews` so that drags can be tracked centrally.)
 
 The monitor drag-and-drop lifecycle event handler attributes are:
 
-* `onMonitorDragStart`: when a drag starts within this view
-* `onMonitorDragEnter`: when a drag enters this view
-* `onMonitorDragOver`: while a drag is over this view
-* `onMonitorDragExit`: when a drag exits this view
-* `onMonitorDragEnd`: when a drag ends outside of a receiver (or is cancelled) within this view
-* `onMonitorDragDrop`: when a drag ends successfully over a receiver within this view
+- `onMonitorDragStart`: when a drag starts within this view
+- `onMonitorDragEnter`: when a drag enters this view
+- `onMonitorDragOver`: while a drag is over this view
+- `onMonitorDragExit`: when a drag exits this view
+- `onMonitorDragEnd`: when a drag ends outside of a receiver (or is cancelled) within this view
+- `onMonitorDragDrop`: when a drag ends successfully over a receiver within this view

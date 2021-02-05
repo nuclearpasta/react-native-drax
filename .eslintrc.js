@@ -2,19 +2,12 @@ module.exports = {
 	root: true,
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
-		project: [
-			'./tsconfig.json',
-		],
+		project: ['./tsconfig.json'],
 		ecmaFeatures: {
 			jsx: true,
 		},
 	},
-	plugins: [
-		'@typescript-eslint',
-		'react',
-		'react-native',
-		'react-hooks',
-	],
+	plugins: ['@typescript-eslint', 'react', 'react-native', 'react-hooks'],
 	extends: [
 		// 'plugin:@typescript-eslint/recommended', <-- consider this when time permits
 		'plugin:react/recommended',
@@ -38,15 +31,18 @@ module.exports = {
 		'arrow-body-style': 0,
 		'arrow-parens': [2, 'always'],
 		'no-console': 0,
-		'max-len': [2, {
-			code: 120,
-			tabWidth: 4,
-			ignoreComments: true,
-			ignoreUrls: true,
-			ignoreStrings: true,
-			ignoreTemplateLiterals: true,
-			ignoreRegExpLiterals: true,
-		}],
+		'max-len': [
+			2,
+			{
+				code: 120,
+				tabWidth: 4,
+				ignoreComments: true,
+				ignoreUrls: true,
+				ignoreStrings: true,
+				ignoreTemplateLiterals: true,
+				ignoreRegExpLiterals: true,
+			},
+		],
 		'@typescript-eslint/indent': [2, 'tab', { SwitchCase: 1 }],
 		'@typescript-eslint/no-use-before-define': [2, { variables: false }],
 		'import/no-unresolved': 0, // ts already provides errors for this and updates more quickly in VSCode
@@ -67,9 +63,7 @@ module.exports = {
 		'react-native/no-color-literals': 0,
 		'react-hooks/rules-of-hooks': 2,
 		'react-hooks/exhaustive-deps': 1,
-		'@typescript-eslint/comma-dangle': [2, "always-multiline"],
+		'@typescript-eslint/comma-dangle': [2, 'always-multiline'],
 	},
-	ignorePatterns: [
-		'.eslintrc.js',
-	],
-};
+	ignorePatterns: ['.eslintrc.js'],
+}
