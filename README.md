@@ -112,7 +112,7 @@ There is no Cocoapods or native linking step here. You've already covered those 
 Import the library components:
 
 ```ts
-import { DraxProvider, DraxView } from 'react-native-drax'
+import { DraxProvider, DraxView } from 'react-native-drax';
 ```
 
 Wrap the area of your app that will use Drax with a `DraxProvider`, and create a couple `DraxView`s, one draggable and one receptive:
@@ -123,20 +123,20 @@ Wrap the area of your app that will use Drax with a `DraxProvider`, and create a
     <DraxView
       style={styles.draggable}
       onDragStart={() => {
-        console.log('start drag')
+        console.log('start drag');
       }}
       payload="world"
     />
     <DraxView
       style={styles.receiver}
       onReceiveDragEnter={({ dragged: { payload } }) => {
-        console.log(`hello ${payload}`)
+        console.log(`hello ${payload}`);
       }}
       onReceiveDragExit={({ dragged: { payload } }) => {
-        console.log(`goodbye ${payload}`)
+        console.log(`goodbye ${payload}`);
       }}
       onReceiveDragDrop={({ dragged: { payload } }) => {
-        console.log(`received ${payload}`)
+        console.log(`received ${payload}`);
       }}
     />
   </View>
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     height: 100,
     backgroundColor: 'green',
   },
-})
+});
 ```
 
 This will give you a blue box which can be dragged around and a green box which it can be dragged into. Watch the console log messages while you drag the blue box around, releasing the drag either in or out of the green box.

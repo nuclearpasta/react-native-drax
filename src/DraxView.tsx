@@ -6,15 +6,15 @@ import React, {
 	useCallback,
 	useMemo,
 	ReactNode,
-} from 'react'
-import { Animated, View, StyleSheet, findNodeHandle, Dimensions } from 'react-native'
+} from 'react';
+import { Animated, View, StyleSheet, findNodeHandle, Dimensions } from 'react-native';
 import {
 	LongPressGestureHandlerStateChangeEvent,
 	LongPressGestureHandler,
-} from 'react-native-gesture-handler'
-import throttle from 'lodash.throttle'
+} from 'react-native-gesture-handler';
+import throttle from 'lodash.throttle';
 
-import { useDraxId, useDraxContext } from './hooks'
+import { useDraxId, useDraxContext } from './hooks';
 import {
 	LongPressGestureHandlerGestureEvent,
 	DraxViewProps,
@@ -27,10 +27,10 @@ import {
 	DraxInternalRenderHoverViewProps,
 	AnimatedTransform,
 	AnimatedViewStyleProp,
-} from './types'
-import { defaultLongPressDelay } from './params'
-import { extractDimensions } from './math'
-import { DraxSubprovider } from './DraxSubprovider'
+} from './types';
+import { defaultLongPressDelay } from './params';
+import { extractDimensions } from './math';
+import { DraxSubprovider } from './DraxSubprovider';
 
 export const DraxView = ({
 	onDragStart,
@@ -101,7 +101,7 @@ export const DraxView = ({
 			!!onDragExit ||
 			!!onDragOver ||
 			!!onDragStart ||
-			!!onDragDrop)
+			!!onDragDrop);
 	const receptive =
 		receptiveProp ??
 		(receiverPayload !== undefined ||
@@ -109,7 +109,7 @@ export const DraxView = ({
 			!!onReceiveDragEnter ||
 			!!onReceiveDragExit ||
 			!!onReceiveDragOver ||
-			!!onReceiveDragDrop)
+			!!onReceiveDragDrop);
 	const monitoring =
 		monitoringProp ??
 		(!!onMonitorDragStart ||
@@ -117,19 +117,19 @@ export const DraxView = ({
 			!!onMonitorDragOver ||
 			!!onMonitorDragExit ||
 			!!onMonitorDragEnd ||
-			!!onMonitorDragDrop)
+			!!onMonitorDragDrop);
 
 	// The unique identifier for this view.
-	const id = useDraxId(idProp)
+	const id = useDraxId(idProp);
 
 	// The underlying View, for measuring.
-	const viewRef = useRef<View | null>(null)
+	const viewRef = useRef<View | null>(null);
 
 	// The underlying View node handle, used for subprovider nesting if this is a Drax parent view.
-	const nodeHandleRef = useRef<number | null>(null)
+	const nodeHandleRef = useRef<number | null>(null);
 
 	// This view's measurements, for reference.
-	const measurementsRef = useRef<DraxViewMeasurements | undefined>(undefined)
+	const measurementsRef = useRef<DraxViewMeasurements | undefined>(undefined);
 
 	// Connect with Drax.
 	const {
@@ -143,23 +143,23 @@ export const DraxView = ({
 		handleGestureStateChange,
 		rootNodeHandleRef,
 		parent: contextParent,
-	} = useDraxContext()
+	} = useDraxContext();
 
 	// Identify Drax parent view (if any) from context or prop override.
-	const parent = parentProp ?? contextParent
-	const parentId = parent?.id
+	const parent = parentProp ?? contextParent;
+	const parentId = parent?.id;
 
 	// Identify parent node handle ref.
-	const parentNodeHandleRef = parent ? parent.nodeHandleRef : rootNodeHandleRef
+	const parentNodeHandleRef = parent ? parent.nodeHandleRef : rootNodeHandleRef;
 
 	// Register and unregister with Drax context when necessary.
 	useEffect(() => {
 		// Register with Drax context after we have an id.
-		registerView({ id, parentId, scrollPositionRef })
+		registerView({ id, parentId, scrollPositionRef });
 
 		// Unregister when we unmount or id changes.
-		return () => unregisterView({ id })
-	}, [id, parentId, scrollPositionRef, registerView, unregisterView])
+		return () => unregisterView({ id });
+	}, [id, parentId, scrollPositionRef, registerView, unregisterView]);
 
 	// Combine hover styles for given internal render props.
 	const getCombinedHoverStyle = useCallback(
@@ -170,23 +170,23 @@ export const DraxView = ({
 			dimensions,
 		}: DraxInternalRenderHoverViewProps) => {
 			// Start with base style, calculated dimensions, and hover base style.
-			const hoverStyles: AnimatedViewStyleProp[] = [style, dimensions, hoverStyle]
+			const hoverStyles: AnimatedViewStyleProp[] = [style, dimensions, hoverStyle];
 
 			// Apply style style overrides based on state.
 			if (dragStatus === DraxViewDragStatus.Dragging) {
-				hoverStyles.push(hoverDraggingStyle)
+				hoverStyles.push(hoverDraggingStyle);
 				if (anyReceiving) {
-					hoverStyles.push(hoverDraggingWithReceiverStyle)
+					hoverStyles.push(hoverDraggingWithReceiverStyle);
 				} else {
-					hoverStyles.push(hoverDraggingWithoutReceiverStyle)
+					hoverStyles.push(hoverDraggingWithoutReceiverStyle);
 				}
 			} else if (dragStatus === DraxViewDragStatus.Released) {
-				hoverStyles.push(hoverDragReleasedStyle)
+				hoverStyles.push(hoverDragReleasedStyle);
 			}
 
 			// Apply hover transform.
-			const transform = hoverPosition.getTranslateTransform() as AnimatedTransform
-			hoverStyles.push({ transform })
+			const transform = hoverPosition.getTranslateTransform() as AnimatedTransform;
+			hoverStyles.push({ transform });
 
 			// Remove any positioning/sizing styles.
 			const {
@@ -209,9 +209,9 @@ export const DraxView = ({
 				flexGrow,
 				flexShrink,
 				...combinedHoverStyle
-			} = StyleSheet.flatten(hoverStyles)
+			} = StyleSheet.flatten(hoverStyles);
 
-			return combinedHoverStyle
+			return combinedHoverStyle;
 		},
 		[
 			style,
@@ -221,15 +221,15 @@ export const DraxView = ({
 			hoverDraggingWithoutReceiverStyle,
 			hoverDragReleasedStyle,
 		],
-	)
+	);
 
 	// Internal render function for hover views, used in protocol by provider.
 	const internalRenderHoverView = useMemo(
 		() =>
 			draggable && !noHover
 				? (internalProps: DraxInternalRenderHoverViewProps): ReactNode => {
-						let content: ReactNode
-						const render = renderHoverContent ?? renderContent
+						let content: ReactNode;
+						const render = renderHoverContent ?? renderContent;
 
 						if (render) {
 							const renderProps = {
@@ -238,10 +238,10 @@ export const DraxView = ({
 								viewState: internalProps.viewState,
 								trackingStatus: internalProps.trackingStatus,
 								dimensions: internalProps.dimensions,
-							}
-							content = render(renderProps)
+							};
+							content = render(renderProps);
 						} else {
-							content = children
+							content = children;
 						}
 
 						return (
@@ -252,11 +252,11 @@ export const DraxView = ({
 							>
 								{content}
 							</Animated.View>
-						)
+						);
 				  }
 				: undefined,
 		[draggable, noHover, renderHoverContent, renderContent, getCombinedHoverStyle, props, children],
-	)
+	);
 
 	// Report updates to our protocol callbacks when we have an id and whenever the props change.
 	useEffect(() => {
@@ -292,7 +292,7 @@ export const DraxView = ({
 				dragPayload: dragPayload ?? payload,
 				receiverPayload: receiverPayload ?? payload,
 			},
-		})
+		});
 	}, [
 		id,
 		updateViewProtocol,
@@ -326,30 +326,30 @@ export const DraxView = ({
 		receptive,
 		monitoring,
 		internalRenderHoverView,
-	])
+	]);
 
 	// Connect gesture state change handling into Drax context, tied to this id.
 	const onHandlerStateChange = useCallback(
 		({ nativeEvent }: LongPressGestureHandlerStateChangeEvent) =>
 			handleGestureStateChange(id, nativeEvent),
 		[id, handleGestureStateChange],
-	)
+	);
 
 	// Create throttled gesture event handler, tied to this id.
 	const throttledHandleGestureEvent = useMemo(
 		() =>
 			throttle((event: DraxGestureEvent) => {
 				// Pass the event up to the Drax context.
-				handleGestureEvent(id, event)
+				handleGestureEvent(id, event);
 			}, 10),
 		[id, handleGestureEvent],
-	)
+	);
 
 	// Connect gesture event handling into Drax context, extracting nativeEvent.
 	const onGestureEvent = useCallback(
 		({ nativeEvent }: LongPressGestureHandlerGestureEvent) => throttledHandleGestureEvent(nativeEvent),
 		[throttledHandleGestureEvent],
-	)
+	);
 
 	// Build a callback which will report our measurements to Drax context,
 	// onMeasure, and an optional measurement handler.
@@ -375,33 +375,33 @@ export const DraxView = ({
 							x: x!,
 							y: y!,
 							width: width!,
-					  }
-			measurementsRef.current = measurements
-			updateViewMeasurements({ id, measurements })
-			onMeasure?.(measurements)
-			measurementHandler?.(measurements)
+					  };
+			measurementsRef.current = measurements;
+			updateViewMeasurements({ id, measurements });
+			onMeasure?.(measurements);
+			measurementHandler?.(measurements);
 		},
 		[id, updateViewMeasurements, onMeasure],
-	)
+	);
 
 	// Callback which will report our measurements to Drax context and onMeasure.
-	const updateMeasurements = useMemo(() => buildMeasureCallback(), [buildMeasureCallback])
+	const updateMeasurements = useMemo(() => buildMeasureCallback(), [buildMeasureCallback]);
 
 	// Measure and report our measurements to Drax context, onMeasure, and an
 	// optional measurement handler on demand.
 	const measureWithHandler = useCallback(
 		(measurementHandler?: DraxViewMeasurementHandler) => {
-			const view = viewRef.current
+			const view = viewRef.current;
 			if (view) {
-				const nodeHandle = parentNodeHandleRef.current
+				const nodeHandle = parentNodeHandleRef.current;
 				if (nodeHandle) {
 					const measureCallback = measurementHandler
 						? buildMeasureCallback(measurementHandler)
-						: updateMeasurements
+						: updateMeasurements;
 					// console.log('definitely measuring in reference to something');
 					view.measureLayout(nodeHandle, measureCallback, () => {
 						// console.log('Failed to measure Drax view in relation to parent nodeHandle');
-					})
+					});
 				} else {
 					// console.log('No parent nodeHandle to measure Drax view in relation to');
 				}
@@ -410,23 +410,23 @@ export const DraxView = ({
 			}
 		},
 		[parentNodeHandleRef, buildMeasureCallback, updateMeasurements],
-	)
+	);
 
 	// Measure and send our measurements to Drax context and onMeasure, used when this view finishes layout.
 	const onLayout = useCallback(() => {
 		// console.log(`onLayout ${id}`);
-		measureWithHandler()
-	}, [measureWithHandler])
+		measureWithHandler();
+	}, [measureWithHandler]);
 
 	// Establish dimensions/orientation change handler when necessary.
 	useEffect(() => {
 		const handler = (/* { screen: { width, height } }: { screen: ScaledSize } */) => {
 			// console.log(`Dimensions changed to ${width}/${height}`);
-			setTimeout(measureWithHandler, 100)
-		}
-		Dimensions.addEventListener('change', handler)
-		return () => Dimensions.removeEventListener('change', handler)
-	}, [measureWithHandler])
+			setTimeout(measureWithHandler, 100);
+		};
+		Dimensions.addEventListener('change', handler);
+		return () => Dimensions.removeEventListener('change', handler);
+	}, [measureWithHandler]);
 
 	// Register and unregister externally when necessary.
 	useEffect(() => {
@@ -435,68 +435,68 @@ export const DraxView = ({
 			registration({
 				id,
 				measure: measureWithHandler,
-			})
-			return () => registration(undefined) // Unregister when we unmount or registration changes.
+			});
+			return () => registration(undefined); // Unregister when we unmount or registration changes.
 		}
-		return undefined
-	}, [id, registration, measureWithHandler])
+		return undefined;
+	}, [id, registration, measureWithHandler]);
 
 	// Get the render-related state for rendering.
-	const viewState = getViewState(id)
-	const trackingStatus = getTrackingStatus()
+	const viewState = getViewState(id);
+	const trackingStatus = getTrackingStatus();
 
 	// Get full render props for non-hovering view content.
 	const getRenderContentProps = useCallback((): DraxRenderContentProps => {
-		const measurements = measurementsRef.current
-		const dimensions = measurements && extractDimensions(measurements)
+		const measurements = measurementsRef.current;
+		const dimensions = measurements && extractDimensions(measurements);
 		return {
 			viewState,
 			trackingStatus,
 			children,
 			dimensions,
 			hover: false,
-		}
-	}, [viewState, trackingStatus, children])
+		};
+	}, [viewState, trackingStatus, children]);
 
 	// Combined style for current render-related state.
 	const combinedStyle = useMemo(() => {
 		const { dragStatus = DraxViewDragStatus.Inactive, receiveStatus = DraxViewReceiveStatus.Inactive } =
-			viewState ?? {}
-		const { dragging: anyDragging, receiving: anyReceiving } = trackingStatus
+			viewState ?? {};
+		const { dragging: anyDragging, receiving: anyReceiving } = trackingStatus;
 
 		// Start with base style.
-		const styles = [style]
+		const styles = [style];
 
 		// Apply style overrides for drag state.
 		if (dragStatus === DraxViewDragStatus.Dragging) {
-			styles.push(draggingStyle)
+			styles.push(draggingStyle);
 			if (anyReceiving) {
-				styles.push(draggingWithReceiverStyle)
+				styles.push(draggingWithReceiverStyle);
 			} else {
-				styles.push(draggingWithoutReceiverStyle)
+				styles.push(draggingWithoutReceiverStyle);
 			}
 		} else if (dragStatus === DraxViewDragStatus.Released) {
-			styles.push(dragReleasedStyle)
+			styles.push(dragReleasedStyle);
 		} else {
-			styles.push(dragInactiveStyle)
+			styles.push(dragInactiveStyle);
 			if (anyDragging) {
-				styles.push(otherDraggingStyle)
+				styles.push(otherDraggingStyle);
 				if (anyReceiving) {
-					styles.push(otherDraggingWithReceiverStyle)
+					styles.push(otherDraggingWithReceiverStyle);
 				} else {
-					styles.push(otherDraggingWithoutReceiverStyle)
+					styles.push(otherDraggingWithoutReceiverStyle);
 				}
 			}
 		}
 
 		// Apply style overrides for receiving state.
 		if (receiveStatus === DraxViewReceiveStatus.Receiving) {
-			styles.push(receivingStyle)
+			styles.push(receivingStyle);
 		} else {
-			styles.push(receiverInactiveStyle)
+			styles.push(receiverInactiveStyle);
 		}
 
-		return StyleSheet.flatten(styles)
+		return StyleSheet.flatten(styles);
 	}, [
 		viewState,
 		trackingStatus,
@@ -511,28 +511,28 @@ export const DraxView = ({
 		otherDraggingStyle,
 		otherDraggingWithReceiverStyle,
 		otherDraggingWithoutReceiverStyle,
-	])
+	]);
 
 	// The rendered React children of this view.
 	const renderedChildren = useMemo(() => {
-		let content: ReactNode
+		let content: ReactNode;
 		if (renderContent) {
-			const renderContentProps = getRenderContentProps()
-			content = renderContent(renderContentProps)
+			const renderContentProps = getRenderContentProps();
+			content = renderContent(renderContentProps);
 		} else {
-			content = children
+			content = children;
 		}
 		if (isParent) {
 			// This is a Drax parent, so wrap children in subprovider.
-			content = <DraxSubprovider parent={{ id, nodeHandleRef }}>{content}</DraxSubprovider>
+			content = <DraxSubprovider parent={{ id, nodeHandleRef }}>{content}</DraxSubprovider>;
 		}
-		return content
-	}, [renderContent, getRenderContentProps, children, isParent, id, nodeHandleRef])
+		return content;
+	}, [renderContent, getRenderContentProps, children, isParent, id, nodeHandleRef]);
 
 	const setViewRefs = useCallback((ref: View | null) => {
-		viewRef.current = ref
-		nodeHandleRef.current = ref && findNodeHandle(ref)
-	}, [])
+		viewRef.current = ref;
+		nodeHandleRef.current = ref && findNodeHandle(ref);
+	}, []);
 
 	return (
 		<LongPressGestureHandler
@@ -553,5 +553,5 @@ export const DraxView = ({
 				{renderedChildren}
 			</Animated.View>
 		</LongPressGestureHandler>
-	)
-}
+	);
+};

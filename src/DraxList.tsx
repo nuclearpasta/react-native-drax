@@ -7,7 +7,7 @@ import React, {
 	useCallback,
 	useMemo,
 	useLayoutEffect,
-} from 'react'
+} from 'react';
 import {
 	ListRenderItemInfo,
 	NativeScrollEvent,
@@ -16,11 +16,11 @@ import {
 	Animated,
 	findNodeHandle,
 	StyleSheet,
-} from 'react-native'
+} from 'react-native';
 
-import { DraxView } from './DraxView'
-import { DraxSubprovider } from './DraxSubprovider'
-import { useDraxId } from './hooks'
+import { DraxView } from './DraxView';
+import { DraxSubprovider } from './DraxSubprovider';
+import { useDraxId } from './hooks';
 import {
 	DraxListProps,
 	DraxMonitorEventData,
@@ -33,23 +33,23 @@ import {
 	DraxProtocolDragEndResponse,
 	DraxSnapbackTargetPreset,
 	isWithCancelledFlag,
-} from './types'
-import { defaultListItemLongPressDelay } from './params'
+} from './types';
+import { defaultListItemLongPressDelay } from './params';
 
 interface Shift {
-	targetValue: number
-	animatedValue: Animated.Value
+	targetValue: number;
+	animatedValue: Animated.Value;
 }
 
 interface ListItemPayload {
-	index: number
-	originalIndex: number
+	index: number;
+	originalIndex: number;
 }
 
 const defaultStyles = StyleSheet.create({
 	draggingStyle: { opacity: 0 },
 	dragReleasedStyle: { opacity: 0.5 },
-})
+});
 
 export const DraxList = <T extends unknown>({
 	data,
@@ -66,125 +66,125 @@ export const DraxList = <T extends unknown>({
 	...props
 }: PropsWithChildren<DraxListProps<T>>): ReactElement | null => {
 	// Copy the value of the horizontal property for internal use.
-	const { horizontal = false } = props
+	const { horizontal = false } = props;
 
 	// Get the item count for internal use.
-	const itemCount = data?.length ?? 0
+	const itemCount = data?.length ?? 0;
 
 	// Set a sensible default for reorderable prop.
-	const reorderable = reorderableProp ?? onItemReorder !== undefined
+	const reorderable = reorderableProp ?? onItemReorder !== undefined;
 
 	// The unique identifer for this list's Drax view.
-	const id = useDraxId(idProp)
+	const id = useDraxId(idProp);
 
 	// FlatList, used for scrolling.
-	const flatListRef = useRef<FlatList<T> | null>(null)
+	const flatListRef = useRef<FlatList<T> | null>(null);
 
 	// FlatList node handle, used for measuring children.
-	const nodeHandleRef = useRef<number | null>(null)
+	const nodeHandleRef = useRef<number | null>(null);
 
 	// Container view measurements, for scrolling by percentage.
-	const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(undefined)
+	const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(undefined);
 
 	// Content size, for scrolling by percentage.
-	const contentSizeRef = useRef<Position | undefined>(undefined)
+	const contentSizeRef = useRef<Position | undefined>(undefined);
 
 	// Scroll position, for Drax bounds checking and auto-scrolling.
-	const scrollPositionRef = useRef<Position>({ x: 0, y: 0 })
+	const scrollPositionRef = useRef<Position>({ x: 0, y: 0 });
 
 	// Original index of the currently dragged list item, if any.
-	const draggedItemRef = useRef<number | undefined>(undefined)
+	const draggedItemRef = useRef<number | undefined>(undefined);
 
 	// Auto-scrolling state.
-	const scrollStateRef = useRef(AutoScrollDirection.None)
+	const scrollStateRef = useRef(AutoScrollDirection.None);
 
 	// Auto-scrolling interval.
-	const scrollIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined)
+	const scrollIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
 	// List item measurements, for determining shift.
-	const itemMeasurementsRef = useRef<(DraxViewMeasurements | undefined)[]>([])
+	const itemMeasurementsRef = useRef<(DraxViewMeasurements | undefined)[]>([]);
 
 	// Drax view registrations, for remeasuring after reorder.
-	const registrationsRef = useRef<(DraxViewRegistration | undefined)[]>([])
+	const registrationsRef = useRef<(DraxViewRegistration | undefined)[]>([]);
 
 	// Shift offsets.
-	const shiftsRef = useRef<Shift[]>([])
+	const shiftsRef = useRef<Shift[]>([]);
 
 	// Maintain cache of reordered list indexes until data updates.
-	const [originalIndexes, setOriginalIndexes] = useState<number[]>([])
+	const [originalIndexes, setOriginalIndexes] = useState<number[]>([]);
 
 	// Maintain the index the item is currently dragged to.
-	const draggedToIndex = useRef<number | undefined>(undefined)
+	const draggedToIndex = useRef<number | undefined>(undefined);
 
 	// Adjust measurements, registrations, and shift value arrays as item count changes.
 	useEffect(() => {
-		const itemMeasurements = itemMeasurementsRef.current
-		const registrations = registrationsRef.current
-		const shifts = shiftsRef.current
+		const itemMeasurements = itemMeasurementsRef.current;
+		const registrations = registrationsRef.current;
+		const shifts = shiftsRef.current;
 		if (itemMeasurements.length > itemCount) {
-			itemMeasurements.splice(itemCount - itemMeasurements.length)
-			registrations.splice(itemCount - registrations.length)
-			shifts.splice(itemCount - shifts.length)
+			itemMeasurements.splice(itemCount - itemMeasurements.length);
+			registrations.splice(itemCount - registrations.length);
+			shifts.splice(itemCount - shifts.length);
 		} else {
 			while (itemMeasurements.length < itemCount) {
-				itemMeasurements.push(undefined)
-				registrations.push(undefined)
+				itemMeasurements.push(undefined);
+				registrations.push(undefined);
 				shifts.push({
 					targetValue: 0,
 					animatedValue: new Animated.Value(0),
-				})
+				});
 			}
 		}
-	}, [itemCount])
+	}, [itemCount]);
 
 	// Clear reorders when data changes.
 	useLayoutEffect(() => {
 		// console.log('clear reorders');
-		setOriginalIndexes(data ? [...Array(data.length).keys()] : [])
-	}, [data])
+		setOriginalIndexes(data ? [...Array(data.length).keys()] : []);
+	}, [data]);
 
 	// Apply the reorder cache to the data.
 	const reorderedData = useMemo(() => {
 		// console.log('refresh sorted data');
 		if (!id || !data) {
-			return null
+			return null;
 		}
 		if (data.length !== originalIndexes.length) {
-			return data
+			return data;
 		}
-		return originalIndexes.map((index) => data[index])
-	}, [id, data, originalIndexes])
+		return originalIndexes.map((index) => data[index]);
+	}, [id, data, originalIndexes]);
 
 	// Get shift transform for list item at index.
 	const getShiftTransform = useCallback(
 		(index: number) => {
-			const shift = shiftsRef.current[index]?.animatedValue ?? 0
-			return horizontal ? [{ translateX: shift }] : [{ translateY: shift }]
+			const shift = shiftsRef.current[index]?.animatedValue ?? 0;
+			return horizontal ? [{ translateX: shift }] : [{ translateY: shift }];
 		},
 		[horizontal],
-	)
+	);
 
 	// Set the currently dragged list item.
 	const setDraggedItem = useCallback((originalIndex: number) => {
-		draggedItemRef.current = originalIndex
-	}, [])
+		draggedItemRef.current = originalIndex;
+	}, []);
 
 	// Clear the currently dragged list item.
 	const resetDraggedItem = useCallback(() => {
-		draggedItemRef.current = undefined
-	}, [])
+		draggedItemRef.current = undefined;
+	}, []);
 
 	// Drax view renderItem wrapper.
 	const renderItem = useCallback(
 		(info: ListRenderItemInfo<T>) => {
-			const { index } = info
-			const originalIndex = originalIndexes[index]
+			const { index } = info;
+			const originalIndex = originalIndexes[index];
 			const {
 				style: itemStyle,
 				draggingStyle = defaultStyles.draggingStyle,
 				dragReleasedStyle = defaultStyles.dragReleasedStyle,
 				...otherStyleProps
-			} = itemStyles ?? {}
+			} = itemStyles ?? {};
 			return (
 				<DraxView
 					style={[itemStyle, { transform: getShiftTransform(originalIndex) }]}
@@ -196,13 +196,13 @@ export const DraxList = <T extends unknown>({
 					onDragDrop={resetDraggedItem}
 					onMeasure={(measurements) => {
 						// console.log(`measuring [${index}, ${originalIndex}]: (${measurements?.x}, ${measurements?.y})`);
-						itemMeasurementsRef.current[originalIndex] = measurements
+						itemMeasurementsRef.current[originalIndex] = measurements;
 					}}
 					registration={(registration) => {
 						if (registration) {
 							// console.log(`registering [${index}, ${originalIndex}], ${registration.id}`);
-							registrationsRef.current[originalIndex] = registration
-							registration.measure()
+							registrationsRef.current[originalIndex] = registration;
+							registration.measure();
 						}
 					}}
 					renderContent={(contentProps) => renderItemContent(info, contentProps)}
@@ -212,7 +212,7 @@ export const DraxList = <T extends unknown>({
 					}
 					longPressDelay={defaultListItemLongPressDelay}
 				/>
-			)
+			);
 		},
 		[
 			originalIndexes,
@@ -222,103 +222,103 @@ export const DraxList = <T extends unknown>({
 			renderItemContent,
 			renderItemHoverContent,
 		],
-	)
+	);
 
 	// Track the size of the container view.
 	const onMeasureContainer = useCallback((measurements: DraxViewMeasurements | undefined) => {
-		containerMeasurementsRef.current = measurements
-	}, [])
+		containerMeasurementsRef.current = measurements;
+	}, []);
 
 	// Track the size of the content.
 	const onContentSizeChange = useCallback((width: number, height: number) => {
-		contentSizeRef.current = { x: width, y: height }
-	}, [])
+		contentSizeRef.current = { x: width, y: height };
+	}, []);
 
 	// Set FlatList and node handle refs.
 	const setFlatListRefs = useCallback((ref) => {
-		flatListRef.current = ref
-		nodeHandleRef.current = ref && findNodeHandle(ref)
-	}, [])
+		flatListRef.current = ref;
+		nodeHandleRef.current = ref && findNodeHandle(ref);
+	}, []);
 
 	// Update tracked scroll position when list is scrolled.
 	const onScroll = useCallback(
 		({ nativeEvent: { contentOffset } }: NativeSyntheticEvent<NativeScrollEvent>) => {
-			scrollPositionRef.current = { ...contentOffset }
+			scrollPositionRef.current = { ...contentOffset };
 		},
 		[],
-	)
+	);
 
 	// Handle auto-scrolling on interval.
 	const doScroll = useCallback(() => {
-		const flatList = flatListRef.current
-		const containerMeasurements = containerMeasurementsRef.current
-		const contentSize = contentSizeRef.current
+		const flatList = flatListRef.current;
+		const containerMeasurements = containerMeasurementsRef.current;
+		const contentSize = contentSizeRef.current;
 		if (!flatList || !containerMeasurements || !contentSize) {
-			return
+			return;
 		}
-		let containerLength: number
-		let contentLength: number
-		let prevOffset: number
+		let containerLength: number;
+		let contentLength: number;
+		let prevOffset: number;
 		if (horizontal) {
-			containerLength = containerMeasurements.width
-			contentLength = contentSize.x
-			prevOffset = scrollPositionRef.current.x
+			containerLength = containerMeasurements.width;
+			contentLength = contentSize.x;
+			prevOffset = scrollPositionRef.current.x;
 		} else {
-			containerLength = containerMeasurements.height
-			contentLength = contentSize.y
-			prevOffset = scrollPositionRef.current.y
+			containerLength = containerMeasurements.height;
+			contentLength = contentSize.y;
+			prevOffset = scrollPositionRef.current.y;
 		}
-		const jumpLength = containerLength * 0.2
-		let offset: number | undefined
+		const jumpLength = containerLength * 0.2;
+		let offset: number | undefined;
 		if (scrollStateRef.current === AutoScrollDirection.Forward) {
-			const maxOffset = contentLength - containerLength
+			const maxOffset = contentLength - containerLength;
 			if (prevOffset < maxOffset) {
-				offset = Math.min(prevOffset + jumpLength, maxOffset)
+				offset = Math.min(prevOffset + jumpLength, maxOffset);
 			}
 		} else if (scrollStateRef.current === AutoScrollDirection.Back) {
 			if (prevOffset > 0) {
-				offset = Math.max(prevOffset - jumpLength, 0)
+				offset = Math.max(prevOffset - jumpLength, 0);
 			}
 		}
 		if (offset !== undefined) {
-			flatList.scrollToOffset({ offset })
-			flatList.flashScrollIndicators()
+			flatList.scrollToOffset({ offset });
+			flatList.flashScrollIndicators();
 		}
-	}, [horizontal])
+	}, [horizontal]);
 
 	// Start the auto-scrolling interval.
 	const startScroll = useCallback(() => {
 		if (scrollIntervalRef.current) {
-			return
+			return;
 		}
-		doScroll()
-		scrollIntervalRef.current = setInterval(doScroll, 250)
-	}, [doScroll])
+		doScroll();
+		scrollIntervalRef.current = setInterval(doScroll, 250);
+	}, [doScroll]);
 
 	// Stop the auto-scrolling interval.
 	const stopScroll = useCallback(() => {
 		if (scrollIntervalRef.current) {
-			clearInterval(scrollIntervalRef.current)
-			scrollIntervalRef.current = undefined
+			clearInterval(scrollIntervalRef.current);
+			scrollIntervalRef.current = undefined;
 		}
-	}, [])
+	}, []);
 
 	// If startScroll changes, refresh our interval.
 	useEffect(() => {
 		if (scrollIntervalRef.current) {
-			stopScroll()
-			startScroll()
+			stopScroll();
+			startScroll();
 		}
-	}, [stopScroll, startScroll])
+	}, [stopScroll, startScroll]);
 
 	// Reset all shift values.
 	const resetShifts = useCallback(() => {
 		shiftsRef.current.forEach((shift) => {
 			// eslint-disable-next-line no-param-reassign
-			shift.targetValue = 0
-			shift.animatedValue.setValue(0)
-		})
-	}, [])
+			shift.targetValue = 0;
+			shift.animatedValue.setValue(0);
+		});
+	}, []);
 
 	// Update shift values in response to a drag.
 	const updateShifts = useCallback(
@@ -326,28 +326,28 @@ export const DraxList = <T extends unknown>({
 			{ index: fromIndex, originalIndex: fromOriginalIndex }: ListItemPayload,
 			{ index: toIndex }: ListItemPayload,
 		) => {
-			const { width = 50, height = 50 } = itemMeasurementsRef.current[fromOriginalIndex] ?? {}
-			const offset = horizontal ? width : height
+			const { width = 50, height = 50 } = itemMeasurementsRef.current[fromOriginalIndex] ?? {};
+			const offset = horizontal ? width : height;
 			originalIndexes.forEach((originalIndex, index) => {
-				const shift = shiftsRef.current[originalIndex]
-				let newTargetValue = 0
+				const shift = shiftsRef.current[originalIndex];
+				let newTargetValue = 0;
 				if (index > fromIndex && index <= toIndex) {
-					newTargetValue = -offset
+					newTargetValue = -offset;
 				} else if (index < fromIndex && index >= toIndex) {
-					newTargetValue = offset
+					newTargetValue = offset;
 				}
 				if (shift.targetValue !== newTargetValue) {
-					shift.targetValue = newTargetValue
+					shift.targetValue = newTargetValue;
 					Animated.timing(shift.animatedValue, {
 						duration: 200,
 						toValue: newTargetValue,
 						useNativeDriver: true,
-					}).start()
+					}).start();
 				}
-			})
+			});
 		},
 		[originalIndexes, horizontal],
-	)
+	);
 
 	// Calculate absolute position of list item for snapback.
 	const calculateSnapbackTarget = useCallback(
@@ -355,52 +355,52 @@ export const DraxList = <T extends unknown>({
 			{ index: fromIndex, originalIndex: fromOriginalIndex }: ListItemPayload,
 			{ index: toIndex, originalIndex: toOriginalIndex }: ListItemPayload,
 		) => {
-			const containerMeasurements = containerMeasurementsRef.current
-			const itemMeasurements = itemMeasurementsRef.current
+			const containerMeasurements = containerMeasurementsRef.current;
+			const itemMeasurements = itemMeasurementsRef.current;
 			if (containerMeasurements) {
-				let targetPos: Position | undefined
+				let targetPos: Position | undefined;
 				if (fromIndex < toIndex) {
 					// Target pos(toIndex + 1) - pos(fromIndex)
-					const nextIndex = toIndex + 1
-					let nextPos: Position | undefined
+					const nextIndex = toIndex + 1;
+					let nextPos: Position | undefined;
 					if (nextIndex < itemCount) {
 						// toIndex + 1 is in the list. We can measure the position of the next item.
-						const nextMeasurements = itemMeasurements[originalIndexes[nextIndex]]
+						const nextMeasurements = itemMeasurements[originalIndexes[nextIndex]];
 						if (nextMeasurements) {
-							nextPos = { x: nextMeasurements.x, y: nextMeasurements.y }
+							nextPos = { x: nextMeasurements.x, y: nextMeasurements.y };
 						}
 					} else {
 						// toIndex is the last item of the list. We can use the list content size.
-						const contentSize = contentSizeRef.current
+						const contentSize = contentSizeRef.current;
 						if (contentSize) {
-							nextPos = horizontal ? { x: contentSize.x, y: 0 } : { x: 0, y: contentSize.y }
+							nextPos = horizontal ? { x: contentSize.x, y: 0 } : { x: 0, y: contentSize.y };
 						}
 					}
-					const fromMeasurements = itemMeasurements[fromOriginalIndex]
+					const fromMeasurements = itemMeasurements[fromOriginalIndex];
 					if (nextPos && fromMeasurements) {
 						targetPos = horizontal
 							? { x: nextPos.x - fromMeasurements.width, y: nextPos.y }
-							: { x: nextPos.x, y: nextPos.y - fromMeasurements.height }
+							: { x: nextPos.x, y: nextPos.y - fromMeasurements.height };
 					}
 				} else {
 					// Target pos(toIndex)
-					const toMeasurements = itemMeasurements[toOriginalIndex]
+					const toMeasurements = itemMeasurements[toOriginalIndex];
 					if (toMeasurements) {
-						targetPos = { x: toMeasurements.x, y: toMeasurements.y }
+						targetPos = { x: toMeasurements.x, y: toMeasurements.y };
 					}
 				}
 				if (targetPos) {
-					const scrollPosition = scrollPositionRef.current
+					const scrollPosition = scrollPositionRef.current;
 					return {
 						x: containerMeasurements.x - scrollPosition.x + targetPos.x,
 						y: containerMeasurements.y - scrollPosition.y + targetPos.y,
-					}
+					};
 				}
 			}
-			return DraxSnapbackTargetPreset.None
+			return DraxSnapbackTargetPreset.None;
 		},
 		[horizontal, itemCount, originalIndexes],
-	)
+	);
 
 	// Stop auto-scrolling, and potentially update shifts and reorder data.
 	const handleInternalDragEnd = useCallback(
@@ -409,24 +409,24 @@ export const DraxList = <T extends unknown>({
 			totalDragEnd: boolean,
 		): DraxProtocolDragEndResponse => {
 			// Always stop auto-scroll on drag end.
-			scrollStateRef.current = AutoScrollDirection.None
-			stopScroll()
+			scrollStateRef.current = AutoScrollDirection.None;
+			stopScroll();
 
-			const { dragged, receiver } = eventData
+			const { dragged, receiver } = eventData;
 
 			// Check if we need to handle this drag end.
 			if (reorderable && dragged.parentId === id) {
 				// Determine list indexes of dragged/received items, if any.
-				const fromPayload = dragged.payload as ListItemPayload
+				const fromPayload = dragged.payload as ListItemPayload;
 				const toPayload =
-					receiver?.parentId === id ? (receiver.payload as ListItemPayload) : undefined
+					receiver?.parentId === id ? (receiver.payload as ListItemPayload) : undefined;
 
-				const { index: fromIndex, originalIndex: fromOriginalIndex } = fromPayload
-				const { index: toIndex, originalIndex: toOriginalIndex } = toPayload ?? {}
-				const toItem = toOriginalIndex !== undefined ? data?.[toOriginalIndex] : undefined
+				const { index: fromIndex, originalIndex: fromOriginalIndex } = fromPayload;
+				const { index: toIndex, originalIndex: toOriginalIndex } = toPayload ?? {};
+				const toItem = toOriginalIndex !== undefined ? data?.[toOriginalIndex] : undefined;
 
 				// Reset all shifts and call callback, regardless of whether toPayload exists.
-				resetShifts()
+				resetShifts();
 				if (totalDragEnd) {
 					onItemDragEnd?.({
 						...eventData,
@@ -435,7 +435,7 @@ export const DraxList = <T extends unknown>({
 						cancelled: isWithCancelledFlag(eventData) ? eventData.cancelled : false,
 						index: fromIndex,
 						item: data?.[fromOriginalIndex],
-					})
+					});
 				}
 
 				// Reset currently dragged over position index to undefined.
@@ -447,31 +447,31 @@ export const DraxList = <T extends unknown>({
 							item: data?.[fromOriginalIndex],
 							toIndex: undefined,
 							previousIndex: draggedToIndex.current,
-						})
+						});
 					}
-					draggedToIndex.current = undefined
+					draggedToIndex.current = undefined;
 				}
 
 				if (toPayload !== undefined) {
 					// If dragged item and received item were ours, reorder data.
 					// console.log(`moving ${fromPayload.index} -> ${toPayload.index}`);
-					const snapbackTarget = calculateSnapbackTarget(fromPayload, toPayload)
+					const snapbackTarget = calculateSnapbackTarget(fromPayload, toPayload);
 					if (data) {
-						const newOriginalIndexes = originalIndexes.slice()
-						newOriginalIndexes.splice(toIndex!, 0, newOriginalIndexes.splice(fromIndex, 1)[0])
-						setOriginalIndexes(newOriginalIndexes)
+						const newOriginalIndexes = originalIndexes.slice();
+						newOriginalIndexes.splice(toIndex!, 0, newOriginalIndexes.splice(fromIndex, 1)[0]);
+						setOriginalIndexes(newOriginalIndexes);
 						onItemReorder?.({
 							fromIndex,
 							fromItem: data[fromOriginalIndex],
 							toIndex: toIndex!,
 							toItem: data[toOriginalIndex!],
-						})
+						});
 					}
-					return snapbackTarget
+					return snapbackTarget;
 				}
 			}
 
-			return undefined
+			return undefined;
 		},
 		[
 			id,
@@ -485,42 +485,42 @@ export const DraxList = <T extends unknown>({
 			onItemDragPositionChange,
 			onItemReorder,
 		],
-	)
+	);
 
 	// Monitor drag starts to handle callbacks.
 	const onMonitorDragStart = useCallback(
 		(eventData: DraxMonitorEventData) => {
-			const { dragged } = eventData
+			const { dragged } = eventData;
 			// First, check if we need to do anything.
 			if (reorderable && dragged.parentId === id) {
 				// One of our list items is starting to be dragged.
-				const { index, originalIndex }: ListItemPayload = dragged.payload
-				setDraggedItem(originalIndex)
+				const { index, originalIndex }: ListItemPayload = dragged.payload;
+				setDraggedItem(originalIndex);
 				onItemDragStart?.({
 					...eventData,
 					index,
 					item: data?.[originalIndex],
-				})
+				});
 			}
 		},
 		[id, reorderable, data, setDraggedItem, onItemDragStart],
-	)
+	);
 
 	// Monitor drags to react with item shifts and auto-scrolling.
 	const onMonitorDragOver = useCallback(
 		(eventData: DraxMonitorEventData) => {
-			const { dragged, receiver, monitorOffsetRatio } = eventData
+			const { dragged, receiver, monitorOffsetRatio } = eventData;
 			// First, check if we need to shift items.
 			if (reorderable && dragged.parentId === id) {
 				// One of our list items is being dragged.
-				const fromPayload: ListItemPayload = dragged.payload
+				const fromPayload: ListItemPayload = dragged.payload;
 
 				// Find its current position index in the list, if any.
 				const toPayload: ListItemPayload | undefined =
-					receiver?.parentId === id ? receiver.payload : undefined
+					receiver?.parentId === id ? receiver.payload : undefined;
 
 				// Check and update currently dragged over position index.
-				const toIndex = toPayload?.index
+				const toIndex = toPayload?.index;
 				if (toIndex !== draggedToIndex.current) {
 					onItemDragPositionChange?.({
 						...eventData,
@@ -528,36 +528,36 @@ export const DraxList = <T extends unknown>({
 						index: fromPayload.index,
 						item: data?.[fromPayload.originalIndex],
 						previousIndex: draggedToIndex.current,
-					})
-					draggedToIndex.current = toIndex
+					});
+					draggedToIndex.current = toIndex;
 				}
 
 				// Update shift transforms for items in the list.
-				updateShifts(fromPayload, toPayload ?? fromPayload)
+				updateShifts(fromPayload, toPayload ?? fromPayload);
 			}
 
 			// Next, see if we need to auto-scroll.
-			const ratio = horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y
+			const ratio = horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y;
 			if (ratio > 0.1 && ratio < 0.9) {
-				scrollStateRef.current = AutoScrollDirection.None
-				stopScroll()
+				scrollStateRef.current = AutoScrollDirection.None;
+				stopScroll();
 			} else {
 				if (ratio >= 0.9) {
-					scrollStateRef.current = AutoScrollDirection.Forward
+					scrollStateRef.current = AutoScrollDirection.Forward;
 				} else if (ratio <= 0.1) {
-					scrollStateRef.current = AutoScrollDirection.Back
+					scrollStateRef.current = AutoScrollDirection.Back;
 				}
-				startScroll()
+				startScroll();
 			}
 		},
 		[id, reorderable, data, updateShifts, horizontal, stopScroll, startScroll, onItemDragPositionChange],
-	)
+	);
 
 	// Monitor drag exits to stop scrolling, update shifts, and update draggedToIndex.
 	const onMonitorDragExit = useCallback(
 		(eventData: DraxMonitorEventData) => handleInternalDragEnd(eventData, false),
 		[handleInternalDragEnd],
-	)
+	);
 
 	/*
 	 * Monitor drag ends to stop scrolling, update shifts, and possibly reorder.
@@ -567,13 +567,13 @@ export const DraxList = <T extends unknown>({
 	const onMonitorDragEnd = useCallback(
 		(eventData: DraxMonitorEndEventData) => handleInternalDragEnd(eventData, true),
 		[handleInternalDragEnd],
-	)
+	);
 
 	// Monitor drag drops to stop scrolling, update shifts, and possibly reorder.
 	const onMonitorDragDrop = useCallback(
 		(eventData: DraxMonitorDragDropEventData) => handleInternalDragEnd(eventData, true),
 		[handleInternalDragEnd],
-	)
+	);
 
 	return (
 		<DraxView
@@ -598,5 +598,5 @@ export const DraxList = <T extends unknown>({
 				/>
 			</DraxSubprovider>
 		</DraxView>
-	)
-}
+	);
+};

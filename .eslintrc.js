@@ -66,4 +66,4 @@ module.exports = {
 		'@typescript-eslint/comma-dangle': [2, 'always-multiline'],
 	},
 	ignorePatterns: ['.eslintrc.js'],
-}
+};

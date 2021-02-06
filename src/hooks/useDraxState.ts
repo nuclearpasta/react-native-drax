@@ -3,9 +3,9 @@ import {
 	useReducer,
 	useMemo,
 	// useEffect,
-} from 'react'
-import { getType, createAction } from 'typesafe-actions'
-import isEqual from 'lodash.isequal'
+} from 'react';
+import { getType, createAction } from 'typesafe-actions';
+import isEqual from 'lodash.isequal';
 
 import {
 	DraxState,
@@ -18,7 +18,7 @@ import {
 	UpdateViewStatePayload,
 	DeleteViewStatePayload,
 	UpdateTrackingStatusPayload,
-} from '../types'
+} from '../types';
 
 /** Create the initial empty view state data for a newly registered view. */
 const createInitialViewState = (): DraxViewState => ({
@@ -32,7 +32,7 @@ const createInitialViewState = (): DraxViewState => ({
 	receiveOffset: undefined,
 	receiveOffsetRatio: undefined,
 	receivingDrag: undefined,
-})
+});
 
 /** Create an initial empty Drax state. */
 const createInitialState = (): DraxState => ({
@@ -41,14 +41,14 @@ const createInitialState = (): DraxState => ({
 		dragging: false,
 		receiving: false,
 	},
-})
+});
 
 /** Selector for a view state by view id. */
 const selectViewState = (state: DraxState, id: string | undefined) =>
-	id === undefined ? undefined : state.viewStateById[id]
+	id === undefined ? undefined : state.viewStateById[id];
 
 /** Selector for tracking status. */
-const selectTrackingStatus = (state: DraxState) => state.trackingStatus
+const selectTrackingStatus = (state: DraxState) => state.trackingStatus;
 
 /** Collection of Drax action creators */
 export const actions: DraxStateActionCreators = {
@@ -56,16 +56,16 @@ export const actions: DraxStateActionCreators = {
 	updateViewState: createAction('updateViewState')<UpdateViewStatePayload>(),
 	deleteViewState: createAction('deleteViewState')<DeleteViewStatePayload>(),
 	updateTrackingStatus: createAction('updateTrackingStatus')<UpdateTrackingStatusPayload>(),
-}
+};
 
 /** The DraxState reducer. */
 const reducer = (state: DraxState, action: DraxStateAction): DraxState => {
 	switch (action.type) {
 		case getType(actions.createViewState): {
-			const { id } = action.payload
-			const viewState = selectViewState(state, id)
+			const { id } = action.payload;
+			const viewState = selectViewState(state, id);
 			if (viewState) {
-				return state
+				return state;
 			}
 			return {
 				...state,
@@ -73,18 +73,18 @@ const reducer = (state: DraxState, action: DraxStateAction): DraxState => {
 					...state.viewStateById,
 					[id]: createInitialViewState(),
 				},
-			}
+			};
 		}
 		case getType(actions.updateViewState): {
-			const { id, viewStateUpdate } = action.payload
-			const viewState = selectViewState(state, id)
+			const { id, viewStateUpdate } = action.payload;
+			const viewState = selectViewState(state, id);
 			if (viewState) {
 				const newViewState = {
 					...viewState,
 					...viewStateUpdate,
-				}
+				};
 				if (isEqual(viewState, newViewState)) {
-					return state
+					return state;
 				}
 				return {
 					...state,
@@ -92,20 +92,20 @@ const reducer = (state: DraxState, action: DraxStateAction): DraxState => {
 						...state.viewStateById,
 						[id]: newViewState,
 					},
-				}
+				};
 			}
-			return state
+			return state;
 		}
 		case getType(actions.deleteViewState): {
-			const { id } = action.payload
-			const { [id]: removed, ...viewStateById } = state.viewStateById
+			const { id } = action.payload;
+			const { [id]: removed, ...viewStateById } = state.viewStateById;
 			if (removed) {
 				return {
 					...state,
 					viewStateById,
-				}
+				};
 			}
-			return state
+			return state;
 		}
 		case getType(actions.updateTrackingStatus): {
 			return {
@@ -114,23 +114,23 @@ const reducer = (state: DraxState, action: DraxStateAction): DraxState => {
 					...state.trackingStatus,
 					...action.payload,
 				},
-			}
+			};
 		}
 		default:
-			return state
+			return state;
 	}
-}
+};
 
 /** Create a Drax state and wire up its methods. */
 export const useDraxState = () => {
 	/** Reducer for storing view states and tracking status. */
-	const [state, dispatch] = useReducer(reducer, undefined, createInitialState)
+	const [state, dispatch] = useReducer(reducer, undefined, createInitialState);
 
 	/** Get state for a view by its id. */
-	const getViewState = useCallback((id: string | undefined) => selectViewState(state, id), [state])
+	const getViewState = useCallback((id: string | undefined) => selectViewState(state, id), [state]);
 
 	/** Get the current tracking status. */
-	const getTrackingStatus = useCallback(() => selectTrackingStatus(state), [state])
+	const getTrackingStatus = useCallback(() => selectTrackingStatus(state), [state]);
 
 	/** Create the Drax state object for return, only replacing reference when necessary. */
 	const draxState = useMemo(
@@ -140,7 +140,7 @@ export const useDraxState = () => {
 			dispatch,
 		}),
 		[getViewState, getTrackingStatus],
-	)
+	);
 
 	/*
 	useEffect(() => {
@@ -148,5 +148,5 @@ export const useDraxState = () => {
 	});
 	*/
 
-	return draxState
-}
+	return draxState;
+};
