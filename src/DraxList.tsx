@@ -416,6 +416,8 @@ export const DraxList = <T extends unknown>({
 		return <View style={style}></View>;
 	}, [itemCount, showDummy, containerMeasurementsRef, contentSizeRef]);
 
+	// trying to decide whether I need to add dependencies of shiftBeforeListShrinks, handleDragEnd, etc. to renderItem, as it already has it's own deps
+	// I think we can just include those functions in the deps array here, not their deps. The fns will re-define if its deps change, and renderItem will be notified.
 	// Drax view renderItem wrapper.
 	const renderItem = useCallback(
 		(info: ListRenderItemInfo<T>) => {
