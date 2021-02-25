@@ -22,6 +22,8 @@ import { getRelativePosition } from "./math";
 
 export const DraxProvider: FunctionComponent<DraxProviderProps> = ({
 	debug = false,
+	clampDrag = false, // prevent user from dragging item outside of DraxProvider container
+	multiDimensionalScroll = false, // if DraxProvider contains nested ScrollView/Flatlists, then we should disable clipping in getAbsoluteMeasurementsForViewFromRegistry
 	children,
 }) => {
 	const { getViewState, getTrackingStatus, dispatch } = useDraxState();
@@ -44,9 +46,14 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({
 		updateReceiver,
 		setMonitorIds,
 		unregisterView,
-	} = useDraxRegistry(dispatch);
+	} = useDraxRegistry(dispatch, multiDimensionalScroll);
 
 	const rootNodeHandleRef = useRef<number | null>(null);
+
+	// Grab height of first child DraxView that will contain all other DraxViews
+	const containerHeight = useRef(undefined);
+	// pass via context to first child to register as id, so we can access their measurements here (getAbsoluteViewData(id)) & clamp accordingly. Also need to pass isContainer prop to the first child view.
+	const containerId = clampDrag ? 9999999 : undefined;
 
 	const handleGestureStateChange = useCallback(
 		(id: string, event: DraxGestureStateChangeEvent) => {
@@ -256,6 +263,10 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({
 						dragTranslation,
 						dragged: eventDataDragged,
 						receiver: eventDataReceiver,
+						draggedDimensions: {
+							width: draggedData.width,
+							height: draggedData.height,
+						},
 					};
 
 					let response = draggedData.protocol.onDragDrop?.(eventData);
@@ -337,6 +348,10 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({
 						const monitorEventData = {
 							...eventData,
 							receiver: eventReceiverData,
+							draggedDimensions: {
+								width: draggedData.width,
+								height: draggedData.height,
+							},
 						};
 						monitors.forEach(({ data: monitorData }) => {
 							const {
@@ -481,6 +496,10 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({
 								...eventData,
 								monitorOffset,
 								monitorOffsetRatio,
+								draggedDimensions: {
+									width: draggedData.width,
+									height: draggedData.height,
+								},
 							};
 							monitorData.protocol.onMonitorDragStart?.(
 								monitorEventData
@@ -519,6 +538,14 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({
 			}
 
 			const dragged = getTrackingDragged();
+
+			// Grab dimensions of dragged item to include in monitor events
+			const draggedData = dragged?.data ?? getAbsoluteViewData(id);
+
+			if (containerHeight.current === undefined && clampDrag) {
+				containerHeight.current = getAbsoluteViewData(containerId);
+				// console.log('containerHeight', containerHeight.current.absoluteMeasurements.height)
+			}
 
 			if (dragged === undefined) {
 				// We're not tracking any gesture yet.
@@ -595,8 +622,20 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({
 			// Get the previous receiver, if any.
 			const oldReceiver = getTrackingReceiver();
 
+			// RN: Prevent tile from going over 'Calendar' header
+			const clampDragPosition = {
+				x: dragAbsolutePosition.x,
+				y: Math.min(
+					Math.max(0, dragAbsolutePosition.y),
+					containerHeight.current?.absoluteMeasurements.height ??
+						dragAbsolutePosition.y
+				),
+			};
+
 			// Always update the drag position.
-			updateDragPosition(dragAbsolutePosition);
+			updateDragPosition(
+				clampDrag ? clampDragPosition : dragAbsolutePosition
+			);
 
 			const draggedProtocol = dragged.data.protocol;
 
@@ -758,6 +797,10 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({
 							...monitorEventDataStub,
 							monitorOffset,
 							monitorOffsetRatio,
+							draggedDimensions: {
+								width: draggedData.width,
+								height: draggedData.height,
+							},
 						};
 						if (prevMonitorIds.includes(monitorId)) {
 							// Drag was already over this monitor.
@@ -790,6 +833,10 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({
 								...monitorEventDataStub,
 								monitorOffset,
 								monitorOffsetRatio,
+								draggedDimensions: {
+									width: draggedData.width,
+									height: draggedData.height,
+								},
 							});
 						}
 					});
@@ -821,6 +868,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({
 		handleGestureStateChange,
 		handleGestureEvent,
 		rootNodeHandleRef,
+		containerId,
 	};
 
 	const hoverViews: ReactNodeArray = [];

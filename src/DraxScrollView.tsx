@@ -13,7 +13,7 @@ import {
 
 import { DraxView } from "./DraxView";
 import { DraxSubprovider } from "./DraxSubprovider";
-import { useDraxId } from "./hooks";
+import { useDraxContext, useDraxId } from "./hooks";
 import {
 	DraxScrollViewProps,
 	AutoScrollDirection,
@@ -40,10 +40,15 @@ export const DraxScrollView = ({
 	autoScrollBackThreshold = defaultAutoScrollBackThreshold,
 	autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
 	id: idProp,
+	isContainer,
 	...props
 }: PropsWithChildren<DraxScrollViewProps>) => {
 	// The unique identifer for this view.
-	const id = useDraxId(idProp);
+	const { containerId } = useDraxContext();
+	const draxId = useDraxId(idProp);
+	// DraxProvider must have been provided prop clampDrag AND this must be provided isContainer
+	// to provide DraxProvider with this view's dimensions, for it to implement clamp of drag
+	const id = isContainer && containerId ? containerId : draxId;
 
 	// Scrollable view, used for scrolling.
 	const scrollRef = useRef<ScrollView | null>(null);
@@ -62,6 +67,9 @@ export const DraxScrollView = ({
 	// Scroll position, for Drax bounds checking and auto-scrolling.
 	const scrollPositionRef = useRef<Position>({ x: 0, y: 0 });
 
+	// Ensure user's finger hasn't left the vertical scroll view. If it has, disallow tile drops in DraxList(through context).
+	const [exitedVerticalScroll, setExitedVerticalScroll] = useState(false);
+
 	// Auto-scroll state.
 	const autoScrollStateRef = useRef<AutoScrollState>({
 		x: AutoScrollDirection.None,
@@ -73,6 +81,7 @@ export const DraxScrollView = ({
 
 	// Handle auto-scrolling on interval.
 	const doScroll = useCallback(() => {
+		// console.log('executing doScroll id:', autoScrollIntervalRef.current)
 		const scroll = scrollRef.current;
 		const containerMeasurements = containerMeasurementsRef.current;
 		const contentSize = contentSizeRef.current;
@@ -160,6 +169,46 @@ export const DraxScrollView = ({
 		[]
 	);
 
+	const onMonitorDragStart = useCallback(
+		(eventData) => {
+			// console.log('\n', 'onMonitorDragStart: id', id, '\n')
+			setExitedVerticalScroll(false);
+			return resetScroll();
+		},
+		[resetScroll]
+	);
+
+	const onMonitorDragEnter = useCallback(
+		(eventData) => {
+			// console.log('\n', 'onMonitorDragEnter: id', id, '\n')
+			setExitedVerticalScroll(false);
+			return resetScroll();
+		},
+		[resetScroll]
+	);
+
+	const onMonitorDragExit = useCallback((eventData) => {
+		// console.log('\n', 'onMonitorDragExit: id', id, '\n')
+		setExitedVerticalScroll(true);
+		// don't reset scroll here -- continue autoscrolling. Allow DraxView's onDragDrop to clear interval.
+	}, []);
+
+	const onMonitorDragEnd = useCallback(
+		(eventData) => {
+			// console.log('\n', 'onMonitorDragEnd id:', id, '\n')
+			return resetScroll();
+		},
+		[resetScroll]
+	);
+
+	const onMonitorDragDrop = useCallback(
+		(eventData) => {
+			// console.log('\n', 'onMonitorDragDrop id:', id, '\n')
+			return resetScroll();
+		},
+		[resetScroll]
+	);
+
 	// Monitor drag-over events to react with auto-scrolling.
 	const onMonitorDragOver = useCallback(
 		(event: DraxMonitorEventData) => {
@@ -229,11 +278,21 @@ export const DraxScrollView = ({
 			scrollPositionRef={scrollPositionRef}
 			onMeasure={onMeasureContainer}
 			onMonitorDragOver={onMonitorDragOver}
-			onMonitorDragExit={resetScroll}
-			onMonitorDragEnd={resetScroll}
-			onMonitorDragDrop={resetScroll}
+			onMonitorDragExit={onMonitorDragExit}
+			onMonitorDragEnd={onMonitorDragEnd}
+			onMonitorDragDrop={onMonitorDragDrop}
+			onMonitorDragEnter={onMonitorDragEnter}
+			onMonitorDragStart={onMonitorDragStart}
 		>
-			<DraxSubprovider parent={{ id, nodeHandleRef }}>
+			<DraxSubprovider
+				parent={{
+					id,
+					nodeHandleRef,
+					verticalScrollPositionRef: scrollPositionRef.current,
+					exitedVerticalScroll,
+					containerAutoScrollId: autoScrollIntervalRef.current,
+				}}
+			>
 				<ScrollView
 					{...props}
 					ref={setScrollViewRefs}

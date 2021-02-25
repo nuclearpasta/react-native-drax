@@ -71,7 +71,8 @@ const getViewDataFromRegistry = (
 const getAbsoluteMeasurementsForViewFromRegistry = (
 	registry: DraxRegistry,
 	{ measurements, parentId }: DraxViewData,
-	clipped: boolean = false
+	clipped: boolean = false,
+	multiDimensionalScroll: boolean
 ): DraxViewMeasurements | undefined => {
 	if (!measurements) {
 		// console.log('Failed to get absolute measurements for view: no measurements');
@@ -88,7 +89,8 @@ const getAbsoluteMeasurementsForViewFromRegistry = (
 	const parentMeasurements = getAbsoluteMeasurementsForViewFromRegistry(
 		registry,
 		parentViewData,
-		clipped
+		clipped,
+		multiDimensionalScroll
 	);
 	if (!parentMeasurements) {
 		// console.log(`Failed to get absolute measurements for view: no absolute measurements for parent id ${parentId}`);
@@ -104,13 +106,19 @@ const getAbsoluteMeasurementsForViewFromRegistry = (
 		x: parentX + x - offsetX,
 		y: parentY + y - offsetY,
 	};
-	return clipped ? clipMeasurements(abs, parentMeasurements) : abs;
+
+	// to clip, both clipped must be true & multiDimScroll false.
+	// The latter to allow movement from one list to a single other list, as clipping causes a drop in every other list
+	return clipped && !multiDimensionalScroll
+		? clipMeasurements(abs, parentMeasurements)
+		: abs;
 };
 
 /** Get data, including absolute measurements, for a registered view by its id. */
 const getAbsoluteViewDataFromRegistry = (
 	registry: DraxRegistry,
-	id: string | undefined
+	id: string | undefined,
+	multiDimensionalScroll: boolean
 ): DraxAbsoluteViewData | undefined => {
 	const viewData = getViewDataFromRegistry(registry, id);
 	if (!viewData) {
@@ -119,7 +127,9 @@ const getAbsoluteViewDataFromRegistry = (
 	}
 	const absoluteMeasurements = getAbsoluteMeasurementsForViewFromRegistry(
 		registry,
-		viewData
+		viewData,
+		true,
+		multiDimensionalScroll
 	);
 	if (!absoluteMeasurements) {
 		// console.log(`No absolute measurements for id ${id}`);
@@ -151,7 +161,8 @@ const getAbsoluteViewEntryFromRegistry = (
 const findMonitorsAndReceiverInRegistry = (
 	registry: DraxRegistry,
 	absolutePosition: Position,
-	excludeViewId: string
+	excludeViewId: string,
+	multiDimensionalScroll: boolean
 ) => {
 	const monitors: DraxFoundAbsoluteViewEntry[] = [];
 	let receiver: DraxFoundAbsoluteViewEntry | undefined;
@@ -184,7 +195,8 @@ const findMonitorsAndReceiverInRegistry = (
 		const absoluteMeasurements = getAbsoluteMeasurementsForViewFromRegistry(
 			registry,
 			target,
-			true
+			true,
+			multiDimensionalScroll
 		);
 
 		if (!absoluteMeasurements) {
@@ -486,7 +498,10 @@ const resetDragInRegistry = (
 
 	// Determine if/where/how to snapback.
 	let snapping = false;
-	if (snapbackTarget !== DraxSnapbackTargetPreset.None && draggedData) {
+	if (
+		snapbackTarget.target !== DraxSnapbackTargetPreset.None &&
+		draggedData
+	) {
 		const {
 			internalRenderHoverView,
 			onSnapbackEnd,
@@ -498,9 +513,9 @@ const resetDragInRegistry = (
 		if (internalRenderHoverView && animateSnapback) {
 			let toValue: Position | undefined;
 
-			if (isPosition(snapbackTarget)) {
+			if (isPosition(snapbackTarget.target)) {
 				// Snapback to specified target.
-				toValue = snapbackTarget;
+				toValue = snapbackTarget.target;
 			} else {
 				// Snapback to default position (where original view is).
 				toValue = {
@@ -551,6 +566,12 @@ const resetDragInRegistry = (
 								},
 							})
 						);
+					}
+					// update state after animation completes, whether successful or not
+					if (snapbackTarget.callback) {
+						// console.log('calling snapback callback')
+						snapbackTarget.callback();
+						// console.log('after snapbackTarget.callback called!')
 					}
 				});
 			}
@@ -795,7 +816,10 @@ const unregisterViewInRegistry = (
 };
 
 /** Create a Drax registry and wire up all of the methods. */
-export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
+export const useDraxRegistry = (
+	stateDispatch: DraxStateDispatch,
+	multiDimensionalScroll: boolean
+) => {
 	/** Registry for tracking views and drags. */
 	const registryRef = useRef(createInitialRegistry(stateDispatch));
 
@@ -820,7 +844,11 @@ export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
 	/** Get data, including absolute measurements, for a registered view by its id. */
 	const getAbsoluteViewData = useCallback(
 		(id: string | undefined) =>
-			getAbsoluteViewDataFromRegistry(registryRef.current, id),
+			getAbsoluteViewDataFromRegistry(
+				registryRef.current,
+				id,
+				multiDimensionalScroll
+			),
 		[]
 	);
 
@@ -871,7 +899,8 @@ export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
 			findMonitorsAndReceiverInRegistry(
 				registryRef.current,
 				absolutePosition,
-				excludeViewId
+				excludeViewId,
+				multiDimensionalScroll
 			),
 		[]
 	);
