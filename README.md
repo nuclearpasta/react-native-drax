@@ -2,7 +2,7 @@
 
 **A drag-and-drop system for React Native**
 
-*"Not to be confused with react-native-picksaw"*
+_"Not to be confused with react-native-picksaw"_
 
 [![npm version](https://badge.fury.io/js/react-native-drax.svg)](https://badge.fury.io/js/react-native-drax)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE-OF-CONDUCT.md)
@@ -15,20 +15,21 @@ Drax is a declarative drag-and-drop system for React Native, written in TypeScri
 
 #### Contents
 
-* [Screenshots](#screenshots)
-* [Status](#status)
-* [Background](#background)
-* [Concept](#concept)
-* [Installation](#installation)
-* [Usage](#usage)
-* [Caveats](#caveats)
-* [Examples](#examples)
-* [Contributing](#contributing)
-* [Code of Conduct](#code-of-conduct)
-* [License](#license)
-* [Acknowledgments](#acknowledgments)
+- [Screenshots](#screenshots)
+- [Status](#status)
+- [Background](#background)
+- [Concept](#concept)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Caveats](#caveats)
+- [Examples](#examples)
+- [Contributing](#contributing)
+- [Code of Conduct](#code-of-conduct)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
 
 <a name="screenshots"></a>
+
 ## Screenshots
 
 <a href="docs/images/color-drag-drop.gif"><img src="docs/images/color-drag-drop.gif" width="200" alt="Color Drag-and-Drop" /></a>
@@ -39,11 +40,13 @@ Drax is a declarative drag-and-drop system for React Native, written in TypeScri
 (Click images to see larger versions.)
 
 <a name="status"></a>
+
 ## Status
 
 This library adheres to [Semantic Versioning (semver)](https://semver.org/) and is in its [0.y.z initial development phase](https://semver.org/#how-should-i-deal-with-revisions-in-the-0yz-initial-development-phase). It has been released so that early adopters (such as the project author) can begin to use it in production and identify gaps in the functionality. The API is subject to potentially significant rework until version 1.0.0 is released, and any minor version increment before then may include breaking changes. Documentation and full examples are still being written.
 
 <a name="background"></a>
+
 ## Background
 
 To give an idea of the problem this library is trying to solve, here is some informal background from the creator:
@@ -79,11 +82,13 @@ To give an idea of the problem this library is trying to solve, here is some inf
 > who are working in this space.
 
 <a name="concept"></a>
+
 ## Concept
 
 Descriptions of the library's approach, underlying implementation, and drag-and-drop event lifecycle can be found in the [Concept Document](docs/concept.md).
 
 <a name="installation"></a>
+
 ## Installation
 
 First you must have a project using `react-native` version `>=0.62`, including `react-native-gesture-handler` version `>=1.8.0`. For further information on installing the latter, see [that library's documentation](https://software-mansion.github.io/react-native-gesture-handler/docs/getting-started.html).
@@ -99,6 +104,7 @@ or
 There is no Cocoapods or native linking step here. You've already covered those needs with `react-native-gesture-handler`.
 
 <a name="usage"></a>
+
 ## Usage
 
 ### Basic Usage
@@ -106,34 +112,34 @@ There is no Cocoapods or native linking step here. You've already covered those 
 Import the library components:
 
 ```ts
-import { DraxProvider, DraxView } from 'react-native-drax';
+import { DraxProvider, DraxView } from "react-native-drax";
 ```
 
 Wrap the area of your app that will use Drax with a `DraxProvider`, and create a couple `DraxView`s, one draggable and one receptive:
 
 ```tsx
 <DraxProvider>
-    <View style={styles.container}>
-        <DraxView
-            style={styles.draggable}
-            onDragStart={() => {
-                console.log('start drag');
-            }}
-            payload="world"
-        />
-        <DraxView
-            style={styles.receiver}
-            onReceiveDragEnter={({ dragged: { payload } }) => {
-                console.log(`hello ${payload}`);
-            }}
-            onReceiveDragExit={({ dragged: { payload } }) => {
-                console.log(`goodbye ${payload}`);
-            }}
-            onReceiveDragDrop={({ dragged: { payload } }) => {
-                console.log(`received ${payload}`);
-            }}
-        />
-    </View>
+  <View style={styles.container}>
+    <DraxView
+      style={styles.draggable}
+      onDragStart={() => {
+        console.log("start drag");
+      }}
+      payload="world"
+    />
+    <DraxView
+      style={styles.receiver}
+      onReceiveDragEnter={({ dragged: { payload } }) => {
+        console.log(`hello ${payload}`);
+      }}
+      onReceiveDragExit={({ dragged: { payload } }) => {
+        console.log(`goodbye ${payload}`);
+      }}
+      onReceiveDragDrop={({ dragged: { payload } }) => {
+        console.log(`received ${payload}`);
+      }}
+    />
+  </View>
 </DraxProvider>
 ```
 
@@ -141,21 +147,21 @@ The styles are provided here for completeness:
 
 ```ts
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    draggable: {
-        width: 100,
-        height: 100,
-        backgroundColor: 'blue',
-    },
-    receiver: {
-        width: 100,
-        height: 100,
-        backgroundColor: 'green',
-    },
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  draggable: {
+    width: 100,
+    height: 100,
+    backgroundColor: "blue",
+  },
+  receiver: {
+    width: 100,
+    height: 100,
+    backgroundColor: "green",
+  },
 });
 ```
 
@@ -163,9 +169,10 @@ This will give you a blue box which can be dragged around and a green box which 
 
 ### API
 
-*Full API description coming soon*
+_Full API description coming soon_
 
 <a name="caveats"></a>
+
 ## Caveats
 
 This library has several [known issues and limitations](https://github.com/nuclearpasta/react-native-drax/issues?q=is%3Aissue+is%3Aopen+label%3Areproduced), particularly around the [Android](https://github.com/nuclearpasta/react-native-drax/issues?q=is%3Aissue+is%3Aopen+label%3Aandroid) platform. We hope to address these and improve the library over time. For most use cases, the current functionality is probably fine.
@@ -173,6 +180,7 @@ This library has several [known issues and limitations](https://github.com/nucle
 This library has been developed with React Native 0.61 and React Native Gesture Handler 1.5, and due to complexity, its use with older versions of them will not be supported.
 
 <a name="examples"></a>
+
 ## Examples
 
 A reference application can be found at [`react-native-drax-example`](https://github.com/nuclearpasta/react-native-drax-example) demonstrating several use cases.
@@ -185,21 +193,25 @@ If you don't want to download and run the sample application, here are two Snack
 Note: these Snack examples will not work in the Web device. You must use an iOS (default) or Android device.
 
 <a name="contributing"></a>
+
 ## Contributing
 
 See the [Contribution Guidelines](CONTRIBUTING.md) for details.
 
 <a name="code-of-conduct"></a>
+
 ## Code of Conduct
 
 Please note that this project is released with a [Contributor Code of Conduct](CODE-OF-CONDUCT.md). By participating in this project you agree to abide by its terms.
 
 <a name="license"></a>
+
 ## License
 
 This software library is licensed under the [MIT License](LICENSE.md).
 
 <a name="acknowledgements"></a>
+
 ## Acknowledgments
 
 The bulk of this library was written by [Joe Lafiosca](https://twitter.com/joelafiosca) over the course of December 2019. Joe would like to give thanks to co-founder Mark Thomas for being patient with the development process. Joe would also like to give thanks to Lena Raine, Tom Jenkinson, Rollie Pemberton, David Minnick, Tim Smith, and Danny Baranowsky for providing most of the coding background music that inspired this work.

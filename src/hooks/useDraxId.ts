@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState } from "react";
 
-import { generateRandomId } from '../math';
+import { generateRandomId } from "../math";
 
 // Return explicitId, or a consistent randomly generated identifier if explicitId is falsy.
 export const useDraxId = (explicitId?: string) => {
