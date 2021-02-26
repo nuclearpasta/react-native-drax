@@ -68,7 +68,7 @@ export const DraxScrollView = ({
 	const scrollPositionRef = useRef<Position>({ x: 0, y: 0 });
 
 	// Ensure user's finger hasn't left the vertical scroll view. If it has, disallow tile drops in DraxList(through context).
-	const [exitedVerticalScroll, setExitedVerticalScroll] = useState(false);
+	const [exitedScroll, setExitedScroll] = useState(false);
 
 	// Auto-scroll state.
 	const autoScrollStateRef = useRef<AutoScrollState>({
@@ -172,7 +172,7 @@ export const DraxScrollView = ({
 	const onMonitorDragStart = useCallback(
 		(eventData) => {
 			// console.log('\n', 'onMonitorDragStart: id', id, '\n')
-			setExitedVerticalScroll(false);
+			setExitedScroll(false);
 			return resetScroll();
 		},
 		[resetScroll]
@@ -181,7 +181,7 @@ export const DraxScrollView = ({
 	const onMonitorDragEnter = useCallback(
 		(eventData) => {
 			// console.log('\n', 'onMonitorDragEnter: id', id, '\n')
-			setExitedVerticalScroll(false);
+			setExitedScroll(false);
 			return resetScroll();
 		},
 		[resetScroll]
@@ -189,7 +189,7 @@ export const DraxScrollView = ({
 
 	const onMonitorDragExit = useCallback((eventData) => {
 		// console.log('\n', 'onMonitorDragExit: id', id, '\n')
-		setExitedVerticalScroll(true);
+		setExitedScroll(true);
 		// don't reset scroll here -- continue autoscrolling. Allow DraxView's onDragDrop to clear interval.
 	}, []);
 
@@ -288,8 +288,8 @@ export const DraxScrollView = ({
 				parent={{
 					id,
 					nodeHandleRef,
-					verticalScrollPositionRef: scrollPositionRef.current,
-					exitedVerticalScroll,
+					containerScrollPosition: scrollPositionRef.current,
+					dragExitedContainer: exitedScroll,
 					containerAutoScrollId: autoScrollIntervalRef.current,
 				}}
 			>

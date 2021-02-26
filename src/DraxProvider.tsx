@@ -868,6 +868,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({
 		handleGestureStateChange,
 		handleGestureEvent,
 		rootNodeHandleRef,
+		getTrackingDragged,
 		containerId,
 	};
 
