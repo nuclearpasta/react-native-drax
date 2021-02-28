@@ -142,6 +142,8 @@ export interface DraxMonitorEventData extends DraxDragEventData {
 	monitorOffset: Position;
 	/** Event position/dimensions ratio relative to the monitor */
 	monitorOffsetRatio: Position;
+	// RN added
+	draggedDimensions: DraxViewMeasurements;
 }
 
 /** Data about a Drax monitor drag end event */

@@ -111,9 +111,7 @@ export const DraxList = <T extends unknown>({
 	// Maintain the index the item is currently dragged to.
 	const draggedToIndex = useRef<number | undefined>(undefined);
 	// Maintain the dimensions of the last dragged item from another DraxList.
-	// initial dimensions must be supplied for useMemo to initially work - we set w/ help of initialRender
-	const dummyItemDimensions = useRef();
-	const initialRender = useRef(true);
+	const [dummyItemDimensions, setDummyItemDimensions] = useState(null);
 
 	// if dummyItem prop is true, then append an object to our data array
 	const dataUpdated = useMemo(() => {
@@ -149,19 +147,24 @@ export const DraxList = <T extends unknown>({
 
 	// update the dummyItemDimensions ref upon receiving a drag of a DraxView belonging to another DraxList
 	useEffect(() => {
+		if (!showDummy) {
+			const newData = { height: 0, width: 0 };
+			// console.log('dummy item dimensions updated', newData)
+			setDummyItemDimensions(newData);
+		}
 		// grab the currently dragged item in the entire system from context
 		const draggedItem = getTrackingDragged();
 		const draggedItemMeasurements = draggedItem?.data.absoluteMeasurements;
 		// this way, our value won't become undefined the moment a DraxView is released from drag. gets us dimensions of last dragged DraxView.
 		if (draggedItemMeasurements) {
-			// console.log('dummy item dimensions updated', draggedItemMeasurements)
-			dummyItemDimensions.current = draggedItemMeasurements;
-			// if initial render, then set it to false, which triggers renderDummyItem immediately
-			if (initialRender.current) {
-				initialRender.current = false;
-			}
+			const newData = {
+				height: draggedItemMeasurements.height,
+				width: draggedItemMeasurements.width,
+			};
+			// console.log('dummy item dimensions updated', newData)
+			setDummyItemDimensions(newData);
 		}
-	}, [showDummy, data]);
+	}, [showDummy]);
 
 	// reset shifts on change to data
 	useEffect(() => {
@@ -416,8 +419,8 @@ export const DraxList = <T extends unknown>({
 			: contentSizeRef.current?.x;
 
 		const itemLength = horizontal
-			? dummyItemDimensions.current?.width
-			: dummyItemDimensions.current?.height;
+			? dummyItemDimensions?.width
+			: dummyItemDimensions?.height;
 
 		//#region
 		// dummyItem's length should be a minimum of dragged item's length, & maximum of containerLength
@@ -425,8 +428,19 @@ export const DraxList = <T extends unknown>({
 		// into this day is guaranteed to work. ditto for one item, should fill up rest of length.
 		////#endregion
 		let length;
+		// console.log('content', id, 'length:', contentLength)
 		if (itemCount - 1 > 0) {
-			length = Math.max(containerLength - contentLength, itemLength ?? 0);
+			let trueContentLength = contentLength ?? 0;
+			if (dummyItem) {
+				trueContentLength =
+					contentLength -
+					(itemMeasurementsRef.current[itemCount - 1]?.width ?? 0);
+				// console.log('trueContentLength:', trueContentLength)
+			}
+			length = Math.max(
+				containerLength - trueContentLength,
+				itemLength ?? 0
+			);
 		} else {
 			length = containerLength;
 		}
@@ -439,11 +453,9 @@ export const DraxList = <T extends unknown>({
 		return <View style={style}></View>;
 	}, [
 		itemCount,
-		showDummy,
 		containerMeasurementsRef,
 		contentSizeRef,
 		dummyItemDimensions,
-		initialRender.current, // usually don't want to use a ref.current, but necessary for first init of dragged item length
 	]);
 
 	const renderItem = useCallback(
@@ -673,7 +685,7 @@ export const DraxList = <T extends unknown>({
 		[originalIndexes, horizontal]
 	);
 
-	// Calculate absolute position of list item for snapback. TODO
+	// Calculate absolute position of list item for snapback.
 	const calculateSnapbackTarget = useCallback(
 		(draggedInfo, receiverPayload) => {
 			const { draggedPayload, draggedParentId } = draggedInfo;
@@ -766,7 +778,7 @@ export const DraxList = <T extends unknown>({
 		[horizontal, itemCount, originalIndexes]
 	);
 
-	// Stop auto-scrolling, and potentially update shifts and reorder data. TODO
+	// Stop auto-scrolling, and potentially update shifts and reorder data.
 	const handleInternalDragEnd = useCallback(
 		(
 			eventData:
@@ -1144,13 +1156,16 @@ export const DraxList = <T extends unknown>({
 		[handleInternalDragEnd]
 	);
 
-	const onMonitorDragEnter = useCallback((eventData) => {
-		// console.log('onMonitorDragEnter', id)
-		if (eventData.dragged.parentId !== id) {
-			// console.log('setShowDummy true')
-			setShowDummy(true);
-		}
-	}, []);
+	const onMonitorDragEnter = useCallback(
+		(eventData: DraxMonitorEventData) => {
+			// console.log('onMonitorDragEnter', id)
+			if (eventData.dragged.parentId !== id) {
+				// console.log('setShowDummy true')
+				setShowDummy(true);
+			}
+		},
+		[]
+	);
 
 	return (
 		<DraxView
