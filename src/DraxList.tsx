@@ -54,7 +54,7 @@ const defaultStyles = StyleSheet.create({
 	dragReleasedStyle: { opacity: 0.5 },
 });
 
-export const DraxListComponent = <T extends any>(
+const DraxListComponent = <T extends any>(
 	{
 		data,
 		style,
