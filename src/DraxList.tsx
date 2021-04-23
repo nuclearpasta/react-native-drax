@@ -663,5 +663,5 @@ const DraxListComponent = <T extends any>(
 };
 			  
 export const DraxList = React.forwardRef(DraxListComponent) as
-<T extends any>(p: DraxListComponentProps<T> & { ref?: FlatListRefType }) => React.ReactNode
+<T extends any>(p: DraxListComponentProps<T> & { ref?: FlatListRefType }) => React.ReactElement | null
 
