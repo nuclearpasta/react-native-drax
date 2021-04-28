@@ -64,6 +64,8 @@ export const DraxList = <T extends unknown>(
 		onItemReorder,
 		id: idProp,
 		reorderable: reorderableProp,
+		onScroll: onScrollProp,
+		itemsDraggable = true,
 		...props
 	}: PropsWithChildren<DraxListProps<T>>,
 ): ReactElement | null => {
@@ -213,6 +215,7 @@ export const DraxList = <T extends unknown>(
 					payload={{ index, originalIndex }}
 					onDragEnd={resetDraggedItem}
 					onDragDrop={resetDraggedItem}
+					draggable={itemsDraggable}
 					onMeasure={(measurements) => {
 						// console.log(`measuring [${index}, ${originalIndex}]: (${measurements?.x}, ${measurements?.y})`);
 						itemMeasurementsRef.current[originalIndex] = measurements;
@@ -233,9 +236,10 @@ export const DraxList = <T extends unknown>(
 		},
 		[
 			originalIndexes,
+			itemStyles,
 			getShiftTransform,
 			resetDraggedItem,
-			itemStyles,
+			itemsDraggable,
 			renderItemContent,
 			renderItemHoverContent,
 		],
@@ -268,10 +272,12 @@ export const DraxList = <T extends unknown>(
 
 	// Update tracked scroll position when list is scrolled.
 	const onScroll = useCallback(
-		({ nativeEvent: { contentOffset } }: NativeSyntheticEvent<NativeScrollEvent>) => {
+		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+			const { nativeEvent: { contentOffset } } = event;
 			scrollPositionRef.current = { ...contentOffset };
+			onScrollProp?.(event);
 		},
-		[],
+		[onScrollProp],
 	);
 
 	// Handle auto-scrolling on interval.
