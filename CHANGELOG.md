@@ -12,6 +12,12 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - (BREAKING) Rename `useDrax` to `useDraxContext`
 - Simplify DraxList rendering because Drax ids cannot be empty since 0.7.0
 
+### Fixed
+- Honor `onScroll` prop of `DraxList` (#63)
+
+### Added
+- Added `itemsDraggable` prop to `DraxList` to allow explicitly disabling dragging of all items (#62)
+
 ## [0.7.2] - 2020-10-13
 
 ### Changed
