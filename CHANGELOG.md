@@ -11,6 +11,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ### Changed
 - (BREAKING) Rename `useDrax` to `useDraxContext`
 - Simplify DraxList rendering because Drax ids cannot be empty since 0.7.0
+- Bump y18n from 4.0.0 to 4.0.3 (dependabot)
 
 ### Fixed
 - Honor `onScroll` prop of `DraxList` (#63)
