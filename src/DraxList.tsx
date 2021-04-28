@@ -64,8 +64,8 @@ export const DraxList = <T extends unknown>(
 		onItemReorder,
 		id: idProp,
 		reorderable: reorderableProp,
-		draggable: draggableProp,
 		onScroll: onScrollProp,
+		itemsDraggable = true,
 		...props
 	}: PropsWithChildren<DraxListProps<T>>,
 ): ReactElement | null => {
@@ -77,9 +77,6 @@ export const DraxList = <T extends unknown>(
 
 	// Set a sensible default for reorderable prop.
 	const reorderable = reorderableProp ?? (onItemReorder !== undefined);
-
-	// Set a sensible default for reorderable prop.
-	const draggable = draggableProp ?? (onItemReorder !== undefined);
 
 	// The unique identifer for this list's Drax view.
 	const id = useDraxId(idProp);
@@ -218,7 +215,7 @@ export const DraxList = <T extends unknown>(
 					payload={{ index, originalIndex }}
 					onDragEnd={resetDraggedItem}
 					onDragDrop={resetDraggedItem}
-					draggable={draggable}
+					draggable={itemsDraggable}
 					onMeasure={(measurements) => {
 						// console.log(`measuring [${index}, ${originalIndex}]: (${measurements?.x}, ${measurements?.y})`);
 						itemMeasurementsRef.current[originalIndex] = measurements;
@@ -239,12 +236,12 @@ export const DraxList = <T extends unknown>(
 		},
 		[
 			originalIndexes,
+			itemStyles,
 			getShiftTransform,
 			resetDraggedItem,
-			itemStyles,
+			itemsDraggable,
 			renderItemContent,
 			renderItemHoverContent,
-			draggable,
 		],
 	);
 
@@ -275,10 +272,12 @@ export const DraxList = <T extends unknown>(
 
 	// Update tracked scroll position when list is scrolled.
 	const onScroll = useCallback(
-		({ nativeEvent: { contentOffset } }: NativeSyntheticEvent<NativeScrollEvent>) => {
+		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+			const { nativeEvent: { contentOffset } } = event;
 			scrollPositionRef.current = { ...contentOffset };
+			onScrollProp?.(event);
 		},
-		[],
+		[onScrollProp],
 	);
 
 	// Handle auto-scrolling on interval.
@@ -659,10 +658,7 @@ export const DraxList = <T extends unknown>(
 					{...props}
 					ref={setFlatListRefs}
 					renderItem={renderItem}
-					onScroll={(scrollEvent) => {
-						onScroll(scrollEvent);
-						if (onScrollProp !== undefined) onScrollProp(scrollEvent);
-					}}
+					onScroll={onScroll}
 					onContentSizeChange={onContentSizeChange}
 					data={reorderedData}
 				/>
