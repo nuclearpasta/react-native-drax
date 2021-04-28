@@ -37,6 +37,7 @@ import {
 import { defaultLongPressDelay } from './params';
 import { extractDimensions } from './math';
 import { DraxSubprovider } from './DraxSubprovider';
+import { flattenStylesWithoutLayout, mergeStyleTransform } from './transform';
 
 export const DraxView = (
 	{
@@ -205,34 +206,13 @@ export const DraxView = (
 				hoverStyles.push(hoverDragReleasedStyle);
 			}
 
+			// Remove any layout styles.
+			const flattenedHoverStyle = flattenStylesWithoutLayout(hoverStyles);
+
 			// Apply hover transform.
 			const transform = hoverPosition.getTranslateTransform() as AnimatedTransform;
-			hoverStyles.push({ transform });
 
-			// Remove any positioning/sizing styles.
-			const {
-				margin,
-				marginHorizontal,
-				marginVertical,
-				marginLeft,
-				marginRight,
-				marginTop,
-				marginBottom,
-				marginStart,
-				marginEnd,
-				left,
-				right,
-				top,
-				bottom,
-				flex,
-				flexBasis,
-				flexDirection,
-				flexGrow,
-				flexShrink,
-				...combinedHoverStyle
-			} = StyleSheet.flatten(hoverStyles);
-
-			return combinedHoverStyle;
+			return mergeStyleTransform(flattenedHoverStyle, transform);
 		},
 		[
 			style,

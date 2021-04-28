@@ -12,6 +12,8 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - (BREAKING) Rename `useDrax` to `useDraxContext`
 - Simplify DraxList rendering because Drax ids cannot be empty since 0.7.0
 - Bump y18n from 4.0.0 to 4.0.3 (dependabot)
+- (BREAKING-TS) Update `hover*Style` props to not include layout-related keys, to reflect reality
+- Merge hover view translate transform with any transform value specified in `hover*Style` props rather than replacing (#35)
 
 ### Fixed
 - Honor `onScroll` prop of `DraxList` (#63)

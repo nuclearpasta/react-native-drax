@@ -635,29 +635,34 @@ export interface DraxViewMeasurementHandler {
 	(measurements: DraxViewMeasurements | undefined): void
 }
 
-export type AnimatedViewStylePropWithoutPositionSizeTransform = Omit<
-  AnimatedViewStyleProp,
-  | 'margin'
-  | 'marginHorizontal'
-  | 'marginVertical'
-  | 'marginLeft'
-  | 'marginRight'
-  | 'marginTop'
-  | 'marginBottom'
-  | 'marginStart'
-  | 'marginEnd'
-  | 'left'
-  | 'right'
-  | 'top'
-  | 'bottom'
-  | 'flex'
-  | 'flexBasis'
-  | 'flexDirection'
-  | 'flexGrow'
-  | 'flexShrink'
-  | 'transform'
->
-	
+/** Layout-related style keys that are omitted from hover view styles */
+export type LayoutStyleKey = (
+	| 'margin'
+	| 'marginHorizontal'
+	| 'marginVertical'
+	| 'marginLeft'
+	| 'marginRight'
+	| 'marginTop'
+	| 'marginBottom'
+	| 'marginStart'
+	| 'marginEnd'
+	| 'left'
+	| 'right'
+	| 'top'
+	| 'bottom'
+	| 'flex'
+	| 'flexBasis'
+	| 'flexDirection'
+	| 'flexGrow'
+	| 'flexShrink'
+);
+
+/** Style for an Animated.View used for a hover view */
+export type AnimatedViewStyleWithoutLayout = Omit<AnimatedViewStyle, LayoutStyleKey>;
+
+/** Style prop for an Animated.View used for a hover view */
+export type AnimatedViewStylePropWithoutLayout = StyleProp<AnimatedViewStyleWithoutLayout>;
+
 /** Style-related props for a Drax view */
 export interface DraxViewStyleProps {
 	/** Custom style prop to allow animated values */
@@ -679,19 +684,19 @@ export interface DraxViewStyleProps {
 	dragReleasedStyle?: AnimatedViewStyleProp;
 
 	/** Additional view style applied to the hovering copy of this view during drag/release */
-	hoverStyle?: AnimatedViewStylePropWithoutPositionSizeTransform;
+	hoverStyle?: AnimatedViewStylePropWithoutLayout;
 
 	/** Additional view style applied to the hovering copy of this view while dragging */
-	hoverDraggingStyle?: AnimatedViewStylePropWithoutPositionSizeTransform;
+	hoverDraggingStyle?: AnimatedViewStylePropWithoutLayout;
 
 	/** Additional view style applied to the hovering copy of this view while dragging over a receiver */
-	hoverDraggingWithReceiverStyle?: AnimatedViewStylePropWithoutPositionSizeTransform;
+	hoverDraggingWithReceiverStyle?: AnimatedViewStylePropWithoutLayout;
 
 	/** Additional view style applied to the hovering copy of this view while dragging NOT over a receiver */
-	hoverDraggingWithoutReceiverStyle?: AnimatedViewStylePropWithoutPositionSizeTransform;
+	hoverDraggingWithoutReceiverStyle?: AnimatedViewStylePropWithoutLayout;
 
 	/** Additional view style applied to the hovering copy of this view when just released */
-	hoverDragReleasedStyle?: AnimatedViewStylePropWithoutPositionSizeTransform;
+	hoverDragReleasedStyle?: AnimatedViewStylePropWithoutLayout;
 
 	/** Additional view style applied while this view is not receiving a drag */
 	receiverInactiveStyle?: AnimatedViewStyleProp;
