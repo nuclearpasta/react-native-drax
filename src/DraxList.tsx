@@ -1,6 +1,5 @@
 import React, {
 	PropsWithChildren,
-	ReactElement,
 	useState,
 	useRef,
 	useEffect,
@@ -66,11 +65,12 @@ export const DraxList = <T extends unknown>(
 		reorderable: reorderableProp,
 		onScroll: onScrollProp,
 		itemsDraggable = true,
+		lockItemDragsToMainAxis = false,
 		...props
 	}: PropsWithChildren<DraxListProps<T>>,
-): ReactElement | null => {
+): JSX.Element => {
 	// Copy the value of the horizontal property for internal use.
-	const { horizontal = false } = props;
+	const horizontal = props.horizontal ?? false;
 
 	// Get the item count for internal use.
 	const itemCount = data?.length ?? 0;
@@ -231,6 +231,8 @@ export const DraxList = <T extends unknown>(
 					renderHoverContent={renderItemHoverContent
 						&& ((hoverContentProps) => renderItemHoverContent(info, hoverContentProps))}
 					longPressDelay={defaultListItemLongPressDelay}
+					lockDragXPosition={lockItemDragsToMainAxis && !horizontal}
+					lockDragYPosition={lockItemDragsToMainAxis && horizontal}
 				/>
 			);
 		},
@@ -242,6 +244,8 @@ export const DraxList = <T extends unknown>(
 			itemsDraggable,
 			renderItemContent,
 			renderItemHoverContent,
+			lockItemDragsToMainAxis,
+			horizontal,
 		],
 	);
 
