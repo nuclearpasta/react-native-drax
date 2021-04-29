@@ -10,16 +10,9 @@ import {
 } from 'react-native';
 import {
 	LongPressGestureHandlerStateChangeEvent,
-	GestureHandlerGestureEvent,
-	GestureHandlerGestureEventNativeEvent,
-	LongPressGestureHandlerEventExtra,
+	LongPressGestureHandlerGestureEvent,
 } from 'react-native-gesture-handler';
 import { PayloadActionCreator, ActionType } from 'typesafe-actions';
-
-/** Workaround for incorrect typings. See: https://github.com/kmagiera/react-native-gesture-handler/pull/860/files */
-export interface LongPressGestureHandlerGestureEvent extends GestureHandlerGestureEvent {
-	nativeEvent: GestureHandlerGestureEventNativeEvent & LongPressGestureHandlerEventExtra;
-}
 
 /** Gesture state change event expected by Drax handler */
 export type DraxGestureStateChangeEvent = LongPressGestureHandlerStateChangeEvent['nativeEvent'];
