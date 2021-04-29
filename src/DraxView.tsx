@@ -1,6 +1,5 @@
 import React, {
 	PropsWithChildren,
-	ReactElement,
 	useRef,
 	useEffect,
 	useCallback,
@@ -87,6 +86,8 @@ export const DraxView = (
 		registration,
 		onMeasure,
 		scrollPositionRef,
+		lockHoverXAxis,
+		lockHoverYAxis,
 		children,
 		noHover = false,
 		isParent = false,
@@ -98,7 +99,7 @@ export const DraxView = (
 		monitoring: monitoringProp,
 		...props
 	}: PropsWithChildren<DraxViewProps>,
-): ReactElement => {
+): JSX.Element => {
 	// Coalesce protocol props into capabilities.
 	const draggable = draggableProp ?? (
 		dragPayload !== undefined
@@ -299,6 +300,8 @@ export const DraxView = (
 					draggable,
 					receptive,
 					monitoring,
+					lockHoverXAxis,
+					lockHoverYAxis,
 					dragPayload: dragPayload ?? payload,
 					receiverPayload: receiverPayload ?? payload,
 				},
@@ -336,6 +339,8 @@ export const DraxView = (
 			draggable,
 			receptive,
 			monitoring,
+			lockHoverXAxis,
+			lockHoverYAxis,
 			internalRenderHoverView,
 		],
 	);

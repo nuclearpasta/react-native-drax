@@ -624,10 +624,17 @@ const updateDragPositionInRegistry = (
 	if (!drag) {
 		return;
 	}
-	const { absoluteMeasurements } = getTrackingDraggedFromRegistry(registry)?.data ?? {};
-	if (!absoluteMeasurements) {
+	const dragged = getTrackingDraggedFromRegistry(registry);
+	if (!dragged) {
 		return;
 	}
+	const {
+		absoluteMeasurements,
+		protocol: {
+			lockHoverXAxis = false,
+			lockHoverYAxis = false,
+		},
+	} = dragged.data;
 	const { draggedId, grabOffset, hoverPosition } = drag;
 	const dragTranslation = {
 		x: dragAbsolutePosition.x - drag.absoluteStartPosition.x,
@@ -646,8 +653,8 @@ const updateDragPositionInRegistry = (
 	drag.dragTranslationRatio = dragTranslationRatio;
 	drag.dragOffset = dragOffset;
 	hoverPosition.setValue({
-		x: dragAbsolutePosition.x - grabOffset.x,
-		y: dragAbsolutePosition.y - grabOffset.y,
+		x: lockHoverXAxis ? absoluteMeasurements.x : (dragAbsolutePosition.x - grabOffset.x),
+		y: lockHoverYAxis ? absoluteMeasurements.y : (dragAbsolutePosition.y - grabOffset.y),
 	});
 	stateDispatch(actions.updateViewState({
 		id: draggedId,
