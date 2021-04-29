@@ -54,7 +54,7 @@ export const DraxList = <T extends unknown>(
 	{
 		data,
 		style,
-		wrapperStyles,
+		flatListStyle,
 		itemStyles,
 		renderItemContent,
 		renderItemHoverContent,
@@ -649,7 +649,7 @@ export const DraxList = <T extends unknown>(
 	return (
 		<DraxView
 			id={id}
-			style={wrapperStyles}
+			style={style}
 			scrollPositionRef={scrollPositionRef}
 			onMeasure={onMeasureContainer}
 			onMonitorDragStart={onMonitorDragStart}
@@ -661,7 +661,7 @@ export const DraxList = <T extends unknown>(
 			<DraxSubprovider parent={{ id, nodeHandleRef }}>
 				<FlatList
 					{...props}
-					style={style}
+					style={flatListStyle}
 					ref={setFlatListRefs}
 					renderItem={renderItem}
 					onScroll={onScroll}
