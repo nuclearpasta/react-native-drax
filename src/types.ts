@@ -276,11 +276,11 @@ export interface DraxProtocol {
 	/** Whether the view can monitor drags */
 	monitoring: boolean;
 
-	/** If true, lock dragged hover view to original view's x position */
-	lockHoverXAxis?: boolean;
+	/** If true, lock drag's x-position */
+	lockDragXPosition?: boolean;
 
-	/** If true, lock dragged hover view to original view's y position */
-	lockHoverYAxis?: boolean;
+	/** If true, lock drag's y position */
+	lockDragYPosition?: boolean;
 
 	/** Function used internally for rendering hovering copy of view when dragged/released */
 	internalRenderHoverView?: (props: DraxInternalRenderHoverViewProps) => ReactNode;
@@ -888,6 +888,6 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 	/** Can the items be dragged? Defaults to true. */
 	itemsDraggable?: boolean;
 
-	/** If true, lock dragged item hover view to original view's position on the list's cross-axis */
-	lockHoverCrossAxis?: boolean;
+	/** If true, lock item drags to the list's main axis */
+	lockDragToMainAxis?: boolean;
 }

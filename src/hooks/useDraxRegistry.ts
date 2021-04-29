@@ -309,14 +309,25 @@ const getHoverItemsFromRegistry = (registry: DraxRegistry) => {
 	return hoverItems;
 };
 
+interface GetDragPositionDataParams {
+	parentPosition: Position,
+	draggedMeasurements: DraxViewMeasurements,
+	lockXPosition?: boolean,
+	lockYPosition?: boolean,
+}
+
 /**
  * Get the absolute position of a drag already in progress from touch
  * coordinates within the immediate parent view of the dragged view.
  */
 const getDragPositionDataFromRegistry = (
 	registry: DraxRegistry,
-	parentPosition: Position,
-	draggedMeasurements: DraxViewMeasurements,
+	{
+		parentPosition,
+		draggedMeasurements,
+		lockXPosition = false,
+		lockYPosition = false,
+	}: GetDragPositionDataParams,
 ) => {
 	if (!registry.drag) {
 		return undefined;
@@ -326,10 +337,13 @@ const getDragPositionDataFromRegistry = (
 	 *   absolute coordinates of drag start
 	 *   + translation offset of drag
 	 */
-	const { absoluteStartPosition, parentStartPosition } = registry.drag;
+	const {
+		absoluteStartPosition,
+		parentStartPosition,
+	} = registry.drag;
 	const dragTranslation = {
-		x: parentPosition.x - parentStartPosition.x,
-		y: parentPosition.y - parentStartPosition.y,
+		x: lockXPosition ? 0 : (parentPosition.x - parentStartPosition.x),
+		y: lockYPosition ? 0 : (parentPosition.y - parentStartPosition.y),
 	};
 	const dragTranslationRatio = {
 		x: dragTranslation.x / draggedMeasurements.width,
@@ -628,13 +642,7 @@ const updateDragPositionInRegistry = (
 	if (!dragged) {
 		return;
 	}
-	const {
-		absoluteMeasurements,
-		protocol: {
-			lockHoverXAxis = false,
-			lockHoverYAxis = false,
-		},
-	} = dragged.data;
+	const { absoluteMeasurements } = dragged.data;
 	const { draggedId, grabOffset, hoverPosition } = drag;
 	const dragTranslation = {
 		x: dragAbsolutePosition.x - drag.absoluteStartPosition.x,
@@ -653,8 +661,8 @@ const updateDragPositionInRegistry = (
 	drag.dragTranslationRatio = dragTranslationRatio;
 	drag.dragOffset = dragOffset;
 	hoverPosition.setValue({
-		x: lockHoverXAxis ? absoluteMeasurements.x : (dragAbsolutePosition.x - grabOffset.x),
-		y: lockHoverYAxis ? absoluteMeasurements.y : (dragAbsolutePosition.y - grabOffset.y),
+		x: dragAbsolutePosition.x - grabOffset.x,
+		y: dragAbsolutePosition.y - grabOffset.y,
 	});
 	stateDispatch(actions.updateViewState({
 		id: draggedId,
@@ -825,8 +833,8 @@ export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
 	 * coordinates within the immediate parent view of the dragged view.
 	 */
 	const getDragPositionData = useCallback(
-		(parentPosition: Position, draggedMeasurements: DraxViewMeasurements) => (
-			getDragPositionDataFromRegistry(registryRef.current, parentPosition, draggedMeasurements)
+		(params: GetDragPositionDataParams) => (
+			getDragPositionDataFromRegistry(registryRef.current, params)
 		),
 		[],
 	);

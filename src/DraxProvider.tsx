@@ -178,7 +178,12 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 				// Case 3b: The drag is ending.
 
 				// Get the absolute position data for the drag touch.
-				const dragPositionData = getDragPositionData(dragParentPosition, draggedData.absoluteMeasurements);
+				const dragPositionData = getDragPositionData({
+					parentPosition: dragParentPosition,
+					draggedMeasurements: draggedData.absoluteMeasurements,
+					lockXPosition: draggedData.protocol.lockDragXPosition,
+					lockYPosition: draggedData.protocol.lockDragYPosition,
+				});
 
 				if (!dragPositionData) {
 					// Failed to get absolute position of drag. This should never happen.
@@ -496,7 +501,12 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 			const parentPosition = { x: parentX, y: parentY };
 
 			// Get the absolute position data for the drag touch.
-			const dragPositionData = getDragPositionData(parentPosition, dragged.data.absoluteMeasurements);
+			const dragPositionData = getDragPositionData({
+				parentPosition,
+				draggedMeasurements: dragged.data.absoluteMeasurements,
+				lockXPosition: dragged.data.protocol.lockDragXPosition,
+				lockYPosition: dragged.data.protocol.lockDragYPosition,
+			});
 
 			if (!dragPositionData) {
 				// Failed to get drag position data. This should never happen.
