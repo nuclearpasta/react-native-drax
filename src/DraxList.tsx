@@ -65,7 +65,7 @@ export const DraxList = <T extends unknown>(
 		reorderable: reorderableProp,
 		onScroll: onScrollProp,
 		itemsDraggable = true,
-		lockDragToMainAxis = false,
+		lockItemDragsToMainAxis = false,
 		...props
 	}: PropsWithChildren<DraxListProps<T>>,
 ): JSX.Element => {
@@ -231,8 +231,8 @@ export const DraxList = <T extends unknown>(
 					renderHoverContent={renderItemHoverContent
 						&& ((hoverContentProps) => renderItemHoverContent(info, hoverContentProps))}
 					longPressDelay={defaultListItemLongPressDelay}
-					lockDragXPosition={lockDragToMainAxis && !horizontal}
-					lockDragYPosition={lockDragToMainAxis && horizontal}
+					lockDragXPosition={lockItemDragsToMainAxis && !horizontal}
+					lockDragYPosition={lockItemDragsToMainAxis && horizontal}
 				/>
 			);
 		},
@@ -244,7 +244,7 @@ export const DraxList = <T extends unknown>(
 			itemsDraggable,
 			renderItemContent,
 			renderItemHoverContent,
-			lockDragToMainAxis,
+			lockItemDragsToMainAxis,
 			horizontal,
 		],
 	);

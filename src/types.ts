@@ -889,5 +889,5 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 	itemsDraggable?: boolean;
 
 	/** If true, lock item drags to the list's main axis */
-	lockDragToMainAxis?: boolean;
+	lockItemDragsToMainAxis?: boolean;
 }

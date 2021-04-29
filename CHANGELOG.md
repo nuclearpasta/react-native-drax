@@ -20,6 +20,8 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 ### Added
 - Added `itemsDraggable` prop to `DraxList` to allow explicitly disabling dragging of all items (#62)
+- Added `lockDragXPosition` and `lockDragYPositon` props to `DraxView` to allow locking drags to an axis (#65)
+- Added `lockItemDragsToMainAxis` prop to `DraxList` to allow locking dragged items to the main axis of a list (#65)
 
 ## [0.7.2] - 2020-10-13
 
