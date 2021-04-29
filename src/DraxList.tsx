@@ -46,12 +46,15 @@ interface ListItemPayload {
 	originalIndex: number;
 }
 
+type DraxListComponentProps<T extends any> = PropsWithChildren<DraxListProps<T>>
+type FlatListRefType = React.Ref<FlatList>
+
 const defaultStyles = StyleSheet.create({
 	draggingStyle: { opacity: 0 },
 	dragReleasedStyle: { opacity: 0.5 },
 });
 
-export const DraxList = <T extends unknown>(
+const DraxListComponent = <T extends any>(
 	{
 		data,
 		style,
@@ -67,8 +70,9 @@ export const DraxList = <T extends unknown>(
 		onScroll: onScrollProp,
 		itemsDraggable = true,
 		...props
-	}: PropsWithChildren<DraxListProps<T>>,
-): ReactElement | null => {
+	}: DraxListComponentProps<T>,
+	forwardedRef: FlatListRefType	  
+) => {
 	// Copy the value of the horizontal property for internal use.
 	const { horizontal = false } = props;
 
@@ -83,7 +87,7 @@ export const DraxList = <T extends unknown>(
 
 	// FlatList, used for scrolling.
 	const flatListRef = useRef<FlatList<T> | null>(null);
-
+	
 	// FlatList node handle, used for measuring children.
 	const nodeHandleRef = useRef<number | null>(null);
 
@@ -263,11 +267,19 @@ export const DraxList = <T extends unknown>(
 
 	// Set FlatList and node handle refs.
 	const setFlatListRefs = useCallback(
-		(ref) => {
-			flatListRef.current = ref;
-			nodeHandleRef.current = ref && findNodeHandle(ref);
-		},
-		[],
+		(node) => {
+			flatListRef.current = node;
+
+			if (typeof forwardedRef === "function") {
+				forwardedRef(node);
+			} else if (forwardedRef) {
+				(forwardedRef as React.MutableRefObject<
+					FlatList<T>
+				>).current = node;
+			}
+
+			nodeHandleRef.current = node && findNodeHandle(node);
+		[forwardedRef],
 	);
 
 	// Update tracked scroll position when list is scrolled.
@@ -666,3 +678,7 @@ export const DraxList = <T extends unknown>(
 		</DraxView>
 	);
 };
+			  
+export const DraxList = React.forwardRef(DraxListComponent) as
+<T extends any>(p: DraxListComponentProps<T> & { ref?: FlatListRefType }) => React.ReactElement | null
+
