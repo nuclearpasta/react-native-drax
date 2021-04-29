@@ -215,7 +215,7 @@ export const DraxList = <T extends unknown>(
 					payload={{ index, originalIndex }}
 					onDragEnd={resetDraggedItem}
 					onDragDrop={resetDraggedItem}
-					draggable={info.items.draggable ?? itemsDraggable}
+					draggable={info.item.draggable ?? itemsDraggable}
 					onMeasure={(measurements) => {
 						// console.log(`measuring [${index}, ${originalIndex}]: (${measurements?.x}, ${measurements?.y})`);
 						itemMeasurementsRef.current[originalIndex] = measurements;
