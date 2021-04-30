@@ -62,6 +62,7 @@ export const DraxList = <T extends unknown>(
 		onItemDragPositionChange,
 		onItemDragEnd,
 		onItemReorder,
+		viewPropsExtractor,
 		id: idProp,
 		reorderable: reorderableProp,
 		onScroll: onScrollProp,
@@ -199,7 +200,7 @@ export const DraxList = <T extends unknown>(
 	// Drax view renderItem wrapper.
 	const renderItem = useCallback(
 		(info: ListRenderItemInfo<T>) => {
-			const { index } = info;
+			const { index, item } = info;
 			const originalIndex = originalIndexes[index];
 			const {
 				style: itemStyle,
@@ -213,10 +214,14 @@ export const DraxList = <T extends unknown>(
 					draggingStyle={draggingStyle}
 					dragReleasedStyle={dragReleasedStyle}
 					{...otherStyleProps}
+					longPressDelay={defaultListItemLongPressDelay}
+					lockDragXPosition={lockItemDragsToMainAxis && !horizontal}
+					lockDragYPosition={lockItemDragsToMainAxis && horizontal}
+					draggable={itemsDraggable}
 					payload={{ index, originalIndex }}
+					{...(viewPropsExtractor?.(item) ?? {})}
 					onDragEnd={resetDraggedItem}
 					onDragDrop={resetDraggedItem}
-					draggable={itemsDraggable}
 					onMeasure={(measurements) => {
 						// console.log(`measuring [${index}, ${originalIndex}]: (${measurements?.x}, ${measurements?.y})`);
 						itemMeasurementsRef.current[originalIndex] = measurements;
@@ -231,15 +236,13 @@ export const DraxList = <T extends unknown>(
 					renderContent={(contentProps) => renderItemContent(info, contentProps)}
 					renderHoverContent={renderItemHoverContent
 						&& ((hoverContentProps) => renderItemHoverContent(info, hoverContentProps))}
-					longPressDelay={defaultListItemLongPressDelay}
-					lockDragXPosition={lockItemDragsToMainAxis && !horizontal}
-					lockDragYPosition={lockItemDragsToMainAxis && horizontal}
 				/>
 			);
 		},
 		[
 			originalIndexes,
 			itemStyles,
+			viewPropsExtractor,
 			getShiftTransform,
 			resetDraggedItem,
 			itemsDraggable,

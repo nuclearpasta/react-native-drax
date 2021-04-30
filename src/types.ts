@@ -886,4 +886,7 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 
 	/** If true, lock item drags to the list's main axis */
 	lockItemDragsToMainAxis?: boolean;
+
+	/** Function that receives an item and returns a list of DraxViewProps to apply to that item's DraxView */
+	viewPropsExtractor?: (item: TItem) => Partial<DraxViewProps>;
 }

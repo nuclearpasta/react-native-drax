@@ -36,6 +36,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - Added `lockDragXPosition` and `lockDragYPositon` props to `DraxView` to allow locking drags to an axis (#65)
 - Added `lockItemDragsToMainAxis` prop to `DraxList` to allow locking dragged items to the main axis of a list (#65)
 - Added `flatListStyle` prop to `DraxList` to allow styling of underlying `FlatList` (#40)
+- Added `viewPropsExtrator` prop to `DraxList` to allow overriding `DraxView` props for specific items (#92)
 
 ## [0.7.2] - 2020-10-13
 
