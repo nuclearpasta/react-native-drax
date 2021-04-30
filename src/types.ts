@@ -10,16 +10,9 @@ import {
 } from 'react-native';
 import {
 	LongPressGestureHandlerStateChangeEvent,
-	GestureHandlerGestureEvent,
-	GestureHandlerGestureEventNativeEvent,
-	LongPressGestureHandlerEventExtra,
+	LongPressGestureHandlerGestureEvent,
 } from 'react-native-gesture-handler';
 import { PayloadActionCreator, ActionType } from 'typesafe-actions';
-
-/** Workaround for incorrect typings. See: https://github.com/kmagiera/react-native-gesture-handler/pull/860/files */
-export interface LongPressGestureHandlerGestureEvent extends GestureHandlerGestureEvent {
-	nativeEvent: GestureHandlerGestureEventNativeEvent & LongPressGestureHandlerEventExtra;
-}
 
 /** Gesture state change event expected by Drax handler */
 export type DraxGestureStateChangeEvent = LongPressGestureHandlerStateChangeEvent['nativeEvent'];
@@ -275,6 +268,12 @@ export interface DraxProtocol {
 
 	/** Whether the view can monitor drags */
 	monitoring: boolean;
+
+	/** If true, lock drag's x-position */
+	lockDragXPosition?: boolean;
+
+	/** If true, lock drag's y position */
+	lockDragYPosition?: boolean;
 
 	/** Function used internally for rendering hovering copy of view when dragged/released */
 	internalRenderHoverView?: (props: DraxInternalRenderHoverViewProps) => ReactNode;
@@ -635,6 +634,34 @@ export interface DraxViewMeasurementHandler {
 	(measurements: DraxViewMeasurements | undefined): void
 }
 
+/** Layout-related style keys that are omitted from hover view styles */
+export type LayoutStyleKey = (
+	| 'margin'
+	| 'marginHorizontal'
+	| 'marginVertical'
+	| 'marginLeft'
+	| 'marginRight'
+	| 'marginTop'
+	| 'marginBottom'
+	| 'marginStart'
+	| 'marginEnd'
+	| 'left'
+	| 'right'
+	| 'top'
+	| 'bottom'
+	| 'flex'
+	| 'flexBasis'
+	| 'flexDirection'
+	| 'flexGrow'
+	| 'flexShrink'
+);
+
+/** Style for an Animated.View used for a hover view */
+export type AnimatedViewStyleWithoutLayout = Omit<AnimatedViewStyle, LayoutStyleKey>;
+
+/** Style prop for an Animated.View used for a hover view */
+export type AnimatedViewStylePropWithoutLayout = StyleProp<AnimatedViewStyleWithoutLayout>;
+
 /** Style-related props for a Drax view */
 export interface DraxViewStyleProps {
 	/** Custom style prop to allow animated values */
@@ -656,19 +683,19 @@ export interface DraxViewStyleProps {
 	dragReleasedStyle?: AnimatedViewStyleProp;
 
 	/** Additional view style applied to the hovering copy of this view during drag/release */
-	hoverStyle?: AnimatedViewStyleProp;
+	hoverStyle?: AnimatedViewStylePropWithoutLayout;
 
 	/** Additional view style applied to the hovering copy of this view while dragging */
-	hoverDraggingStyle?: AnimatedViewStyleProp;
+	hoverDraggingStyle?: AnimatedViewStylePropWithoutLayout;
 
 	/** Additional view style applied to the hovering copy of this view while dragging over a receiver */
-	hoverDraggingWithReceiverStyle?: AnimatedViewStyleProp;
+	hoverDraggingWithReceiverStyle?: AnimatedViewStylePropWithoutLayout;
 
 	/** Additional view style applied to the hovering copy of this view while dragging NOT over a receiver */
-	hoverDraggingWithoutReceiverStyle?: AnimatedViewStyleProp;
+	hoverDraggingWithoutReceiverStyle?: AnimatedViewStylePropWithoutLayout;
 
 	/** Additional view style applied to the hovering copy of this view when just released */
-	hoverDragReleasedStyle?: AnimatedViewStyleProp;
+	hoverDragReleasedStyle?: AnimatedViewStylePropWithoutLayout;
 
 	/** Additional view style applied while this view is not receiving a drag */
 	receiverInactiveStyle?: AnimatedViewStyleProp;
@@ -827,6 +854,9 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 	/** Unique drax view id, auto-generated if omitted */
 	id?: string;
 
+	/** Style prop for the underlying FlatList */
+	flatListStyle?: StyleProp<ViewStyle>;
+
 	/** Style props to apply to all DraxView items in the list */
 	itemStyles?: DraxViewStyleProps;
 
@@ -850,4 +880,13 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 
 	/** Can the list be reordered by dragging items? Defaults to true if onItemReorder is set. */
 	reorderable?: boolean;
+
+	/** Can the items be dragged? Defaults to true. */
+	itemsDraggable?: boolean;
+
+	/** If true, lock item drags to the list's main axis */
+	lockItemDragsToMainAxis?: boolean;
+
+	/** Function that receives an item and returns a list of DraxViewProps to apply to that item's DraxView */
+	viewPropsExtractor?: (item: TItem) => Partial<DraxViewProps>;
 }

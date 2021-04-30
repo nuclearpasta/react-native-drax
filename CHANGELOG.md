@@ -6,6 +6,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
+## [Unreleased]
+- Nothing yet
+
+## [0.8.0] - 2021-04-29
+
+### Changed
+- (BREAKING) Rename `useDrax` to `useDraxContext`
+- Simplify DraxList rendering because Drax ids cannot be empty since 0.7.0
+- Bump y18n from 4.0.0 to 4.0.3 (dependabot)
+- (BREAKING-TS) Update `hover*Style` props to not include layout-related keys, to reflect reality
+- Merge hover view translate transform with any transform value specified in `hover*Style` props rather than replacing (#35)
+- Upgraded devDependency @types/node from ^14.11.8 to ^14.14.43
+- Upgraded devDependency @types/react-native from ^0.63.25 to ^0.64.4
+- Upgraded devDependency @typescript-eslint/eslint-plugin from ^4.4.0 to ^4.22.0
+- Upgraded devDependency @typescript-eslint/parser from ^4.4.0 to ^4.22.0
+- Upgraded devDependency eslint from ^7.10.0 to ^7.25.0
+- Upgraded devDependency eslint-config-airbnb-typescript from ^11.0.0 to ^12.3.1
+- Upgraded devDependency eslint-plugin-jsx-a11y from ^6.3.1 to ^6.4.1
+- Upgraded devDependency eslint-plugin-react from ^7.21.3 to ^7.23.2
+- Upgraded devDependency eslint-plugin-react-hooks from ^4.1.2 to ^4.2.0
+- Upgraded devDependency react from ^16.13.1 to ^17.0.2
+- Upgraded devDependency react-native from ^0.63.3 to ^0.64.0
+- Upgraded devDependency typescript from ^4.0.3 to ^4.2.4
+- Removed type workaround for `LongPressGestureHandlerGestureEvent`
+
+### Fixed
+- Honor `onScroll` prop of `DraxList` (#63)
+
+### Added
+- Added `itemsDraggable` prop to `DraxList` to allow explicitly disabling dragging of all items (#62)
+- Added `lockDragXPosition` and `lockDragYPositon` props to `DraxView` to allow locking drags to an axis (#65)
+- Added `lockItemDragsToMainAxis` prop to `DraxList` to allow locking dragged items to the main axis of a list (#65)
+- Added `flatListStyle` prop to `DraxList` to allow styling of underlying `FlatList` (#40)
+- Added `viewPropsExtrator` prop to `DraxList` to allow overriding `DraxView` props for specific items (#92)
+
 ## [0.7.2] - 2020-10-13
 
 ### Changed
@@ -34,7 +69,6 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - Removed devDependency @babel/runtime
 - Removed devDependency hoist-non-react-statics
 - Upgraded devDependency @types/node from ^14.0.5 to ^14.11.8
-- Upgraded devDependency @types/react from ^16.9.17 to ^16.9.51
 - Upgraded devDependency @types/react-native from ^0.60.25 to ^0.63.25
 - Upgraded devDependency react from ^16.9.0 to ^16.13.1
 - Upgraded devDependency react-native from ^0.62.2 to ^0.63.3
@@ -137,7 +171,11 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.7.2...v0.8.0
+[0.7.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.7.1...v0.7.2
+[0.7.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.5...v0.6.0
 [0.5.5]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.3...v0.5.4

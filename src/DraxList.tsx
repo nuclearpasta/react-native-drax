@@ -1,6 +1,5 @@
 import React, {
 	PropsWithChildren,
-	ReactElement,
 	useState,
 	useRef,
 	useEffect,
@@ -55,6 +54,7 @@ export const DraxList = <T extends unknown>(
 	{
 		data,
 		style,
+		flatListStyle,
 		itemStyles,
 		renderItemContent,
 		renderItemHoverContent,
@@ -62,13 +62,17 @@ export const DraxList = <T extends unknown>(
 		onItemDragPositionChange,
 		onItemDragEnd,
 		onItemReorder,
+		viewPropsExtractor,
 		id: idProp,
 		reorderable: reorderableProp,
+		onScroll: onScrollProp,
+		itemsDraggable = true,
+		lockItemDragsToMainAxis = false,
 		...props
 	}: PropsWithChildren<DraxListProps<T>>,
-): ReactElement | null => {
+): JSX.Element => {
 	// Copy the value of the horizontal property for internal use.
-	const { horizontal = false } = props;
+	const horizontal = props.horizontal ?? false;
 
 	// Get the item count for internal use.
 	const itemCount = data?.length ?? 0;
@@ -196,7 +200,7 @@ export const DraxList = <T extends unknown>(
 	// Drax view renderItem wrapper.
 	const renderItem = useCallback(
 		(info: ListRenderItemInfo<T>) => {
-			const { index } = info;
+			const { index, item } = info;
 			const originalIndex = originalIndexes[index];
 			const {
 				style: itemStyle,
@@ -210,7 +214,12 @@ export const DraxList = <T extends unknown>(
 					draggingStyle={draggingStyle}
 					dragReleasedStyle={dragReleasedStyle}
 					{...otherStyleProps}
+					longPressDelay={defaultListItemLongPressDelay}
+					lockDragXPosition={lockItemDragsToMainAxis && !horizontal}
+					lockDragYPosition={lockItemDragsToMainAxis && horizontal}
+					draggable={itemsDraggable}
 					payload={{ index, originalIndex }}
+					{...(viewPropsExtractor?.(item) ?? {})}
 					onDragEnd={resetDraggedItem}
 					onDragDrop={resetDraggedItem}
 					onMeasure={(measurements) => {
@@ -227,17 +236,20 @@ export const DraxList = <T extends unknown>(
 					renderContent={(contentProps) => renderItemContent(info, contentProps)}
 					renderHoverContent={renderItemHoverContent
 						&& ((hoverContentProps) => renderItemHoverContent(info, hoverContentProps))}
-					longPressDelay={defaultListItemLongPressDelay}
 				/>
 			);
 		},
 		[
 			originalIndexes,
+			itemStyles,
+			viewPropsExtractor,
 			getShiftTransform,
 			resetDraggedItem,
-			itemStyles,
+			itemsDraggable,
 			renderItemContent,
 			renderItemHoverContent,
+			lockItemDragsToMainAxis,
+			horizontal,
 		],
 	);
 
@@ -268,10 +280,12 @@ export const DraxList = <T extends unknown>(
 
 	// Update tracked scroll position when list is scrolled.
 	const onScroll = useCallback(
-		({ nativeEvent: { contentOffset } }: NativeSyntheticEvent<NativeScrollEvent>) => {
+		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+			const { nativeEvent: { contentOffset } } = event;
 			scrollPositionRef.current = { ...contentOffset };
+			onScrollProp?.(event);
 		},
-		[],
+		[onScrollProp],
 	);
 
 	// Handle auto-scrolling on interval.
@@ -635,7 +649,7 @@ export const DraxList = <T extends unknown>(
 		[handleInternalDragEnd],
 	);
 
-	return id ? (
+	return (
 		<DraxView
 			id={id}
 			style={style}
@@ -650,6 +664,7 @@ export const DraxList = <T extends unknown>(
 			<DraxSubprovider parent={{ id, nodeHandleRef }}>
 				<FlatList
 					{...props}
+					style={flatListStyle}
 					ref={setFlatListRefs}
 					renderItem={renderItem}
 					onScroll={onScroll}
@@ -658,5 +673,5 @@ export const DraxList = <T extends unknown>(
 				/>
 			</DraxSubprovider>
 		</DraxView>
-	) : null;
+	);
 };
