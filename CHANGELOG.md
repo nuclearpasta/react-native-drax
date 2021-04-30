@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
-## Unreleased
+## [Unreleased]
+- Nothing yet
+
+## [0.8.0] - 2021-04-29
 
 ### Changed
 - (BREAKING) Rename `useDrax` to `useDraxContext`
@@ -168,7 +171,11 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.7.2...v0.8.0
+[0.7.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.7.1...v0.7.2
+[0.7.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.5...v0.6.0
 [0.5.5]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.4...v0.5.5
 [0.5.4]: https://github.com/nuclearpasta/react-native-drax/compare/v0.5.3...v0.5.4
