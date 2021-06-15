@@ -7,6 +7,7 @@ import {
 	StyleProp,
 	ScrollViewProps,
 	ListRenderItemInfo,
+	NativeScrollEvent,
 } from 'react-native';
 import {
 	LongPressGestureHandlerStateChangeEvent,
@@ -583,6 +584,7 @@ export interface DraxContextValue {
 /** Optional props that can be passed to a DraxProvider to modify its behavior */
 export interface DraxProviderProps {
 	debug?: boolean;
+	multicolumn?: boolean;
 }
 
 /** Props that are passed to a DraxSubprovider, used internally for nesting views */
@@ -877,6 +879,9 @@ export interface DraxListProps<TItem> extends Omit<FlatListProps<TItem>, 'render
 
 	/** Callback handler for when a list item is moved within the list, reordering the list */
 	onItemReorder?: DraxListOnItemReorder<TItem>;
+
+	/** Callback handler for when list is scrolled */
+	onScrollProp?: (scrollEvent: NativeScrollEvent) => void;
 
 	/** Can the list be reordered by dragging items? Defaults to true if onItemReorder is set. */
 	reorderable?: boolean;

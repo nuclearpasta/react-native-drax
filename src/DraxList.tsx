@@ -36,8 +36,8 @@ import {
 import { defaultListItemLongPressDelay } from './params';
 
 interface Shift {
-	targetValue: number;
-	animatedValue: Animated.Value;
+	targetValue: Position;
+	animatedValue: Animated.ValueXY;
 }
 
 interface ListItemPayload {
@@ -137,8 +137,8 @@ export const DraxList = <T extends unknown>(
 					itemMeasurements.push(undefined);
 					registrations.push(undefined);
 					shifts.push({
-						targetValue: 0,
-						animatedValue: new Animated.Value(0),
+						targetValue: { x: 0, y: 0 },
+						animatedValue: new Animated.ValueXY({ x: 0, y: 0 }),
 					});
 				}
 			}
@@ -171,14 +171,15 @@ export const DraxList = <T extends unknown>(
 	);
 
 	// Get shift transform for list item at index.
-	const getShiftTransform = useCallback(
+	const getShiftTransformStyle = useCallback(
 		(index: number) => {
-			const shift = shiftsRef.current[index]?.animatedValue ?? 0;
-			return horizontal
-				? [{ translateX: shift }]
-				: [{ translateY: shift }];
+			const shift = shiftsRef.current[index]?.animatedValue;
+			const transform = shift
+				? [{ translateX: shift.x }, { translateY: shift.y }]
+				: [];
+			return { transform };
 		},
-		[horizontal],
+		[],
 	);
 
 	// Set the currently dragged list item.
@@ -210,7 +211,7 @@ export const DraxList = <T extends unknown>(
 			} = itemStyles ?? {};
 			return (
 				<DraxView
-					style={[itemStyle, { transform: getShiftTransform(originalIndex) }]}
+					style={[itemStyle, getShiftTransformStyle(originalIndex)]}
 					draggingStyle={draggingStyle}
 					dragReleasedStyle={dragReleasedStyle}
 					{...otherStyleProps}
@@ -243,7 +244,7 @@ export const DraxList = <T extends unknown>(
 			originalIndexes,
 			itemStyles,
 			viewPropsExtractor,
-			getShiftTransform,
+			getShiftTransformStyle,
 			resetDraggedItem,
 			itemsDraggable,
 			renderItemContent,
@@ -368,8 +369,8 @@ export const DraxList = <T extends unknown>(
 		() => {
 			shiftsRef.current.forEach((shift) => {
 				// eslint-disable-next-line no-param-reassign
-				shift.targetValue = 0;
-				shift.animatedValue.setValue(0);
+				shift.targetValue = { x: 0, y: 0 };
+				shift.animatedValue.setValue({ x: 0, y: 0 });
 			});
 		},
 		[],
@@ -380,18 +381,36 @@ export const DraxList = <T extends unknown>(
 		(
 			{ index: fromIndex, originalIndex: fromOriginalIndex }: ListItemPayload,
 			{ index: toIndex }: ListItemPayload,
+			horizontalShift: boolean
 		) => {
+			const contentSize = contentSizeRef.current;
 			const { width = 50, height = 50 } = itemMeasurementsRef.current[fromOriginalIndex] ?? {};
-			const offset = horizontal ? width : height;
+			const posOffset = horizontalShift && contentSize && width < contentSize.x
+				? { x: width, y: 0 }
+				: { x: 0, y: height };
+			const negOffset = {
+				x: posOffset.x * -1,
+				y: posOffset.y * -1,
+			};
 			originalIndexes.forEach((originalIndex, index) => {
+				const { width: itemWidth = 0, height: itemHeight = 0 } = itemMeasurementsRef.current[originalIndex] ?? {};
 				const shift = shiftsRef.current[originalIndex];
-				let newTargetValue = 0;
-				if (index > fromIndex && index <= toIndex) {
-					newTargetValue = -offset;
-				} else if (index < fromIndex && index >= toIndex) {
-					newTargetValue = offset;
+				if (!shift) {
+					return;
 				}
-				if (shift.targetValue !== newTargetValue) {
+				let newTargetValue = { x: 0, y: 0 };
+				if (index > fromIndex && index <= toIndex) {
+					newTargetValue = negOffset;
+				} else if (index < fromIndex && index >= toIndex) {
+					newTargetValue = posOffset;
+				}
+				// Keep from shifting full width items horizontally
+				if (contentSize && itemWidth >= contentSize.x) {
+					if (!itemHeight) return;
+					newTargetValue.x = 0;
+				}
+				if (itemHeight && (shift.targetValue.x !== newTargetValue.x
+					|| shift.targetValue.y !== newTargetValue.y)) {
 					shift.targetValue = newTargetValue;
 					Animated.timing(shift.animatedValue, {
 						duration: 200,
@@ -401,7 +420,7 @@ export const DraxList = <T extends unknown>(
 				}
 			});
 		},
-		[originalIndexes, horizontal],
+		[originalIndexes],
 	);
 
 	// Calculate absolute position of list item for snapback.
@@ -573,7 +592,12 @@ export const DraxList = <T extends unknown>(
 	// Monitor drags to react with item shifts and auto-scrolling.
 	const onMonitorDragOver = useCallback(
 		(eventData: DraxMonitorEventData) => {
-			const { dragged, receiver, monitorOffsetRatio } = eventData;
+			const {
+				dragTranslation,
+				dragged,
+				receiver,
+				monitorOffsetRatio
+			} = eventData;
 			// First, check if we need to shift items.
 			if (reorderable && dragged.parentId === id) {
 				// One of our list items is being dragged.
@@ -597,8 +621,10 @@ export const DraxList = <T extends unknown>(
 					draggedToIndex.current = toIndex;
 				}
 
+				const horizontalShift = (Math.abs(dragTranslation.x) > Math.abs(dragTranslation.y))
+
 				// Update shift transforms for items in the list.
-				updateShifts(fromPayload, toPayload ?? fromPayload);
+				updateShifts(fromPayload, toPayload ?? fromPayload, horizontalShift);
 			}
 
 			// Next, see if we need to auto-scroll.
