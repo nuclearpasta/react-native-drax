@@ -9,6 +9,12 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ## [Unreleased]
 - Nothing yet
 
+## [0.8.1] - 2021-08-02
+
+### Changed
+- Small change to `DraxList` ref array allocations to account for race conditions in registration/measurement causing shifts array to become wrong length (#103)
+- Upgraded devDependency react-native from ^0.64.0 to ^0.64.1 for security alert
+
 ## [0.8.0] - 2021-04-29
 
 ### Changed
