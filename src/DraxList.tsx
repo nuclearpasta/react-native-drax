@@ -130,12 +130,22 @@ export const DraxList = <T extends unknown>(
 			const shifts = shiftsRef.current;
 			if (itemMeasurements.length > itemCount) {
 				itemMeasurements.splice(itemCount - itemMeasurements.length);
-				registrations.splice(itemCount - registrations.length);
-				shifts.splice(itemCount - shifts.length);
 			} else {
 				while (itemMeasurements.length < itemCount) {
 					itemMeasurements.push(undefined);
+				}
+			}
+			if (registrations.length > itemCount) {
+				registrations.splice(itemCount - registrations.length);
+			} else {
+				while (registrations.length < itemCount) {
 					registrations.push(undefined);
+				}
+			}
+			if (shifts.length > itemCount) {
+				shifts.splice(itemCount - shifts.length);
+			} else {
+				while (shifts.length < itemCount) {
 					shifts.push({
 						targetValue: 0,
 						animatedValue: new Animated.Value(0),
@@ -223,11 +233,13 @@ export const DraxList = <T extends unknown>(
 					onDragEnd={resetDraggedItem}
 					onDragDrop={resetDraggedItem}
 					onMeasure={(measurements) => {
-						// console.log(`measuring [${index}, ${originalIndex}]: (${measurements?.x}, ${measurements?.y})`);
-						itemMeasurementsRef.current[originalIndex] = measurements;
+						if (originalIndex !== undefined) {
+							// console.log(`measuring [${index}, ${originalIndex}]: (${measurements?.x}, ${measurements?.y})`);
+							itemMeasurementsRef.current[originalIndex] = measurements;
+						}
 					}}
 					registration={(registration) => {
-						if (registration) {
+						if (registration && originalIndex !== undefined) {
 							// console.log(`registering [${index}, ${originalIndex}], ${registration.id}`);
 							registrationsRef.current[originalIndex] = registration;
 							registration.measure();
