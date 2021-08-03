@@ -177,7 +177,8 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.7.0...v0.7.1
