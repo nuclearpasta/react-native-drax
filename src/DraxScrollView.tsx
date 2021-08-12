@@ -3,12 +3,14 @@ import React, {
 	useRef,
 	useCallback,
 	useEffect,
+	RefObject,
 } from 'react';
 import {
 	ScrollView,
 	NativeSyntheticEvent,
 	NativeScrollEvent,
 	findNodeHandle,
+	ScrollViewComponent,
 } from 'react-native';
 
 import { DraxView } from './DraxView';
@@ -30,18 +32,21 @@ import {
 	defaultScrollEventThrottle,
 } from './params';
 
-export const DraxScrollView = ({
-	children,
-	onScroll: onScrollProp,
-	onContentSizeChange: onContentSizeChangeProp,
-	scrollEventThrottle = defaultScrollEventThrottle,
-	autoScrollIntervalLength = defaultAutoScrollIntervalLength,
-	autoScrollJumpRatio = defaultAutoScrollJumpRatio,
-	autoScrollBackThreshold = defaultAutoScrollBackThreshold,
-	autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
-	id: idProp,
-	...props
-}: PropsWithChildren<DraxScrollViewProps>) => {
+const DraxScrollViewComponent = (
+	{
+		children,
+		onScroll: onScrollProp,
+		onContentSizeChange: onContentSizeChangeProp,
+		scrollEventThrottle = defaultScrollEventThrottle,
+		autoScrollIntervalLength = defaultAutoScrollIntervalLength,
+		autoScrollJumpRatio = defaultAutoScrollJumpRatio,
+		autoScrollBackThreshold = defaultAutoScrollBackThreshold,
+		autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
+		id: idProp,
+		...props
+	}: PropsWithChildren<DraxScrollViewProps>,
+	forwardedRef: React.Ref<ScrollViewComponent>,
+) => {
 	// The unique identifer for this view.
 	const id = useDraxId(idProp);
 
@@ -52,7 +57,9 @@ export const DraxScrollView = ({
 	const nodeHandleRef = useRef<number | null>(null);
 
 	// Container view measurements, for scrolling by percentage.
-	const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(undefined);
+	const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(
+		undefined,
+	);
 
 	// Content size, for scrolling by percentage.
 	const contentSizeRef = useRef<Position | undefined>(undefined);
@@ -70,97 +77,85 @@ export const DraxScrollView = ({
 	const autoScrollIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
 	// Handle auto-scrolling on interval.
-	const doScroll = useCallback(
-		() => {
-			const scroll = scrollRef.current;
-			const containerMeasurements = containerMeasurementsRef.current;
-			const contentSize = contentSizeRef.current;
-			if (!scroll || !containerMeasurements || !contentSize) {
-				return;
+	const doScroll = useCallback(() => {
+		const scroll = scrollRef.current;
+		const containerMeasurements = containerMeasurementsRef.current;
+		const contentSize = contentSizeRef.current;
+		if (!scroll || !containerMeasurements || !contentSize) {
+			return;
+		}
+		const scrollPosition = scrollPositionRef.current;
+		const autoScrollState = autoScrollStateRef.current;
+		const jump = {
+			x: containerMeasurements.width * autoScrollJumpRatio,
+			y: containerMeasurements.height * autoScrollJumpRatio,
+		};
+		let xNew: number | undefined;
+		let yNew: number | undefined;
+		if (autoScrollState.x === AutoScrollDirection.Forward) {
+			const xMax = contentSize.x - containerMeasurements.width;
+			if (scrollPosition.x < xMax) {
+				xNew = Math.min(scrollPosition.x + jump.x, xMax);
 			}
-			const scrollPosition = scrollPositionRef.current;
-			const autoScrollState = autoScrollStateRef.current;
-			const jump = {
-				x: containerMeasurements.width * autoScrollJumpRatio,
-				y: containerMeasurements.height * autoScrollJumpRatio,
-			};
-			let xNew: number | undefined;
-			let yNew: number | undefined;
-			if (autoScrollState.x === AutoScrollDirection.Forward) {
-				const xMax = contentSize.x - containerMeasurements.width;
-				if (scrollPosition.x < xMax) {
-					xNew = Math.min(scrollPosition.x + jump.x, xMax);
-				}
-			} else if (autoScrollState.x === AutoScrollDirection.Back) {
-				if (scrollPosition.x > 0) {
-					xNew = Math.max(scrollPosition.x - jump.x, 0);
-				}
+		} else if (autoScrollState.x === AutoScrollDirection.Back) {
+			if (scrollPosition.x > 0) {
+				xNew = Math.max(scrollPosition.x - jump.x, 0);
 			}
-			if (autoScrollState.y === AutoScrollDirection.Forward) {
-				const yMax = contentSize.y - containerMeasurements.width;
-				if (scrollPosition.y < yMax) {
-					yNew = Math.min(scrollPosition.y + jump.y, yMax);
-				}
-			} else if (autoScrollState.y === AutoScrollDirection.Back) {
-				if (scrollPosition.y > 0) {
-					yNew = Math.max(scrollPosition.y - jump.y, 0);
-				}
+		}
+		if (autoScrollState.y === AutoScrollDirection.Forward) {
+			const yMax = contentSize.y - containerMeasurements.width;
+			if (scrollPosition.y < yMax) {
+				yNew = Math.min(scrollPosition.y + jump.y, yMax);
 			}
-			if (xNew !== undefined || yNew !== undefined) {
-				scroll.scrollTo({
-					x: xNew ?? scrollPosition.x,
-					y: yNew ?? scrollPosition.y,
-				});
-				(scroll as any).flashScrollIndicators(); // ScrollView typing is missing this method
+		} else if (autoScrollState.y === AutoScrollDirection.Back) {
+			if (scrollPosition.y > 0) {
+				yNew = Math.max(scrollPosition.y - jump.y, 0);
 			}
-		},
-		[autoScrollJumpRatio],
-	);
+		}
+		if (xNew !== undefined || yNew !== undefined) {
+			scroll.scrollTo({
+				x: xNew ?? scrollPosition.x,
+				y: yNew ?? scrollPosition.y,
+			});
+			(scroll as any).flashScrollIndicators(); // ScrollView typing is missing this method
+		}
+	}, [autoScrollJumpRatio]);
 
 	// Start the auto-scrolling interval.
-	const startScroll = useCallback(
-		() => {
-			if (autoScrollIntervalRef.current) {
-				return;
-			}
-			doScroll();
-			autoScrollIntervalRef.current = setInterval(doScroll, autoScrollIntervalLength);
-		},
-		[doScroll, autoScrollIntervalLength],
-	);
+	const startScroll = useCallback(() => {
+		if (autoScrollIntervalRef.current) {
+			return;
+		}
+		doScroll();
+		autoScrollIntervalRef.current = setInterval(
+			doScroll,
+			autoScrollIntervalLength,
+		);
+	}, [doScroll, autoScrollIntervalLength]);
 
 	// Stop the auto-scrolling interval.
-	const stopScroll = useCallback(
-		() => {
-			if (autoScrollIntervalRef.current) {
-				clearInterval(autoScrollIntervalRef.current);
-				autoScrollIntervalRef.current = undefined;
-			}
-		},
-		[],
-	);
+	const stopScroll = useCallback(() => {
+		if (autoScrollIntervalRef.current) {
+			clearInterval(autoScrollIntervalRef.current);
+			autoScrollIntervalRef.current = undefined;
+		}
+	}, []);
 
 	// If startScroll changes, refresh our interval.
-	useEffect(
-		() => {
-			if (autoScrollIntervalRef.current) {
-				stopScroll();
-				startScroll();
-			}
-		},
-		[stopScroll, startScroll],
-	);
+	useEffect(() => {
+		if (autoScrollIntervalRef.current) {
+			stopScroll();
+			startScroll();
+		}
+	}, [stopScroll, startScroll]);
 
 	// Clear auto-scroll direction and stop the auto-scrolling interval.
-	const resetScroll = useCallback(
-		() => {
-			const autoScrollState = autoScrollStateRef.current;
-			autoScrollState.x = AutoScrollDirection.None;
-			autoScrollState.y = AutoScrollDirection.None;
-			stopScroll();
-		},
-		[stopScroll],
-	);
+	const resetScroll = useCallback(() => {
+		const autoScrollState = autoScrollStateRef.current;
+		autoScrollState.x = AutoScrollDirection.None;
+		autoScrollState.y = AutoScrollDirection.None;
+		stopScroll();
+	}, [stopScroll]);
 
 	// Track the size of the container view.
 	const onMeasureContainer = useCallback(
@@ -189,7 +184,10 @@ export const DraxScrollView = ({
 			} else {
 				autoScrollState.y = AutoScrollDirection.None;
 			}
-			if (autoScrollState.x === AutoScrollDirection.None && autoScrollState.y === AutoScrollDirection.None) {
+			if (
+				autoScrollState.x === AutoScrollDirection.None
+				&& autoScrollState.y === AutoScrollDirection.None
+			) {
 				stopScroll();
 			} else {
 				startScroll();
@@ -207,9 +205,19 @@ export const DraxScrollView = ({
 	const setScrollViewRefs = useCallback(
 		(ref: ScrollView | null) => {
 			scrollRef.current = ref;
+
+			if (typeof forwardedRef === 'function') {
+				forwardedRef(ref);
+			} else if (forwardedRef) {
+				const mutableRef = forwardedRef as React.MutableRefObject<
+				ScrollViewComponent | null | undefined
+				>;
+				mutableRef.current = ref;
+			}
+
 			nodeHandleRef.current = ref && findNodeHandle(ref);
 		},
-		[],
+		[forwardedRef],
 	);
 
 	// Track content size.
@@ -224,7 +232,9 @@ export const DraxScrollView = ({
 	// Update tracked scroll position when list is scrolled.
 	const onScroll = useCallback(
 		(event: NativeSyntheticEvent<NativeScrollEvent>) => {
-			const { nativeEvent: { contentOffset } } = event;
+			const {
+				nativeEvent: { contentOffset },
+			} = event;
 			scrollPositionRef.current = { ...contentOffset };
 			return onScrollProp?.(event);
 		},
@@ -255,3 +265,7 @@ export const DraxScrollView = ({
 		</DraxView>
 	) : null;
 };
+
+export const DraxScrollView = React.forwardRef(DraxScrollViewComponent) as (
+	p: DraxScrollViewProps & { ref?: RefObject<ScrollViewComponent> }
+) => React.ReactElement | null;
