@@ -68,6 +68,7 @@ export const DraxList = <T extends unknown>(
 		onScroll: onScrollProp,
 		itemsDraggable = true,
 		lockItemDragsToMainAxis = false,
+		longPressDelay = defaultListItemLongPressDelay,
 		...props
 	}: PropsWithChildren<DraxListProps<T>>,
 ): JSX.Element => {
@@ -224,7 +225,7 @@ export const DraxList = <T extends unknown>(
 					draggingStyle={draggingStyle}
 					dragReleasedStyle={dragReleasedStyle}
 					{...otherStyleProps}
-					longPressDelay={defaultListItemLongPressDelay}
+					longPressDelay={longPressDelay}
 					lockDragXPosition={lockItemDragsToMainAxis && !horizontal}
 					lockDragYPosition={lockItemDragsToMainAxis && horizontal}
 					draggable={itemsDraggable}
