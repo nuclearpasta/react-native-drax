@@ -9,6 +9,14 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ## [Unreleased]
 - Nothing yet
 
+## [0.8.2] - 2021-09-07
+
+### Added
+- Added `longPressDelay` prop to `DraxList` to override default (#59)
+
+### Changed
+- Upgraded path-parse from 1.0.6 to 1.0.7 (dependabot)
+
 ## [0.8.1] - 2021-08-02
 
 ### Changed
@@ -177,7 +185,8 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.2...HEAD
+[0.8.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.7.1...v0.7.2
