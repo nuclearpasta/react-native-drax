@@ -9,6 +9,17 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ## [Unreleased]
 - Nothing yet
 
+## [0.9.0] - 2021-11-03
+
+### Added
+- Forward underlying `ScrollView` ref in `DraxScrollView` (#117)
+- Forward underlying `FlatList` ref in `DraxList` (#118)
+
+### Changed
+- Apply `DraxScrollView`'s style to outer `DraxView` instead of inner `ScrollView` (#119)
+- Upgraded tmpl from 1.0.4 to 1.0.5 (dependabot)
+- Elaborated on state of library and contributions in README
+
 ## [0.8.2] - 2021-09-07
 
 ### Added

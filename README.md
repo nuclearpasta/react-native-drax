@@ -43,10 +43,12 @@ Drax is a declarative drag-and-drop system for React Native, written in TypeScri
 
 This library adheres to [Semantic Versioning (semver)](https://semver.org/) and is in its [0.y.z initial development phase](https://semver.org/#how-should-i-deal-with-revisions-in-the-0yz-initial-development-phase). It has been released so that early adopters (such as the project author) can begin to use it in production and identify gaps in the functionality. The API is subject to potentially significant rework until version 1.0.0 is released, and any minor version increment before then may include breaking changes. Documentation and full examples are still being written.
 
+The author of this library has not had significant availability to work on it for quite a while now, due to higher priority life and work concerns. Newer versions of Drax's major dependencies have been released in that time, and many people have opened issues asking questions about usage and potential features. Relatively small fixes and easy questions are handled reasonably often, but ultimately another round of research, testing, and architecture are what would take this library to the next level of usability. It is not clear when that might happen, but [contributors are welcome](#contributing).
+
 <a name="background"></a>
 ## Background
 
-To give an idea of the problem this library is trying to solve, here is some informal background from the creator:
+To give an idea of the problem this library is trying to solve, here is some informal background:
 
 > In our React Native application we had a screen which showed a
 > FlatList of cards that could be scrolled through or individually
@@ -187,7 +189,7 @@ Note: these Snack examples will not work in the Web device. You must use an iOS 
 <a name="contributing"></a>
 ## Contributing
 
-See the [Contribution Guidelines](CONTRIBUTING.md) for details.
+Issues, pull request, and discussion are all welcome. See the [Contribution Guidelines](CONTRIBUTING.md) for details, and please reach out to [the author](https://github.com/lafiosca) if you would like to participate more significantly.
 
 <a name="code-of-conduct"></a>
 ## Code of Conduct
@@ -202,4 +204,4 @@ This software library is licensed under the [MIT License](LICENSE.md).
 <a name="acknowledgements"></a>
 ## Acknowledgments
 
-The bulk of this library was written by [Joe Lafiosca](https://twitter.com/joelafiosca) over the course of December 2019. Joe would like to give thanks to co-founder Mark Thomas for being patient with the development process. Joe would also like to give thanks to Lena Raine, Tom Jenkinson, Rollie Pemberton, David Minnick, Tim Smith, and Danny Baranowsky for providing most of the coding background music that inspired this work.
+The initial version of this library was written by [Joe Lafiosca](https://github.com/lafiosca) over the course of December 2019. Joe would like to give thanks to Nuclear Pasta co-founder Mark Thomas for being patient with the development process. Joe would also like to give thanks to Lena Raine, Tom Jenkinson, Rollie Pemberton, David Minnick, Tim Smith, and Danny Baranowsky for providing most of the coding background music that inspired this work.

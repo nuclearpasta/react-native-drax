@@ -3,6 +3,8 @@ import React, {
 	useRef,
 	useCallback,
 	useEffect,
+	ForwardedRef,
+	forwardRef,
 } from 'react';
 import {
 	ScrollView,
@@ -30,18 +32,24 @@ import {
 	defaultScrollEventThrottle,
 } from './params';
 
-export const DraxScrollView = ({
-	children,
-	onScroll: onScrollProp,
-	onContentSizeChange: onContentSizeChangeProp,
-	scrollEventThrottle = defaultScrollEventThrottle,
-	autoScrollIntervalLength = defaultAutoScrollIntervalLength,
-	autoScrollJumpRatio = defaultAutoScrollJumpRatio,
-	autoScrollBackThreshold = defaultAutoScrollBackThreshold,
-	autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
-	id: idProp,
-	...props
-}: PropsWithChildren<DraxScrollViewProps>) => {
+const DraxScrollViewUnforwarded = (
+	props: PropsWithChildren<DraxScrollViewProps>,
+	forwardedRef: ForwardedRef<ScrollView>,
+) => {
+	const {
+		children,
+		style,
+		onScroll: onScrollProp,
+		onContentSizeChange: onContentSizeChangeProp,
+		scrollEventThrottle = defaultScrollEventThrottle,
+		autoScrollIntervalLength = defaultAutoScrollIntervalLength,
+		autoScrollJumpRatio = defaultAutoScrollJumpRatio,
+		autoScrollBackThreshold = defaultAutoScrollBackThreshold,
+		autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
+		id: idProp,
+		...scrollViewProps
+	} = props;
+
 	// The unique identifer for this view.
 	const id = useDraxId(idProp);
 
@@ -208,8 +216,16 @@ export const DraxScrollView = ({
 		(ref: ScrollView | null) => {
 			scrollRef.current = ref;
 			nodeHandleRef.current = ref && findNodeHandle(ref);
+			if (forwardedRef) {
+				if (typeof forwardedRef === 'function') {
+					forwardedRef(ref);
+				} else {
+					// eslint-disable-next-line no-param-reassign
+					forwardedRef.current = ref;
+				}
+			}
 		},
-		[],
+		[forwardedRef],
 	);
 
 	// Track content size.
@@ -234,6 +250,7 @@ export const DraxScrollView = ({
 	return id ? (
 		<DraxView
 			id={id}
+			style={style}
 			scrollPositionRef={scrollPositionRef}
 			onMeasure={onMeasureContainer}
 			onMonitorDragOver={onMonitorDragOver}
@@ -243,7 +260,7 @@ export const DraxScrollView = ({
 		>
 			<DraxSubprovider parent={{ id, nodeHandleRef }}>
 				<ScrollView
-					{...props}
+					{...scrollViewProps}
 					ref={setScrollViewRefs}
 					onContentSizeChange={onContentSizeChange}
 					onScroll={onScroll}
@@ -255,3 +272,5 @@ export const DraxScrollView = ({
 		</DraxView>
 	) : null;
 };
+
+export const DraxScrollView = forwardRef<ScrollView, PropsWithChildren<DraxScrollViewProps>>(DraxScrollViewUnforwarded);

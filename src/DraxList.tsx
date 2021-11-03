@@ -6,6 +6,9 @@ import React, {
 	useCallback,
 	useMemo,
 	useLayoutEffect,
+	ForwardedRef,
+	forwardRef,
+	Ref,
 } from 'react';
 import {
 	ListRenderItemInfo,
@@ -50,8 +53,11 @@ const defaultStyles = StyleSheet.create({
 	dragReleasedStyle: { opacity: 0.5 },
 });
 
-export const DraxList = <T extends unknown>(
-	{
+const DraxListUnforwarded = <T extends unknown>(
+	props: PropsWithChildren<DraxListProps<T>>,
+	forwardedRef: ForwardedRef<FlatList>,
+): JSX.Element => {
+	const {
 		data,
 		style,
 		flatListStyle,
@@ -69,11 +75,11 @@ export const DraxList = <T extends unknown>(
 		itemsDraggable = true,
 		lockItemDragsToMainAxis = false,
 		longPressDelay = defaultListItemLongPressDelay,
-		...props
-	}: PropsWithChildren<DraxListProps<T>>,
-): JSX.Element => {
+		...flatListProps
+	} = props;
+
 	// Copy the value of the horizontal property for internal use.
-	const horizontal = props.horizontal ?? false;
+	const horizontal = flatListProps.horizontal ?? false;
 
 	// Get the item count for internal use.
 	const itemCount = data?.length ?? 0;
@@ -261,6 +267,7 @@ export const DraxList = <T extends unknown>(
 			itemsDraggable,
 			renderItemContent,
 			renderItemHoverContent,
+			longPressDelay,
 			lockItemDragsToMainAxis,
 			horizontal,
 		],
@@ -287,8 +294,16 @@ export const DraxList = <T extends unknown>(
 		(ref) => {
 			flatListRef.current = ref;
 			nodeHandleRef.current = ref && findNodeHandle(ref);
+			if (forwardedRef) {
+				if (typeof forwardedRef === 'function') {
+					forwardedRef(ref);
+				} else {
+					// eslint-disable-next-line no-param-reassign
+					forwardedRef.current = ref;
+				}
+			}
 		},
-		[],
+		[forwardedRef],
 	);
 
 	// Update tracked scroll position when list is scrolled.
@@ -676,7 +691,7 @@ export const DraxList = <T extends unknown>(
 		>
 			<DraxSubprovider parent={{ id, nodeHandleRef }}>
 				<FlatList
-					{...props}
+					{...flatListProps}
 					style={flatListStyle}
 					ref={setFlatListRefs}
 					renderItem={renderItem}
@@ -688,3 +703,13 @@ export const DraxList = <T extends unknown>(
 		</DraxView>
 	);
 };
+
+/*
+ * We are using a type assertion to work around the loss of our generic
+ * typing when forwarding the ref. See option 1 in this article:
+ * https://fettblog.eu/typescript-react-generic-forward-refs/
+ */
+type DraxListType = <T extends unknown>(
+	props: PropsWithChildren<DraxListProps<T>> & { ref?: Ref<FlatList> },
+) => JSX.Element;
+export const DraxList = forwardRef(DraxListUnforwarded) as DraxListType;
