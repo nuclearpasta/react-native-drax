@@ -9,6 +9,12 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ## [Unreleased]
 - Nothing yet
 
+## [0.9.1] - 2021-11-03
+
+### Changed
+- Apply `DraxScrollView`'s style to outer `DraxView` instead of inner `ScrollView` (#119)
+- Upgraded tmpl from 1.0.4 to 1.0.5 (dependabot)
+
 ## [0.9.0] - 2021-11-03
 
 ### Added
@@ -17,7 +23,6 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 ### Changed
 - Apply `DraxScrollView`'s style to outer `DraxView` instead of inner `ScrollView` (#119)
-- Upgraded tmpl from 1.0.4 to 1.0.5 (dependabot)
 - Elaborated on state of library and contributions in README
 
 ## [0.8.2] - 2021-09-07
@@ -196,7 +201,9 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.2...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.7.2...v0.8.0
