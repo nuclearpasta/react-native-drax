@@ -11,7 +11,7 @@ export const clipMeasurements = (
 		y: y0,
 	} = vm;
 	let x1 = x0 + width;
-	let y1 = y0 + width;
+	let y1 = y0 + height;
 	const {
 		width: cwidth,
 		height: cheight,
