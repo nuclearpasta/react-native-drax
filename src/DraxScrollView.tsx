@@ -105,7 +105,7 @@ const DraxScrollViewUnforwarded = (
 				}
 			}
 			if (autoScrollState.y === AutoScrollDirection.Forward) {
-				const yMax = contentSize.y - containerMeasurements.width;
+				const yMax = contentSize.y - containerMeasurements.height;
 				if (scrollPosition.y < yMax) {
 					yNew = Math.min(scrollPosition.y + jump.y, yMax);
 				}
