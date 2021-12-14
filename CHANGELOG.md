@@ -9,6 +9,11 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ## [Unreleased]
 - Nothing yet
 
+## [0.9.3] - 2021-12-14
+
+### Fixed
+- Fixed typo-based math error in auto-scroll logic (#126)
+
 ## [0.9.2] - 2021-12-08
 
 ### Fixed
@@ -206,7 +211,8 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.2...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.3...HEAD
+[0.9.3]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.1...v0.9.2
 [0.9.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.8.2...v0.9.0
