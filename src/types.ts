@@ -583,6 +583,9 @@ export interface DraxContextValue {
 /** Optional props that can be passed to a DraxProvider to modify its behavior */
 export interface DraxProviderProps {
 	debug?: boolean;
+
+	/** Drax parent view style */
+	style?: StyleProp<ViewStyle>;
 }
 
 /** Props that are passed to a DraxSubprovider, used internally for nesting views */

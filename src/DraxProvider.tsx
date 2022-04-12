@@ -20,7 +20,7 @@ import {
 } from './types';
 import { getRelativePosition } from './math';
 
-export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = false, children }) => {
+export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = false, style, children }) => {
 	const {
 		getViewState,
 		getTrackingStatus,
@@ -776,7 +776,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 	return (
 		<DraxContext.Provider value={contextValue}>
 			<View
-				style={styles.provider}
+				style={[styles.provider, style]}
 				ref={setRootNodeHandleRef}
 			>
 				{children}
