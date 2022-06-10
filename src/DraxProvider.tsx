@@ -1,5 +1,4 @@
 import React, {
-	FunctionComponent,
 	useCallback,
 	ReactNodeArray,
 	useRef,
@@ -20,7 +19,11 @@ import {
 } from './types';
 import { getRelativePosition } from './math';
 
-export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = false, children }) => {
+export const DraxProvider = ({
+	debug = false,
+	style = styles.provider,
+	children,
+}: DraxProviderProps): JSX.Element => {
 	const {
 		getViewState,
 		getTrackingStatus,
@@ -776,7 +779,7 @@ export const DraxProvider: FunctionComponent<DraxProviderProps> = ({ debug = fal
 	return (
 		<DraxContext.Provider value={contextValue}>
 			<View
-				style={styles.provider}
+				style={style}
 				ref={setRootNodeHandleRef}
 			>
 				{children}

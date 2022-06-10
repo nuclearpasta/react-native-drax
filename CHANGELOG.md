@@ -9,6 +9,11 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ## [Unreleased]
 - Nothing yet
 
+## [0.10.2] - 2022-06-10
+
+### Added
+- Allow overriding style of DraxProvider (#136)
+
 ## [0.10.1] - 2022-06-10
 
 ### Changed
@@ -230,7 +235,8 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later?)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.10.2...HEAD
+[0.10.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.2...v0.9.3
