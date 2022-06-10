@@ -12,6 +12,8 @@ import {
 	StyleSheet,
 	findNodeHandle,
 	Dimensions,
+	ViewStyle,
+	StyleProp,
 } from 'react-native';
 import {
 	LongPressGestureHandler,
@@ -30,8 +32,6 @@ import {
 	DraxViewMeasurementHandler,
 	DraxRenderContentProps,
 	DraxInternalRenderHoverViewProps,
-	AnimatedTransform,
-	AnimatedViewStyleProp,
 } from './types';
 import { defaultLongPressDelay } from './params';
 import { extractDimensions } from './math';
@@ -189,7 +189,7 @@ export const DraxView = (
 			dimensions,
 		}: DraxInternalRenderHoverViewProps) => {
 			// Start with base style, calculated dimensions, and hover base style.
-			const hoverStyles: AnimatedViewStyleProp[] = [
+			const hoverStyles: StyleProp<Animated.WithAnimatedValue<ViewStyle>>[] = [
 				style,
 				dimensions,
 				hoverStyle,
@@ -211,7 +211,7 @@ export const DraxView = (
 			const flattenedHoverStyle = flattenStylesWithoutLayout(hoverStyles);
 
 			// Apply hover transform.
-			const transform = hoverPosition.getTranslateTransform() as AnimatedTransform;
+			const transform = hoverPosition.getTranslateTransform();
 
 			return mergeStyleTransform(flattenedHoverStyle, transform);
 		},

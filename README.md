@@ -11,7 +11,9 @@
 
 Drax is a declarative drag-and-drop system for React Native, written in TypeScript. It is designed to be flexible and powerful with the goal of supporting many use cases, while its stock components and default settings should cover the most common scenarios with minimal configuration.
 
-**Note: as of version 0.7.0, React Native 0.62 or higher is required. For RN 0.61 projects, you may be able to use 0.6.0, but it will no longer be supported.**
+**Note: as of version 0.10.0, React Native 0.65 or higher is required. For RN 0.62-0.64 projects, you may be able to use 0.9.3, but it will no longer be supported. For RN 0.61 projects, you may be able to use 0.6.0, but it will no longer be supported.**
+
+*Personal note from Joe: this project is in need of additional [contributors/shepherds](#contributing). I have not been focused on React Native over the past year, and the state of the library has fallen behind the times. At a minimum, it should be updated to use the latest RNGH and take advantage of any fixes and new features in that and RN. I apologize that I do not have the availability to maintain this project to my own high standards and thank everyone who has been understanding of that.*
 
 #### Contents
 
@@ -205,3 +207,5 @@ This software library is licensed under the [MIT License](LICENSE.md).
 ## Acknowledgments
 
 The initial version of this library was written by [Joe Lafiosca](https://github.com/lafiosca) over the course of December 2019. Joe would like to give thanks to Nuclear Pasta co-founder Mark Thomas for being patient with the development process. Joe would also like to give thanks to Lena Raine, Tom Jenkinson, Rollie Pemberton, David Minnick, Tim Smith, and Danny Baranowsky for providing most of the coding background music that inspired this work.
+
+Special thanks go to the folks who have contributed donations toward this project. (If you are a sponsor and would like your name listed here, please let me know! I do not want to make assumptions about people's privacy preferences.)

@@ -1,13 +1,14 @@
-import { StyleSheet } from 'react-native';
-
 import {
-	AnimatedTransform,
-	AnimatedViewStyleProp,
-	AnimatedViewStyleWithoutLayout,
-} from './types';
+	Animated,
+	StyleProp,
+	StyleSheet,
+	ViewStyle,
+} from 'react-native';
+
+import { AnimatedViewStyleWithoutLayout } from './types';
 
 export const flattenStylesWithoutLayout = (
-	styles: AnimatedViewStyleProp[],
+	styles: StyleProp<Animated.WithAnimatedValue<ViewStyle>>[],
 ): AnimatedViewStyleWithoutLayout => {
 	const {
 		margin,
@@ -35,7 +36,7 @@ export const flattenStylesWithoutLayout = (
 
 export const mergeStyleTransform = (
 	style: AnimatedViewStyleWithoutLayout,
-	transform: AnimatedTransform,
+	transform: Animated.WithAnimatedValue<ViewStyle['transform']>,
 ): AnimatedViewStyleWithoutLayout => ({
 	...style,
 	transform: [

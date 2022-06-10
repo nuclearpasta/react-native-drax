@@ -605,30 +605,6 @@ export interface DraxParentView {
 	nodeHandleRef: RefObject<number | null>;
 }
 
-/** Type augmentation to allow an animated value */
-type MaybeAnimated<T> = T | Animated.Value;
-
-/** Scalar type that can be replaced by an animated value */
-type AnimatedScalar = string | number;
-
-/** Type augmentation to allow a style to support animated values */
-export type AnimatedStyle<T> = {
-	[Key in keyof T]: T[Key] extends AnimatedScalar
-		? MaybeAnimated<T[Key]>
-		: T[Key] extends Array<infer U>
-			? Array<AnimatedStyle<U>>
-			: AnimatedStyle<T[Key]>
-};
-
-/** Style for an Animated.View */
-export type AnimatedViewStyle = AnimatedStyle<ViewStyle>;
-
-/** Style prop for an Animated.View */
-export type AnimatedViewStyleProp = StyleProp<AnimatedViewStyle>;
-
-/** Helper type for coercing the output of Animated.ValueXY.getTranslateTransform() */
-export type AnimatedTransform = AnimatedStyle<ViewStyle['transform']>;
-
 /** Function that receives a Drax view measurement */
 export interface DraxViewMeasurementHandler {
 	(measurements: DraxViewMeasurements | undefined): void
@@ -656,31 +632,31 @@ export type LayoutStyleKey = (
 	| 'flexShrink'
 );
 
-/** Style for an Animated.View used for a hover view */
-export type AnimatedViewStyleWithoutLayout = Omit<AnimatedViewStyle, LayoutStyleKey>;
+/** Style for a Animated.View used for a hover view */
+export type AnimatedViewStyleWithoutLayout = Omit<Animated.WithAnimatedValue<ViewStyle>, LayoutStyleKey>;
 
-/** Style prop for an Animated.View used for a hover view */
+/** Style prop for a Animated.View used for a hover view */
 export type AnimatedViewStylePropWithoutLayout = StyleProp<AnimatedViewStyleWithoutLayout>;
 
 /** Style-related props for a Drax view */
 export interface DraxViewStyleProps {
 	/** Custom style prop to allow animated values */
-	style?: AnimatedViewStyleProp;
+	style?: StyleProp<Animated.WithAnimatedValue<ViewStyle>>;
 
 	/** Additional view style applied while this view is not being dragged or released */
-	dragInactiveStyle?: AnimatedViewStyleProp;
+	dragInactiveStyle?: StyleProp<Animated.WithAnimatedValue<ViewStyle>>;
 
 	/** Additional view style applied while this view is being dragged */
-	draggingStyle?: AnimatedViewStyleProp;
+	draggingStyle?: StyleProp<Animated.WithAnimatedValue<ViewStyle>>;
 
 	/** Additional view style applied while this view is being dragged over a receiver */
-	draggingWithReceiverStyle?: AnimatedViewStyleProp;
+	draggingWithReceiverStyle?: StyleProp<Animated.WithAnimatedValue<ViewStyle>>;
 
 	/** Additional view style applied while this view is being dragged NOT over a receiver */
-	draggingWithoutReceiverStyle?: AnimatedViewStyleProp;
+	draggingWithoutReceiverStyle?: StyleProp<Animated.WithAnimatedValue<ViewStyle>>;
 
 	/** Additional view style applied while this view has just been released from a drag */
-	dragReleasedStyle?: AnimatedViewStyleProp;
+	dragReleasedStyle?: StyleProp<Animated.WithAnimatedValue<ViewStyle>>;
 
 	/** Additional view style applied to the hovering copy of this view during drag/release */
 	hoverStyle?: AnimatedViewStylePropWithoutLayout;
@@ -698,19 +674,19 @@ export interface DraxViewStyleProps {
 	hoverDragReleasedStyle?: AnimatedViewStylePropWithoutLayout;
 
 	/** Additional view style applied while this view is not receiving a drag */
-	receiverInactiveStyle?: AnimatedViewStyleProp;
+	receiverInactiveStyle?: StyleProp<Animated.WithAnimatedValue<ViewStyle>>;
 
 	/** Additional view style applied while this view is receiving a drag */
-	receivingStyle?: AnimatedViewStyleProp;
+	receivingStyle?: StyleProp<Animated.WithAnimatedValue<ViewStyle>>;
 
 	/** Additional view style applied to this view while any other view is being dragged */
-	otherDraggingStyle?: AnimatedViewStyleProp;
+	otherDraggingStyle?: StyleProp<Animated.WithAnimatedValue<ViewStyle>>;
 
 	/** Additional view style applied to this view while any other view is being dragged over a receiver */
-	otherDraggingWithReceiverStyle?: AnimatedViewStyleProp;
+	otherDraggingWithReceiverStyle?: StyleProp<Animated.WithAnimatedValue<ViewStyle>>;
 
 	/** Additional view style applied to this view while any other view is being dragged NOT over a receiver */
-	otherDraggingWithoutReceiverStyle?: AnimatedViewStyleProp;
+	otherDraggingWithoutReceiverStyle?: StyleProp<Animated.WithAnimatedValue<ViewStyle>>;
 }
 
 /** Custom render function for content of a DraxView */
