@@ -9,6 +9,16 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ## [Unreleased]
 - Nothing yet
 
+## [0.10.1] - 2022-06-10
+
+### Changed
+- Bump ansi-regex from 4.1.0 to 4.1.1 (dependabot)
+- Bump async from 2.6.3 to 2.6.4 (dependabot)
+- Bump cross-fetch from 3.1.4 to 3.1.5 (dependabot)
+- Bump minimist from 1.2.5 to 1.2.6 (dependabot)
+- Bump plist from 3.0.2 to 3.0.5 (dependabot)
+- Bump simple-plist from 1.1.1 to 1.3.1 (dependabot)
+
 ## [0.10.0] - 2022-06-10
 
 ### Changed
@@ -220,7 +230,8 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later?)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.3...v0.10.0
 [0.9.3]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.2...v0.9.3
 [0.9.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.1...v0.9.2
