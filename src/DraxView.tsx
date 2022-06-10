@@ -455,8 +455,8 @@ export const DraxView = (
 				// console.log(`Dimensions changed to ${width}/${height}`);
 				setTimeout(measureWithHandler, 100);
 			};
-			Dimensions.addEventListener('change', handler);
-			return () => Dimensions.removeEventListener('change', handler);
+			const listener = Dimensions.addEventListener('change', handler);
+			return () => listener.remove();
 		},
 		[measureWithHandler],
 	);
