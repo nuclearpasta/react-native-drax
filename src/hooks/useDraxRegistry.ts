@@ -156,7 +156,7 @@ const findMonitorsAndReceiverInRegistry = (
 ) => {
 	const monitors: DraxFoundAbsoluteViewEntry[] = [];
 	let receiver: DraxFoundAbsoluteViewEntry | undefined;
-
+	const arrAbsolutePosition = [absolutePosition, { ...absolutePosition, y: absolutePosition.y - 30 }, { ...absolutePosition, y: absolutePosition.y + 30 }, { ...absolutePosition, x: absolutePosition.x - 30 }, { ...absolutePosition, x: absolutePosition.x + 30 }];
 	// console.log(`find monitors and receiver for absolute position (${absolutePosition.x}, ${absolutePosition.y})`);
 	registry.viewIds.forEach((targetId) => {
 		// console.log(`checking target id ${targetId}`);
@@ -191,31 +191,32 @@ const findMonitorsAndReceiverInRegistry = (
 		}
 
 		// console.log(`absolute measurements: ${JSON.stringify(absoluteMeasurements, null, 2)}`);
+		arrAbsolutePosition.forEach((_absolutePosition) => {
+			if (isPointInside(_absolutePosition, absoluteMeasurements)) {
+				// Drag point is within this target.
+				const foundView: DraxFoundAbsoluteViewEntry = {
+					id: targetId,
+					data: {
+						...target,
+						measurements: target.measurements!, // It must exist, since absoluteMeasurements is defined.
+						absoluteMeasurements,
+					},
+					...getRelativePosition(_absolutePosition, absoluteMeasurements),
+				};
 
-		if (isPointInside(absolutePosition, absoluteMeasurements)) {
-			// Drag point is within this target.
-			const foundView: DraxFoundAbsoluteViewEntry = {
-				id: targetId,
-				data: {
-					...target,
-					measurements: target.measurements!, // It must exist, since absoluteMeasurements is defined.
-					absoluteMeasurements,
-				},
-				...getRelativePosition(absolutePosition, absoluteMeasurements),
-			};
+				if (monitoring) {
+					// Add it to the list of monitors.
+					monitors.push(foundView);
+					// console.log('it\'s a monitor');
+				}
 
-			if (monitoring) {
-				// Add it to the list of monitors.
-				monitors.push(foundView);
-				// console.log('it\'s a monitor');
+				if (receptive) {
+					// It's the latest receiver found.
+					receiver = foundView;
+					// console.log('it\'s a receiver');
+				}
 			}
-
-			if (receptive) {
-				// It's the latest receiver found.
-				receiver = foundView;
-				// console.log('it\'s a receiver');
-			}
-		}
+		});
 	});
 	return {
 		monitors,
