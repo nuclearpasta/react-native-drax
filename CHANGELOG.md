@@ -9,6 +9,12 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ## [Unreleased]
 - Nothing yet
 
+
+## [0.10.3] - 2022-09-06
+
+### Fixed
+- Fix clipping sizes to properly take position into account (#151) - Thank you @FrancoisDupayrat!
+
 ## [0.10.2] - 2022-06-10
 
 ### Added
@@ -235,7 +241,8 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 *(More history to be added later?)*
 
-[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.10.2...HEAD
+[Unreleased]: https://github.com/nuclearpasta/react-native-drax/compare/v0.10.3...HEAD
+[0.10.3]: https://github.com/nuclearpasta/react-native-drax/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/nuclearpasta/react-native-drax/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/nuclearpasta/react-native-drax/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/nuclearpasta/react-native-drax/compare/v0.9.3...v0.10.0
