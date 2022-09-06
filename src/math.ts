@@ -29,20 +29,20 @@ export const clipMeasurements = (
 		};
 	}
 	if (x0 < cx0) {
-		x0 = cx0;
 		width -= cx0 - x0;
+		x0 = cx0;
 	}
 	if (x1 > cx1) {
-		x1 = cx1;
 		width -= x1 - cx1;
+		x1 = cx1;
 	}
 	if (y0 < cy0) {
-		y0 = cy0;
 		height -= cy0 - y0;
+		y0 = cy0;
 	}
 	if (y1 > cy1) {
-		y1 = cy1;
 		height -= y1 - cy1;
+		y1 = cy1;
 	}
 	return {
 		width,
