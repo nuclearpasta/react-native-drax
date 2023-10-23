@@ -4,7 +4,7 @@
 	"description": "A drag-and-drop system for React Native",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/Georgio-Saad/react-native-drax.git"
+		"url": "git+ssh://git@github.com/nuclearpasta/react-native-drax.git"
 	},
 	"main": "build/index.js",
 	"types": "build/index.d.ts",
