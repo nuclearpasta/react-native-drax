@@ -40,7 +40,8 @@ export const mergeStyleTransform = (
 ): AnimatedViewStyleWithoutLayout => ({
 	...style,
 	transform: [
-		...(transform ?? []),
+		// @ts-ignore TODO: Will be removed with Reanimated implementation
+		...(transform || []),
 		...(style.transform ?? []),
 	],
 });

@@ -22,26 +22,28 @@
 	},
 	"peerDependencies": {
 		"react": "*",
-		"react-native": ">=0.65.0",
-		"react-native-gesture-handler": ">=1.8.0"
+		"react-native": ">=0.69.0",
+		"react-native-gesture-handler": ">=2.0.0",
+		"react-native-reanimated": ">=2.0.0"
 	},
 	"devDependencies": {
-		"@types/lodash.isequal": "^4.5.5",
-		"@types/lodash.throttle": "^4.1.6",
-		"@types/node": "^14.14.43",
-		"@types/react-native": "^0.65.22",
-		"@typescript-eslint/eslint-plugin": "^4.22.0",
-		"@typescript-eslint/parser": "^4.22.0",
+		"@types/lodash.isequal": "4.5.7",
+		"@types/lodash.throttle": "4.1.8",
+		"@types/node": "^20.8.10",
+		"@types/react": "^18.2.33",
+		"@typescript-eslint/eslint-plugin": "^5.13.0",
+		"@typescript-eslint/parser": "^5.13.0",
 		"eslint": "^7.25.0",
 		"eslint-config-airbnb-typescript": "^12.3.1",
-		"eslint-plugin-import": "^2.22.1",
+		"eslint-plugin-import": "2.29.0",
 		"eslint-plugin-jsx-a11y": "^6.4.1",
-		"eslint-plugin-react": "^7.23.2",
-		"eslint-plugin-react-hooks": "^4.2.0",
+		"eslint-plugin-react": "^7.33.2",
+		"eslint-plugin-react-hooks": "^4.6.0",
 		"eslint-plugin-react-native": "^3.10.0",
-		"react": "^17.0.2",
-		"react-native": "^0.65.2",
-		"react-native-gesture-handler": "^1.8.0",
-		"typescript": "^4.7.3"
+		"react": "^18.2.0",
+		"react-native": "^0.72.6",
+		"react-native-gesture-handler": "2.13.4",
+		"react-native-reanimated": "^3.5.4",
+		"typescript": "^5.2.2"
 	}
 }

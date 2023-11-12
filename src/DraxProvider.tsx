@@ -1,21 +1,31 @@
 import React, {
 	useCallback,
-	ReactNodeArray,
 	useRef,
+	ReactNode,
+	useMemo,
 } from 'react';
 import { View, StyleSheet, findNodeHandle } from 'react-native';
-import { State } from 'react-native-gesture-handler';
+import {
+	Gesture, GestureStateChangeEvent, GestureTouchEvent, GestureUpdateEvent, PanGestureHandlerEventPayload, State,
+} from 'react-native-gesture-handler';
 
+import throttle from 'lodash.throttle';
 import { useDraxState, useDraxRegistry } from './hooks';
 import { DraxContext } from './DraxContext';
 import {
 	DraxProviderProps,
 	DraxContextValue,
-	DraxGestureStateChangeEvent,
-	DraxGestureEvent,
 	DraxSnapbackTarget,
 	DraxSnapbackTargetPreset,
 	DraxMonitorEventData,
+	DraxDragWithReceiverEventData,
+	DraxEventReceiverViewData,
+	DraxMonitorDragDropEventData,
+	DraxDragEndEventData,
+	DraxDragWithReceiverEndEventData,
+	DraxDragEventData,
+	DraxEventDraggedViewData,
+	LongPressConfig,
 } from './types';
 import { getRelativePosition } from './math';
 
@@ -53,7 +63,7 @@ export const DraxProvider = ({
 	const rootNodeHandleRef = useRef<number | null>(null);
 
 	const handleGestureStateChange = useCallback(
-		(id: string, event: DraxGestureStateChangeEvent) => {
+		(id: string, event: GestureStateChangeEvent<PanGestureHandlerEventPayload>) => {
 			if (debug) {
 				console.log(`handleGestureStateChange(${id}, ${JSON.stringify(event, null, 2)})`);
 			}
@@ -100,7 +110,7 @@ export const DraxProvider = ({
 
 			/*
 			 * Documentation on gesture handler state flow used in switches below:
-			 * https://github.com/kmagiera/react-native-gesture-handler/blob/master/docs/state.md
+			 * https://docs.swmansion.com/react-native-gesture-handler/docs/under-the-hood/state/
 			 */
 
 			const {
@@ -200,7 +210,7 @@ export const DraxProvider = ({
 				} = dragPositionData;
 
 				// Prepare event data for dragged view.
-				const eventDataDragged = {
+				const eventDataDragged: DraxEventDraggedViewData = {
 					id,
 					dragTranslationRatio,
 					parentId: draggedData.parentId,
@@ -225,7 +235,7 @@ export const DraxProvider = ({
 					let responded = false;
 
 					// Prepare event data for receiver view.
-					const eventDataReceiver = {
+					const eventDataReceiver: DraxEventReceiverViewData = {
 						id: receiver.id,
 						parentId: receiver.data.parentId,
 						payload: receiver.data.protocol.receiverPayload,
@@ -233,7 +243,7 @@ export const DraxProvider = ({
 						receiveOffsetRatio: receiver.tracking.receiveOffsetRatio,
 					};
 
-					const eventData = {
+					const eventData: DraxDragWithReceiverEventData = {
 						dragAbsolutePosition,
 						dragTranslation,
 						dragged: eventDataDragged,
@@ -260,11 +270,14 @@ export const DraxProvider = ({
 									relativePosition: monitorOffset,
 									relativePositionRatio: monitorOffsetRatio,
 								} = getRelativePosition(dragAbsolutePosition, monitorData.absoluteMeasurements);
-								response = monitorData.protocol.onMonitorDragDrop?.({
+
+								const monitorEventData : DraxMonitorDragDropEventData = {
 									...eventData,
 									monitorOffset,
 									monitorOffsetRatio,
-								});
+								};
+
+								response = monitorData.protocol.onMonitorDragDrop?.(monitorEventData);
 							}
 							if (!responded && response !== undefined) {
 								snapbackTarget = response;
@@ -276,7 +289,7 @@ export const DraxProvider = ({
 					// There is no receiver, or the drag was cancelled.
 
 					// Prepare common event data.
-					const eventData = {
+					const eventData: DraxDragEndEventData = {
 						dragAbsolutePosition,
 						dragTranslation,
 						cancelled,
@@ -300,11 +313,13 @@ export const DraxProvider = ({
 						receiveOffsetRatio: receiver.tracking.receiveOffsetRatio,
 					};
 
-					// If there is a receiver but drag was cancelled, let it know the drag exited it.
-					receiver?.data.protocol.onReceiveDragExit?.({
+					const receivedDragExitEventData: DraxDragWithReceiverEndEventData = {
 						...eventData,
 						receiver: eventReceiverData!,
-					});
+					};
+
+					// If there is a receiver but drag was cancelled, let it know the drag exited it.
+					receiver?.data.protocol.onReceiveDragExit?.(receivedDragExitEventData);
 
 					// And let any active monitors know too.
 					if (monitors.length > 0) {
@@ -467,7 +482,7 @@ export const DraxProvider = ({
 	);
 
 	const handleGestureEvent = useCallback(
-		(id: string, event: DraxGestureEvent) => {
+		(id: string, event: GestureUpdateEvent<PanGestureHandlerEventPayload>) => {
 			if (debug) {
 				console.log(`handleGestureEvent(${id}, ${JSON.stringify(event, null, 2)})`);
 			}
@@ -540,7 +555,7 @@ export const DraxProvider = ({
 			const draggedProtocol = dragged.data.protocol;
 
 			// Prepare event data for dragged view.
-			const eventDataDragged = {
+			const eventDataDragged: DraxEventDraggedViewData = {
 				dragTranslationRatio,
 				id: dragged.id,
 				parentId: dragged.data.parentId,
@@ -552,7 +567,7 @@ export const DraxProvider = ({
 			};
 
 			// Prepare base drag event data.
-			const dragEventData = {
+			const dragEventData: DraxDragEventData = {
 				dragAbsolutePosition,
 				dragTranslation,
 				dragged: eventDataDragged,
@@ -588,7 +603,7 @@ export const DraxProvider = ({
 				}
 
 				// Prepare event data for receiver view.
-				const eventDataReceiver = {
+				const eventDataReceiver: DraxEventReceiverViewData = {
 					id: receiver.id,
 					parentId: receiver.data.parentId,
 					payload: receiver.data.protocol.receiverPayload,
@@ -600,7 +615,7 @@ export const DraxProvider = ({
 				monitorEventDataStub.receiver = eventDataReceiver;
 
 				// Prepare event data for callbacks.
-				const eventData = {
+				const eventData: DraxDragWithReceiverEventData = {
 					...dragEventData,
 					receiver: eventDataReceiver,
 				};
@@ -616,7 +631,7 @@ export const DraxProvider = ({
 						// Case 2: new exists, old exists, new is different from old
 
 						// Prepare event data with old receiver.
-						const eventDataOldReceiver = {
+						const eventDataOldReceiver: DraxDragWithReceiverEventData = {
 							...dragEventData,
 							receiver: {
 								id: oldReceiver.id,
@@ -629,10 +644,13 @@ export const DraxProvider = ({
 
 						// Call the protocol event callbacks for exiting the old receiver...
 						draggedProtocol.onDragExit?.(eventDataOldReceiver);
-						oldReceiver.data.protocol.onReceiveDragExit?.({
+
+						const endEventDataOldReceiver: DraxDragWithReceiverEndEventData = {
 							...eventDataOldReceiver,
 							cancelled: false,
-						});
+						};
+
+						oldReceiver.data.protocol.onReceiveDragExit?.(endEventDataOldReceiver);
 
 						// ...and entering the new receiver.
 						draggedProtocol.onDragEnter?.(eventData);
@@ -652,7 +670,7 @@ export const DraxProvider = ({
 				resetReceiver();
 
 				// Prepare event data with old receiver.
-				const eventData = {
+				const eventData: DraxDragWithReceiverEventData = {
 					...dragEventData,
 					receiver: {
 						id: oldReceiver.id,
@@ -665,10 +683,12 @@ export const DraxProvider = ({
 
 				// Call the protocol event callbacks for exiting the old receiver.
 				draggedProtocol.onDragExit?.(eventData);
-				oldReceiver.data.protocol.onReceiveDragExit?.({
+
+				const receiveEventData: DraxDragWithReceiverEndEventData = {
 					...eventData,
 					cancelled: false,
-				});
+				};
+				oldReceiver.data.protocol.onReceiveDragExit?.(receiveEventData);
 			} else {
 				// Case 5: new does not exist, old does not exist
 
@@ -685,7 +705,7 @@ export const DraxProvider = ({
 					relativePosition: monitorOffset,
 					relativePositionRatio: monitorOffsetRatio,
 				}) => {
-					const monitorEventData = {
+					const monitorEventData: DraxMonitorEventData = {
 						...monitorEventDataStub,
 						monitorOffset,
 						monitorOffsetRatio,
@@ -733,6 +753,42 @@ export const DraxProvider = ({
 		],
 	);
 
+	// Create throttled gesture event handler, tied to this id.
+	const throttledHandleGestureEvent = useMemo(
+		() => throttle(
+			(id: string, event: GestureUpdateEvent<PanGestureHandlerEventPayload>) => {
+				// Pass the event up to the Drax context.
+				handleGestureEvent(id, event);
+			},
+			10,
+		),
+		[handleGestureEvent],
+
+	
+	);
+
+	const longPress = useCallback((
+		{ id, longPressDelay, draggable }: LongPressConfig,
+	) => Gesture
+		.Pan()
+		.onBegin((ev) => {
+			handleGestureStateChange(id, ev);
+		})
+		.onStart((ev) => {
+			handleGestureStateChange(id, ev);
+		})
+		.onUpdate((ev) => {
+			throttledHandleGestureEvent(id, ev);
+		})
+		.onEnd((ev) => {
+			handleGestureStateChange(id, ev);
+		})
+		.shouldCancelWhenOutside(false)
+		.activateAfterLongPress(longPressDelay)
+		.enabled(draggable)
+		.maxPointers(1),
+	[handleGestureStateChange, handleGestureEvent]);
+
 	const contextValue: DraxContextValue = {
 		getViewState,
 		getTrackingStatus,
@@ -740,12 +796,11 @@ export const DraxProvider = ({
 		unregisterView,
 		updateViewProtocol,
 		updateViewMeasurements,
-		handleGestureStateChange,
-		handleGestureEvent,
+		longPress,
 		rootNodeHandleRef,
 	};
 
-	const hoverViews: ReactNodeArray = [];
+	const hoverViews: ReactNode[] = [];
 	const trackingStatus = getTrackingStatus();
 	getHoverItems().forEach(({
 		id,

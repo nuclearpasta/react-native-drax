@@ -11,8 +11,11 @@ import {
 import {
 	LongPressGestureHandlerStateChangeEvent,
 	LongPressGestureHandlerGestureEvent,
+	PanGesture,
 } from 'react-native-gesture-handler';
 import { PayloadActionCreator, ActionType } from 'typesafe-actions';
+
+export type LongPressConfig = { id: string, longPressDelay: number, draggable: boolean };
 
 /** Gesture state change event expected by Drax handler */
 export type DraxGestureStateChangeEvent = LongPressGestureHandlerStateChangeEvent['nativeEvent'];
@@ -567,11 +570,7 @@ export interface DraxContextValue {
 	/** Update view measurements for a registered Drax view */
 	updateViewMeasurements: (payload: UpdateViewMeasurementsPayload) => void;
 
-	/** Handle gesture state change for a registered Drax view */
-	handleGestureStateChange: (id: string, event: DraxGestureStateChangeEvent) => void;
-
-	/** Handle gesture event for a registered Drax view */
-	handleGestureEvent: (id: string, event: DraxGestureEvent) => void;
+	longPress: ({ id, longPressDelay, draggable }: LongPressConfig) => PanGesture
 
 	/** Root node handle ref for the Drax provider, for measuring non-parented views in relation to */
 	rootNodeHandleRef: RefObject<number | null>;

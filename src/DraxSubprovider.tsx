@@ -1,10 +1,10 @@
-import React, { FunctionComponent } from 'react';
+import React, { PropsWithChildren } from 'react';
 
 import { DraxContext } from './DraxContext';
 import { DraxSubproviderProps } from './types';
 import { useDraxContext } from './hooks';
 
-export const DraxSubprovider: FunctionComponent<DraxSubproviderProps> = ({ parent, children }) => {
+export const DraxSubprovider = ({ parent, children }: PropsWithChildren<DraxSubproviderProps>) => {
 	const contextValue = useDraxContext();
 	const subContextValue = {
 		...contextValue,

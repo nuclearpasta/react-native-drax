@@ -15,19 +15,13 @@ import {
 	ViewStyle,
 	StyleProp,
 } from 'react-native';
-import {
-	LongPressGestureHandler,
-	LongPressGestureHandlerGestureEvent,
-	LongPressGestureHandlerStateChangeEvent,
-} from 'react-native-gesture-handler';
-import throttle from 'lodash.throttle';
+import { GestureDetector } from 'react-native-gesture-handler';
 
 import { useDraxId, useDraxContext } from './hooks';
 import {
 	DraxViewProps,
 	DraxViewDragStatus,
 	DraxViewReceiveStatus,
-	DraxGestureEvent,
 	DraxViewMeasurements,
 	DraxViewMeasurementHandler,
 	DraxRenderContentProps,
@@ -149,8 +143,7 @@ export const DraxView = (
 		unregisterView,
 		updateViewProtocol,
 		updateViewMeasurements,
-		handleGestureEvent,
-		handleGestureStateChange,
+		longPress,
 		rootNodeHandleRef,
 		parent: contextParent,
 	} = useDraxContext();
@@ -343,30 +336,6 @@ export const DraxView = (
 			lockDragYPosition,
 			internalRenderHoverView,
 		],
-	);
-
-	// Connect gesture state change handling into Drax context, tied to this id.
-	const onHandlerStateChange = useCallback(
-		({ nativeEvent }: LongPressGestureHandlerStateChangeEvent) => handleGestureStateChange(id, nativeEvent),
-		[id, handleGestureStateChange],
-	);
-
-	// Create throttled gesture event handler, tied to this id.
-	const throttledHandleGestureEvent = useMemo(
-		() => throttle(
-			(event: DraxGestureEvent) => {
-				// Pass the event up to the Drax context.
-				handleGestureEvent(id, event);
-			},
-			10,
-		),
-		[id, handleGestureEvent],
-	);
-
-	// Connect gesture event handling into Drax context, extracting nativeEvent.
-	const onGestureEvent = useCallback(
-		({ nativeEvent }: LongPressGestureHandlerGestureEvent) => throttledHandleGestureEvent(nativeEvent),
-		[throttledHandleGestureEvent],
 	);
 
 	// Build a callback which will report our measurements to Drax context,
@@ -601,15 +570,22 @@ export const DraxView = (
 		[],
 	);
 
+	const gesture = useMemo(
+		() => longPress({
+			id,
+			longPressDelay,
+			draggable,
+		}),
+		[
+			longPress,
+			id,
+			longPressDelay,
+			draggable,
+		],
+	);
+
 	return (
-		<LongPressGestureHandler
-			maxDist={Number.MAX_SAFE_INTEGER}
-			shouldCancelWhenOutside={false}
-			minDurationMs={longPressDelay}
-			onHandlerStateChange={onHandlerStateChange}
-			onGestureEvent={onGestureEvent as any /* Workaround incorrect typings. */}
-			enabled={draggable}
-		>
+		<GestureDetector gesture={gesture}>
 			<Animated.View
 				{...props}
 				style={combinedStyle}
@@ -619,6 +595,6 @@ export const DraxView = (
 			>
 				{renderedChildren}
 			</Animated.View>
-		</LongPressGestureHandler>
+		</GestureDetector>
 	);
 };

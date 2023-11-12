@@ -291,7 +291,7 @@ const DraxListUnforwarded = <T extends unknown>(
 
 	// Set FlatList and node handle refs.
 	const setFlatListRefs = useCallback(
-		(ref) => {
+		(ref: FlatList) => {
 			flatListRef.current = ref;
 			nodeHandleRef.current = ref && findNodeHandle(ref);
 			if (forwardedRef) {
