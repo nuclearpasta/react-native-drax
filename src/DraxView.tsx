@@ -10,7 +10,6 @@ import {
 	Animated,
 	View,
 	StyleSheet,
-	findNodeHandle,
 	Dimensions,
 	ViewStyle,
 	StyleProp,
@@ -132,11 +131,8 @@ export const DraxView = (
 	// The unique identifier for this view.
 	const id = useDraxId(idProp);
 
-	// The underlying View, for measuring.
+	// The underlying View, for measuring and for subprovider nesting if this is a Drax parent view.
 	const viewRef = useRef<View | null>(null);
-
-	// The underlying View node handle, used for subprovider nesting if this is a Drax parent view.
-	const nodeHandleRef = useRef<number | null>(null);
 
 	// This view's measurements, for reference.
 	const measurementsRef = useRef<DraxViewMeasurements | undefined>(undefined);
@@ -151,7 +147,7 @@ export const DraxView = (
 		updateViewMeasurements,
 		handleGestureEvent,
 		handleGestureStateChange,
-		rootNodeHandleRef,
+		rootViewRef,
 		parent: contextParent,
 	} = useDraxContext();
 
@@ -160,7 +156,7 @@ export const DraxView = (
 	const parentId = parent?.id;
 
 	// Identify parent node handle ref.
-	const parentNodeHandleRef = parent ? parent.nodeHandleRef : rootNodeHandleRef;
+	const parentViewRef = parent ? parent.nodeViewRef : rootViewRef;
 
 	// Register and unregister with Drax context when necessary.
 	useEffect(
@@ -412,14 +408,14 @@ export const DraxView = (
 		(measurementHandler?: DraxViewMeasurementHandler) => {
 			const view = viewRef.current;
 			if (view) {
-				const nodeHandle = parentNodeHandleRef.current;
-				if (nodeHandle) {
+				if (parentViewRef.current) {
 					const measureCallback = measurementHandler
 						? buildMeasureCallback(measurementHandler)
 						: updateMeasurements;
 					// console.log('definitely measuring in reference to something');
 					view.measureLayout(
-						nodeHandle,
+						// @ts-ignore
+						parentViewRef.current,
 						measureCallback,
 						() => {
 							// console.log('Failed to measure Drax view in relation to parent nodeHandle');
@@ -433,7 +429,7 @@ export const DraxView = (
 			}
 		},
 		[
-			parentNodeHandleRef,
+			parentViewRef,
 			buildMeasureCallback,
 			updateMeasurements,
 		],
@@ -576,7 +572,7 @@ export const DraxView = (
 			if (isParent) {
 				// This is a Drax parent, so wrap children in subprovider.
 				content = (
-					<DraxSubprovider parent={{ id, nodeHandleRef }}>
+					<DraxSubprovider parent={{ id, nodeViewRef: viewRef }}>
 						{content}
 					</DraxSubprovider>
 				);
@@ -589,14 +585,13 @@ export const DraxView = (
 			children,
 			isParent,
 			id,
-			nodeHandleRef,
+			viewRef,
 		],
 	);
 
 	const setViewRefs = useCallback(
 		(ref: View | null) => {
 			viewRef.current = ref;
-			nodeHandleRef.current = ref && findNodeHandle(ref);
 		},
 		[],
 	);

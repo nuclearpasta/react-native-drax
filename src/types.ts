@@ -1,10 +1,13 @@
 import { RefObject, ReactNode } from 'react';
 import {
-	ViewProps,
 	Animated,
-	FlatListProps,
+	View,
+	ViewProps,
 	ViewStyle,
 	StyleProp,
+	FlatList,
+	FlatListProps,
+	ScrollView,
 	ScrollViewProps,
 	ListRenderItemInfo,
 } from 'react-native';
@@ -574,7 +577,7 @@ export interface DraxContextValue {
 	handleGestureEvent: (id: string, event: DraxGestureEvent) => void;
 
 	/** Root node handle ref for the Drax provider, for measuring non-parented views in relation to */
-	rootNodeHandleRef: RefObject<number | null>;
+	rootViewRef: RefObject<View | null>;
 
 	/** Drax parent view for all views under this context, when nesting */
 	parent?: DraxParentView;
@@ -604,7 +607,7 @@ export interface DraxParentView {
 	/** Drax view id of the parent */
 	id: string;
 	/** Ref to node handle of the parent, for measuring relative to */
-	nodeHandleRef: RefObject<number | null>;
+	nodeViewRef: RefObject<FlatList | ScrollView | View | null>;
 }
 
 /** Function that receives a Drax view measurement */

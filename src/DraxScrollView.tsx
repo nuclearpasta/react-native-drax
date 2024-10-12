@@ -10,7 +10,6 @@ import {
 	ScrollView,
 	NativeSyntheticEvent,
 	NativeScrollEvent,
-	findNodeHandle,
 } from 'react-native';
 
 import { DraxView } from './DraxView';
@@ -53,11 +52,8 @@ const DraxScrollViewUnforwarded = (
 	// The unique identifer for this view.
 	const id = useDraxId(idProp);
 
-	// Scrollable view, used for scrolling.
+	// Scrollable view, used for scrolling and measuring children
 	const scrollRef = useRef<ScrollView | null>(null);
-
-	// ScrollView node handle, used for measuring children.
-	const nodeHandleRef = useRef<number | null>(null);
 
 	// Container view measurements, for scrolling by percentage.
 	const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(undefined);
@@ -215,7 +211,6 @@ const DraxScrollViewUnforwarded = (
 	const setScrollViewRefs = useCallback(
 		(ref: ScrollView | null) => {
 			scrollRef.current = ref;
-			nodeHandleRef.current = ref && findNodeHandle(ref);
 			if (forwardedRef) {
 				if (typeof forwardedRef === 'function') {
 					forwardedRef(ref);
@@ -258,7 +253,7 @@ const DraxScrollViewUnforwarded = (
 			onMonitorDragEnd={resetScroll}
 			onMonitorDragDrop={resetScroll}
 		>
-			<DraxSubprovider parent={{ id, nodeHandleRef }}>
+			<DraxSubprovider parent={{ id, nodeViewRef: scrollRef }}>
 				<ScrollView
 					{...scrollViewProps}
 					ref={setScrollViewRefs}

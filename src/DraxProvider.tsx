@@ -3,7 +3,7 @@ import React, {
 	ReactNodeArray,
 	useRef,
 } from 'react';
-import { View, StyleSheet, findNodeHandle } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { State } from 'react-native-gesture-handler';
 
 import { useDraxState, useDraxRegistry } from './hooks';
@@ -50,7 +50,7 @@ export const DraxProvider = ({
 		unregisterView,
 	} = useDraxRegistry(dispatch);
 
-	const rootNodeHandleRef = useRef<number | null>(null);
+	const rootViewRef = useRef<View | null>(null);
 
 	const handleGestureStateChange = useCallback(
 		(id: string, event: DraxGestureStateChangeEvent) => {
@@ -742,7 +742,7 @@ export const DraxProvider = ({
 		updateViewMeasurements,
 		handleGestureStateChange,
 		handleGestureEvent,
-		rootNodeHandleRef,
+		rootViewRef,
 	};
 
 	const hoverViews: ReactNodeArray = [];
@@ -769,18 +769,11 @@ export const DraxProvider = ({
 		}
 	});
 
-	const setRootNodeHandleRef = useCallback(
-		(ref: View | null) => {
-			rootNodeHandleRef.current = ref && findNodeHandle(ref);
-		},
-		[],
-	);
-
 	return (
 		<DraxContext.Provider value={contextValue}>
 			<View
 				style={style}
-				ref={setRootNodeHandleRef}
+				ref={rootViewRef}
 			>
 				{children}
 				<View
