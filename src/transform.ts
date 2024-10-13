@@ -1,14 +1,17 @@
-import {
-	Animated,
-	StyleProp,
-	StyleSheet,
-	ViewStyle,
-} from 'react-native';
+import { PropsWithChildren } from "react";
+import { StyleProp, StyleSheet, ViewStyle } from "react-native";
+import { StyleProps } from "react-native-reanimated";
 
-import { AnimatedViewStyleWithoutLayout } from './types';
+import {
+	AnimatedViewStyleWithoutLayout,
+	DraxInternalRenderHoverViewProps,
+	DraxViewDragStatus,
+	TReanimatedHoverViewProps,
+	ViewDimensions,
+} from "./types";
 
 export const flattenStylesWithoutLayout = (
-	styles: StyleProp<Animated.WithAnimatedValue<ViewStyle>>[],
+	styles: (StyleProps | null | StyleProp<ViewStyle>)[],
 ): AnimatedViewStyleWithoutLayout => {
 	const {
 		margin,
@@ -34,13 +37,40 @@ export const flattenStylesWithoutLayout = (
 	return flattened;
 };
 
-export const mergeStyleTransform = (
-	style: AnimatedViewStyleWithoutLayout,
-	transform: Animated.WithAnimatedValue<ViewStyle['transform']>,
-): AnimatedViewStyleWithoutLayout => ({
-	...style,
-	transform: [
-		...(transform ?? []),
-		...(style.transform ?? []),
-	],
-});
+// Combine hover styles for given internal render props.
+export const getCombinedHoverStyle = (
+	{
+		dragStatus,
+		anyReceiving,
+		dimensions,
+	}: {
+		dimensions: ViewDimensions;
+		dragStatus: DraxViewDragStatus;
+		anyReceiving: boolean;
+	},
+	props: Partial<PropsWithChildren<TReanimatedHoverViewProps>>,
+) => {
+	// Start with base style, calculated dimensions, and hover base style.
+	const hoverStyles: (StyleProps | null | StyleProp<ViewStyle>)[] = [
+		props?.style,
+		dimensions,
+		props?.hoverStyle,
+	];
+
+	// Apply style style overrides based on state.
+	if (dragStatus === DraxViewDragStatus.Dragging) {
+		hoverStyles.push(props?.hoverDraggingStyle);
+		if (anyReceiving) {
+			hoverStyles.push(props?.hoverDraggingWithReceiverStyle);
+		} else {
+			hoverStyles.push(props?.hoverDraggingWithoutReceiverStyle);
+		}
+	} else if (dragStatus === DraxViewDragStatus.Released) {
+		hoverStyles.push(props?.hoverDragReleasedStyle);
+	}
+
+	// Remove any layout styles.
+	const flattenedHoverStyle = flattenStylesWithoutLayout(hoverStyles);
+
+	return flattenedHoverStyle;
+};

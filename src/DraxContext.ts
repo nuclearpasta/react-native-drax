@@ -1,6 +1,8 @@
-import { createContext } from 'react';
+import { createContext } from "react";
 
-import { DraxContextValue } from './types';
+import { DraxContextValue } from "./types";
 
-export const DraxContext = createContext<DraxContextValue | undefined>(undefined);
-DraxContext.displayName = 'Drax';
+export const DraxContext = createContext<DraxContextValue | undefined>(
+	undefined,
+);
+DraxContext.displayName = "Drax";
