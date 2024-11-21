@@ -597,7 +597,11 @@ export const DraxView = (
 	const setViewRefs = useCallback(
 		(ref: View | null) => {
 			if (inputViewRef){
-				inputViewRef.current = ref;
+				if (typeof(inputViewRef) === 'function'){
+					inputViewRef(ref);
+				} else {
+					inputViewRef.current = ref;
+				}
 			}
 			viewRef.current = ref;
 			nodeHandleRef.current = ref && findNodeHandle(ref);

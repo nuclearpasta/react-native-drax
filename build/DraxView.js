@@ -408,7 +408,12 @@ const DraxView = ({ onDragStart, onDrag, onDragEnter, onDragOver, onDragExit, on
     ]);
     const setViewRefs = (0, react_1.useCallback)((ref) => {
         if (inputViewRef) {
-            inputViewRef.current = ref;
+            if (typeof (inputViewRef) === 'function') {
+                inputViewRef(ref);
+            }
+            else {
+                inputViewRef.current = ref;
+            }
         }
         viewRef.current = ref;
         nodeHandleRef.current = ref && (0, react_native_1.findNodeHandle)(ref);

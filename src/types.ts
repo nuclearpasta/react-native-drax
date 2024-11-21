@@ -720,7 +720,7 @@ export interface DraxViewProps extends Omit<ViewProps, 'style'>, DraxProtocolPro
 	onMeasure?: DraxViewMeasurementHandler;
 
 	/** For receiving view measurements externally */
-	viewRef?: React.MutableRefObject<View | null>;
+	viewRef?: React.MutableRefObject<View | null> | ((viewRef: View|null) => void);
 
 	/** Unique Drax view id, auto-generated if omitted */
 	id?: string;
