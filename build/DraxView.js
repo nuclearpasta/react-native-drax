@@ -37,7 +37,7 @@ const params_1 = require("./params");
 const math_1 = require("./math");
 const DraxSubprovider_1 = require("./DraxSubprovider");
 const transform_1 = require("./transform");
-const DraxView = ({ onDragStart, onDrag, onDragEnter, onDragOver, onDragExit, onDragEnd, onDragDrop, onSnapbackEnd, onReceiveDragEnter, onReceiveDragOver, onReceiveDragExit, onReceiveDragDrop, onMonitorDragStart, onMonitorDragEnter, onMonitorDragOver, onMonitorDragExit, onMonitorDragEnd, onMonitorDragDrop, animateSnapback, snapbackDelay, snapbackDuration, snapbackAnimator, payload, dragPayload, receiverPayload, style, dragInactiveStyle, draggingStyle, draggingWithReceiverStyle, draggingWithoutReceiverStyle, dragReleasedStyle, hoverStyle, hoverDraggingStyle, hoverDraggingWithReceiverStyle, hoverDraggingWithoutReceiverStyle, hoverDragReleasedStyle, receiverInactiveStyle, receivingStyle, otherDraggingStyle, otherDraggingWithReceiverStyle, otherDraggingWithoutReceiverStyle, renderContent, renderHoverContent, registration, onMeasure, scrollPositionRef, lockDragXPosition, lockDragYPosition, children, noHover = false, isParent = false, longPressDelay = params_1.defaultLongPressDelay, id: idProp, parent: parentProp, draggable: draggableProp, receptive: receptiveProp, monitoring: monitoringProp, ...props }) => {
+const DraxView = ({ onDragStart, onDrag, onDragEnter, onDragOver, onDragExit, onDragEnd, onDragDrop, onSnapbackEnd, onReceiveDragEnter, onReceiveDragOver, onReceiveDragExit, onReceiveDragDrop, onMonitorDragStart, onMonitorDragEnter, onMonitorDragOver, onMonitorDragExit, onMonitorDragEnd, onMonitorDragDrop, animateSnapback, snapbackDelay, snapbackDuration, snapbackAnimator, payload, dragPayload, receiverPayload, style, dragInactiveStyle, draggingStyle, draggingWithReceiverStyle, draggingWithoutReceiverStyle, dragReleasedStyle, hoverStyle, hoverDraggingStyle, hoverDraggingWithReceiverStyle, hoverDraggingWithoutReceiverStyle, hoverDragReleasedStyle, receiverInactiveStyle, receivingStyle, otherDraggingStyle, otherDraggingWithReceiverStyle, otherDraggingWithoutReceiverStyle, renderContent, renderHoverContent, registration, onMeasure, scrollPositionRef, lockDragXPosition, lockDragYPosition, children, viewRef: inputViewRef, noHover = false, isParent = false, longPressDelay = params_1.defaultLongPressDelay, id: idProp, parent: parentProp, draggable: draggableProp, receptive: receptiveProp, monitoring: monitoringProp, ...props }) => {
     // Coalesce protocol props into capabilities.
     const draggable = draggableProp ?? (dragPayload !== undefined
         || payload !== undefined
@@ -407,6 +407,9 @@ const DraxView = ({ onDragStart, onDrag, onDragEnter, onDragOver, onDragExit, on
         nodeHandleRef,
     ]);
     const setViewRefs = (0, react_1.useCallback)((ref) => {
+        if (inputViewRef) {
+            inputViewRef.current = ref;
+        }
         viewRef.current = ref;
         nodeHandleRef.current = ref && (0, react_native_1.findNodeHandle)(ref);
     }, []);

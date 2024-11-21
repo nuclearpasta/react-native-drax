@@ -1,5 +1,5 @@
 import { RefObject, ReactNode } from 'react';
-import { ViewProps, Animated, FlatListProps, ViewStyle, StyleProp, ScrollViewProps, ListRenderItemInfo } from 'react-native';
+import { ViewProps, Animated, FlatListProps, ViewStyle, StyleProp, ScrollViewProps, ListRenderItemInfo, View } from 'react-native';
 import { LongPressGestureHandlerStateChangeEvent, LongPressGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import { PayloadActionCreator, ActionType } from 'typesafe-actions';
 /** Gesture state change event expected by Drax handler */
@@ -549,6 +549,8 @@ export interface DraxViewProps extends Omit<ViewProps, 'style'>, DraxProtocolPro
     registration?: (registration: DraxViewRegistration | undefined) => void;
     /** For receiving view measurements externally */
     onMeasure?: DraxViewMeasurementHandler;
+    /** For receiving view measurements externally */
+    viewRef?: React.MutableRefObject<View | null>;
     /** Unique Drax view id, auto-generated if omitted */
     id?: string;
     /** Drax parent view, if nesting */
