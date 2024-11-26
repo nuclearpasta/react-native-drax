@@ -146,6 +146,18 @@ const getAbsoluteViewEntryFromRegistry = (
 };
 
 /**
+ * If multiple recievers match, we need to pick the one that is on top. This
+ * is first done by filtering out all that are parents (because parent views are below child ones)
+ * and then if there are any further possibilities, it chooses the smallest one.
+ */
+const getTopMostReceiver = (receivers: DraxFoundAbsoluteViewEntry[]) => {
+	const ids = receivers.map(receiver => receiver.data.parentId);
+	receivers = receivers.filter(receiver => !ids.includes(receiver.id));
+	receivers.sort((receiverA, receiverB) => receiverA.data.measurements.height*receiverA.data.measurements.width - receiverB.data.measurements.height*receiverB.data.measurements.width);
+	return receivers[0];
+};
+
+/**
  * Find all monitoring views and the latest receptive view that
  * contain the touch coordinates, excluding the specified view.
  */
@@ -155,7 +167,7 @@ const findMonitorsAndReceiverInRegistry = (
 	excludeViewId: string,
 ) => {
 	const monitors: DraxFoundAbsoluteViewEntry[] = [];
-	let receiver: DraxFoundAbsoluteViewEntry | undefined;
+	let receivers: DraxFoundAbsoluteViewEntry[] = [];
 
 	// console.log(`find monitors and receiver for absolute position (${absolutePosition.x}, ${absolutePosition.y})`);
 	registry.viewIds.forEach((targetId) => {
@@ -212,14 +224,14 @@ const findMonitorsAndReceiverInRegistry = (
 
 			if (receptive) {
 				// It's the latest receiver found.
-				receiver = foundView;
+				receivers.push(foundView);
 				// console.log('it\'s a receiver');
 			}
 		}
 	});
 	return {
 		monitors,
-		receiver,
+		receiver: getTopMostReceiver(receivers)
 	};
 };
 

@@ -89,6 +89,7 @@ export const DraxView = (
 		lockDragXPosition,
 		lockDragYPosition,
 		children,
+		viewRef: inputViewRef,
 		noHover = false,
 		isParent = false,
 		longPressDelay = defaultLongPressDelay,
@@ -595,6 +596,13 @@ export const DraxView = (
 
 	const setViewRefs = useCallback(
 		(ref: View | null) => {
+			if (inputViewRef){
+				if (typeof(inputViewRef) === 'function'){
+					inputViewRef(ref);
+				} else {
+					inputViewRef.current = ref;
+				}
+			}
 			viewRef.current = ref;
 			nodeHandleRef.current = ref && findNodeHandle(ref);
 		},
