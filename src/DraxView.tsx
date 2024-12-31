@@ -156,7 +156,7 @@ export const DraxView = (
 	const parentId = parent?.id;
 
 	// Identify parent node handle ref.
-	const parentViewRef = parent ? parent.nodeViewRef : rootViewRef;
+	const parentViewRef = parent ? parent.viewRef : rootViewRef;
 
 	// Register and unregister with Drax context when necessary.
 	useEffect(
@@ -572,7 +572,7 @@ export const DraxView = (
 			if (isParent) {
 				// This is a Drax parent, so wrap children in subprovider.
 				content = (
-					<DraxSubprovider parent={{ id, nodeViewRef: viewRef }}>
+					<DraxSubprovider parent={{ id, viewRef }}>
 						{content}
 					</DraxSubprovider>
 				);

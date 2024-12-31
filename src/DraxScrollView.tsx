@@ -253,7 +253,7 @@ const DraxScrollViewUnforwarded = (
 			onMonitorDragEnd={resetScroll}
 			onMonitorDragDrop={resetScroll}
 		>
-			<DraxSubprovider parent={{ id, nodeViewRef: scrollRef }}>
+			<DraxSubprovider parent={{ id, viewRef: scrollRef }}>
 				<ScrollView
 					{...scrollViewProps}
 					ref={setScrollViewRefs}

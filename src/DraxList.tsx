@@ -684,7 +684,7 @@ const DraxListUnforwarded = <T extends unknown>(
 			onMonitorDragEnd={onMonitorDragEnd}
 			onMonitorDragDrop={onMonitorDragDrop}
 		>
-			<DraxSubprovider parent={{ id, nodeViewRef: flatListRef }}>
+			<DraxSubprovider parent={{ id, viewRef: flatListRef }}>
 				<FlatList
 					{...flatListProps}
 					style={flatListStyle}
