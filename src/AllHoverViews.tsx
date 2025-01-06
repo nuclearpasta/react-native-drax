@@ -1,5 +1,4 @@
-import React, { useMemo, useState } from "react";
-import { useAnimatedReaction, runOnJS } from "react-native-reanimated";
+import React, { useMemo } from "react";
 
 import { ReanimatedHoverView } from "./HoverView";
 import { useDraxContext } from "./hooks";

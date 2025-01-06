@@ -1,6 +1,6 @@
 import throttle from "lodash.throttle";
 import React, { useCallback, useRef, useMemo } from "react";
-import { View, StyleSheet, findNodeHandle } from "react-native";
+import { View, StyleSheet } from "react-native";
 import {
 	GestureStateChangeEvent,
 	GestureUpdateEvent,
@@ -69,7 +69,7 @@ export const DraxProvider = ({
 		getReleaseViews,
 	} = useDraxRegistry(dispatch);
 
-	const rootNodeHandleRef = useRef<number | null>(null);
+	const rootViewRef = useRef<View | null>(null);
 	const dragPositionDataSV = useSharedValue<TDragPositionData>(undefined);
 	const startPosition = useSharedValue<TStartPosition>(
 		startPositionInitialValue,
@@ -959,12 +959,8 @@ export const DraxProvider = ({
 		updateViewMeasurements,
 		handleGestureEvent,
 		handleGestureStateChange,
-		rootNodeHandleRef,
+		rootViewRef,
 	};
-
-	const setRootNodeHandleRef = useCallback((ref: View | null) => {
-		rootNodeHandleRef.current = ref && findNodeHandle(ref);
-	}, []);
 
 	const allViewStates = useMemo(() => getAllViewIds(), [getAllViewIds]);
 
@@ -986,7 +982,7 @@ export const DraxProvider = ({
 
 	return (
 		<DraxContext.Provider value={contextValue}>
-			<View style={style} ref={setRootNodeHandleRef}>
+			<View style={style} ref={rootViewRef}>
 				{children}
 				{hoverViews}
 			</View>

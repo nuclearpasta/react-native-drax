@@ -6,6 +6,9 @@ import {
 	StyleProp,
 	ScrollViewProps,
 	ListRenderItemInfo,
+	View,
+	FlatList,
+	ScrollView,
 } from "react-native";
 import {
 	LongPressGestureHandlerStateChangeEvent,
@@ -716,8 +719,8 @@ export interface DraxContextValue {
 		event: GestureUpdateEvent<PanGestureHandlerEventPayload>,
 	) => void;
 
-	/** Root node handle ref for the Drax provider, for measuring non-parented views in relation to */
-	rootNodeHandleRef: RefObject<number | null>;
+	/** Root View ref for the Drax provider, for measuring non-parented views in relation to */
+	rootViewRef: RefObject<View | null>;
 
 	/** Drax parent view for all views under this context, when nesting */
 	parent?: DraxParentView;
@@ -746,8 +749,8 @@ export interface DraxViewRegistration {
 export interface DraxParentView {
 	/** Drax view id of the parent */
 	id: string;
-	/** Ref to node handle of the parent, for measuring relative to */
-	nodeHandleRef: RefObject<number | null>;
+	/** View Ref of the parent, for measuring relative to */
+	viewRef: RefObject<FlatList | ScrollView | View | null>;
 }
 
 /** Function that receives a Drax view measurement */

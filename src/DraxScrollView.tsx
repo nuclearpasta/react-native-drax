@@ -250,7 +250,7 @@ const DraxScrollViewUnforwarded = (
 			onMonitorDragEnd={resetScroll}
 			onMonitorDragDrop={resetScroll}
 		>
-			<DraxSubprovider parent={{ id, nodeHandleRef }}>
+			<DraxSubprovider parent={{ id, viewRef: scrollRef }}>
 				<Reanimated.ScrollView
 					{...scrollViewProps}
 					horizontal={horizontal}

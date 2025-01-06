@@ -1,4 +1,4 @@
-import React, { useEffect, memo } from "react";
+import React, { useEffect, memo, ReactNode } from "react";
 import Reanimated, { useSharedValue } from "react-native-reanimated";
 
 import { PanGestureDetector } from "./PanGestureDetector";
@@ -8,7 +8,7 @@ import { useMeasurements } from "./hooks/useMeasurements";
 import { defaultLongPressDelay } from "./params";
 import { DraxViewProps, Position } from "./types";
 
-export const DraxView = memo((props: DraxViewProps): JSX.Element => {
+export const DraxView = memo((props: DraxViewProps): ReactNode => {
 	// Coalesce protocol props into capabilities.
 	const draggable =
 		props.draggable ??
@@ -71,12 +71,12 @@ export const ReanimatedView = memo((props: IReanimatedView): JSX.Element => {
 	const { updateViewProtocol, registerView, unregisterView } =
 		useDraxContext();
 
-	const { onLayout, measurementsRef, setViewRefs, nodeHandleRef } =
+	const { onLayout, measurementsRef, setViewRefs, viewRef } =
 		useMeasurements(props);
 
 	const { combinedStyle, renderedChildren } = useContent({
 		draxViewProps: { ...props, hoverPosition },
-		nodeHandleRef,
+		viewRef,
 		measurementsRef,
 	});
 

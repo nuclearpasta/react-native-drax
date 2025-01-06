@@ -496,20 +496,22 @@ const deleteReleaseInRegistry = (registry: DraxRegistry, releaseId: string) => {
 };
 
 /** Get the array of hover items for dragged and released views */
-const getReleasesFromRegistry = (registry: DraxRegistry) => {
+const getReleasesFromRegistry = (registry: DraxRegistry): string[] => {
 	// Find all released view hover items, in order from oldest to newest.
 
-	const hoverItems = [];
+	const hoverItems: string[] = [];
 
 	// Find all released view hover items, in order from oldest to newest.
-	return registry.releaseIds.map((releaseId) => {
+	registry.releaseIds.forEach((releaseId) => {
 		const release = registry.releaseById[releaseId];
 		if (release) {
 			const { viewId } = release;
 
-			return viewId;
+			hoverItems.push(viewId);
 		}
 	});
+
+	return hoverItems;
 };
 
 /** Reset drag tracking, if any. */
@@ -517,6 +519,7 @@ const resetDragInRegistry = (
 	registry: DraxRegistry,
 	snapbackTarget: DraxSnapbackTarget = DraxSnapbackTargetPreset.Default,
 ) => {
+	console.log("resettingDrag");
 	const { drag, stateDispatch } = registry;
 
 	if (!drag) {
@@ -539,7 +542,10 @@ const resetDragInRegistry = (
 	const draggedData = getAbsoluteViewDataFromRegistry(registry, draggedId);
 
 	// Clear the drag.
-	// console.log('clearing drag');
+	console.log(
+		"snapbackTarget",
+		snapbackTarget !== DraxSnapbackTargetPreset.None && draggedData,
+	);
 	registry.drag = undefined;
 
 	// Determine if/where/how to snapback.
@@ -561,7 +567,7 @@ const resetDragInRegistry = (
 			(receiverData
 				? receiverParentData?.scrollPosition
 				: parentData?.scrollPosition) || INITIAL_REANIMATED_POSITION;
-
+		console.log("animateSnapback", animateSnapback);
 		if (animateSnapback) {
 			let toValue: Position | undefined;
 
@@ -678,7 +684,8 @@ const resetDragInRegistry = (
 	}
 
 	// Update the drag tracking status.
-	// stateDispatch(actions.updateTrackingStatus({ dragging: false }));
+	// Resetting the hover position updates the view state for the released view to be inactive.
+	hoverPosition.value = { x: 0, y: 0 };
 
 	// Update the view state, data dependent on whether snapping back.
 	const viewStateUpdate: Partial<DraxViewState> = {
