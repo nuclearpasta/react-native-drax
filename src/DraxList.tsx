@@ -288,7 +288,7 @@ const DraxListUnforwarded = <T extends unknown>(
 	// Set FlatList and node handle refs.
 	const setFlatListRefs = useCallback(
 		(ref) => {
-			flatListRef.current = ref.getNativeScrollRef();
+			flatListRef.current = ref?.getNativeScrollRef?.();
 			if (forwardedRef) {
 				if (typeof forwardedRef === 'function') {
 					forwardedRef(ref);
