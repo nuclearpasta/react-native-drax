@@ -5,7 +5,7 @@ import React, {
 	MutableRefObject,
 } from "react";
 import { StyleSheet } from "react-native";
-import Reanimated, { AnimatedRef } from "react-native-reanimated";
+import Reanimated, { AnimatedRef, SharedValue } from "react-native-reanimated";
 
 import { extractDimensions } from "../math";
 import { useDraxContext } from "./useDraxContext";
@@ -17,6 +17,7 @@ import {
 	DraxViewMeasurements,
 	DraxViewProps,
 	DraxViewReceiveStatus,
+	Position,
 } from "../types";
 
 export const useContent = ({
@@ -41,7 +42,10 @@ export const useContent = ({
 	viewRef,
 	measurementsRef,
 }: {
-	draxViewProps: DraxViewProps & { id: string };
+	draxViewProps: DraxViewProps & {
+		id: string;
+		hoverPosition: SharedValue<Position>;
+	};
 	viewRef: AnimatedRef<Reanimated.View>;
 	measurementsRef: MutableRefObject<DraxViewMeasurements | undefined>;
 }) => {

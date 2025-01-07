@@ -1,7 +1,6 @@
 import { RefObject, ReactNode, PropsWithChildren } from "react";
 import {
 	ViewProps,
-	FlatListProps,
 	ViewStyle,
 	StyleProp,
 	ScrollViewProps,
@@ -17,7 +16,12 @@ import {
 	PanGestureHandlerEventPayload,
 	GestureUpdateEvent,
 } from "react-native-gesture-handler";
-import { StyleProps, SharedValue } from "react-native-reanimated";
+import {
+	StyleProps,
+	SharedValue,
+	FlatListPropsWithLayout,
+	AnimatedStyle,
+} from "react-native-reanimated";
 import { PayloadActionCreator, ActionType } from "typesafe-actions";
 
 /** Gesture state change event expected by Drax handler */
@@ -788,7 +792,11 @@ export type AnimatedViewStylePropWithoutLayout = StyleProps;
 /** Style-related props for a Drax view */
 export interface DraxViewStyleProps {
 	/** Custom style prop to allow animated values */
-	style?: StyleProps | null | StyleProp<ViewStyle>;
+	style?:
+		| StyleProps
+		| null
+		| StyleProp<ViewStyle>
+		| StyleProp<AnimatedStyle<StyleProp<ViewStyle>>>;
 
 	/** Additional view style applied while this view is not being dragged or released */
 	dragInactiveStyle?: StyleProps;
@@ -987,7 +995,7 @@ export interface DraxListOnItemReorder<TItem> {
 
 /** Props for a DraxList; extends standard FlatList props */
 export interface DraxListProps<TItem>
-	extends Omit<FlatListProps<TItem>, "renderItem">,
+	extends Omit<FlatListPropsWithLayout<TItem>, "renderItem">,
 		DraxAutoScrollProps {
 	/** Unique drax view id, auto-generated if omitted */
 	id?: string;

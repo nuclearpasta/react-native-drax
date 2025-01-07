@@ -421,6 +421,9 @@ export const DraxProvider = ({
 					return;
 				}
 
+				console.log("dragged", dragged);
+				console.log("getAbsoluteViewData(id", getAbsoluteViewData(id));
+
 				const draggedData = dragged?.data ?? getAbsoluteViewData(id);
 
 				if (!draggedData) {

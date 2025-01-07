@@ -6,7 +6,7 @@ import React, {
 	ForwardedRef,
 	forwardRef,
 } from "react";
-import { ScrollView, findNodeHandle } from "react-native";
+import { ScrollView } from "react-native";
 import Reanimated, {
 	useAnimatedRef,
 	useScrollViewOffset,
@@ -64,9 +64,6 @@ const DraxScrollViewUnforwarded = (
 
 	// The unique identifer for this view.
 	const id = useDraxId(idProp);
-
-	// ScrollView node handle, used for measuring children.
-	const nodeHandleRef = useRef<number | null>(null);
 
 	// Container view measurements, for scrolling by percentage.
 	const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(
@@ -218,7 +215,6 @@ const DraxScrollViewUnforwarded = (
 	const setScrollViewRefs = useCallback(
 		(ref: Reanimated.ScrollView) => {
 			scrollRef(ref);
-			nodeHandleRef.current = ref && findNodeHandle(ref);
 			if (forwardedRef) {
 				if (typeof forwardedRef === "function") {
 					forwardedRef(ref);

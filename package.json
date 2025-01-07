@@ -6,7 +6,8 @@
 		"type": "git",
 		"url": "git+ssh://git@github.com/nuclearpasta/react-native-drax.git"
 	},
-	"main": "src/index.ts",
+    "main": "build/index.js",
+    "types": "build/index.d.ts",
 	"scripts": {
 		"lint": "yarn run eslint src",
 		"build": "yarn run tsc",

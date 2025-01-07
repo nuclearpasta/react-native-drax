@@ -35,7 +35,7 @@ export const useMeasurements = ({
 	// Identify Drax parent view (if any) from context or prop override.
 	const parent = parentProp ?? contextParent;
 	const parentId = parent?.id;
-	// Identify parent node handle ref.
+	// Identify parent view ref.
 	const parentViewRef = parent ? parent.viewRef : rootViewRef;
 
 	// Register and unregister with Drax context when necessary.
