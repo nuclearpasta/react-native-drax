@@ -288,7 +288,7 @@ const DraxListUnforwarded = <T extends unknown>(
 	// Set FlatList and node handle refs.
 	const setFlatListRefs = useCallback(
 		(ref) => {
-			flatListRef.current = ref?.getNativeScrollRef?.();
+			flatListRef.current = ref;
 			if (forwardedRef) {
 				if (typeof forwardedRef === 'function') {
 					forwardedRef(ref);
@@ -684,7 +684,10 @@ const DraxListUnforwarded = <T extends unknown>(
 			onMonitorDragEnd={onMonitorDragEnd}
 			onMonitorDragDrop={onMonitorDragDrop}
 		>
-			<DraxSubprovider parent={{ id, viewRef: flatListRef }}>
+			<DraxSubprovider parent={{ id, viewRef: {
+				//@ts-ignore
+				current: flatListRef.current?.getNativeScrollRef()
+			} }}>
 				<FlatList
 					{...flatListProps}
 					style={flatListStyle}
