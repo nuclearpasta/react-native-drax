@@ -13,9 +13,12 @@ import React, {
 } from "react";
 import { ListRenderItemInfo, FlatList, StyleSheet } from "react-native";
 import Reanimated, {
+	useAnimatedReaction,
 	useAnimatedRef,
 	useAnimatedScrollHandler,
+	useAnimatedStyle,
 	useSharedValue,
+	withTiming,
 } from "react-native-reanimated";
 
 import { DraxSubprovider } from "./DraxSubprovider";
@@ -159,7 +162,7 @@ const DraxListUnforwarded = <T extends unknown>(
 	const registrationsRef = useRef<(DraxViewRegistration | undefined)[]>([]);
 
 	// Shift offsets.
-	const shiftsRef = useSharedValue<Shift[]>([]);
+	const shiftsRef = useSharedValue<number[]>([]);
 
 	// Maintain cache of reordered list indexes until data updates.
 	const [originalIndexes, setOriginalIndexes] = useState<number[]>([]);
@@ -190,10 +193,7 @@ const DraxListUnforwarded = <T extends unknown>(
 			shifts.splice(itemCount - shifts.length);
 		} else {
 			while (shifts.length < itemCount) {
-				shifts.push({
-					targetValue: 0,
-					animatedValue: 0,
-				});
+				shifts.push(0);
 			}
 		}
 
@@ -218,17 +218,6 @@ const DraxListUnforwarded = <T extends unknown>(
 		return originalIndexes.map((index) => data[index]);
 	}, [id, data, originalIndexes]);
 
-	// Get shift transform for list item at index.
-	const getShiftTransform = useCallback(
-		(index: number) => {
-			const shift = shiftsRef.value[index]?.animatedValue ?? 0;
-			return horizontal
-				? [{ translateX: shift }]
-				: [{ translateY: shift }];
-		},
-		[horizontal],
-	);
-
 	// Set the currently dragged list item.
 	const setDraggedItem = useCallback((originalIndex: number) => {
 		draggedItemRef.current = originalIndex;
@@ -250,54 +239,81 @@ const DraxListUnforwarded = <T extends unknown>(
 				dragReleasedStyle = defaultStyles.dragReleasedStyle,
 				...otherStyleProps
 			} = itemStyles ?? {};
-			return (
-				<DraxView
-					style={[
-						itemStyle,
-						{ transform: getShiftTransform(originalIndex) },
-					]}
-					draggingStyle={draggingStyle}
-					dragReleasedStyle={dragReleasedStyle}
-					{...otherStyleProps}
-					longPressDelay={longPressDelay}
-					lockDragXPosition={lockItemDragsToMainAxis && !horizontal}
-					lockDragYPosition={lockItemDragsToMainAxis && horizontal}
-					draggable={itemsDraggable}
-					payload={{ index, originalIndex }}
-					{...(viewPropsExtractor?.(item) ?? {})}
-					onDragEnd={resetDraggedItem}
-					onDragDrop={resetDraggedItem}
-					onMeasure={(measurements) => {
-						if (originalIndex !== undefined) {
-							// console.log(`measuring [${index}, ${originalIndex}]: (${measurements?.x}, ${measurements?.y})`);
-							itemMeasurementsRef.current[originalIndex] =
-								measurements;
+
+			const RenderItem = () => {
+				const animatedValue = useSharedValue(0);
+
+				useAnimatedReaction(
+					() => shiftsRef.value,
+					() => {
+						animatedValue.value = withTiming(
+							shiftsRef.value[index],
+							{ duration: 200 },
+						);
+					},
+				);
+
+				// Get shift transform for list item at index.
+				const shiftTransformStyle = useAnimatedStyle(() => {
+					const shift = animatedValue.value ?? 0;
+					return {
+						transform: horizontal
+							? [{ translateX: shift }]
+							: [{ translateY: shift }],
+					};
+				});
+
+				return (
+					<DraxView
+						style={[itemStyle, shiftTransformStyle]}
+						draggingStyle={draggingStyle}
+						dragReleasedStyle={dragReleasedStyle}
+						{...otherStyleProps}
+						longPressDelay={longPressDelay}
+						lockDragXPosition={
+							lockItemDragsToMainAxis && !horizontal
 						}
-					}}
-					registration={(registration) => {
-						if (registration && originalIndex !== undefined) {
-							// console.log(`registering [${index}, ${originalIndex}], ${registration.id}`);
-							registrationsRef.current[originalIndex] =
-								registration;
-							registration.measure();
+						lockDragYPosition={
+							lockItemDragsToMainAxis && horizontal
 						}
-					}}
-					renderContent={(contentProps) =>
-						renderItemContent(info, contentProps)
-					}
-					renderHoverContent={
-						renderItemHoverContent &&
-						((hoverContentProps) =>
-							renderItemHoverContent(info, hoverContentProps))
-					}
-				/>
-			);
+						draggable={itemsDraggable}
+						payload={{ index, originalIndex }}
+						{...(viewPropsExtractor?.(item) ?? {})}
+						onDragEnd={resetDraggedItem}
+						onDragDrop={resetDraggedItem}
+						onMeasure={(measurements) => {
+							if (originalIndex !== undefined) {
+								// console.log(`measuring [${index}, ${originalIndex}]: (${measurements?.x}, ${measurements?.y})`);
+								itemMeasurementsRef.current[originalIndex] =
+									measurements;
+							}
+						}}
+						registration={(registration) => {
+							if (registration && originalIndex !== undefined) {
+								// console.log(`registering [${index}, ${originalIndex}], ${registration.id}`);
+								registrationsRef.current[originalIndex] =
+									registration;
+								registration.measure();
+							}
+						}}
+						renderContent={(contentProps) =>
+							renderItemContent(info, contentProps)
+						}
+						renderHoverContent={
+							renderItemHoverContent &&
+							((hoverContentProps) =>
+								renderItemHoverContent(info, hoverContentProps))
+						}
+					/>
+				);
+			};
+
+			return <RenderItem></RenderItem>;
 		},
 		[
 			originalIndexes,
 			itemStyles,
 			viewPropsExtractor,
-			getShiftTransform,
 			resetDraggedItem,
 			itemsDraggable,
 			renderItemContent,
@@ -401,11 +417,7 @@ const DraxListUnforwarded = <T extends unknown>(
 
 	// Reset all shift values.
 	const resetShifts = useCallback(() => {
-		shiftsRef.value = shiftsRef.value.map(() => ({
-			// eslint-disable-next-line no-param-reassign
-			targetValue: 0,
-			animatedValue: 0,
-		}));
+		shiftsRef.value = shiftsRef.value.map(() => 0);
 	}, []);
 
 	// Update shift values in response to a drag.
@@ -422,8 +434,6 @@ const DraxListUnforwarded = <T extends unknown>(
 
 			const offset = horizontal ? width : height;
 
-			console.log("shiftsRef", shiftsRef.value);
-
 			shiftsRef.value = originalIndexes.map((originalIndex, index) => {
 				const shift = shiftsRef.value[originalIndex];
 				let newTargetValue = 0;
@@ -432,8 +442,8 @@ const DraxListUnforwarded = <T extends unknown>(
 				} else if (index < fromIndex && index >= toIndex) {
 					newTargetValue = offset;
 				}
-				if (shift?.targetValue !== newTargetValue) {
-					shift.targetValue = newTargetValue;
+				if (shift !== newTargetValue) {
+					return newTargetValue;
 					// Animated.timing(shift.animatedValue, {
 					// 	duration: 200,
 					// 	toValue: newTargetValue,
