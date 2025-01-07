@@ -1,6 +1,6 @@
 import { PropsWithChildren } from "react";
 import { StyleProp, StyleSheet, ViewStyle } from "react-native";
-import { StyleProps } from "react-native-reanimated";
+import { AnimatedStyle, StyleProps } from "react-native-reanimated";
 
 import {
 	AnimatedViewStyleWithoutLayout,
@@ -11,7 +11,12 @@ import {
 } from "./types";
 
 export const flattenStylesWithoutLayout = (
-	styles: (StyleProps | null | StyleProp<ViewStyle>)[],
+	styles: (
+		| StyleProps
+		| StyleProp<ViewStyle>
+		| StyleProp<AnimatedStyle<StyleProp<ViewStyle>>>
+		| null
+	)[],
 ): AnimatedViewStyleWithoutLayout => {
 	const {
 		margin,
@@ -51,11 +56,12 @@ export const getCombinedHoverStyle = (
 	props: Partial<PropsWithChildren<TReanimatedHoverViewProps>>,
 ) => {
 	// Start with base style, calculated dimensions, and hover base style.
-	const hoverStyles: (StyleProps | null | StyleProp<ViewStyle>)[] = [
-		props?.style,
-		dimensions,
-		props?.hoverStyle,
-	];
+	const hoverStyles: (
+		| StyleProps
+		| StyleProp<ViewStyle>
+		| StyleProp<AnimatedStyle<StyleProp<ViewStyle>>>
+		| null
+	)[] = [props?.style, dimensions, props?.hoverStyle];
 
 	// Apply style style overrides based on state.
 	if (dragStatus === DraxViewDragStatus.Dragging) {

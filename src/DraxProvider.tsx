@@ -976,6 +976,7 @@ export const DraxProvider = ({
 							key={viewData.id || index}
 							scrollPosition={viewData?.scrollPosition}
 							{...(viewData?.protocol || {})}
+							id={viewData.id}
 							hoverPosition={viewData?.protocol.hoverPosition}
 						/>
 					),

@@ -89,8 +89,8 @@ export const updateHoverPosition = (
 	parentPos: Position,
 	hoverPosition: SharedValue<Position> | undefined,
 	startPosition: SharedValue<TStartPosition>,
-	scrollPosition: SharedValue<Position>,
 	props: Omit<PropsWithChildren<TReanimatedHoverViewProps>, "internalProps">,
+	scrollPosition?: SharedValue<Position>,
 	absoluteMeasurements?: DraxAbsoluteViewData["absoluteMeasurements"],
 ) => {
 	"worklet";

@@ -1,6 +1,7 @@
-import { PropsWithChildren, ReactNode } from "react";
+import React, { PropsWithChildren, ReactNode } from "react";
 import { StyleSheet } from "react-native";
 import Reanimated, {
+	SharedValue,
 	useAnimatedReaction,
 	useAnimatedStyle,
 } from "react-native-reanimated";
@@ -9,7 +10,11 @@ import { useDraxContext } from "./hooks";
 import { useStatus } from "./hooks/useStatus";
 import { extractDimensions, updateHoverPosition } from "./math";
 import { getCombinedHoverStyle } from "./transform";
-import { TReanimatedHoverViewProps, DraxViewDragStatus } from "./types";
+import {
+	TReanimatedHoverViewProps,
+	DraxViewDragStatus,
+	Position,
+} from "./types";
 
 export const ReanimatedHoverView = ({
 	children,
@@ -18,7 +23,10 @@ export const ReanimatedHoverView = ({
 	renderContent,
 	scrollPosition,
 	...props
-}: Omit<PropsWithChildren<TReanimatedHoverViewProps>, "internalProps">) => {
+}: Omit<PropsWithChildren<TReanimatedHoverViewProps>, "internalProps"> & {
+	id: string;
+	hoverPosition: SharedValue<Position>;
+}) => {
 	let content: ReactNode;
 	const { dragStatus, anyReceiving } = useStatus({ ...props, hoverPosition });
 
@@ -37,10 +45,9 @@ export const ReanimatedHoverView = ({
 	const dimensions =
 		viewData?.measurements && extractDimensions(viewData?.measurements);
 
-	const combinedHoverStyle = getCombinedHoverStyle(
-		{ dragStatus, anyReceiving, dimensions },
-		props,
-	);
+	const combinedHoverStyle =
+		dimensions &&
+		getCombinedHoverStyle({ dragStatus, anyReceiving, dimensions }, props);
 
 	useAnimatedReaction(
 		() => parentPosition.value,
@@ -51,8 +58,8 @@ export const ReanimatedHoverView = ({
 					position,
 					hoverPosition,
 					startPosition,
-					scrollPosition,
 					props,
+					scrollPosition,
 					absoluteMeasurements,
 				);
 		},
