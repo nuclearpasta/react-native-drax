@@ -499,19 +499,12 @@ const deleteReleaseInRegistry = (registry: DraxRegistry, releaseId: string) => {
 const getReleasesFromRegistry = (registry: DraxRegistry): string[] => {
 	// Find all released view hover items, in order from oldest to newest.
 
-	const hoverItems: string[] = [];
-
-	// Find all released view hover items, in order from oldest to newest.
-	registry.releaseIds.forEach((releaseId) => {
+	return registry.releaseIds.map((releaseId) => {
 		const release = registry.releaseById[releaseId];
-		if (release) {
-			const { viewId } = release;
+		const { viewId } = release;
 
-			hoverItems.push(viewId);
-		}
+		return viewId;
 	});
-
-	return hoverItems;
 };
 
 /** Reset drag tracking, if any. */
@@ -519,7 +512,6 @@ const resetDragInRegistry = (
 	registry: DraxRegistry,
 	snapbackTarget: DraxSnapbackTarget = DraxSnapbackTargetPreset.Default,
 ) => {
-	console.log("resettingDrag");
 	const { drag, stateDispatch } = registry;
 
 	if (!drag) {
@@ -685,7 +677,7 @@ const resetDragInRegistry = (
 
 	// Update the drag tracking status.
 	// Resetting the hover position updates the view state for the released view to be inactive.
-	hoverPosition.value = { x: 0, y: 0 };
+	// hoverPosition.value = { x: 0, y: 0 };
 
 	// Update the view state, data dependent on whether snapping back.
 	const viewStateUpdate: Partial<DraxViewState> = {
