@@ -512,7 +512,7 @@ const resetDragInRegistry = (
 	registry: DraxRegistry,
 	snapbackTarget: DraxSnapbackTarget = DraxSnapbackTargetPreset.Default,
 ) => {
-	const { drag, stateDispatch } = registry;
+	const { drag } = registry;
 
 	if (!drag) {
 		return;
@@ -534,10 +534,6 @@ const resetDragInRegistry = (
 	const draggedData = getAbsoluteViewDataFromRegistry(registry, draggedId);
 
 	// Clear the drag.
-	console.log(
-		"snapbackTarget",
-		snapbackTarget !== DraxSnapbackTargetPreset.None && draggedData,
-	);
 	registry.drag = undefined;
 
 	// Determine if/where/how to snapback.
@@ -673,11 +669,11 @@ const resetDragInRegistry = (
 				}
 			}
 		}
+	} else {
+		// Update the drag tracking status.
+		// Resetting the hover position updates the view state for the released view to be inactive.
+		hoverPosition.value = { x: 0, y: 0 };
 	}
-
-	// Update the drag tracking status.
-	// Resetting the hover position updates the view state for the released view to be inactive.
-	// hoverPosition.value = { x: 0, y: 0 };
 
 	// Update the view state, data dependent on whether snapping back.
 	const viewStateUpdate: Partial<DraxViewState> = {
@@ -767,7 +763,6 @@ const startDragInRegistry = (
 	};
 };
 
-/** Update drag position. */
 /** Update drag position. */
 const updateDragPositionInRegistry = (
 	registry: DraxRegistry,

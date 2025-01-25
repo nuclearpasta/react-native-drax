@@ -139,12 +139,11 @@ export const useMeasurements = ({
 		return undefined;
 	}, [id, measureWithHandler, registration]);
 
-	const setViewRefs = useCallback(
-		(ref: Reanimated.View | null) => {
-			viewRef.current = ref;
-		},
-		[viewRef],
-	);
-
-	return { onLayout, viewRef, parentViewRef, setViewRefs, measurementsRef };
+	return {
+		onLayout,
+		viewRef,
+		parentViewRef,
+		measurementsRef,
+		measureWithHandler,
+	};
 };

@@ -3,18 +3,16 @@ import { StyleSheet } from "react-native";
 import Reanimated, {
 	SharedValue,
 	useAnimatedReaction,
-	useAnimatedStyle,
 } from "react-native-reanimated";
 
 import { useDraxContext } from "./hooks";
-import { useStatus } from "./hooks/useStatus";
-import { extractDimensions, updateHoverPosition } from "./math";
-import { getCombinedHoverStyle } from "./transform";
+import { updateHoverPosition } from "./math";
 import {
 	TReanimatedHoverViewProps,
 	DraxViewDragStatus,
 	Position,
 } from "./types";
+import { useContent } from "./hooks/useContent";
 
 export const ReanimatedHoverView = ({
 	children,
@@ -27,9 +25,6 @@ export const ReanimatedHoverView = ({
 	id: string;
 	hoverPosition: SharedValue<Position>;
 }) => {
-	let content: ReactNode;
-	const { dragStatus, anyReceiving } = useStatus({ ...props, hoverPosition });
-
 	const {
 		parentPosition,
 		getAbsoluteViewData,
@@ -42,12 +37,6 @@ export const ReanimatedHoverView = ({
 	const draggedId = getTrackingDragged()?.id;
 	const id = props.id;
 	const absoluteMeasurements = viewData?.absoluteMeasurements;
-	const dimensions =
-		viewData?.measurements && extractDimensions(viewData?.measurements);
-
-	const combinedHoverStyle =
-		dimensions &&
-		getCombinedHoverStyle({ dragStatus, anyReceiving, dimensions }, props);
 
 	useAnimatedReaction(
 		() => parentPosition.value,
@@ -65,27 +54,17 @@ export const ReanimatedHoverView = ({
 		},
 	);
 
-	const animatedHoverStyle = useAnimatedStyle(() => {
-		return {
-			opacity:
-				hoverPosition.value.x === 0 && hoverPosition.value.y === 0
-					? 0
-					: 1, //prevent flash when release animation finishes.
-			transform: [
-				{
-					translateX:
-						hoverPosition?.value?.x -
-						(scrollPosition?.value?.x || 0),
-				},
-				{
-					translateY:
-						hoverPosition?.value?.y -
-						(scrollPosition?.value?.y || 0),
-				},
-				...(combinedHoverStyle?.transform || []),
-			],
-		};
-	});
+	const { combinedStyle, animatedHoverStyle, renderedChildren, dragStatus } =
+		useContent({
+			draxViewProps: {
+				children,
+				hoverPosition,
+				renderHoverContent,
+				renderContent,
+				scrollPosition,
+				...props,
+			},
+		});
 
 	if (!(props.draggable && !props.noHover)) {
 		return null;
@@ -98,32 +77,13 @@ export const ReanimatedHoverView = ({
 		return null;
 	}
 
-	const render = renderHoverContent ?? renderContent;
-
-	if (render) {
-		const renderProps = {
-			children,
-			hover: true,
-			// viewState: internalProps.viewState,
-			// trackingStatus: {},
-			dimensions,
-		};
-		content = render(renderProps);
-	} else {
-		content = children;
-	}
-
 	return (
 		<Reanimated.View
 			{...props}
-			style={[
-				StyleSheet.absoluteFill,
-				combinedHoverStyle,
-				animatedHoverStyle,
-			]}
+			style={[StyleSheet.absoluteFill, combinedStyle, animatedHoverStyle]}
 			pointerEvents="none"
 		>
-			{content}
+			{renderedChildren}
 		</Reanimated.View>
 	);
 };

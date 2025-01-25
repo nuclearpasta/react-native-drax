@@ -71,14 +71,19 @@ export const ReanimatedView = memo((props: IReanimatedView): JSX.Element => {
 	const { updateViewProtocol, registerView, unregisterView } =
 		useDraxContext();
 
-	const { onLayout, measurementsRef, setViewRefs, viewRef } =
-		useMeasurements(props);
+	const { onLayout, viewRef, measureWithHandler } = useMeasurements(props);
 
 	const { combinedStyle, renderedChildren } = useContent({
 		draxViewProps: { ...props, hoverPosition },
 		viewRef,
-		measurementsRef,
 	});
+
+	useEffect(() => {
+		/** 🪲BUG:
+		 * For some reason, the Staging zone from the ColorDragDrop example loses its measurements,
+		 * and we need to force refresh on them */
+		measureWithHandler?.();
+	}, [combinedStyle]);
 
 	// Report updates to our protocol callbacks when we have an id and whenever the props change.
 	useEffect(() => {
@@ -92,7 +97,9 @@ export const ReanimatedView = memo((props: IReanimatedView): JSX.Element => {
 			},
 		});
 
-		// Ugly hack to update hover view in case props change.
+		/** 🪲BUG:
+		 * Ugly hack to update hover view in case props change.
+		 */
 		registerView({ id: "bsbsbs" });
 		unregisterView({ id: "bsbsbs" });
 	}, [
@@ -105,16 +112,14 @@ export const ReanimatedView = memo((props: IReanimatedView): JSX.Element => {
 	]);
 
 	return (
-		<>
-			<Reanimated.View
-				{...props}
-				style={combinedStyle}
-				ref={setViewRefs}
-				onLayout={onLayout}
-				collapsable={false}
-			>
-				{renderedChildren}
-			</Reanimated.View>
-		</>
+		<Reanimated.View
+			{...props}
+			style={combinedStyle}
+			ref={viewRef}
+			onLayout={onLayout}
+			collapsable={false}
+		>
+			{renderedChildren}
+		</Reanimated.View>
 	);
 });

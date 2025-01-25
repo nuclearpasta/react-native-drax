@@ -1,11 +1,10 @@
-import React, {
-	useMemo,
-	useCallback,
-	ReactNode,
-	MutableRefObject,
-} from "react";
+import React, { ReactNode, useCallback, useMemo } from "react";
 import { StyleSheet } from "react-native";
-import Reanimated, { AnimatedRef, SharedValue } from "react-native-reanimated";
+import Reanimated, {
+	AnimatedRef,
+	SharedValue,
+	useAnimatedStyle,
+} from "react-native-reanimated";
 
 import { extractDimensions } from "../math";
 import { useDraxContext } from "./useDraxContext";
@@ -14,11 +13,11 @@ import { DraxSubprovider } from "../DraxSubprovider";
 import {
 	DraxRenderContentProps,
 	DraxViewDragStatus,
-	DraxViewMeasurements,
 	DraxViewProps,
 	DraxViewReceiveStatus,
 	Position,
 } from "../types";
+import { getCombinedHoverStyle } from "../transform";
 
 export const useContent = ({
 	draxViewProps: {
@@ -36,26 +35,20 @@ export const useContent = ({
 		receivingStyle,
 		children,
 		renderContent,
+		renderHoverContent,
 		isParent,
 		...props
 	},
 	viewRef,
-	measurementsRef,
 }: {
 	draxViewProps: DraxViewProps & {
 		id: string;
 		hoverPosition: SharedValue<Position>;
 	};
-	viewRef: AnimatedRef<Reanimated.View>;
-	measurementsRef: MutableRefObject<DraxViewMeasurements | undefined>;
+	viewRef?: AnimatedRef<Reanimated.View>;
 }) => {
-	const { getViewState, getTrackingStatus } = useDraxContext();
-	// Get the render-related state for rendering.
-	const viewState = useMemo(() => getViewState(id), [getViewState, id]);
-	const trackingStatus = useMemo(
-		() => getTrackingStatus(),
-		[getTrackingStatus],
-	);
+	const { getTrackingDragged, getTrackingReceiver, getAbsoluteViewData } =
+		useDraxContext();
 
 	const { dragStatus, receiveStatus, anyDragging, anyReceiving } = useStatus({
 		id,
@@ -65,23 +58,60 @@ export const useContent = ({
 		...props,
 	});
 
+	const dragged = getTrackingDragged();
+	const receiver = getTrackingReceiver();
+	const draggedData = getAbsoluteViewData(dragged?.id);
+	const viewData = getAbsoluteViewData(id);
+
+	const measurements = viewData?.measurements;
+	const dimensions = measurements && extractDimensions(measurements);
+
 	// Get full render props for non-hovering view content.
 	const getRenderContentProps = useCallback((): DraxRenderContentProps => {
-		const measurements = measurementsRef.current;
-		const dimensions = measurements && extractDimensions(measurements);
 		return {
-			viewState,
-			trackingStatus,
+			viewState: {
+				dragStatus,
+				receiveStatus,
+				hoverPosition: props.hoverPosition,
+				...dragged?.tracking,
+				receivingDrag:
+					receiveStatus !== DraxViewReceiveStatus.Receiving ||
+					!receiver?.id
+						? undefined
+						: {
+								id: receiver?.id,
+								payload: draggedData?.protocol.dragPayload,
+							},
+			},
+			trackingStatus: { dragging: anyDragging, receiving: anyReceiving },
 			children,
 			dimensions,
-			hover: false,
+			hover: !viewRef,
 		};
-	}, [measurementsRef, viewState, trackingStatus, children]);
+	}, [
+		children,
+		dragStatus,
+		receiveStatus,
+		anyDragging,
+		anyReceiving,
+		getTrackingDragged,
+	]);
 
 	// Combined style for current render-related state.
 	const combinedStyle = useMemo(() => {
+		const combinedHoverStyle =
+			dimensions &&
+			getCombinedHoverStyle(
+				{ dragStatus, anyReceiving, dimensions },
+				props,
+			);
+
 		// Start with base style.
 		const styles = [style];
+
+		if (!viewRef) {
+			styles.push(combinedHoverStyle);
+		}
 
 		// Apply style overrides for drag state.
 		if (dragStatus === DraxViewDragStatus.Dragging) {
@@ -131,16 +161,45 @@ export const useContent = ({
 		receiverInactiveStyle,
 	]);
 
+	const animatedHoverStyle = useAnimatedStyle(() => {
+		return {
+			opacity:
+				props.hoverPosition.value.x === 0 &&
+				props.hoverPosition.value.y === 0
+					? 0
+					: 1, //prevent flash when release animation finishes.
+			transform: [
+				{
+					translateX:
+						props.hoverPosition?.value?.x -
+						(props.scrollPosition?.value?.x || 0),
+				},
+				{
+					translateY:
+						props.hoverPosition?.value?.y -
+						(props.scrollPosition?.value?.y || 0),
+				},
+				...(combinedStyle?.transform || []),
+			],
+		};
+	});
+
 	// The rendered React children of this view.
 	const renderedChildren = useMemo(() => {
 		let content: ReactNode;
-		if (renderContent) {
+
+		let renderDraxContent = !viewRef
+			? renderHoverContent || renderContent
+			: renderContent;
+
+		if (renderDraxContent) {
 			const renderContentProps = getRenderContentProps();
-			content = renderContent(renderContentProps);
+			content = renderDraxContent(renderContentProps);
 		} else {
 			content = children;
 		}
-		if (isParent) {
+
+		if (isParent && viewRef) {
 			// This is a Drax parent, so wrap children in subprovider.
 			content = (
 				<DraxSubprovider parent={{ id, viewRef }}>
@@ -148,8 +207,22 @@ export const useContent = ({
 				</DraxSubprovider>
 			);
 		}
-		return content;
-	}, [renderContent, getRenderContentProps, children, isParent, id, viewRef]);
 
-	return { renderedChildren, combinedStyle };
+		return content;
+	}, [
+		renderContent,
+		getRenderContentProps,
+		children,
+		isParent,
+		id,
+		viewRef,
+		renderHoverContent,
+	]);
+
+	return {
+		renderedChildren,
+		combinedStyle,
+		animatedHoverStyle,
+		dragStatus,
+	};
 };
