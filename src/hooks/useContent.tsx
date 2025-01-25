@@ -61,13 +61,13 @@ export const useContent = ({
 	const dragged = getTrackingDragged();
 	const receiver = getTrackingReceiver();
 	const draggedData = getAbsoluteViewData(dragged?.id);
-	const viewData = getAbsoluteViewData(id);
-
-	const measurements = viewData?.measurements;
-	const dimensions = measurements && extractDimensions(measurements);
 
 	// Get full render props for non-hovering view content.
 	const getRenderContentProps = useCallback((): DraxRenderContentProps => {
+		const viewData = getAbsoluteViewData(id);
+
+		const measurements = viewData?.measurements;
+		const dimensions = measurements && extractDimensions(measurements);
 		return {
 			viewState: {
 				dragStatus,
@@ -99,19 +99,41 @@ export const useContent = ({
 
 	// Combined style for current render-related state.
 	const combinedStyle = useMemo(() => {
-		// Start with base style.
-		const styles = [style];
-
 		if (!viewRef) {
+			const viewData = getAbsoluteViewData(id);
+
+			const measurements = viewData?.measurements;
+			const dimensions = measurements && extractDimensions(measurements);
 			const combinedHoverStyle =
 				dimensions &&
 				getCombinedHoverStyle(
 					{ dragStatus, anyReceiving, dimensions },
-					props,
+					{
+						id,
+						style,
+						dragInactiveStyle,
+						draggingStyle,
+						draggingWithReceiverStyle,
+						draggingWithoutReceiverStyle,
+						dragReleasedStyle,
+						otherDraggingStyle,
+						otherDraggingWithReceiverStyle,
+						otherDraggingWithoutReceiverStyle,
+						receiverInactiveStyle,
+						receivingStyle,
+						children,
+						renderContent,
+						renderHoverContent,
+						isParent,
+						...props,
+					},
 				);
 
-			styles.push(combinedHoverStyle);
+			return [combinedHoverStyle];
 		}
+
+		// Start with base style.
+		const styles = [style];
 
 		// Apply style overrides for drag state.
 		if (dragStatus === DraxViewDragStatus.Dragging) {

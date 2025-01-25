@@ -108,7 +108,6 @@ export const ReanimatedView = memo((props: IReanimatedView): JSX.Element => {
 		props,
 		registerView,
 		unregisterView,
-		props.style,
 	]);
 
 	return (
