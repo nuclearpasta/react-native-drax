@@ -99,17 +99,17 @@ export const useContent = ({
 
 	// Combined style for current render-related state.
 	const combinedStyle = useMemo(() => {
-		const combinedHoverStyle =
-			dimensions &&
-			getCombinedHoverStyle(
-				{ dragStatus, anyReceiving, dimensions },
-				props,
-			);
-
 		// Start with base style.
 		const styles = [style];
 
 		if (!viewRef) {
+			const combinedHoverStyle =
+				dimensions &&
+				getCombinedHoverStyle(
+					{ dragStatus, anyReceiving, dimensions },
+					props,
+				);
+
 			styles.push(combinedHoverStyle);
 		}
 
