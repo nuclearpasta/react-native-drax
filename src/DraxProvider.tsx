@@ -968,7 +968,7 @@ export const DraxProvider = ({
 		() =>
 			getHoverItems(allViewStates).map(
 				(viewData, index) =>
-					viewData?.protocol.hoverPosition?.value && (
+					viewData && (
 						<ReanimatedHoverView
 							key={viewData.id || index}
 							scrollPosition={viewData?.scrollPosition}
