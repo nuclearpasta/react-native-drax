@@ -555,7 +555,7 @@ const resetDragInRegistry = (
 			(receiverData
 				? receiverParentData?.scrollPosition
 				: parentData?.scrollPosition) || INITIAL_REANIMATED_POSITION;
-		console.log("animateSnapback", animateSnapback);
+
 		if (animateSnapback) {
 			let toValue: Position | undefined;
 
@@ -603,9 +603,9 @@ const resetDragInRegistry = (
 				};
 			} else {
 				// Snapback to default position (where original view is).
-				console.log(
-					" Snapback to default position (where original view is).",
-				);
+				// console.log(
+				// 	" Snapback to default position (where original view is).",
+				// );
 				toValue = {
 					x: draggedData.absoluteMeasurements.x,
 					y: draggedData.absoluteMeasurements.y,
