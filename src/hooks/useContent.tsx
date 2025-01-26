@@ -11,13 +11,16 @@ import { useDraxContext } from "./useDraxContext";
 import { useStatus } from "./useStatus";
 import { DraxSubprovider } from "../DraxSubprovider";
 import {
+	flattenStylesWithoutLayout,
+	getCombinedHoverStyle,
+} from "../transform";
+import {
 	DraxRenderContentProps,
 	DraxViewDragStatus,
 	DraxViewProps,
 	DraxViewReceiveStatus,
 	Position,
 } from "../types";
-import { getCombinedHoverStyle } from "../transform";
 
 export const useContent = ({
 	draxViewProps: {
@@ -99,6 +102,9 @@ export const useContent = ({
 
 	// Combined style for current render-related state.
 	const combinedStyle = useMemo(() => {
+		// Start with base style.
+		const styles = [style];
+
 		if (!viewRef) {
 			const viewData = getAbsoluteViewData(id);
 
@@ -129,11 +135,8 @@ export const useContent = ({
 					},
 				);
 
-			return [combinedHoverStyle];
+			styles.push(combinedHoverStyle);
 		}
-
-		// Start with base style.
-		const styles = [style];
 
 		// Apply style overrides for drag state.
 		if (dragStatus === DraxViewDragStatus.Dragging) {
@@ -164,6 +167,10 @@ export const useContent = ({
 			styles.push(receiverInactiveStyle);
 		}
 
+		if (!viewRef) {
+			return flattenStylesWithoutLayout(styles);
+		}
+
 		return StyleSheet.flatten(styles);
 	}, [
 		style,
@@ -181,9 +188,13 @@ export const useContent = ({
 		otherDraggingWithoutReceiverStyle,
 		receivingStyle,
 		receiverInactiveStyle,
+		viewRef,
 	]);
 
 	const animatedHoverStyle = useAnimatedStyle(() => {
+		if (viewRef) {
+			return {};
+		}
 		return {
 			opacity:
 				props.hoverPosition.value.x === 0 &&
@@ -210,7 +221,7 @@ export const useContent = ({
 	const renderedChildren = useMemo(() => {
 		let content: ReactNode;
 
-		let renderDraxContent = !viewRef
+		const renderDraxContent = !viewRef
 			? renderHoverContent || renderContent
 			: renderContent;
 
