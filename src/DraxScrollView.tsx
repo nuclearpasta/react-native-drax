@@ -124,12 +124,7 @@ const DraxScrollViewUnforwarded = (
 			});
 			(scroll as any).flashScrollIndicators(); // ScrollView typing is missing this method
 		}
-	}, [
-		autoScrollJumpRatio,
-		scrollPosition.value.x,
-		scrollPosition.value.y,
-		scrollRef,
-	]);
+	}, [autoScrollJumpRatio, scrollRef]);
 
 	// Start the auto-scrolling interval.
 	const startScroll = useCallback(() => {
