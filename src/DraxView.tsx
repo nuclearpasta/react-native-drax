@@ -49,7 +49,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
 			draggable={draggable}
 			longPressDelay={props.longPressDelay ?? defaultLongPressDelay}
 		>
-			<ReanimatedView
+			<DraxReanimatedView
 				id={id}
 				{...props}
 				draggable={draggable}
@@ -64,7 +64,7 @@ interface IReanimatedView extends DraxViewProps {
 	id: string;
 }
 
-export const ReanimatedView = memo((props: IReanimatedView): JSX.Element => {
+export const DraxReanimatedView = memo((props: IReanimatedView): ReactNode => {
 	const hoverPosition = useSharedValue<Position>({ x: 0, y: 0 });
 
 	// Connect with Drax.

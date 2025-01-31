@@ -195,6 +195,7 @@ export const useContent = ({
 		if (viewRef) {
 			return {};
 		}
+
 		return {
 			opacity:
 				props.hoverPosition.value.x === 0 &&

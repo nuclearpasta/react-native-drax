@@ -14,7 +14,7 @@ import {
 } from "react-native-reanimated";
 
 import { DraxContext } from "./DraxContext";
-import { ReanimatedHoverView } from "./HoverView";
+import { HoverView } from "./HoverView";
 import { useDraxState, useDraxRegistry } from "./hooks";
 import { getRelativePosition } from "./math";
 import {
@@ -969,7 +969,7 @@ export const DraxProvider = ({
 			getHoverItems(allViewStates).map(
 				(viewData, index) =>
 					viewData && (
-						<ReanimatedHoverView
+						<HoverView
 							key={viewData.id || index}
 							scrollPosition={viewData?.scrollPosition}
 							{...(viewData?.protocol || {})}

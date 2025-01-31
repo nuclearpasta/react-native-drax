@@ -1,4 +1,4 @@
-import React, { PropsWithChildren, ReactNode } from "react";
+import React, { PropsWithChildren } from "react";
 import { StyleSheet } from "react-native";
 import Reanimated, {
 	SharedValue,
@@ -6,15 +6,15 @@ import Reanimated, {
 } from "react-native-reanimated";
 
 import { useDraxContext } from "./hooks";
+import { useContent } from "./hooks/useContent";
 import { updateHoverPosition } from "./math";
 import {
 	TReanimatedHoverViewProps,
 	DraxViewDragStatus,
 	Position,
 } from "./types";
-import { useContent } from "./hooks/useContent";
 
-export const ReanimatedHoverView = ({
+export const HoverView = ({
 	children,
 	hoverPosition,
 	renderHoverContent,

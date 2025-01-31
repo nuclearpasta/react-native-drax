@@ -783,35 +783,37 @@ export type LayoutStyleKey =
 	| "flexGrow"
 	| "flexShrink";
 
+type TSDraxtyles =
+	| StyleProp<StyleProps>
+	| null
+	| StyleProp<ViewStyle>
+	| StyleProp<AnimatedStyle<StyleProp<ViewStyle>>>;
+
 /** Style for a Animated.View used for a hover view */
-export type AnimatedViewStyleWithoutLayout = Omit<StyleProps, LayoutStyleKey>;
+export type AnimatedViewStyleWithoutLayout = Omit<TSDraxtyles, LayoutStyleKey>;
 
 /** Style prop for a Animated.View used for a hover view */
-export type AnimatedViewStylePropWithoutLayout = StyleProps;
+export type AnimatedViewStylePropWithoutLayout = TSDraxtyles;
 
 /** Style-related props for a Drax view */
 export interface DraxViewStyleProps {
 	/** Custom style prop to allow animated values */
-	style?:
-		| StyleProps
-		| null
-		| StyleProp<ViewStyle>
-		| StyleProp<AnimatedStyle<StyleProp<ViewStyle>>>;
+	style?: TSDraxtyles;
 
 	/** Additional view style applied while this view is not being dragged or released */
-	dragInactiveStyle?: StyleProps;
+	dragInactiveStyle?: TSDraxtyles;
 
 	/** Additional view style applied while this view is being dragged */
-	draggingStyle?: StyleProps;
+	draggingStyle?: TSDraxtyles;
 
 	/** Additional view style applied while this view is being dragged over a receiver */
-	draggingWithReceiverStyle?: StyleProps;
+	draggingWithReceiverStyle?: TSDraxtyles;
 
 	/** Additional view style applied while this view is being dragged NOT over a receiver */
-	draggingWithoutReceiverStyle?: StyleProps;
+	draggingWithoutReceiverStyle?: TSDraxtyles;
 
 	/** Additional view style applied while this view has just been released from a drag */
-	dragReleasedStyle?: StyleProps;
+	dragReleasedStyle?: TSDraxtyles;
 
 	/** Additional view style applied to the hovering copy of this view during drag/release */
 	hoverStyle?: AnimatedViewStylePropWithoutLayout;
@@ -829,19 +831,19 @@ export interface DraxViewStyleProps {
 	hoverDragReleasedStyle?: AnimatedViewStylePropWithoutLayout;
 
 	/** Additional view style applied while this view is not receiving a drag */
-	receiverInactiveStyle?: StyleProps;
+	receiverInactiveStyle?: TSDraxtyles;
 
 	/** Additional view style applied while this view is receiving a drag */
-	receivingStyle?: StyleProps;
+	receivingStyle?: TSDraxtyles;
 
 	/** Additional view style applied to this view while any other view is being dragged */
-	otherDraggingStyle?: StyleProps;
+	otherDraggingStyle?: TSDraxtyles;
 
 	/** Additional view style applied to this view while any other view is being dragged over a receiver */
-	otherDraggingWithReceiverStyle?: StyleProps;
+	otherDraggingWithReceiverStyle?: TSDraxtyles;
 
 	/** Additional view style applied to this view while any other view is being dragged NOT over a receiver */
-	otherDraggingWithoutReceiverStyle?: StyleProps;
+	otherDraggingWithoutReceiverStyle?: TSDraxtyles;
 }
 
 /** Custom render function for content of a DraxView */
