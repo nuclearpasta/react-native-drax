@@ -136,16 +136,10 @@ const DraxListUnforwarded = <T extends unknown>(
 			scrollPosition.value.y = event.contentOffset.y;
 			scrollPosition.value.x = event.contentOffset.x;
 		},
-		onMomentumBegin: (e) => {
-			console.log("The list is moving.");
-		},
-		onMomentumEnd: (e) => {
-			console.log("The list stopped moving.");
-		},
 	});
 
 	// Original index of the currently dragged list item, if any.
-	const draggedItemRef = useRef<number | undefined>(undefined);
+	const draggedItem = useSharedValue<number | undefined>(undefined);
 
 	// Auto-scrolling state.
 	const scrollStateRef = useRef(AutoScrollDirection.None);
@@ -220,12 +214,12 @@ const DraxListUnforwarded = <T extends unknown>(
 
 	// Set the currently dragged list item.
 	const setDraggedItem = useCallback((originalIndex: number) => {
-		draggedItemRef.current = originalIndex;
+		draggedItem.value = originalIndex;
 	}, []);
 
 	// Clear the currently dragged list item.
 	const resetDraggedItem = useCallback(() => {
-		draggedItemRef.current = undefined;
+		draggedItem.value = undefined;
 	}, []);
 
 	// Drax view renderItem wrapper.
@@ -246,10 +240,12 @@ const DraxListUnforwarded = <T extends unknown>(
 				useAnimatedReaction(
 					() => shiftsRef.value,
 					() => {
-						animatedValue.value = withTiming(
-							shiftsRef.value[index],
-							{ duration: 200 },
-						);
+						const toValue = shiftsRef.value[index];
+
+						if (draggedItem.value)
+							animatedValue.value = withTiming(toValue, {
+								duration: 200,
+							});
 					},
 				);
 
@@ -308,7 +304,7 @@ const DraxListUnforwarded = <T extends unknown>(
 				);
 			};
 
-			return <RenderItem></RenderItem>;
+			return <RenderItem />;
 		},
 		[
 			originalIndexes,
