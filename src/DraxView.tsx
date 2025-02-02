@@ -2,8 +2,9 @@ import React, { useEffect, memo, ReactNode } from "react";
 import Reanimated, { useSharedValue } from "react-native-reanimated";
 
 import { PanGestureDetector } from "./PanGestureDetector";
-import { useDraxId, useDraxContext } from "./hooks";
+import { useDraxId } from "./hooks";
 import { useContent } from "./hooks/useContent";
+import { useDraxProtocol } from "./hooks/useDraxProtocol";
 import { useMeasurements } from "./hooks/useMeasurements";
 import { defaultLongPressDelay } from "./params";
 import { DraxViewProps, Position } from "./types";
@@ -67,9 +68,7 @@ interface IReanimatedView extends DraxViewProps {
 export const DraxReanimatedView = memo((props: IReanimatedView): ReactNode => {
 	const hoverPosition = useSharedValue<Position>({ x: 0, y: 0 });
 
-	// Connect with Drax.
-	const { updateViewProtocol, registerView, unregisterView } =
-		useDraxContext();
+	useDraxProtocol(props, hoverPosition);
 
 	const { onLayout, viewRef, measureWithHandler } = useMeasurements(props);
 
@@ -84,31 +83,6 @@ export const DraxReanimatedView = memo((props: IReanimatedView): ReactNode => {
 		 * and we need to force refresh on them */
 		measureWithHandler?.();
 	}, [combinedStyle]);
-
-	// Report updates to our protocol callbacks when we have an id and whenever the props change.
-	useEffect(() => {
-		updateViewProtocol({
-			id: props.id,
-			protocol: {
-				...props,
-				hoverPosition,
-				dragPayload: props.dragPayload ?? props.payload,
-				receiverPayload: props.receiverPayload ?? props.payload,
-			},
-		});
-
-		/** 🪲BUG:
-		 * Ugly hack to update hover view in case props change.
-		 */
-		registerView({ id: "bsbsbs" });
-		unregisterView({ id: "bsbsbs" });
-	}, [
-		updateViewProtocol,
-		hoverPosition,
-		props,
-		registerView,
-		unregisterView,
-	]);
 
 	return (
 		<Reanimated.View

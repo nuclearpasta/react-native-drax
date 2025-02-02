@@ -106,13 +106,11 @@ const getAbsoluteMeasurementsForViewFromRegistry = (
 	const { x, y, width, height } = measurements;
 	const { x: parentX, y: parentY } = parentMeasurements;
 
-	const { x: offsetX, y: offsetY } =
-		/** TODO: Recheck if we need scrollPosition.value here: */
-		// parentViewData.scrollPosition?.value ||
-		{
-			x: 0,
-			y: 0,
-		};
+	const { x: offsetX, y: offsetY } = parentViewData.protocol
+		.scrollPositionValue || {
+		x: 0,
+		y: 0,
+	};
 
 	const abs: DraxViewMeasurements = {
 		width,

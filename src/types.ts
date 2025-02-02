@@ -234,6 +234,7 @@ export interface DraxRenderHoverContentProps extends DraxRenderContentProps {} /
 /** Callback protocol for communicating Drax events to views */
 export interface DraxProtocol {
 	hoverPosition: SharedValue<Position>;
+	scrollPositionValue?: Position;
 	/** Called in the dragged view when a drag action begins */
 	onDragStart?: (data: DraxDragEventData) => void;
 
