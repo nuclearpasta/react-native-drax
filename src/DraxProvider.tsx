@@ -971,10 +971,12 @@ export const DraxProvider = ({
 					viewData && (
 						<HoverView
 							key={viewData.id || index}
-							scrollPosition={viewData?.scrollPosition}
 							{...(viewData?.protocol || {})}
 							id={viewData.id}
-							hoverPosition={viewData?.protocol.hoverPosition}
+							scrollPosition={viewData?.scrollPosition}
+							scrollPositionOffset={
+								viewData?.scrollPositionOffset
+							}
 						/>
 					),
 			),

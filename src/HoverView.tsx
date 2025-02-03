@@ -1,13 +1,8 @@
 import React, { PropsWithChildren } from "react";
 import { StyleSheet } from "react-native";
-import Reanimated, {
-	SharedValue,
-	useAnimatedReaction,
-} from "react-native-reanimated";
+import Reanimated, { SharedValue } from "react-native-reanimated";
 
-import { useDraxContext } from "./hooks";
 import { useContent } from "./hooks/useContent";
-import { updateHoverPosition } from "./math";
 import {
 	TReanimatedHoverViewProps,
 	DraxViewDragStatus,
@@ -24,36 +19,8 @@ export const HoverView = ({
 }: Omit<PropsWithChildren<TReanimatedHoverViewProps>, "internalProps"> & {
 	id: string;
 	hoverPosition: SharedValue<Position>;
+	scrollPositionOffset?: Position;
 }) => {
-	const {
-		parentPosition,
-		getAbsoluteViewData,
-		startPosition,
-		getTrackingDragged,
-	} = useDraxContext();
-
-	const viewData = getAbsoluteViewData(props.id);
-
-	const draggedId = getTrackingDragged()?.id;
-	const id = props.id;
-	const absoluteMeasurements = viewData?.absoluteMeasurements;
-
-	useAnimatedReaction(
-		() => parentPosition.value,
-		(position) => {
-			id &&
-				draggedId === id &&
-				updateHoverPosition(
-					position,
-					hoverPosition,
-					startPosition,
-					props,
-					scrollPosition,
-					absoluteMeasurements,
-				);
-		},
-	);
-
 	const { combinedStyle, animatedHoverStyle, renderedChildren, dragStatus } =
 		useContent({
 			draxViewProps: {

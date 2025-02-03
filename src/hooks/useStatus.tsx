@@ -80,7 +80,12 @@ export const useStatus = ({
 		(position: Position) => {
 			const dragged = getTrackingDragged();
 			if (position.x === 0 && position.y === 0) {
+				// const releaseViews = getReleaseViews();
+				// if (releaseViews?.includes(id)) {
+				// 	setDragSatatus(DraxViewDragStatus.Released);
+				// } else {
 				setReceiveStatus(DraxViewReceiveStatus.Inactive);
+				// }
 				setAnyReceiving(false);
 			} else if (dragged) {
 				if (dragged?.tracking.receiver) {

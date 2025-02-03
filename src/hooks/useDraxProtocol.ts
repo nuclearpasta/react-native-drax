@@ -13,13 +13,12 @@ export const useDraxProtocol = (
 	props: DraxViewProps & { id: string },
 	hoverPosition: SharedValue<Position>,
 ) => {
+	// Connect with Drax.
+	const { updateViewProtocol } = useDraxContext();
+
 	const _scrollPosition = useSharedValue<Position>({ x: 0, y: 0 });
 
 	const scrollPosition = props.scrollPosition || _scrollPosition;
-
-	// Connect with Drax.
-	const { updateViewProtocol, registerView, unregisterView } =
-		useDraxContext();
 
 	const updateViewProtocolCallback = useCallback(
 		(scrollPositionValue?: Position) => {
@@ -38,7 +37,7 @@ export const useDraxProtocol = (
 				},
 			});
 		},
-		[updateViewProtocol, props],
+		[updateViewProtocol, props, hoverPosition],
 	);
 
 	useAnimatedReaction(
@@ -48,14 +47,5 @@ export const useDraxProtocol = (
 		},
 	);
 
-	// Report updates to our protocol callbacks when we have an id and whenever the props change.
-	useEffect(() => {
-		updateViewProtocolCallback();
-
-		/** 🪲BUG:
-		 * Ugly hack to update hover view in case props change.
-		 */
-		registerView({ id: "bsbsbs" });
-		unregisterView({ id: "bsbsbs" });
-	}, [updateViewProtocolCallback, registerView, unregisterView]);
+	return updateViewProtocolCallback;
 };

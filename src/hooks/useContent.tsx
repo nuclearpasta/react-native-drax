@@ -40,6 +40,7 @@ export const useContent = ({
 		renderContent,
 		renderHoverContent,
 		isParent,
+		scrollPositionOffset,
 		...props
 	},
 	viewRef,
@@ -47,6 +48,7 @@ export const useContent = ({
 	draxViewProps: DraxViewProps & {
 		id: string;
 		hoverPosition: SharedValue<Position>;
+		scrollPositionOffset?: Position;
 	};
 	viewRef?: AnimatedRef<Reanimated.View>;
 }) => {
@@ -206,12 +208,14 @@ export const useContent = ({
 				{
 					translateX:
 						props.hoverPosition?.value?.x -
-						(props.scrollPosition?.value?.x || 0),
+						((props.scrollPosition?.value?.x || 0) -
+							(scrollPositionOffset?.x || 0)),
 				},
 				{
 					translateY:
 						props.hoverPosition?.value?.y -
-						(props.scrollPosition?.value?.y || 0),
+						((props.scrollPosition?.value?.y || 0) -
+							(scrollPositionOffset?.y || 0)),
 				},
 				...(combinedStyle?.transform || []),
 			],

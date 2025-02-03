@@ -448,6 +448,8 @@ export interface DraxTrackingRelease {
 	 *  Will be receiver's parent scroll on succesful drops,
 	 *  else will be dragged parent scroll */
 	scrollPosition: SharedValue<Position>;
+
+	scrollPositionOffset: Position;
 }
 
 /** Tracking status for reference in views */

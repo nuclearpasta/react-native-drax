@@ -2,10 +2,11 @@ import React, { useEffect, memo, ReactNode } from "react";
 import Reanimated, { useSharedValue } from "react-native-reanimated";
 
 import { PanGestureDetector } from "./PanGestureDetector";
-import { useDraxId } from "./hooks";
+import { useDraxContext, useDraxId } from "./hooks";
 import { useContent } from "./hooks/useContent";
 import { useDraxProtocol } from "./hooks/useDraxProtocol";
 import { useMeasurements } from "./hooks/useMeasurements";
+import { generateRandomId } from "./math";
 import { defaultLongPressDelay } from "./params";
 import { DraxViewProps, Position } from "./types";
 
@@ -61,15 +62,13 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
 	);
 });
 
-interface IReanimatedView extends DraxViewProps {
-	id: string;
-}
+type IReanimatedView = DraxViewProps & { id: string };
 
 export const DraxReanimatedView = memo((props: IReanimatedView): ReactNode => {
 	const hoverPosition = useSharedValue<Position>({ x: 0, y: 0 });
+	const updateViewProtocol = useDraxProtocol(props, hoverPosition);
 
-	useDraxProtocol(props, hoverPosition);
-
+	const { registerView, unregisterView } = useDraxContext();
 	const { onLayout, viewRef, measureWithHandler } = useMeasurements(props);
 
 	const { combinedStyle, renderedChildren } = useContent({
@@ -78,11 +77,22 @@ export const DraxReanimatedView = memo((props: IReanimatedView): ReactNode => {
 	});
 
 	useEffect(() => {
-		/** 🪲BUG:
+		/** @todo 🪲BUG:
 		 * For some reason, the Staging zone from the ColorDragDrop example loses its measurements,
 		 * and we need to force refresh on them */
 		measureWithHandler?.();
 	}, [combinedStyle]);
+
+	useEffect(() => {
+		/** @todo 🪲BUG:
+		 * Ugly hack to update hover views.
+		 * Mostly useful when their props change and we need a forced refresh
+		 */
+		updateViewProtocol();
+		const fakeId = generateRandomId();
+		registerView({ id: fakeId });
+		unregisterView({ id: fakeId });
+	}, [updateViewProtocol, registerView, unregisterView]);
 
 	return (
 		<Reanimated.View
