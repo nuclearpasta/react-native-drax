@@ -242,7 +242,7 @@ const DraxListUnforwarded = <T extends unknown>(
 					() => {
 						const toValue = shiftsRef.value[index];
 
-						if (draggedItem.value)
+						if (typeof draggedItem.value === "number")
 							animatedValue.value = withTiming(toValue, {
 								duration: 200,
 							});
