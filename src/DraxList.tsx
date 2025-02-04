@@ -42,11 +42,6 @@ import {
 	isWithCancelledFlag,
 } from "./types";
 
-interface Shift {
-	targetValue: number;
-	animatedValue: number;
-}
-
 interface ListItemPayload {
 	index: number;
 	originalIndex: number;
@@ -133,8 +128,10 @@ const DraxListUnforwarded = <T extends unknown>(
 
 	const scrollHandler = useAnimatedScrollHandler({
 		onScroll: (event) => {
-			scrollPosition.value.y = event.contentOffset.y;
-			scrollPosition.value.x = event.contentOffset.x;
+			scrollPosition.value = {
+				x: event.contentOffset.x,
+				y: event.contentOffset.y,
+			};
 		},
 	});
 
@@ -273,7 +270,7 @@ const DraxListUnforwarded = <T extends unknown>(
 							lockItemDragsToMainAxis && horizontal
 						}
 						draggable={itemsDraggable}
-						payload={{ index, originalIndex }}
+						payload={{ index, originalIndex, item: data?.[index] }}
 						{...(viewPropsExtractor?.(item) ?? {})}
 						onDragEnd={resetDraggedItem}
 						onDragDrop={resetDraggedItem}
