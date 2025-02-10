@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useEffect, useRef } from "react";
-import { Dimensions } from "react-native";
+import { Dimensions, Platform } from "react-native";
 import Reanimated, { useAnimatedRef } from "react-native-reanimated";
 
 import { useDraxContext } from "./useDraxContext";
@@ -30,6 +30,7 @@ export const useMeasurements = ({
 		registerView,
 		unregisterView,
 		rootViewRef,
+		getAbsoluteViewData,
 	} = useDraxContext();
 
 	// Identify Drax parent view (if any) from context or prop override.
@@ -50,6 +51,20 @@ export const useMeasurements = ({
 	const buildMeasureCallback = useCallback(
 		(measurementHandler?: DraxViewMeasurementHandler) =>
 			(x?: number, y?: number, width?: number, height?: number) => {
+				const parentData = getAbsoluteViewData(parent?.id);
+
+				/** @todo Remove workaround for the web */
+				const webOffset = Platform.select({
+					web: {
+						x: parentData?.scrollPosition?.value.x || 0,
+						y: parentData?.scrollPosition?.value.y || 0,
+					},
+					default: {
+						x: 0,
+						y: 0,
+					},
+				});
+
 				/*
 				 * In certain cases (on Android), all of these values can be
 				 * undefined when the view is not on screen; This should not
@@ -62,8 +77,8 @@ export const useMeasurements = ({
 						? undefined
 						: {
 								height,
-								x: x!,
-								y: y!,
+								x: x! + webOffset.x,
+								y: y! + webOffset.y,
 								width: width!,
 							};
 				measurementsRef.current = measurements;

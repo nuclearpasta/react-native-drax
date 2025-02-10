@@ -2,20 +2,15 @@ import React, {
 	PropsWithChildren,
 	useRef,
 	useCallback,
-	useEffect,
 	ForwardedRef,
 	forwardRef,
 } from "react";
 import { ScrollView } from "react-native";
-import Reanimated, {
-	useAnimatedRef,
-	useScrollViewOffset,
-	useDerivedValue,
-} from "react-native-reanimated";
+import Reanimated from "react-native-reanimated";
 
 import { DraxSubprovider } from "./DraxSubprovider";
 import { DraxView } from "./DraxView";
-import { useDraxId } from "./hooks";
+import { useDraxScrollHandler } from "./hooks/useDraxScrollHandler";
 import {
 	defaultAutoScrollIntervalLength,
 	defaultAutoScrollJumpRatio,
@@ -27,8 +22,6 @@ import {
 	DraxScrollViewProps,
 	AutoScrollDirection,
 	AutoScrollState,
-	Position,
-	DraxViewMeasurements,
 	DraxMonitorEventData,
 } from "./types";
 
@@ -45,42 +38,15 @@ const DraxScrollViewUnforwarded = (
 		autoScrollJumpRatio = defaultAutoScrollJumpRatio,
 		autoScrollBackThreshold = defaultAutoScrollBackThreshold,
 		autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
-		horizontal,
 		id: idProp,
 		...scrollViewProps
 	} = props;
-
-	// Scrollable view, used for scrolling.
-	const scrollRef = useAnimatedRef<Reanimated.ScrollView>();
-
-	// Updates tracked scroll position when list is scrolled.
-	const scrollHandler = useScrollViewOffset(scrollRef);
-
-	// Scroll position, for Drax bounds checking and auto-scrolling.
-	const scrollPosition = useDerivedValue(() => ({
-		x: horizontal ? scrollHandler.value : 0,
-		y: horizontal ? 0 : scrollHandler.value,
-	}));
-
-	// The unique identifer for this view.
-	const id = useDraxId(idProp);
-
-	// Container view measurements, for scrolling by percentage.
-	const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(
-		undefined,
-	);
-
-	// Content size, for scrolling by percentage.
-	const contentSizeRef = useRef<Position | undefined>(undefined);
 
 	// Auto-scroll state.
 	const autoScrollStateRef = useRef<AutoScrollState>({
 		x: AutoScrollDirection.None,
 		y: AutoScrollDirection.None,
 	});
-
-	// Auto-scroll interval.
-	const autoScrollIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
 	// Handle auto-scrolling on interval.
 	const doScroll = useCallback(() => {
@@ -124,35 +90,27 @@ const DraxScrollViewUnforwarded = (
 			});
 			(scroll as any).flashScrollIndicators(); // ScrollView typing is missing this method
 		}
-	}, [autoScrollJumpRatio, scrollRef]);
+	}, [autoScrollJumpRatio]);
 
-	// Start the auto-scrolling interval.
-	const startScroll = useCallback(() => {
-		if (autoScrollIntervalRef.current) {
-			return;
-		}
-		doScroll();
-		autoScrollIntervalRef.current = setInterval(
-			doScroll,
-			autoScrollIntervalLength,
-		);
-	}, [doScroll, autoScrollIntervalLength]);
-
-	// Stop the auto-scrolling interval.
-	const stopScroll = useCallback(() => {
-		if (autoScrollIntervalRef.current) {
-			clearInterval(autoScrollIntervalRef.current);
-			autoScrollIntervalRef.current = undefined;
-		}
-	}, []);
-
-	// If startScroll changes, refresh our interval.
-	useEffect(() => {
-		if (autoScrollIntervalRef.current) {
-			stopScroll();
-			startScroll();
-		}
-	}, [stopScroll, startScroll]);
+	const {
+		id,
+		containerMeasurementsRef,
+		contentSizeRef,
+		onContentSizeChange,
+		onMeasureContainer,
+		onScroll,
+		scrollRef,
+		scrollPosition,
+		setScrollRefs,
+		startScroll,
+		stopScroll,
+	} = useDraxScrollHandler<ScrollView>({
+		idProp,
+		onContentSizeChangeProp,
+		onScrollProp: props?.onScroll,
+		forwardedRef,
+		doScroll,
+	});
 
 	// Clear auto-scroll direction and stop the auto-scrolling interval.
 	const resetScroll = useCallback(() => {
@@ -161,14 +119,6 @@ const DraxScrollViewUnforwarded = (
 		autoScrollState.y = AutoScrollDirection.None;
 		stopScroll();
 	}, [stopScroll]);
-
-	// Track the size of the container view.
-	const onMeasureContainer = useCallback(
-		(measurements: DraxViewMeasurements | undefined) => {
-			containerMeasurementsRef.current = measurements;
-		},
-		[],
-	);
 
 	// Monitor drag-over events to react with auto-scrolling.
 	const onMonitorDragOver = useCallback(
@@ -206,30 +156,6 @@ const DraxScrollViewUnforwarded = (
 		],
 	);
 
-	// Set the ScrollView and node handle refs.
-	const setScrollViewRefs = useCallback(
-		(ref: Reanimated.ScrollView) => {
-			scrollRef(ref);
-			if (forwardedRef) {
-				if (typeof forwardedRef === "function") {
-					forwardedRef(ref);
-				} else {
-					forwardedRef.current = ref;
-				}
-			}
-		},
-		[forwardedRef, scrollRef],
-	);
-
-	// Track content size.
-	const onContentSizeChange = useCallback(
-		(width: number, height: number) => {
-			contentSizeRef.current = { x: width, y: height };
-			return onContentSizeChangeProp?.(width, height);
-		},
-		[onContentSizeChangeProp],
-	);
-
 	return id ? (
 		<DraxView
 			id={id}
@@ -244,10 +170,10 @@ const DraxScrollViewUnforwarded = (
 			<DraxSubprovider parent={{ id, viewRef: scrollRef }}>
 				<Reanimated.ScrollView
 					{...scrollViewProps}
-					horizontal={horizontal}
-					ref={setScrollViewRefs}
+					ref={setScrollRefs}
 					onContentSizeChange={onContentSizeChange}
 					scrollEventThrottle={scrollEventThrottle}
+					onScroll={onScroll}
 				>
 					{children}
 				</Reanimated.ScrollView>

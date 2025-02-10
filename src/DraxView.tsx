@@ -76,12 +76,12 @@ export const DraxReanimatedView = memo((props: IReanimatedView): ReactNode => {
 		viewRef,
 	});
 
-	useEffect(() => {
-		/** @todo 🪲BUG:
-		 * For some reason, the Staging zone from the ColorDragDrop example loses its measurements,
-		 * and we need to force refresh on them */
-		measureWithHandler?.();
-	}, [combinedStyle]);
+	// useEffect(() => {
+	// 	/** @todo 🪲BUG:
+	// 	 * For some reason, the Staging zone from the ColorDragDrop example loses its measurements,
+	// 	 * and we need to force refresh on them */
+	// 	measureWithHandler?.();
+	// }, [combinedStyle]);
 
 	useEffect(() => {
 		/** @todo 🪲BUG:

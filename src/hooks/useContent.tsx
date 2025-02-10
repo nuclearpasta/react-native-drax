@@ -1,4 +1,10 @@
-import React, { ReactNode, useCallback, useMemo } from "react";
+import React, {
+	ReactNode,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+} from "react";
 import { StyleSheet } from "react-native";
 import Reanimated, {
 	AnimatedRef,
@@ -15,7 +21,9 @@ import {
 	getCombinedHoverStyle,
 } from "../transform";
 import {
+	DraxAbsoluteViewData,
 	DraxRenderContentProps,
+	DraxTrackingDrag,
 	DraxViewDragStatus,
 	DraxViewProps,
 	DraxViewReceiveStatus,
@@ -64,6 +72,18 @@ export const useContent = ({
 	});
 
 	const dragged = getTrackingDragged();
+
+	const trackingReleasedDraggedRef = useRef<{
+		tracking?: DraxTrackingDrag;
+		id?: string;
+		data?: DraxAbsoluteViewData;
+	}>({});
+
+	useEffect(() => {
+		if (dragged && dragged.id === id)
+			trackingReleasedDraggedRef.current = dragged;
+	}, [dragged, id]);
+
 	const receiver = getTrackingReceiver();
 	const draggedData = getAbsoluteViewData(dragged?.id);
 
@@ -73,19 +93,25 @@ export const useContent = ({
 
 		const measurements = viewData?.measurements;
 		const dimensions = measurements && extractDimensions(measurements);
+
 		return {
 			viewState: {
 				dragStatus,
 				receiveStatus,
-				hoverPosition: props.hoverPosition,
 				...dragged?.tracking,
+				releasedDragTracking: trackingReleasedDraggedRef.current
+					?.tracking && {
+					...trackingReleasedDraggedRef.current.tracking,
+				},
 				receivingDrag:
 					receiveStatus !== DraxViewReceiveStatus.Receiving ||
-					!receiver?.id
+					!receiver?.id ||
+					!draggedData
 						? undefined
 						: {
 								id: receiver?.id,
 								payload: draggedData?.protocol.dragPayload,
+								data: draggedData,
 							},
 			},
 			trackingStatus: { dragging: anyDragging, receiving: anyReceiving },

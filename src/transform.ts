@@ -1,10 +1,16 @@
 import { PropsWithChildren } from "react";
 import { StyleProp, StyleSheet, ViewStyle } from "react-native";
-import { AnimatedStyle, StyleProps } from "react-native-reanimated";
+import {
+	AnimatedStyle,
+	ILayoutAnimationBuilder,
+	SharedValue,
+	StyleProps,
+	withSpring,
+	withTiming,
+} from "react-native-reanimated";
 
 import {
 	AnimatedViewStyleWithoutLayout,
-	DraxInternalRenderHoverViewProps,
 	DraxViewDragStatus,
 	TReanimatedHoverViewProps,
 	ViewDimensions,
@@ -63,7 +69,7 @@ export const getCombinedHoverStyle = (
 		| null
 	)[] = [props?.style, dimensions, props?.hoverStyle];
 
-	// Apply style style overrides based on state.
+	// Apply style overrides based on state.
 	if (dragStatus === DraxViewDragStatus.Dragging) {
 		hoverStyles.push(props?.hoverDraggingStyle);
 		if (anyReceiving) {
@@ -80,3 +86,33 @@ export const getCombinedHoverStyle = (
 
 	return flattenedHoverStyle;
 };
+
+export const customLayoutTransition = (
+	shiftsRef: SharedValue<number[]>,
+	data?: ArrayLike<any> | null,
+): ILayoutAnimationBuilder => ({
+	build: () => (values) => {
+		"worklet";
+
+		const isInternalReordering =
+			shiftsRef.value.length <= (data?.length || 0);
+
+		const duration = isInternalReordering ? 1 : 200;
+
+		return {
+			animations: {
+				originX: withTiming(values.targetOriginX, { duration }),
+				originY: withTiming(values.targetOriginY, { duration }),
+				width: withSpring(values.targetWidth),
+				height: withSpring(values.targetHeight),
+			},
+
+			initialValues: {
+				originX: values.currentOriginX,
+				originY: values.currentOriginY,
+				width: values.currentWidth,
+				height: values.currentHeight,
+			},
+		};
+	},
+});

@@ -33,7 +33,6 @@ const createInitialViewState = (): DraxViewState => ({
 	receiveOffset: undefined,
 	receiveOffsetRatio: undefined,
 	receivingDrag: undefined,
-	hoverPosition: INITIAL_REANIMATED_POSITION,
 });
 
 /** Create an initial empty Drax state. */

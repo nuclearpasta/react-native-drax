@@ -440,6 +440,14 @@ const createReleaseInRegistry = (
 	const releaseId = generateRandomId();
 	registry.releaseIds.push(releaseId);
 	registry.releaseById[releaseId] = release;
+
+	/**
+	 * @todo remove BUG workaround
+	 * @summary Force HoverView state to get the latest scrollPosition
+	 */
+	registerViewInRegistry(registry, { id: "fakefakefake" });
+	unregisterViewInRegistry(registry, { id: "fakefakefake" });
+
 	return releaseId;
 };
 
@@ -464,7 +472,7 @@ const getReleasesFromRegistry = (registry: DraxRegistry): string[] => {
 /** Reset drag tracking, if any. */
 const resetDragInRegistry = (
 	registry: DraxRegistry,
-	snapbackTarget: DraxSnapbackTarget = DraxSnapbackTargetPreset.Default,
+	snapTarget: DraxSnapbackTarget = DraxSnapbackTargetPreset.Default,
 ) => {
 	const { drag } = registry;
 
@@ -482,7 +490,6 @@ const resetDragInRegistry = (
 		registry,
 		receiverData?.parentId,
 	);
-
 	resetReceiverInRegistry(registry);
 
 	const draggedData = getAbsoluteViewDataFromRegistry(registry, draggedId);
@@ -492,13 +499,13 @@ const resetDragInRegistry = (
 
 	// Determine if/where/how to snapback.
 	let snapping = false;
-	if (snapbackTarget !== DraxSnapbackTargetPreset.None && draggedData) {
+	if (snapTarget !== DraxSnapbackTargetPreset.None && draggedData) {
 		const {
-			onSnapbackEnd,
-			snapbackAnimator,
-			animateSnapback = true,
-			snapbackDelay = defaultSnapbackDelay,
-			snapbackDuration = defaultSnapbackDuration,
+			onSnapEnd,
+			snapAnimator,
+			animateSnap = true,
+			snapDelay = defaultSnapbackDelay,
+			snapDuration = defaultSnapbackDuration,
 		} = draggedData.protocol;
 
 		const parentData = getAbsoluteViewDataFromRegistry(
@@ -510,15 +517,13 @@ const resetDragInRegistry = (
 				? receiverParentData?.scrollPosition
 				: parentData?.scrollPosition) || INITIAL_REANIMATED_POSITION;
 
-		if (animateSnapback) {
+		if (animateSnap) {
 			let toValue: Position | undefined;
 
-			if (isPosition(snapbackTarget)) {
+			if (isPosition(snapTarget)) {
 				// Snapback to specified target.
-				toValue = snapbackTarget;
-			}
-			// if (animateSnapforward) {
-			else if (receiverData) {
+				toValue = snapTarget;
+			} else if (receiverData) {
 				// Snap forward to the center of the receiver
 				toValue = {
 					x:
@@ -541,7 +546,7 @@ const resetDragInRegistry = (
 				};
 			}
 
-			if (toValue && snapbackDuration > 0) {
+			if (toValue && snapDuration > 0) {
 				snapping = true;
 				// Add a release to tracking.
 				const releaseId = createReleaseInRegistry(registry, {
@@ -555,9 +560,20 @@ const resetDragInRegistry = (
 				});
 
 				const onSnapAnimationEnd = (_finished?: boolean) => {
+					const snapPayload = {
+						dragged: { data: draggedData, ...drag },
+						receiver: receiver &&
+							receiverData && {
+								data: receiverData,
+								...receiver,
+							},
+					};
+
+					delete snapPayload.dragged.receiver;
+
 					// // Call the snap end handlers, regardless of whether animation of finished.
-					onSnapbackEnd?.();
-					receiverData?.protocol?.onReceiveSnapbackEnd?.();
+					onSnapEnd?.(snapPayload);
+					receiverData?.protocol?.onReceiveSnapEnd?.(snapPayload);
 
 					// Remove the release from tracking, regardless of whether animation finished.
 					deleteReleaseInRegistry(registry, releaseId);
@@ -573,22 +589,22 @@ const resetDragInRegistry = (
 				};
 
 				// Animate the released hover snapback.
-				if (snapbackAnimator) {
-					snapbackAnimator({
+				if (snapAnimator) {
+					snapAnimator({
 						hoverPosition,
 						toValue,
-						delay: snapbackDelay,
-						duration: snapbackDuration,
+						delay: snapDelay,
+						duration: snapDuration,
 						scrollPosition,
 						finishedCallback,
 					});
 				} else {
 					hoverPosition.value = withDelay(
-						snapbackDelay,
+						snapDelay,
 						withTiming<Position>(
 							toValue,
 							{
-								duration: snapbackDuration,
+								duration: snapDuration,
 								reduceMotion: ReduceMotion.System,
 							},
 							finishedCallback,
@@ -740,6 +756,7 @@ const updateReceiverInRegistry = (
 			id: draggedId,
 			parentId: draggedParentId,
 			payload: dragPayload,
+			data: draggedData,
 		},
 		receiveOffset,
 		receiveOffsetRatio,
