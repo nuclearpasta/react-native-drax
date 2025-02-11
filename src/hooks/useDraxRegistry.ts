@@ -402,6 +402,18 @@ const updateViewMeasurementsInRegistry = (
 	}
 };
 
+/** Update a view's measurements. */
+const updateHoverViewMeasurementsInRegistry = (
+	registry: DraxRegistry,
+	{ id, measurements }: UpdateViewMeasurementsPayload,
+) => {
+	const existingData = getViewDataFromRegistry(registry, id);
+	if (existingData) {
+		// console.log(`Update ${id} measurements: @(${measurements?.x}, ${measurements?.y}) ${measurements?.width}x${measurements?.height}`);
+		registry.viewDataById[id].hoverMeasurements = measurements;
+	}
+};
+
 /** Reset the receiver in drag tracking, if any. */
 const resetReceiverInRegistry = ({ drag }: DraxRegistry) => {
 	if (!drag) {
@@ -913,6 +925,13 @@ export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
 		[],
 	);
 
+	/** Update a hover view's measurements. */
+	const updateHoverViewMeasurements = useCallback(
+		(payload: UpdateViewMeasurementsPayload) =>
+			updateHoverViewMeasurementsInRegistry(registryRef.current, payload),
+		[],
+	);
+
 	/**
 	 *
 	 * Imperative methods with potential state reactions.
@@ -1001,6 +1020,7 @@ export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
 			registerView,
 			updateViewProtocol,
 			updateViewMeasurements,
+			updateHoverViewMeasurements,
 			resetReceiver,
 			resetDrag,
 			startDrag,
@@ -1022,6 +1042,7 @@ export const useDraxRegistry = (stateDispatch: DraxStateDispatch) => {
 			registerView,
 			updateViewProtocol,
 			updateViewMeasurements,
+			updateHoverViewMeasurements,
 			resetReceiver,
 			resetDrag,
 			startDrag,

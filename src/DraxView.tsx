@@ -69,7 +69,7 @@ export const DraxReanimatedView = memo((props: IReanimatedView): ReactNode => {
 	const updateViewProtocol = useDraxProtocol(props, hoverPosition);
 
 	const { registerView, unregisterView } = useDraxContext();
-	const { onLayout, viewRef, measureWithHandler } = useMeasurements(props);
+	const { onLayout, viewRef } = useMeasurements(props);
 
 	const { combinedStyle, renderedChildren } = useContent({
 		draxViewProps: { ...props, hoverPosition },

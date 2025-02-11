@@ -96,6 +96,7 @@ export const useContent = ({
 
 		return {
 			viewState: {
+				data: viewData,
 				dragStatus,
 				receiveStatus,
 				...dragged?.tracking,

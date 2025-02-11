@@ -36,6 +36,7 @@ import {
 	DraxProtocolDragEndResponse,
 	DraxSnapbackTargetPreset,
 	isWithCancelledFlag,
+	DraxEventDraggedViewData,
 } from "./types";
 
 interface ListItemPayload {
@@ -332,13 +333,14 @@ const DraxListUnforwarded = <T extends unknown>(
 			{
 				index: fromIndex,
 				originalIndex: fromOriginalIndex,
-				...payload
 			}: ListItemPayload,
 			{ index: toIndex }: ListItemPayload,
+			dragged: DraxEventDraggedViewData,
 		) => {
-			//@ts-ignore
 			const { width = 50, height = 50 } =
-				itemMeasurementsRef.current[fromOriginalIndex] ?? payload;
+				itemMeasurementsRef.current[fromOriginalIndex] ||
+				dragged.data.hoverMeasurements ||
+				{};
 
 			const offset = horizontal ? width : height;
 
@@ -631,7 +633,7 @@ const DraxListUnforwarded = <T extends unknown>(
 				}
 
 				// Update shift transforms for items in the list.
-				updateShifts(fromPayload, toPayload ?? fromPayload);
+				updateShifts(fromPayload, toPayload ?? fromPayload, dragged);
 			}
 
 			// Next, see if we need to auto-scroll.

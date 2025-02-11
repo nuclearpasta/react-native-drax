@@ -344,8 +344,11 @@ export interface DraxProtocol {
 	/** If true, lock drag's y position */
 	lockDragYPosition?: boolean;
 
-	/** Internal hover view props */
-	HoverView?: () => ReactNode;
+	/**
+	 * Disable automatic HoverView measurements which occur on the `onLayout` event.
+	 * Could be useful in case the area size that activates the drag might differ from the actual HoverView
+	 * content size. */
+	disableHoverViewMeasurementsOnLayout?: boolean;
 }
 
 // TODO: Recheck internalRenderHoverView because it doesnt exist anymore
@@ -381,6 +384,8 @@ export interface DraxViewData {
 	protocol: DraxProtocol;
 	/** The view's measurements for bounds checking */
 	measurements?: DraxViewMeasurements;
+	/** The hover view's measurements for bounds checking */
+	hoverMeasurements?: DraxViewMeasurements;
 }
 
 /** Information about a view, plus its clipped absolute measurements */
@@ -469,7 +474,7 @@ export interface DraxTrackingStatus {
 }
 
 /** Render-related state for a registered view */
-export interface DraxViewState {
+export interface DraxViewState extends Partial<DraxPayloadViewData> {
 	id?: string;
 	/** Current drag status of the view: Dragged, Released, or Inactive */
 	dragStatus: DraxViewDragStatus;
@@ -722,6 +727,11 @@ export interface DraxContextValue {
 
 	/** Update view measurements for a registered Drax view */
 	updateViewMeasurements: (payload: UpdateViewMeasurementsPayload) => void;
+
+	/** Update hover view measurements for a registered Drax view */
+	updateHoverViewMeasurements: (
+		payload: UpdateViewMeasurementsPayload,
+	) => void;
 
 	/** Handle gesture state change for a registered Drax view */
 	handleGestureStateChange: (

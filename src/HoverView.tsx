@@ -1,7 +1,11 @@
 import React, { PropsWithChildren } from "react";
 import { StyleSheet } from "react-native";
-import Reanimated, { SharedValue } from "react-native-reanimated";
+import Reanimated, {
+	SharedValue,
+	useAnimatedRef,
+} from "react-native-reanimated";
 
+import { useDraxContext } from "./hooks";
 import { useContent } from "./hooks/useContent";
 import {
 	TReanimatedHoverViewProps,
@@ -21,6 +25,7 @@ export const HoverView = ({
 	hoverPosition: SharedValue<Position>;
 	scrollPositionOffset?: Position;
 }) => {
+	const { updateHoverViewMeasurements } = useDraxContext();
 	const { combinedStyle, animatedHoverStyle, renderedChildren, dragStatus } =
 		useContent({
 			draxViewProps: {
@@ -32,6 +37,8 @@ export const HoverView = ({
 				...props,
 			},
 		});
+
+	const viewRef = useAnimatedRef<Reanimated.View>();
 
 	if (!(props.draggable && !props.noHover)) {
 		return null;
@@ -47,6 +54,14 @@ export const HoverView = ({
 	return (
 		<Reanimated.View
 			{...props}
+			ref={viewRef}
+			onLayout={(measurements) => {
+				!props?.disableHoverViewMeasurementsOnLayout &&
+					updateHoverViewMeasurements({
+						id: props.id,
+						measurements: { ...measurements.nativeEvent.layout },
+					});
+			}}
 			style={[StyleSheet.absoluteFill, combinedStyle, animatedHoverStyle]}
 			pointerEvents="none"
 		>
