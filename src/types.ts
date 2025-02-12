@@ -1088,12 +1088,6 @@ export interface DraxListProps<TItem>
 	 */
 	renderItem?: never;
 
-	/**
-	 * Enable an experimental implementation of [Reanimated Item Layout Animation]{@link https://docs.swmansion.com/react-native-reanimated/docs/layout-animations/list-layout-animations/} within DraxList.
-	 * This will enable more animations for the adding/removing of the items, not just reordering
-	 */
-	experimentalItemLayoutAnimation?: boolean;
-
 	/** @inheritDoc `originalIndex` and `index` cannot be used in the DraxList data payload, since
 	 * it can break it when using external drags
 	 */

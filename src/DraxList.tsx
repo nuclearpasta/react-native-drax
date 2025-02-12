@@ -23,7 +23,6 @@ import { DraxSubprovider } from "./DraxSubprovider";
 import { DraxView } from "./DraxView";
 import { useDraxScrollHandler } from "./hooks/useDraxScrollHandler";
 import { defaultListItemLongPressDelay } from "./params";
-import { customLayoutTransition } from "./transform";
 import {
 	DraxListProps,
 	DraxMonitorEventData,
@@ -100,7 +99,6 @@ const DraxListUnforwarded = <T extends unknown>(
 
 	// Shift offsets.
 	const shiftsRef = useSharedValue<number[]>([]);
-	const previousShiftsRef = useSharedValue<number[]>([]);
 
 	// Maintain cache of reordered list indexes until data updates.
 	const [originalIndexes, setOriginalIndexes] = useState<number[]>([]);
@@ -323,7 +321,6 @@ const DraxListUnforwarded = <T extends unknown>(
 
 	// Reset all shift values.
 	const resetShifts = useCallback(() => {
-		previousShiftsRef.value = shiftsRef.value;
 		shiftsRef.value = shiftsRef.value.map(() => 0);
 	}, []);
 
@@ -693,14 +690,6 @@ const DraxListUnforwarded = <T extends unknown>(
 		[handleInternalDragEnd],
 	);
 
-	const itemLayoutAnimation = useMemo(
-		() =>
-			experimentalItemLayoutAnimation
-				? customLayoutTransition(previousShiftsRef, reorderedData)
-				: undefined,
-		[experimentalItemLayoutAnimation, reorderedData],
-	);
-
 	return (
 		<DraxView
 			id={id}
@@ -723,7 +712,6 @@ const DraxListUnforwarded = <T extends unknown>(
 			>
 				<Reanimated.FlatList
 					{...flatListProps}
-					itemLayoutAnimation={itemLayoutAnimation}
 					style={flatListStyle}
 					ref={setScrollRefs}
 					renderItem={renderItem}
