@@ -342,7 +342,16 @@ const DraxListUnforwarded = <T extends unknown>(
 				dragged.data.hoverMeasurements ||
 				{};
 
-			const offset = horizontal ? width : height;
+			const flattenedStyles =
+				StyleSheet.flatten(flatListProps.contentContainerStyle) || {};
+
+			//@ts-ignore
+			const rowGap = flattenedStyles.rowGap ?? flattenedStyles.gap ?? 0;
+			const columnGap =
+				//@ts-ignore
+				flattenedStyles.columnGap ?? flattenedStyles.gap ?? 0;
+
+			const offset = horizontal ? width + columnGap : height + rowGap;
 
 			shiftsRef.value = originalIndexes.map((originalIndex, index) => {
 				const shift = shiftsRef.value[originalIndex];
@@ -354,11 +363,6 @@ const DraxListUnforwarded = <T extends unknown>(
 				}
 				if (shift !== newTargetValue) {
 					return newTargetValue;
-					// Animated.timing(shift.animatedValue, {
-					// 	duration: 200,
-					// 	toValue: newTargetValue,
-					// 	useNativeDriver: true,
-					// }).start();
 				}
 				return shift;
 			});
