@@ -1,4 +1,4 @@
-import React, { useEffect, memo, ReactNode } from "react";
+import React, { memo, ReactNode, useEffect } from "react";
 import Reanimated, { useSharedValue } from "react-native-reanimated";
 
 import { PanGestureDetector } from "./PanGestureDetector";
