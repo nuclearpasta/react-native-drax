@@ -169,9 +169,22 @@ const RenderItemComponent = <T extends unknown>({
 			onDragDrop={resetDraggedItem}
 			onMeasure={(measurements) => {
 				if (originalIndex !== undefined && measurements) {
-					// console.log(
-					// 	`measuring [${index}, ${originalIndex}]: (${measurements?.x}, ${measurements?.y})`,
-					// );
+					/**
+					 * @todo 🪲 BUG
+					 * @platform web
+					 * @summary Somehow the measurements for the same item are getting duplicated.
+					 */
+					// Clear any duplicate measurements
+					const duplicateIndex =
+						itemMeasurementsRef.current.findIndex(
+							(item, idx) =>
+								idx !== originalIndex && item?.key === itemKey,
+						);
+					if (duplicateIndex !== -1) {
+						itemMeasurementsRef.current[duplicateIndex] = undefined;
+					}
+
+					// Store the new measurement
 					itemMeasurementsRef.current[originalIndex] = {
 						...measurements,
 						key: itemKey,
