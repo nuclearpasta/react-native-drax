@@ -353,6 +353,7 @@ const DraxListUnforwarded = <T extends unknown>(
 							};
 						}
 					} else {
+
 						// toIndex is the last item of the list. We can use the list content size.
 						const contentSize = contentSizeRef.current;
 						if (contentSize) {
@@ -364,17 +365,28 @@ const DraxListUnforwarded = <T extends unknown>(
 					const fromMeasurements =
 						itemMeasurements[fromOriginalIndex];
 					if (nextPos && fromMeasurements) {
+
+						const flattenedStyles =
+							StyleSheet.flatten(flatListProps.contentContainerStyle) || {};
+
+						//@ts-ignore
+						const rowGap = flattenedStyles.rowGap ?? flattenedStyles.gap ?? 0;
+						const columnGap =
+							//@ts-ignore
+							flattenedStyles.columnGap ?? flattenedStyles.gap ?? 0;
+
 						targetPos = horizontal
 							? {
-								x: nextPos.x - fromMeasurements.width,
+								x: nextPos.x - fromMeasurements.width - rowGap,
 								y: nextPos.y,
 							}
 							: {
 								x: nextPos.x,
-								y: nextPos.y - fromMeasurements.height,
+								y: nextPos.y - fromMeasurements.height - columnGap,
 							};
 					}
 				} else {
+
 					// Target pos(toIndex)
 					const toMeasurements = itemMeasurements[toOriginalIndex];
 					if (toMeasurements) {
@@ -384,6 +396,7 @@ const DraxListUnforwarded = <T extends unknown>(
 						};
 					}
 				}
+
 				if (targetPos) {
 					return {
 						x:
