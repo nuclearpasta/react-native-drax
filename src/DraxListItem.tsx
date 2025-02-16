@@ -1,9 +1,4 @@
-import React, {
-	memo,
-	MutableRefObject,
-	useEffect,
-	useLayoutEffect,
-} from "react";
+import React, { memo, MutableRefObject, useLayoutEffect } from "react";
 import { ListRenderItemInfo, StyleSheet } from "react-native";
 import {
 	SharedValue,
@@ -110,7 +105,7 @@ const RenderItemComponent = <T extends unknown>({
 		},
 	);
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		/** Reset the shift when the item moves to a new index. */
 		animatedValue.value = 0;
 	}, [index]);
