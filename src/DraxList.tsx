@@ -61,6 +61,7 @@ const DraxListUnforwarded = <T extends unknown>(
 		itemsDraggable = true,
 		lockItemDragsToMainAxis = false,
 		longPressDelay = defaultListItemLongPressDelay,
+		parentDraxViewProps,
 		// experimentalItemLayoutAnimation,
 		...flatListProps
 	} = props;
@@ -663,6 +664,7 @@ const DraxListUnforwarded = <T extends unknown>(
 
 	return (
 		<DraxView
+			{...parentDraxViewProps}
 			id={id}
 			style={style}
 			scrollPosition={scrollPosition}

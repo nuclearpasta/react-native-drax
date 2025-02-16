@@ -1,29 +1,29 @@
-import { RefObject, ReactNode, PropsWithChildren, ElementRef } from "react";
+import { ElementRef, PropsWithChildren, ReactNode, RefObject } from "react";
 import {
+	FlatListProps,
+	ListRenderItemInfo,
+	ScrollView,
+	ScrollViewComponent,
+	ScrollViewProps,
+	StyleProp,
+	View,
 	ViewProps,
 	ViewStyle,
-	StyleProp,
-	ScrollViewProps,
-	ListRenderItemInfo,
-	View,
-	ScrollView,
-	FlatListProps,
-	ScrollViewComponent,
 } from "react-native";
 import {
-	LongPressGestureHandlerStateChangeEvent,
-	LongPressGesture,
 	GestureStateChangeEvent,
-	PanGestureHandlerEventPayload,
 	GestureUpdateEvent,
+	LongPressGesture,
+	LongPressGestureHandlerStateChangeEvent,
+	PanGestureHandlerEventPayload,
 } from "react-native-gesture-handler";
 import {
-	StyleProps,
-	SharedValue,
-	FlatListPropsWithLayout,
 	AnimatedStyle,
+	FlatListPropsWithLayout,
+	SharedValue,
+	StyleProps,
 } from "react-native-reanimated";
-import { PayloadActionCreator, ActionType } from "typesafe-actions";
+import { ActionType, PayloadActionCreator } from "typesafe-actions";
 
 /** Gesture state change event expected by Drax handler */
 export type DraxGestureStateChangeEvent =
@@ -1088,10 +1088,17 @@ export interface DraxListProps<TItem>
 	 */
 	renderItem?: never;
 
-	/** @inheritDoc `originalIndex` and `index` cannot be used in the DraxList data payload, since
+	/** 
+	 * @inheritDoc `originalIndex` and `index` cannot be used in the DraxList data payload, since
 	 * it can break it when using external drags
 	 */
 	data: FlatListProps<WithoutIndexAndOriginalIndex<TItem>>["data"];
+
+	/** 
+	 * @experimental
+	 * Props to apply to the parent DraxView that's wrapping the FlatList 
+	 */
+	parentDraxViewProps?: DraxViewProps;
 }
 
 // Utility type to unwrap `SharedValue<T>` and return just `T`
