@@ -1,1 +1,3 @@
-module.exports = { extends: ["universe/native", "universe/web"] };
+module.exports = {
+	extends: ["universe/native", "universe/web", "prettier/prettier"],
+};
