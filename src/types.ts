@@ -467,6 +467,7 @@ export interface DraxTrackingRelease {
 	 *  else will be dragged parent scroll */
 	scrollPosition: SharedValue<Position>;
 
+	/** Offset of the snap's target scroll position in the moment of the release. */
 	scrollPositionOffset: Position;
 }
 
@@ -870,6 +871,9 @@ export interface DraxViewStyleProps {
 
 	/** Additional view style applied while this view is receiving a drag */
 	receivingStyle?: TSDraxtyles;
+
+	/** Additional view style applied while this view is being hovered over, but not receiving a drag */
+	monitorStyle?: TSDraxtyles;
 
 	/** Additional view style applied to this view while any other view is being dragged */
 	otherDraggingStyle?: TSDraxtyles;

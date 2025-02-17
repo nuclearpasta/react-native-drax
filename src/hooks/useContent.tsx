@@ -12,10 +12,8 @@ import Reanimated, {
 	useAnimatedStyle,
 } from "react-native-reanimated";
 
-import { extractDimensions } from "../math";
-import { useDraxContext } from "./useDraxContext";
-import { useStatus } from "./useStatus";
 import { DraxSubprovider } from "../DraxSubprovider";
+import { extractDimensions } from "../math";
 import {
 	flattenStylesWithoutLayout,
 	getCombinedHoverStyle,
@@ -29,6 +27,8 @@ import {
 	DraxViewReceiveStatus,
 	Position,
 } from "../types";
+import { useDraxContext } from "./useDraxContext";
+import { useStatus } from "./useStatus";
 
 export const useContent = ({
 	draxViewProps: {
@@ -44,6 +44,7 @@ export const useContent = ({
 		otherDraggingWithoutReceiverStyle,
 		receiverInactiveStyle,
 		receivingStyle,
+		monitorStyle,
 		children,
 		renderContent,
 		renderHoverContent,
@@ -60,7 +61,7 @@ export const useContent = ({
 	};
 	viewRef?: AnimatedRef<Reanimated.View>;
 }) => {
-	const { getTrackingDragged, getTrackingReceiver, getAbsoluteViewData } =
+	const { getTrackingDragged, getTrackingReceiver, getAbsoluteViewData, getTrackingMonitorIds } =
 		useDraxContext();
 
 	const { dragStatus, receiveStatus, anyDragging, anyReceiving } = useStatus({
@@ -85,6 +86,7 @@ export const useContent = ({
 	}, [dragged, id]);
 
 	const receiver = getTrackingReceiver();
+
 	const draggedData = getAbsoluteViewData(dragged?.id);
 
 	// Get full render props for non-hovering view content.
@@ -106,14 +108,14 @@ export const useContent = ({
 				},
 				receivingDrag:
 					receiveStatus !== DraxViewReceiveStatus.Receiving ||
-					!receiver?.id ||
-					!draggedData
+						!receiver?.id ||
+						!draggedData
 						? undefined
 						: {
-								id: receiver?.id,
-								payload: draggedData?.protocol.dragPayload,
-								data: draggedData,
-							},
+							id: receiver?.id,
+							payload: draggedData?.protocol.dragPayload,
+							data: draggedData,
+						},
 			},
 			trackingStatus: { dragging: anyDragging, receiving: anyReceiving },
 			children,
@@ -154,6 +156,7 @@ export const useContent = ({
 						otherDraggingStyle,
 						otherDraggingWithReceiverStyle,
 						otherDraggingWithoutReceiverStyle,
+						monitorStyle,
 						receiverInactiveStyle,
 						receivingStyle,
 						children,
@@ -193,8 +196,13 @@ export const useContent = ({
 		if (receiveStatus === DraxViewReceiveStatus.Receiving) {
 			styles.push(receivingStyle);
 		} else {
-			styles.push(receiverInactiveStyle);
+			if (getTrackingMonitorIds().includes(id)) {
+				styles.push(monitorStyle)
+			} else {
+				styles.push(receiverInactiveStyle);
+			}
 		}
+
 
 		if (!viewRef) {
 			return flattenStylesWithoutLayout(styles);
@@ -228,7 +236,7 @@ export const useContent = ({
 		return {
 			opacity:
 				props.hoverPosition.value.x === 0 &&
-				props.hoverPosition.value.y === 0
+					props.hoverPosition.value.y === 0
 					? 0
 					: 1, //prevent flash when release animation finishes.
 			transform: [
