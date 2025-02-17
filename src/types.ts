@@ -243,6 +243,11 @@ type DraxSnapPayload = {
 export interface DraxProtocol {
 	hoverPosition: SharedValue<Position>;
 	scrollPositionValue?: Position;
+	/** A function that can be used to conditionally enable or disable receiving. `receptive` prop will override it. */
+	dynamicReceptiveCallback?: (data: {
+		foundView: DraxFoundAbsoluteViewEntry;
+		excludedView: DraxAbsoluteViewData;
+	}) => boolean;
 	/** Called in the dragged view when a drag action begins */
 	onDragStart?: (data: DraxDragEventData) => void;
 
@@ -1088,15 +1093,15 @@ export interface DraxListProps<TItem>
 	 */
 	renderItem?: never;
 
-	/** 
+	/**
 	 * @inheritDoc `originalIndex` and `index` cannot be used in the DraxList data payload, since
 	 * it can break it when using external drags
 	 */
 	data: FlatListProps<WithoutIndexAndOriginalIndex<TItem>>["data"];
 
-	/** 
+	/**
 	 * @experimental
-	 * Props to apply to the parent DraxView that's wrapping the FlatList 
+	 * Props to apply to the parent DraxView that's wrapping the FlatList
 	 */
 	parentDraxViewProps?: DraxViewProps;
 }

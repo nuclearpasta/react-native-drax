@@ -1,18 +1,17 @@
-import { useCallback, useRef, useMemo, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
-	withTiming,
+	AnimationCallback,
 	ReduceMotion,
 	runOnJS,
 	withDelay,
-	AnimationCallback,
+	withTiming,
 } from "react-native-reanimated";
 
-import { actions } from "./useDraxState";
 import {
 	clipMeasurements,
-	isPointInside,
-	getRelativePosition,
 	generateRandomId,
+	getRelativePosition,
+	isPointInside,
 } from "../math";
 import {
 	INITIAL_REANIMATED_POSITION,
@@ -20,29 +19,30 @@ import {
 	defaultSnapbackDuration,
 } from "../params";
 import {
-	DraxRegistry,
-	DraxViewDragStatus,
-	DraxViewReceiveStatus,
-	DraxProtocol,
-	RegisterViewPayload,
-	UnregisterViewPayload,
-	UpdateViewProtocolPayload,
-	UpdateViewMeasurementsPayload,
-	DraxViewData,
-	DraxViewMeasurements,
-	Position,
-	DraxFoundAbsoluteViewEntry,
-	StartDragPayload,
-	DraxAbsoluteViewEntry,
 	DraxAbsoluteViewData,
-	DraxViewState,
-	DraxStateDispatch,
-	DraxTrackingRelease,
+	DraxAbsoluteViewEntry,
+	DraxFoundAbsoluteViewEntry,
+	DraxProtocol,
+	DraxRegistry,
 	DraxSnapbackTarget,
 	DraxSnapbackTargetPreset,
-	isPosition,
+	DraxStateDispatch,
+	DraxTrackingRelease,
+	DraxViewData,
+	DraxViewDragStatus,
+	DraxViewMeasurements,
+	DraxViewReceiveStatus,
+	DraxViewState,
 	GetDragPositionDataParams,
+	Position,
+	RegisterViewPayload,
+	StartDragPayload,
+	UnregisterViewPayload,
+	UpdateViewMeasurementsPayload,
+	UpdateViewProtocolPayload,
+	isPosition,
 } from "../types";
+import { actions } from "./useDraxState";
 
 /*
  * The registry functions mutate their registry parameter, so let's
@@ -169,6 +169,7 @@ const findMonitorsAndReceiverInRegistry = (
 ) => {
 	const monitors: DraxFoundAbsoluteViewEntry[] = [];
 	let receiver: DraxFoundAbsoluteViewEntry | undefined;
+	const excludedView = getViewDataFromRegistry(registry, excludeViewId);
 
 	// console.log(`find monitors and receiver for absolute position (${absolutePosition.x}, ${absolutePosition.y})`);
 	registry.viewIds.forEach((targetId) => {
@@ -227,7 +228,27 @@ const findMonitorsAndReceiverInRegistry = (
 				// console.log('it\'s a monitor');
 			}
 
-			if (receptive) {
+			const excludedAbsoluteViewData =
+				excludedView &&
+				getAbsoluteMeasurementsForViewFromRegistry(
+					registry,
+					excludedView,
+					true,
+				);
+
+			const targetDynamicReceptiveCondition =
+				!target.protocol?.dynamicReceptiveCallback ||
+				(excludedAbsoluteViewData &&
+					target.protocol?.dynamicReceptiveCallback({
+						foundView,
+						excludedView: {
+							...excludedView,
+							measurements: excludedView.measurements!, // It must exist, since excludedAbsoluteViewData is defined.
+							absoluteMeasurements: excludedAbsoluteViewData,
+						},
+					}));
+
+			if (receptive && targetDynamicReceptiveCondition) {
 				// It's the latest receiver found.
 				receiver = foundView;
 				// console.log('it\'s a receiver');
