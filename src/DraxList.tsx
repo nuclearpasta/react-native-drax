@@ -1,3 +1,4 @@
+import throttle from 'lodash.throttle';
 import React, {
     ForwardedRef,
     forwardRef,
@@ -12,7 +13,7 @@ import React, {
     useState,
 } from 'react';
 import { FlatList, ListRenderItemInfo, StyleSheet } from 'react-native';
-import Reanimated, { useSharedValue } from 'react-native-reanimated';
+import Reanimated, { runOnJS, useAnimatedReaction, useSharedValue } from 'react-native-reanimated';
 
 import { RenderItem } from './DraxListItem';
 import { DraxSubprovider } from './DraxSubprovider';
@@ -60,7 +61,7 @@ const DraxListUnforwarded = <T extends unknown>(
         lockItemDragsToMainAxis = false,
         longPressDelay = defaultListItemLongPressDelay,
         parentDraxViewProps,
-        // experimentalItemLayoutAnimation,
+        monitoringExternalDragStyle,
         ...flatListProps
     } = props;
 
@@ -613,9 +614,27 @@ const DraxListUnforwarded = <T extends unknown>(
         [handleInternalDragEnd]
     );
 
+    const [isExternalDrag, setIsExternalDrag] = useState(false);
+
+    const throttledSetIsExternalDrag = useMemo(
+        () =>
+            throttle((position: boolean) => {
+                setIsExternalDrag(position);
+            }, 1000),
+        []
+    );
+
+    useAnimatedReaction(
+        () => draggedItem.value,
+        draggedIndex => {
+            monitoringExternalDragStyle && runOnJS(throttledSetIsExternalDrag)(draggedIndex === itemCount);
+        }
+    );
+
     return (
         <DraxView
             {...parentDraxViewProps}
+            style={[parentDraxViewProps?.style, isExternalDrag && monitoringExternalDragStyle]}
             id={id}
             scrollPosition={scrollPosition}
             onMeasure={event => {

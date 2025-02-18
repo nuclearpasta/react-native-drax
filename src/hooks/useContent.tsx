@@ -31,7 +31,6 @@ export const useContent = ({
         otherDraggingWithoutReceiverStyle,
         receiverInactiveStyle,
         receivingStyle,
-        monitorStyle,
         children,
         renderContent,
         renderHoverContent,
@@ -131,7 +130,6 @@ export const useContent = ({
                         otherDraggingStyle,
                         otherDraggingWithReceiverStyle,
                         otherDraggingWithoutReceiverStyle,
-                        monitorStyle,
                         receiverInactiveStyle,
                         receivingStyle,
                         children,
@@ -171,11 +169,7 @@ export const useContent = ({
         if (receiveStatus === DraxViewReceiveStatus.Receiving) {
             styles.push(receivingStyle);
         } else {
-            if (getTrackingMonitorIds().includes(id)) {
-                styles.push(monitorStyle);
-            } else {
-                styles.push(receiverInactiveStyle);
-            }
+            styles.push(receiverInactiveStyle);
         }
 
         if (!viewRef) {

@@ -816,9 +816,6 @@ export interface DraxViewStyleProps {
     /** Additional view style applied while this view is receiving a drag */
     receivingStyle?: TSDraxtyles;
 
-    /** Additional view style applied while this view is being hovered over, but not receiving a drag */
-    monitorStyle?: TSDraxtyles;
-
     /** Additional view style applied to this view while any other view is being dragged */
     otherDraggingStyle?: TSDraxtyles;
 
@@ -987,6 +984,12 @@ export interface DraxListProps<TItem>
 
     /** Style props to apply to all DraxView items in the list */
     itemStyles?: DraxViewStyleProps;
+
+    /**
+     * @experimental
+     * Style props to apply to the parent DraxView when monitoring an External item drag
+     * Might be very expensive in terms of performance */
+    monitoringExternalDragStyle?: TSDraxtyles;
 
     /** Render function for content of an item's DraxView */
     renderItemContent: DraxListRenderItemContent<TItem>;

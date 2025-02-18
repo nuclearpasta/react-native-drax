@@ -1,8 +1,8 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { runOnJS, SharedValue, useAnimatedReaction } from 'react-native-reanimated';
 
+import { DraxViewDragStatus, DraxViewProps, DraxViewReceiveStatus, Position } from '../types';
 import { useDraxContext } from './useDraxContext';
-import { DraxViewProps, DraxViewDragStatus, DraxViewReceiveStatus, Position } from '../types';
 
 export const useStatus = ({
     id,
