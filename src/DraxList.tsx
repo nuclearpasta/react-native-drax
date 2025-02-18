@@ -46,7 +46,6 @@ const DraxListUnforwarded = <T extends unknown>(
 	const {
 		data,
 		style,
-		flatListStyle,
 		itemStyles,
 		renderItemContent,
 		renderItemHoverContent,
@@ -543,6 +542,8 @@ const DraxListUnforwarded = <T extends unknown>(
 	// Monitor drag starts to handle callbacks.
 	const onMonitorDragStart = useCallback(
 		(eventData: DraxMonitorEventData) => {
+			parentDraxViewProps?.onMonitorDragStart?.(eventData);
+
 			const { dragged } = eventData;
 			// First, check if we need to do anything.
 			if (reorderable && dragged.parentId === id) {
@@ -564,6 +565,8 @@ const DraxListUnforwarded = <T extends unknown>(
 	// Monitor drags to react with item shifts and auto-scrolling.
 	const onMonitorDragOver = useCallback(
 		(eventData: DraxMonitorEventData) => {
+			parentDraxViewProps?.onMonitorDragOver?.(eventData);
+
 			const { dragged, receiver, monitorOffsetRatio } = eventData;
 
 			// First, check if we need to shift items.
@@ -639,8 +642,10 @@ const DraxListUnforwarded = <T extends unknown>(
 
 	// Monitor drag exits to stop scrolling, update shifts, and update draggedToIndex.
 	const onMonitorDragExit = useCallback(
-		(eventData: DraxMonitorEventData) =>
-			handleInternalDragEnd(eventData, false),
+		(eventData: DraxMonitorEventData) => {
+			handleInternalDragEnd(eventData, false);
+			parentDraxViewProps?.onMonitorDragExit?.(eventData)
+		},
 		[handleInternalDragEnd],
 	);
 
@@ -650,25 +655,33 @@ const DraxListUnforwarded = <T extends unknown>(
 	 * too far, the drag gets cancelled.
 	 */
 	const onMonitorDragEnd = useCallback(
-		(eventData: DraxMonitorEndEventData) =>
-			handleInternalDragEnd(eventData, true),
+		(eventData: DraxMonitorEndEventData) => {
+			const defaultSnapbackTarget = handleInternalDragEnd(eventData, true);
+			const providedSnapTarget = parentDraxViewProps?.onMonitorDragEnd?.(eventData)
+
+			return providedSnapTarget ?? defaultSnapbackTarget
+		},
 		[handleInternalDragEnd],
 	);
 
 	// Monitor drag drops to stop scrolling, update shifts, and possibly reorder.
 	const onMonitorDragDrop = useCallback(
-		(eventData: DraxMonitorDragDropEventData) =>
-			handleInternalDragEnd(eventData, true),
-		[handleInternalDragEnd],
+		(eventData: DraxMonitorDragDropEventData) => {
+			const defaultSnapbackTarget = handleInternalDragEnd(eventData, true);
+			const providedSnapTarget = parentDraxViewProps?.onMonitorDragDrop?.(eventData)
+
+			return providedSnapTarget ?? defaultSnapbackTarget
+		}, [handleInternalDragEnd],
 	);
 
 	return (
 		<DraxView
 			{...parentDraxViewProps}
-			id={id}
-			style={style}
 			scrollPosition={scrollPosition}
-			onMeasure={onMeasureContainer}
+			onMeasure={(event) => {
+				parentDraxViewProps?.onMeasure?.(event);
+				return onMeasureContainer(event);
+			}}
 			onMonitorDragStart={onMonitorDragStart}
 			onMonitorDragOver={onMonitorDragOver}
 			onMonitorDragExit={onMonitorDragExit}
@@ -685,7 +698,7 @@ const DraxListUnforwarded = <T extends unknown>(
 			>
 				<Reanimated.FlatList
 					{...flatListProps}
-					style={flatListStyle}
+					style={style}
 					ref={setScrollRefs}
 					renderItem={renderItem}
 					onScroll={onScroll}

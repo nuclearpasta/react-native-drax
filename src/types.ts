@@ -1046,10 +1046,6 @@ export interface DraxListProps<TItem>
 		>,
 		DraxAutoScrollProps {
 	/** Unique drax view id, auto-generated if omitted */
-	id?: string;
-
-	/** Style prop for the underlying FlatList */
-	flatListStyle?: StyleProp<ViewStyle>;
 
 	/** Style props to apply to all DraxView items in the list */
 	itemStyles?: DraxViewStyleProps;
