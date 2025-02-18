@@ -26,8 +26,8 @@ export const defaultAutoScrollBackThreshold = 0.1;
 export const defaultAutoScrollForwardThreshold = 0.9;
 
 export const INITIAL_REANIMATED_POSITION = {
-	value: { x: 0, y: 0 },
-	addListener(): void {},
-	removeListener(): void {},
-	modify(): void {},
+    value: { x: 0, y: 0 },
+    addListener(): void {},
+    removeListener(): void {},
+    modify(): void {},
 };
