@@ -45,9 +45,10 @@ export const useContent = ({
         hoverPosition: SharedValue<Position>;
         scrollPositionOffset?: Position;
     };
+    /** The ref of the view being dragged. If it's a HoverView, this will be undefined */
     viewRef?: AnimatedRef<Reanimated.View>;
 }) => {
-    const { getTrackingDragged, getTrackingReceiver, getAbsoluteViewData, getTrackingMonitorIds } = useDraxContext();
+    const { getTrackingDragged, getTrackingReceiver, getAbsoluteViewData } = useDraxContext();
 
     const { dragStatus, receiveStatus, anyDragging, anyReceiving } = useStatus({
         id,
@@ -110,6 +111,7 @@ export const useContent = ({
         // Start with base style.
         const styles = [style];
 
+        /** Hover style */
         if (!viewRef) {
             const viewData = getAbsoluteViewData(id);
 
@@ -141,42 +143,38 @@ export const useContent = ({
                 );
 
             styles.push(combinedHoverStyle);
-        }
-
-        // Apply style overrides for drag state.
-        if (dragStatus === DraxViewDragStatus.Dragging) {
-            styles.push(draggingStyle);
-            if (anyReceiving) {
-                styles.push(draggingWithReceiverStyle);
-            } else {
-                styles.push(draggingWithoutReceiverStyle);
-            }
-        } else if (dragStatus === DraxViewDragStatus.Released) {
-            styles.push(dragReleasedStyle);
         } else {
-            styles.push(dragInactiveStyle);
-            if (anyDragging) {
-                styles.push(otherDraggingStyle);
+            // Apply style overrides for drag state.
+            if (dragStatus === DraxViewDragStatus.Dragging) {
+                styles.push(draggingStyle);
                 if (anyReceiving) {
-                    styles.push(otherDraggingWithReceiverStyle);
+                    styles.push(draggingWithReceiverStyle);
                 } else {
-                    styles.push(otherDraggingWithoutReceiverStyle);
+                    styles.push(draggingWithoutReceiverStyle);
+                }
+            } else if (dragStatus === DraxViewDragStatus.Released) {
+                styles.push(dragReleasedStyle);
+            } else {
+                styles.push(dragInactiveStyle);
+                if (anyDragging) {
+                    styles.push(otherDraggingStyle);
+                    if (anyReceiving) {
+                        styles.push(otherDraggingWithReceiverStyle);
+                    } else {
+                        styles.push(otherDraggingWithoutReceiverStyle);
+                    }
                 }
             }
+
+            // Apply style overrides for receiving state.
+            if (receiveStatus === DraxViewReceiveStatus.Receiving) {
+                styles.push(receivingStyle);
+            } else {
+                styles.push(receiverInactiveStyle);
+            }
         }
 
-        // Apply style overrides for receiving state.
-        if (receiveStatus === DraxViewReceiveStatus.Receiving) {
-            styles.push(receivingStyle);
-        } else {
-            styles.push(receiverInactiveStyle);
-        }
-
-        if (!viewRef) {
-            return flattenStylesWithoutLayout(styles);
-        }
-
-        return StyleSheet.flatten(styles);
+        return styles;
     }, [
         style,
         dragStatus,
@@ -196,6 +194,12 @@ export const useContent = ({
         viewRef,
     ]);
 
+    const hoverFlattenedCombinedStyle = !viewRef && flattenStylesWithoutLayout(combinedStyle);
+    const flattenedCombinedStyle = viewRef && StyleSheet.flatten(combinedStyle);
+
+    /** Note: Passing Flattened reanimated styles to Reanimated.View is not a good idea... */
+    const _combinedStyle = viewRef ? combinedStyle : hoverFlattenedCombinedStyle;
+
     const animatedHoverStyle = useAnimatedStyle(() => {
         if (viewRef) {
             return {};
@@ -214,7 +218,7 @@ export const useContent = ({
                         props.hoverPosition?.value?.y -
                         ((props.scrollPosition?.value?.y || 0) - (scrollPositionOffset?.y || 0)),
                 },
-                ...(combinedStyle?.transform || []),
+                ...(flattenedCombinedStyle?.transform || []),
             ],
         };
     });
@@ -242,7 +246,7 @@ export const useContent = ({
 
     return {
         renderedChildren,
-        combinedStyle,
+        combinedStyle: _combinedStyle,
         animatedHoverStyle,
         dragStatus,
     };

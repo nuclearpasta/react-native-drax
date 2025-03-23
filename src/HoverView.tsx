@@ -1,6 +1,6 @@
 import React, { PropsWithChildren } from 'react';
-import { StyleSheet } from 'react-native';
-import Reanimated, { SharedValue, useAnimatedRef } from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
+import Reanimated, { SharedValue } from 'react-native-reanimated';
 
 import { useDraxContext } from './hooks';
 import { useContent } from './hooks/useContent';
@@ -30,8 +30,6 @@ export const HoverView = ({
         },
     });
 
-    const viewRef = useAnimatedRef<Reanimated.View>();
-
     if (!(props.draggable && !props.noHover)) {
         return null;
     }
@@ -41,20 +39,24 @@ export const HoverView = ({
     }
 
     return (
-        <Reanimated.View
-            {...props}
-            ref={viewRef}
-            onLayout={measurements => {
-                !props?.disableHoverViewMeasurementsOnLayout &&
-                    updateHoverViewMeasurements({
-                        id: props.id,
-                        measurements: { ...measurements.nativeEvent.layout },
-                    });
-            }}
-            style={[StyleSheet.absoluteFill, combinedStyle, animatedHoverStyle]}
-            pointerEvents="none"
-        >
-            {renderedChildren}
+        <Reanimated.View style={[StyleSheet.absoluteFill, animatedHoverStyle]} pointerEvents="none">
+            {/**
+             * 🪲 BUG: Reanimated measuring issue,
+             * that's why we need another View to correctly measure the hover content :(
+             */}
+            <View
+                pointerEvents="none"
+                onLayout={measurements => {
+                    !props?.disableHoverViewMeasurementsOnLayout &&
+                        updateHoverViewMeasurements({
+                            id: props.id,
+                            measurements: { ...measurements.nativeEvent.layout },
+                        });
+                }}
+                style={[StyleSheet.absoluteFill, combinedStyle]}
+            >
+                {renderedChildren}
+            </View>
         </Reanimated.View>
     );
 };

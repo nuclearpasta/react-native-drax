@@ -1,6 +1,7 @@
-import { ElementRef, PropsWithChildren, ReactNode, RefObject } from 'react';
+import { ElementRef, MutableRefObject, PropsWithChildren, ReactNode, RefObject } from 'react';
 import {
     FlatListProps,
+    ListRenderItem,
     ListRenderItemInfo,
     ScrollView,
     ScrollViewComponent,
@@ -762,7 +763,7 @@ export type LayoutStyleKey =
     | 'flexGrow'
     | 'flexShrink';
 
-type TSDraxtyles =
+export type TSDraxtyles =
     | ViewStyle
     | StyleProp<StyleProps>
     | null
@@ -982,20 +983,11 @@ export interface DraxListProps<TItem>
      */
     id?: never;
 
-    /** Style props to apply to all DraxView items in the list */
-    itemStyles?: DraxViewStyleProps;
-
     /**
      * @experimental
      * Style props to apply to the parent DraxView when monitoring an External item drag
      * Might be very expensive in terms of performance */
     monitoringExternalDragStyle?: TSDraxtyles;
-
-    /** Render function for content of an item's DraxView */
-    renderItemContent: DraxListRenderItemContent<TItem>;
-
-    /** Render function for content of an item's hovering copy, defaults to renderItemContent */
-    renderItemHoverContent?: DraxListRenderItemHoverContent<TItem>;
 
     /** Callback handler for when a list item reorder drag action begins */
     onItemDragStart?: (eventData: DraxListOnItemDragStartEventData<TItem>) => void;
@@ -1012,23 +1004,16 @@ export interface DraxListProps<TItem>
     /** Can the list be reordered by dragging items? Defaults to true if onItemReorder is set. */
     reorderable?: boolean;
 
-    /** Can the items be dragged? Defaults to true. */
-    itemsDraggable?: boolean;
-
     /** If true, lock item drags to the list's main axis */
     lockItemDragsToMainAxis?: boolean;
 
     /** Time in milliseconds view needs to be pressed before drag starts */
     longPressDelay?: number;
 
-    /** Function that receives an item and returns a list of DraxViewProps to apply to that item's DraxView */
-    viewPropsExtractor?: (item: TItem) => Partial<DraxViewProps>;
-
-    /**
-     * Property `renderItem` is not supported in DraxList.
-     * Use `renderItemContent` and `renderItemHoverContent` instead.
-     */
-    renderItem?: never;
+    renderItem: (
+        info: ListRenderItemInfo<TItem>,
+        itemProps: DraxListItemProps<TItem>
+    ) => ReturnType<ListRenderItem<TItem>>;
 
     /**
      * @inheritDoc `originalIndex` and `index` cannot be used in the DraxList data payload, since
@@ -1041,6 +1026,30 @@ export interface DraxListProps<TItem>
      * Props to apply to the parent DraxView that's wrapping the FlatList
      */
     parentDraxViewProps?: DraxViewProps;
+
+    /**
+     * When true, items will shift based on their centers instead of edges.
+     * This is always true for grid layouts (numColumns > 1).
+     * @default false
+     */
+    centerShift?: boolean;
+}
+
+export interface DraxListItemProps<T extends unknown> {
+    index: number;
+    item: T;
+    originalIndex: number;
+    horizontal: boolean;
+    lockItemDragsToMainAxis: boolean;
+    draggedItem: SharedValue<number | undefined>;
+    shiftsRef: SharedValue<Position[]>;
+    itemMeasurementsRef: MutableRefObject<((DraxViewMeasurements & { key?: string }) | undefined)[]>;
+    prevItemMeasurementsRef: MutableRefObject<((DraxViewMeasurements & { key?: string }) | undefined)[]>;
+    resetDraggedItem: () => void;
+    keyExtractor?: (item: T, index: number) => string;
+    previousShiftsRef: SharedValue<Position[]>;
+    registrationsRef: MutableRefObject<(DraxViewRegistration | undefined)[]>;
+    data: DraxListProps<T>['data'];
 }
 
 // Utility type to unwrap `SharedValue<T>` and return just `T`
