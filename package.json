@@ -1,6 +1,6 @@
 {
   "name": "react-native-drax",
-  "version": "0.11.0-alpha.1",
+  "version": "0.11.0-alpha.2",
   "description": "A drag-and-drop system for React Native",
   "repository": {
     "type": "git",
@@ -12,7 +12,7 @@
     "lint": "yarn run eslint src",
     "build": "yarn run tsc",
     "prepublish": "yarn run build",
-    "publish:experimental": "npm publish --tag experimental"
+    "publish:alpha": "npm publish --tag alpha"
   },
   "author": "Joe Lafiosca <joe@proxi.gg>",
   "license": "MIT",
