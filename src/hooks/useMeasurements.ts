@@ -149,5 +149,6 @@ export const useMeasurements = ({
     return {
         onLayout,
         viewRef,
+        measureWithHandler,
     };
 };

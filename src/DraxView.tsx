@@ -69,19 +69,19 @@ export const DraxReanimatedView = memo((props: IReanimatedView): ReactNode => {
     const updateViewProtocol = useDraxProtocol(props, hoverPosition);
 
     const { registerView, unregisterView } = useDraxContext();
-    const { onLayout, viewRef } = useMeasurements(props);
+    const { onLayout, viewRef, measureWithHandler } = useMeasurements(props);
 
     const { combinedStyle, renderedChildren } = useContent({
         draxViewProps: { ...props, hoverPosition },
         viewRef,
     });
 
-    // useEffect(() => {
-    // 	/** @todo 🪲BUG:
-    // 	 * For some reason, the Staging zone from the ColorDragDrop example loses its measurements,
-    // 	 * and we need to force refresh on them */
-    // 	measureWithHandler?.();
-    // }, [combinedStyle]);
+    useEffect(() => {
+        /** @todo 🪲BUG:
+         * For some reason, the Staging zone from the ColorDragDrop example loses its measurements,
+         * and we need to force refresh on them */
+        measureWithHandler?.();
+    }, [combinedStyle]);
 
     useEffect(() => {
         /** @todo 🪲BUG:
