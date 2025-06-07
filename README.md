@@ -11,7 +11,33 @@
 
 Drax is a declarative drag-and-drop system for React Native, written in TypeScript. It is designed to be flexible and powerful with the goal of supporting many use cases, while its stock components and default settings should cover the most common scenarios with minimal configuration.
 
-**Note: as of version 0.10.0, React Native 0.65 or higher is required. For RN 0.62-0.64 projects, you may be able to use 0.9.3, but it will no longer be supported. For RN 0.61 projects, you may be able to use 0.6.0, but it will no longer be supported.**
+**Note: We currently only support the latest Expo and React Native versions. Other older version might work just fine, but we won't respond to bug reports or feature requests for them.**
+
+### Experimental Alpha Version (v0.11.0)
+
+An experimental alpha version is now available that introduces significant updates and breaking changes. This version focuses on:
+
+- Integration with latest React Native Reanimated and React Native Gesture Handler by SoftwareMansion
+- Enhanced animation performance and capabilities
+- Works with New Architecture
+
+**Installation:** To install the experimental alpha version:
+
+```bash
+# npm
+npm install react-native-drax@alpha
+
+# or yarn
+yarn add react-native-drax@alpha
+```
+
+You'll also need to ensure you have the required peer dependencies:
+
+```bash
+yarn add react-native-reanimated react-native-gesture-handler
+```
+
+**Important:** This alpha version contains breaking changes, especially to the `DraxList` component. See the [Alpha Version Breaking Changes](#alpha-version-breaking-changes) section for details.
 
 *Personal note from Joe: this project is in need of additional [contributors/shepherds](#contributing). I have not been focused on React Native over the past year, and the state of the library has fallen behind the times. At a minimum, it should be updated to use the latest RNGH and take advantage of any fixes and new features in that and RN. I apologize that I do not have the availability to maintain this project to my own high standards and thank everyone who has been understanding of that.*
 
@@ -19,6 +45,7 @@ Drax is a declarative drag-and-drop system for React Native, written in TypeScri
 
 * [Screenshots](#screenshots)
 * [Status](#status)
+* [Alpha Version Breaking Changes](#alpha-version-breaking-changes)
 * [Background](#background)
 * [Concept](#concept)
 * [Installation](#installation)
@@ -46,6 +73,59 @@ Drax is a declarative drag-and-drop system for React Native, written in TypeScri
 This library adheres to [Semantic Versioning (semver)](https://semver.org/) and is in its [0.y.z initial development phase](https://semver.org/#how-should-i-deal-with-revisions-in-the-0yz-initial-development-phase). It has been released so that early adopters (such as the project author) can begin to use it in production and identify gaps in the functionality. The API is subject to potentially significant rework until version 1.0.0 is released, and any minor version increment before then may include breaking changes. Documentation and full examples are still being written.
 
 The author of this library has not had significant availability to work on it for quite a while now, due to higher priority life and work concerns. Newer versions of Drax's major dependencies have been released in that time, and many people have opened issues asking questions about usage and potential features. Relatively small fixes and easy questions are handled reasonably often, but ultimately another round of research, testing, and architecture are what would take this library to the next level of usability. It is not clear when that might happen, but [contributors are welcome](#contributing).
+
+<a name="alpha-version-breaking-changes"></a>
+## Alpha Version Breaking Changes
+
+The experimental alpha version (v0.11.0) includes significant updates to modernize the library and improve performance. However, these changes introduce breaking changes, particularly to the `DraxList` component.
+
+### DraxList Breaking Changes
+
+   - `renderItem` property signature receives different props than before and has replaced `renderItemContent` and `renderHoverContent`
+   - Receives incoming external drag items inside the list.
+   - Added `monitoringExternalDragStyle` prop for styling during incoming external drags
+   - `parentDraxViewProps` prop for customizing the parent DraxView wrapping the FlatList. You should use this prop if you were using the `style` prop on `DraxList`. (see example below)
+
+### DraxListItem Component
+
+The alpha version introduces a new `DraxListItem` component that works with `DraxList` to simplify implementation of reorderable lists. This component handles animations, measurement caching, and shift calculations internally.
+
+#### Usage Example
+
+```jsx
+import { DraxList, DraxListItem } from 'react-native-drax';
+
+const MyReorderableList = () => (
+  <DraxList
+    data={items}
+    // BREAKING CHANGE: `style` prop is now applied to internal FlatList, not to the parent DraxView
+    style={styles.list}
+
+    // should use this prop if you were using the `style` prop on `DraxList` on v0.10.3. 
+    parentDraxViewProps={{
+      style: styles.list,
+    }}
+    renderItem={(info, itemProps) => (
+      <DraxListItem
+        itemProps={itemProps}
+        style={styles.listItem}
+        draggingStyle={styles.itemDragging}
+        dragReleasedStyle={styles.itemReleased}
+        // Any other DraxView props
+      >
+        <Text>{info.item.text}</Text>
+      </DraxListItem>
+    )}
+    onItemReorder={({fromIndex, toIndex}) => {
+      // Update your data here
+      const newData = [...items];
+      const item = newData.splice(fromIndex, 1)[0];
+      newData.splice(toIndex, 0, item);
+      setItems(newData);
+    }}
+  />
+);
+```
 
 <a name="background"></a>
 ## Background
