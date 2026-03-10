@@ -1,4 +1,4 @@
-import { ElementRef, MutableRefObject, PropsWithChildren, ReactNode, RefObject } from 'react';
+import { ElementRef, PropsWithChildren, ReactNode, RefObject } from 'react';
 import {
     FlatListProps,
     ListRenderItem,
@@ -1043,12 +1043,12 @@ export interface DraxListItemProps<T extends unknown> {
     lockItemDragsToMainAxis: boolean;
     draggedItem: SharedValue<number | undefined>;
     shiftsRef: SharedValue<Position[]>;
-    itemMeasurementsRef: MutableRefObject<((DraxViewMeasurements & { key?: string }) | undefined)[]>;
-    prevItemMeasurementsRef: MutableRefObject<((DraxViewMeasurements & { key?: string }) | undefined)[]>;
+    itemMeasurementsRef: SharedValue<((DraxViewMeasurements & { key?: string }) | undefined)[]>;
+    prevItemMeasurementsRef: SharedValue<((DraxViewMeasurements & { key?: string }) | undefined)[]>;
     resetDraggedItem: () => void;
     keyExtractor?: (item: T, index: number) => string;
     previousShiftsRef: SharedValue<Position[]>;
-    registrationsRef: MutableRefObject<(DraxViewRegistration | undefined)[]>;
+    registrationsRef: SharedValue<(DraxViewRegistration | undefined)[]>;
     data: DraxListProps<T>['data'];
 }
 

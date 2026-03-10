@@ -75,12 +75,12 @@ const DraxListUnforwarded = <T extends unknown>(
     const scrollStateRef = useRef(AutoScrollDirection.None);
 
     // List item measurements, for determining shift.
-    const itemMeasurementsRef = useRef<((DraxViewMeasurements & { key?: string }) | undefined)[]>([]);
+    const itemMeasurementsRef = useSharedValue<((DraxViewMeasurements & { key?: string }) | undefined)[]>([]);
 
-    const prevItemMeasurementsRef = useRef<((DraxViewMeasurements & { key?: string }) | undefined)[]>([]);
+    const prevItemMeasurementsRef = useSharedValue<((DraxViewMeasurements & { key?: string }) | undefined)[]>([]);
 
     // Drax view registrations, for remeasuring after reorder.
-    const registrationsRef = useRef<(DraxViewRegistration | undefined)[]>([]);
+    const registrationsRef = useSharedValue<(DraxViewRegistration | undefined)[]>([]);
 
     // Shift offsets.
     const shiftsRef = useSharedValue<Position[]>([]);
@@ -94,9 +94,9 @@ const DraxListUnforwarded = <T extends unknown>(
 
     // Adjust measurements, registrations, and shift value arrays as item count changes.
     useEffect(() => {
-        const itemMeasurements = itemMeasurementsRef.current;
+        const itemMeasurements = itemMeasurementsRef.value;
 
-        const registrations = registrationsRef.current;
+        const registrations = registrationsRef.value;
         const shifts = shiftsRef.value;
         if (itemMeasurements.length > itemCount) {
             itemMeasurements.splice(itemCount - itemMeasurements.length);
@@ -122,6 +122,8 @@ const DraxListUnforwarded = <T extends unknown>(
         }
 
         shiftsRef.value = shifts;
+        itemMeasurementsRef.value = itemMeasurements;
+        registrationsRef.value = registrations;
     }, [itemCount]);
 
     // Clear reorders when data changes.
@@ -257,7 +259,7 @@ const DraxListUnforwarded = <T extends unknown>(
     // Reset all shift values.
     const resetShifts = useCallback(() => {
         previousShiftsRef.value = shiftsRef.value;
-        prevItemMeasurementsRef.current = [...itemMeasurementsRef.current];
+        prevItemMeasurementsRef.value = [...itemMeasurementsRef.value];
 
         shiftsRef.value = shiftsRef.value.map(() => ({ x: 0, y: 0 }));
     }, []);
@@ -282,17 +284,19 @@ const DraxListUnforwarded = <T extends unknown>(
 
                 if (!shouldShift) return { x: 0, y: 0 };
 
+                const itemMeasurements = itemMeasurementsRef.value;
+
                 // Get measurements for current item and the item we're shifting to
-                const currentMeasurements = itemMeasurementsRef.current[index];
+                const currentMeasurements = itemMeasurements[index];
 
                 const draggedMeasurements =
-                    itemMeasurementsRef.current[fromOriginalIndex] ||
+                    itemMeasurements[fromOriginalIndex] ||
                     /**  If no measurements, it must be an external dragged item */
                     dragged.data.hoverMeasurements;
 
                 const targetIndex = isForward ? index - 1 : index + 1;
                 const targetMeasurements =
-                    itemMeasurementsRef.current[targetIndex] ||
+                    itemMeasurements[targetIndex] ||
                     /** If no measurements, it must be last item. Fallback to list contentSize */
                     contentSizeRef.current;
 
@@ -333,7 +337,7 @@ const DraxListUnforwarded = <T extends unknown>(
             { index: toIndex, originalIndex: toOriginalIndex }: ListItemPayload
         ) => {
             const containerMeasurements = containerMeasurementsRef.current;
-            const itemMeasurements = itemMeasurementsRef.current;
+            const itemMeasurements = itemMeasurementsRef.value;
             if (containerMeasurements) {
                 let targetPos: Position | undefined;
                 if (fromIndex < toIndex) {

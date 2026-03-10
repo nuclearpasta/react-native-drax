@@ -63,9 +63,9 @@ const RenderItemComponent = <T extends unknown>({
     }, [index]);
 
     useLayoutEffect(() => {
-        const measurements = itemMeasurementsRef.current[originalIndex];
-        const previousMeasurementsIndex = prevItemMeasurementsRef.current.findIndex(item => item?.key === itemKey);
-        const previousMeasurements = prevItemMeasurementsRef.current[previousMeasurementsIndex];
+        const measurements = itemMeasurementsRef.value[originalIndex];
+        const previousMeasurementsIndex = prevItemMeasurementsRef.value.findIndex(item => item?.key === itemKey);
+        const previousMeasurements = prevItemMeasurementsRef.value[previousMeasurementsIndex];
         const isLayoutShifted = previousShiftsRef.value.some(item => item.x || item.y);
 
         /**
@@ -111,31 +111,36 @@ const RenderItemComponent = <T extends unknown>({
             onMeasure={measurements => {
                 draxViewProps.onMeasure?.(measurements);
                 if (originalIndex !== undefined && measurements) {
+                    const itemMeasurements = itemMeasurementsRef.value;
                     /**
                      * @todo 🪲 BUG
                      * @platform web
                      * @summary Somehow the measurements for the same item are getting duplicated.
                      */
                     // Clear any duplicate measurements
-                    const duplicateIndex = itemMeasurementsRef.current.findIndex(
+                    const duplicateIndex = itemMeasurements.findIndex(
                         (item, idx) => idx !== originalIndex && item?.key === itemKey
                     );
                     if (duplicateIndex !== -1) {
-                        itemMeasurementsRef.current[duplicateIndex] = undefined;
+                        itemMeasurements[duplicateIndex] = undefined;
                     }
 
                     // Store the new measurement
-                    itemMeasurementsRef.current[originalIndex] = {
+                    itemMeasurements[originalIndex] = {
                         ...measurements,
                         key: itemKey,
                     };
+
+                    itemMeasurementsRef.value = itemMeasurements;
                 }
             }}
             registration={registration => {
                 draxViewProps.registration?.(registration);
                 if (registration && originalIndex !== undefined) {
                     // console.log(`registering [${index}, ${originalIndex}], ${registration.id}`);
-                    registrationsRef.current[originalIndex] = registration;
+                    const registrations = registrationsRef.value;
+                    registrations[originalIndex] = registration;
+                    registrationsRef.value = registrations;
                     registration.measure();
                 }
             }}
