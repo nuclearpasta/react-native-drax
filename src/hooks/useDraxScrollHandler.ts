@@ -1,6 +1,8 @@
 import { ForwardedRef, useCallback, useEffect, useRef } from 'react';
 import { FlatList, NativeScrollEvent, NativeSyntheticEvent, ScrollView } from 'react-native';
 import { runOnUI, useAnimatedRef, useSharedValue } from 'react-native-reanimated';
+import { AnimatedComponentType } from 'react-native-reanimated/lib/typescript/createAnimatedComponent';
+import { ExtractElementRef } from 'react-native-reanimated/lib/typescript/hook/commonTypes';
 
 import { INITIAL_REANIMATED_POSITION } from '../params';
 import { DraxListProps, DraxViewMeasurements, Position } from '../types';
@@ -28,12 +30,11 @@ export const useDraxScrollHandler = <T extends ScrollableComponents>({
 
     // The unique identifer for this view.
     const id = useDraxId(idProp);
-
     // Container view measurements, for scrolling by percentage.
     const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(undefined);
 
     // Auto-scrolling interval.
-    const scrollIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
+    const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
     // Content size, for scrolling by percentage.
     const contentSizeRef = useRef<Position | undefined>(undefined);
@@ -71,7 +72,7 @@ export const useDraxScrollHandler = <T extends ScrollableComponents>({
 
     // Set the ScrollView/FlatList refs.
     const setScrollRefs = useCallback(
-        (ref: T | null) => {
+        (ref: ExtractElementRef<T extends AnimatedComponentType<any, infer Instance> ? Instance : T>) => {
             if (ref) {
                 scrollRef(ref);
                 if (forwardedRef) {

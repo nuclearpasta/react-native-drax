@@ -1,3 +1,5 @@
+import { Position } from './types';
+
 /** Default snapback delay in milliseconds */
 export const defaultSnapbackDelay = 100;
 
@@ -30,4 +32,10 @@ export const INITIAL_REANIMATED_POSITION = {
     addListener(): void {},
     removeListener(): void {},
     modify(): void {},
+    get(): Position {
+        return this.value;
+    },
+    set(value: Position): void {
+        this.value = value;
+    },
 };

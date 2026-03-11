@@ -1,4 +1,4 @@
-import React, { PropsWithChildren } from 'react';
+import { PropsWithChildren } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Reanimated, { SharedValue } from 'react-native-reanimated';
 

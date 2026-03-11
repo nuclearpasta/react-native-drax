@@ -1,5 +1,5 @@
 import throttle from 'lodash.throttle';
-import React, { useCallback, useMemo, useRef } from 'react';
+import { ReactNode, useCallback, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
     GestureStateChangeEvent,
@@ -36,7 +36,7 @@ const startPositionInitialValue = {
     grab: { x: 0, y: 0 },
 };
 
-export const DraxProvider = ({ debug = false, style = styles.provider, children }: DraxProviderProps): JSX.Element => {
+export const DraxProvider = ({ debug = false, style = styles.provider, children }: DraxProviderProps): ReactNode => {
     const { getViewState, getTrackingStatus, getAllViewIds, dispatch } = useDraxState();
     const {
         getAbsoluteViewData,
