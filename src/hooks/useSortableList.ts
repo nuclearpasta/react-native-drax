@@ -423,28 +423,38 @@ export const useSortableList = <T,>(
     const pending = pendingOrderRef.current;
     if (pending.length === 0) return 0;
 
-    // Collect measurements for items in pending order
-    const measurements = pending.map((origIdx) => getMeasForOrigIdx(origIdx));
+    // Use ORIGINAL layout positions for stable slot boundaries.
+    // Key insight: slot boundaries must NOT shift when items are reordered
+    // during drag. Using pending-order measurements causes oscillation:
+    // move changes boundaries → same position maps to new slot → another
+    // move → boundaries shift again → gap keeps running from the finger.
+    // Original layout positions are fixed throughout the drag.
+    const measurements = originalIndexes.map((origIdx) => getMeasForOrigIdx(origIdx));
     const missingIdx = measurements.findIndex((m) => !m);
     if (missingIdx >= 0) {
-      console.log('[getSlotFromPosition] MISSING measurement at idx:', missingIdx, 'origIdx:', pending[missingIdx], 'returning:', draggedDisplayIndexRef.current ?? 0);
+      console.log('[getSlotFromPosition] MISSING measurement at idx:', missingIdx, 'origIdx:', originalIndexes[missingIdx], 'returning:', draggedDisplayIndexRef.current ?? 0);
       return draggedDisplayIndexRef.current ?? 0;
     }
 
     const gap = computeItemGap();
 
     if (numColumns <= 1) {
-      // Single-column list — find which item the position falls within
+      // Single-column list — find which slot the position falls in.
+      // Boundary is at the gap midpoint between adjacent items, making
+      // forward and backward equally responsive (distance = size/2 + gap/2).
+      // Using item centers (50%) would be asymmetric: the hover center
+      // starts AT the forward boundary but a full item-height from the
+      // backward boundary, making forward too sensitive and backward too sluggish.
       const firstMeas = measurements[0]!;
       let cursor = horizontal ? firstMeas.x : firstMeas.y;
 
       for (let i = 0; i < pending.length; i++) {
         const meas = measurements[i]!;
         const size = horizontal ? meas.width : meas.height;
-        const center = cursor + size / 2;
+        const boundary = cursor + size + gap / 2; // midpoint of gap after item
         const pos = horizontal ? contentPos.x : contentPos.y;
 
-        if (pos < center) return i;
+        if (pos < boundary) return i;
         cursor += size + gap;
       }
       return pending.length - 1;
@@ -472,19 +482,22 @@ export const useSortableList = <T,>(
         targetRow = row;
       }
 
-      // Find column within row
+      // Find column within row — use gap midpoint for symmetric sensitivity
       const colXPositions: number[] = [];
       for (let c = 0; c < numColumns && c < originalIndexes.length; c++) {
         const colMeas = getMeasForOrigIdx(originalIndexes[c]!);
         colXPositions.push(colMeas ? colMeas.x : 0);
       }
+      const colGap = numColumns >= 2 && colXPositions.length >= 2
+        ? colXPositions[1]! - (colXPositions[0]! + measurements[0]!.width)
+        : 0;
 
       let targetCol = 0;
       for (let c = 0; c < numColumns; c++) {
         const colX = colXPositions[c] ?? 0;
         const colMeas = measurements[Math.min(c, measurements.length - 1)]!;
-        const colCenter = colX + colMeas.width / 2;
-        if (contentPos.x < colCenter) {
+        const colBoundary = colX + colMeas.width + colGap / 2;
+        if (contentPos.x < colBoundary) {
           targetCol = c;
           break;
         }

@@ -436,11 +436,8 @@ export const SortableContainer = ({
     }
 
     // ── Position-based slot detection ──────────────────────────────────
-    // Determine target slot from the hover center's content position.
-    // This is robust against stale spatial index entries which store FlatList
-    // layout positions, not visual positions after shift transforms. With
-    // stableData (FlatList never re-renders on reorder), spatial entries
-    // become stale after the first reorder.
+    // Use the hover center's content position. Slot boundaries are based
+    // on original layout positions (stable, never shift during drag).
     const contentPos = {
       x: monitorOffset.x + scrollPosition.value.x,
       y: monitorOffset.y + scrollPosition.value.y,
@@ -449,7 +446,7 @@ export const SortableContainer = ({
 
     // Track drag position changes (log only on slot change to avoid per-frame noise)
     if (targetSlot !== draggedToIndex.current) {
-      console.log('[onMonitorDragOver] slot changed:', draggedToIndex.current, '→', targetSlot, 'contentPos:', JSON.stringify(contentPos));
+      console.log('[onMonitorDragOver] slot changed:', draggedToIndex.current, '→', targetSlot, 'contentPos:', JSON.stringify(contentPos), 'monitorOffset:', JSON.stringify(monitorOffset), 'scroll:', JSON.stringify(scrollPosition.value));
       onDragPositionChangeCallback?.({
         toIndex: targetSlot,
         index: fromIndex,
