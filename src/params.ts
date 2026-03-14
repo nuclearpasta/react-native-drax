@@ -1,5 +1,3 @@
-import { Position } from './types';
-
 /** Default snapback delay in milliseconds */
 export const defaultSnapbackDelay = 100;
 
@@ -27,15 +25,14 @@ export const defaultAutoScrollBackThreshold = 0.1;
 /** Default drag-over minimum position threshold for auto-scroll forward, as a fraction relative to content width/length */
 export const defaultAutoScrollForwardThreshold = 0.9;
 
-export const INITIAL_REANIMATED_POSITION = {
-    value: { x: 0, y: 0 },
-    addListener(): void {},
-    removeListener(): void {},
-    modify(): void {},
-    get(): Position {
-        return this.value;
-    },
-    set(value: Position): void {
-        this.value = value;
-    },
-};
+/** Buffer in milliseconds added after snapback animation before cleaning up hover content */
+export const SNAPBACK_CLEANUP_BUFFER_MS = 50;
+
+/** Throttle delay in milliseconds for external drag state updates */
+export const EXTERNAL_DRAG_THROTTLE_MS = 300;
+
+/** Duration in milliseconds for list item shift/reorder animations */
+export const ITEM_SHIFT_ANIMATION_DURATION = 200;
+
+/** Duration in milliseconds for the layout + shift transition after reorder commit */
+export const REORDER_TRANSITION_DURATION = 200;
