@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react';
+import type { ComponentRef, ReactNode } from 'react';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Platform } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
-import Reanimated, { useAnimatedReaction, useAnimatedRef, useSharedValue } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
+import Reanimated, { useAnimatedReaction, useSharedValue } from 'react-native-reanimated';
 
 import { DraxHandleContext } from './DraxHandleContext';
 import { DraxSubprovider } from './DraxSubprovider';
@@ -15,6 +16,7 @@ import type {
   DraxViewMeasurementHandler,
   DraxViewMeasurements,
   DraxViewProps,
+  Position,
 } from './types';
 import { DraxViewDragStatus, DraxViewReceiveStatus } from './types';
 
@@ -97,6 +99,37 @@ function extractViewProps(props: DraxViewProps): Record<string, unknown> {
   return viewProps;
 }
 
+/**
+ * Isolated hook for scroll-position → spatial-index sync.
+ * Kept separate from DraxView so the worklet closure only captures
+ * SharedValues — never React refs from the component scope. The worklets
+ * serializer recursively freezes all plain objects in a worklet's closure,
+ * which would freeze useRef objects and trigger "Tried to modify key `current`"
+ * warnings when React nullifies refs on unmount.
+ */
+function useScrollPositionSync(
+  scrollPosition: SharedValue<Position> | undefined,
+  spatialIndexSV: SharedValue<number>,
+  scrollOffsetsSV: SharedValue<Position[]>
+) {
+  useAnimatedReaction(
+    () => scrollPosition?.value,
+    (pos, prev) => {
+      'worklet';
+      if (!pos) return;
+      if (prev && pos.x === prev.x && pos.y === prev.y) return;
+      const idx = spatialIndexSV.value;
+      if (idx < 0) return;
+      scrollOffsetsSV.modify((offsets) => {
+        if (idx >= 0 && idx < offsets.length) {
+          offsets[idx] = pos;
+        }
+        return offsets;
+      });
+    }
+  );
+}
+
 export const DraxView = memo((props: DraxViewProps): ReactNode => {
   const {
     renderContent,
@@ -138,7 +171,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
   const parentViewRef = parent ? parent.viewRef : rootViewRef;
 
   // View ref for measuring
-  const viewRef = useAnimatedRef<Reanimated.View>();
+  const viewRef = useRef<ComponentRef<typeof Reanimated.View>>(null);
   const measurementsRef = useRef<DraxViewMeasurements | undefined>(undefined);
 
   // ── Measurement ────────────────────────────────────────────────────
@@ -234,23 +267,9 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     spatialIndexSV.value = index;
   }, [id, getViewEntry, spatialIndexSV]);
 
-  // Sync scroll position to spatial index for scroll-aware hit-testing
-  useAnimatedReaction(
-    () => scrollPosition?.value,
-    (pos, prev) => {
-      'worklet';
-      if (!pos) return;
-      if (prev && pos.x === prev.x && pos.y === prev.y) return;
-      const idx = spatialIndexSV.value;
-      if (idx < 0) return;
-      scrollOffsetsSV.modify((offsets) => {
-        if (idx >= 0 && idx < offsets.length) {
-          offsets[idx] = pos;
-        }
-        return offsets;
-      });
-    }
-  );
+  // Sync scroll position to spatial index — delegated to a separate hook
+  // so the worklet closure only contains SharedValues (no refs from DraxView scope).
+  useScrollPositionSync(scrollPosition, spatialIndexSV, scrollOffsetsSV);
 
   // SharedValues for gesture config — RNGH 3.0 reconfigures the native
   // handler on the UI thread, bypassing JS→native bridge entirely.
@@ -265,7 +284,6 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
 
   const gesture = useDragGesture(
     id,
-    viewRef,
     spatialIndexSV,
     draggableSV,
     longPressDelaySV,
@@ -312,9 +330,9 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
   // When dragHandle is true, provide the gesture via context so DraxHandle can attach it
   if (dragHandle) {
     renderedContent = (
-      <DraxHandleContext value={{ gesture }}>
+      <DraxHandleContext.Provider value={{ gesture }}>
         {renderedContent}
-      </DraxHandleContext>
+      </DraxHandleContext.Provider>
     );
   }
 

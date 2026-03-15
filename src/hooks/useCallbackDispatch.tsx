@@ -372,18 +372,21 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     // receiverIdSV is already cleared on the UI thread in onDeactivate/onFinalize,
     // so the receiver's animated style resets immediately.
 
-    console.log('[handleDragEnd] draggedId:', draggedId, 'receiverId:', receiverId, 'cancelled:', cancelled, 'finalMonitorIds:', finalMonitorIds, 'currentMonitorIds:', currentMonitorIdsRef.current);
-
     const draggedEntry = getViewEntry(draggedId);
     if (!draggedEntry) {
       // Reset drag state atomically on UI thread to avoid one-frame flash
-      runOnUI(() => {
+      runOnUI((
+        _hoverReadySV: typeof hoverReadySV,
+        _dragPhaseSV: typeof dragPhaseSV,
+        _draggedIdSV: typeof draggedIdSV,
+        _hoverPositionSV: typeof hoverPositionSV,
+      ) => {
         'worklet';
-        hoverReadySV.value = false;
-        dragPhaseSV.value = 'idle';
-        draggedIdSV.value = '';
-        hoverPositionSV.value = { x: 0, y: 0 };
-      })();
+        _hoverReadySV.value = false;
+        _dragPhaseSV.value = 'idle';
+        _draggedIdSV.value = '';
+        _hoverPositionSV.value = { x: 0, y: 0 };
+      })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
       return;
     }
@@ -391,13 +394,18 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     const absolutePosition = { ...hoverPositionSV.value };
     const dragged = buildDraggedViewData(draggedId, absolutePosition);
     if (!dragged) {
-      runOnUI(() => {
+      runOnUI((
+        _hoverReadySV: typeof hoverReadySV,
+        _dragPhaseSV: typeof dragPhaseSV,
+        _draggedIdSV: typeof draggedIdSV,
+        _hoverPositionSV: typeof hoverPositionSV,
+      ) => {
         'worklet';
-        hoverReadySV.value = false;
-        dragPhaseSV.value = 'idle';
-        draggedIdSV.value = '';
-        hoverPositionSV.value = { x: 0, y: 0 };
-      })();
+        _hoverReadySV.value = false;
+        _dragPhaseSV.value = 'idle';
+        _draggedIdSV.value = '';
+        _hoverPositionSV.value = { x: 0, y: 0 };
+      })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
       return;
     }
@@ -470,7 +478,6 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     // Fire monitor end events — use final hit-test monitors from onDeactivate
     // if available, falling back to tracked monitors from receiver changes.
     const monitorIdsToUse = finalMonitorIds ?? currentMonitorIdsRef.current;
-    console.log('[handleDragEnd] monitorIdsToUse:', monitorIdsToUse);
     for (const monitorId of monitorIdsToUse) {
       const monitorEntry = getViewEntry(monitorId);
       if (!monitorEntry?.measurements) continue;
@@ -599,7 +606,6 @@ function performSnapback(
    *   Then hover clears on next UI frame. Items at visual positions. No blink.
    */
   const onSnapComplete = () => {
-    console.log('[onSnapComplete] firing onSnapEnd callbacks, then clearing drag state');
     // Reset the deferred flag before firing callbacks.
     // finalizeDrag (called via onSnapEnd) may set it to true for reorder.
     hoverClearDeferredRef.current = false;
@@ -614,17 +620,20 @@ function performSnapback(
     // Step 2: Clear hover if NOT deferred by a sortable reorder.
     // When deferred, finalizeDrag's runOnUI block handles the clearing.
     if (!hoverClearDeferredRef.current) {
-      console.log('[onSnapComplete] clearing hover immediately (not deferred)');
-      runOnUI(() => {
+      runOnUI((
+        _hoverReadySV: typeof hoverReadySV,
+        _dragPhaseSV: typeof dragPhaseSV,
+        _draggedIdSV: typeof draggedIdSV,
+        _hoverPositionSV: typeof hoverPositionSV,
+      ) => {
         'worklet';
-        hoverReadySV.value = false;
-        dragPhaseSV.value = 'idle';
-        draggedIdSV.value = '';
-        hoverPositionSV.value = { x: 0, y: 0 };
-      })();
+        _hoverReadySV.value = false;
+        _dragPhaseSV.value = 'idle';
+        _draggedIdSV.value = '';
+        _hoverPositionSV.value = { x: 0, y: 0 };
+      })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
     } else {
-      console.log('[onSnapComplete] hover clearing deferred to useLayoutEffect');
       // Do NOT call setHoverContent(null) here — the hover must remain visible
       // until the FlatList re-renders. The deferred cleanup in useLayoutEffect
       // will clear SharedValues, and setHoverContent(null) is called there too.

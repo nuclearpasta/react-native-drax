@@ -15,6 +15,8 @@ interface HoverLayerProps {
   dragPhaseSV: SharedValue<DragPhase>;
   /** Set to true after hover content is committed — SortableItem reads this for visibility */
   hoverReadySV: SharedValue<boolean>;
+  /** Animated hover content dimensions. x=width, y=height. {0,0}=no constraint. */
+  hoverDimsSV: SharedValue<Position>;
 }
 
 /**
@@ -27,7 +29,7 @@ interface HoverLayerProps {
  * Only this component re-renders when hover content changes (via hoverVersion).
  */
 export const HoverLayer = memo(
-  ({ hoverContentRef, hoverVersion, hoverPositionSV, dragPhaseSV, hoverReadySV }: HoverLayerProps) => {
+  ({ hoverContentRef, hoverVersion, hoverPositionSV, dragPhaseSV, hoverReadySV, hoverDimsSV }: HoverLayerProps) => {
     // After hover content is committed to the DOM, activate drag phase + signal readiness.
     // dragPhaseSV is NOT set in the gesture handler — it's set HERE, ensuring:
     //   1. HoverLayer becomes visible (opacity 1) only AFTER content is rendered
@@ -57,6 +59,20 @@ export const HoverLayer = memo(
       };
     });
 
+    // Animated dimensions for the inner content wrapper.
+    // When hoverDimsSV is non-zero, constrains hover content to those dimensions
+    // so cross-container transfers animate smoothly from source to target size.
+    const dimensionStyle = useAnimatedStyle(() => {
+      const dims = hoverDimsSV.value;
+      if (dims.x > 0 && dims.y > 0) {
+        return {
+          width: dims.x,
+          height: dims.y,
+        };
+      }
+      return {};
+    });
+
     // Always render the Reanimated.View — never conditionally unmount it.
     // If we returned null when content is empty, remounting causes a one-frame
     // flash (the view renders at default position before useAnimatedStyle kicks in).
@@ -65,7 +81,9 @@ export const HoverLayer = memo(
         style={[styles.container, animatedStyle]}
         pointerEvents="none"
       >
-        {hoverContentRef.current}
+        <Reanimated.View style={dimensionStyle}>
+          {hoverContentRef.current}
+        </Reanimated.View>
       </Reanimated.View>
     );
   }
@@ -77,5 +95,6 @@ const styles = StyleSheet.create({
     // Default hidden — useAnimatedStyle overrides to opacity:1 when dragging.
     // Prevents a one-frame flash on first mount before the animated style evaluates.
     opacity: 0,
+    transformOrigin: 'top left',
   },
 });

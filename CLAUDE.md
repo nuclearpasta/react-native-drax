@@ -22,6 +22,19 @@ Drag-and-drop framework for React Native. Branch `reanimated-v4` is a major rewr
 - Drop indicator support: `SortableContainer` tracks target position via SharedValues, renders indicator at insertion point
 - Old `DraxList`/`DraxListItem` are deprecated
 
+## Cross-Container Sortable (Board)
+
+- `useSortableBoard` hook — board-level coordinator for cross-container transfers
+- `SortableBoardContainer` — monitoring wrapper providing board context
+- `SortableBoardContext` — auto-registration context for column `SortableContainer`s
+- Each column independently uses `useSortableList` + `SortableContainer` + `SortableItem`
+- Phantom slot mechanism: target column reserves virtual space at insertion point via `setPhantomSlot`
+- Source column ejects dragged item from pending order via `ejectDraggedItem`
+- Position-based column detection: board checks hover absolute position against column bounds
+- Transfer finalization: clears all committed state on source (forces useLayoutEffect external data path), clears phantom on target, fires `onTransfer`, hover covers transition until both columns re-render with correct data
+- No ghost shifts, no effectiveData bypass — both columns reset naturally via useLayoutEffect when parent updates data
+- `SortableContainer` has minimal board awareness: auto-registration + finalizeDrag delegation + drag end guards
+
 ## Drag Handles
 
 - `DraxView` accepts `dragHandle` prop — when true, the gesture is NOT attached to the view's GestureDetector

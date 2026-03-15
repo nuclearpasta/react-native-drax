@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { memo, useRef } from 'react';
+import type { SharedValue } from 'react-native-reanimated';
 import { useSharedValue } from 'react-native-reanimated';
 import Reanimated, {
   Easing,
@@ -13,9 +14,48 @@ import { ITEM_SHIFT_ANIMATION_DURATION } from './params';
 import type {
   DraxViewMeasurementHandler,
   DraxViewProps,
+  Position,
   SortableItemMeasurement,
   SortableListHandle,
 } from './types';
+
+/**
+ * Isolated hook for SortableItem animated style.
+ * Kept separate so the worklet closure only contains SharedValues —
+ * never React refs from the component scope.
+ */
+function useSortableItemStyle(
+  hoverReadySV: SharedValue<boolean>,
+  draggedIdSV: SharedValue<string>,
+  viewIdSV: SharedValue<string>,
+  shiftsValidSV: SharedValue<boolean>,
+  shiftsRef: SharedValue<Record<string, Position>>,
+  instantClearSV: SharedValue<boolean>,
+  itemKey: string | undefined,
+) {
+  return useAnimatedStyle(() => {
+    const isDragged = hoverReadySV.value && draggedIdSV.value === viewIdSV.value;
+    const valid = shiftsValidSV.value;
+    const shifts = shiftsRef.value;
+    const shift = valid && itemKey ? shifts[itemKey] : undefined;
+    const instant = instantClearSV.value;
+    // When shifts are invalidated (data committing), snap to 0 instantly — no animation.
+    // Without this, items animate from stale shifts to 0 over 200ms, causing a visible jump.
+    const duration = (instant || !valid) ? 0 : ITEM_SHIFT_ANIMATION_DURATION;
+
+    return {
+      opacity: isDragged ? 0 : 1,
+      transform: [
+        {
+          translateX: withTiming(shift?.x ?? 0, { duration, easing: Easing.linear }),
+        },
+        {
+          translateY: withTiming(shift?.y ?? 0, { duration, easing: Easing.linear }),
+        },
+      ] as const,
+    };
+  });
+}
 
 export interface SortableItemProps extends DraxViewProps {
   sortable: SortableListHandle<any>;
@@ -41,7 +81,7 @@ const SortableItemInner = ({
     rawData,
     originalIndexes,
     scrollPosition,
-    onItemSnapEnd,
+    onItemSnapEndRef,
   } = sortable._internal;
 
   // Get hoverReadySV and draggedIdSV from DraxContext (provider-level SharedValues)
@@ -59,35 +99,11 @@ const SortableItemInner = ({
     ((handler?: DraxViewMeasurementHandler) => void) | null
   >(null);
 
-  // Hide the dragged item when hover is ready. Show it when hover disappears.
-  // hoverReadySV is set to true AFTER hover content commits to DOM (HoverLayer useLayoutEffect).
-  // hoverReadySV is set to false in the SAME UI-thread frame as dragPhaseSV='idle' (snap completion).
-  // This eliminates both grab blink and drop blink.
-  const itemStyle = useAnimatedStyle(() => {
-    const isDragged = hoverReadySV.value && draggedIdSV.value === viewIdSV.value;
-    // When shiftsValidSV is false, ignore all shifts. This is set
-    // synchronously in useLayoutEffect when rawData changes, ensuring
-    // stale shifts are never applied with new cell content (no blink).
-    const valid = shiftsValidSV.value;
-    const shifts = shiftsRef.value;
-    const shift = valid && itemKey ? shifts[itemKey] : undefined;
-    const instant = instantClearSV.value;
-    const duration = instant ? 0 : ITEM_SHIFT_ANIMATION_DURATION;
-
-    // Linear easing for smooth shift animations during drag.
-    // On reorder commit, instantClearSV=true → duration 0 → instant snap.
-    return {
-      opacity: isDragged ? 0 : 1,
-      transform: [
-        {
-          translateX: withTiming(shift?.x ?? 0, { duration, easing: Easing.linear }),
-        },
-        {
-          translateY: withTiming(shift?.y ?? 0, { duration, easing: Easing.linear }),
-        },
-      ] as const,
-    };
-  });
+  // Delegated to isolated hook so worklet closure has no refs from this scope.
+  const itemStyle = useSortableItemStyle(
+    hoverReadySV, draggedIdSV, viewIdSV,
+    shiftsValidSV, shiftsRef, instantClearSV, itemKey,
+  );
 
   return (
     <Reanimated.View style={itemStyle}>
@@ -118,8 +134,7 @@ const SortableItemInner = ({
           draxViewProps.onDragDrop?.(event);
         }}
         onSnapEnd={(snapData) => {
-          console.log('[SortableItem] onSnapEnd fired, key:', itemKey);
-          onItemSnapEnd?.();
+          onItemSnapEndRef.current?.();
           draxViewProps.onSnapEnd?.(snapData);
         }}
         onMeasure={(measurements) => {

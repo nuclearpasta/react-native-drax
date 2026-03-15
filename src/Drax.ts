@@ -3,6 +3,7 @@ import { DraxProvider } from './DraxProvider';
 import { DraxScrollView } from './DraxScrollView';
 import { DraxSortableList } from './DraxSortableList';
 import { DraxView } from './DraxView';
+import { SortableBoardContainer } from './SortableBoardContainer';
 import { SortableContainer } from './SortableContainer';
 import { SortableItem } from './SortableItem';
 
@@ -26,6 +27,7 @@ export const Drax = {
   ScrollView: DraxScrollView,
   SortableList: DraxSortableList,
   View: DraxView,
+  SortableBoardContainer,
   SortableContainer,
   SortableItem,
 } as const;

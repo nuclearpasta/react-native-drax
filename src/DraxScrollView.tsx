@@ -98,6 +98,7 @@ export const DraxScrollView = (
       }
     }
     if (xNew !== undefined || yNew !== undefined) {
+      // @ts-expect-error Reanimated's type augmentation hides scrollTo, but it exists at runtime
       scroll.scrollTo({
         x: xNew ?? scrollPosition.value.x,
         y: yNew ?? scrollPosition.value.y,

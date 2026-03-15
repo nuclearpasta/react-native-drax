@@ -40,6 +40,9 @@ export const DraxProvider = ({
   const hoverReadySV = useSharedValue(false);
   // Set by SortableContainer.finalizeDrag to defer hover clearing to useLayoutEffect.
   const hoverClearDeferredRef = useRef(false);
+  // Animated dimensions for hover content during cross-container transfer.
+  // x = width, y = height. {0,0} = no constraint (natural size).
+  const hoverDimsSV = useSharedValue<Position>({ x: 0, y: 0 });
 
   // ── Spatial index + registry ───────────────────────────────────────
   const {
@@ -113,6 +116,7 @@ export const DraxProvider = ({
       rootOffsetSV,
       hoverReadySV,
       hoverClearDeferredRef,
+      hoverDimsSV,
 
       // Registry methods
       registerView,
@@ -146,6 +150,7 @@ export const DraxProvider = ({
       rootOffsetSV,
       hoverReadySV,
       hoverClearDeferredRef,
+      hoverDimsSV,
       registerView,
       unregisterView,
       updateMeasurements,
@@ -169,6 +174,7 @@ export const DraxProvider = ({
           hoverPositionSV={hoverPositionSV}
           dragPhaseSV={dragPhaseSV}
           hoverReadySV={hoverReadySV}
+          hoverDimsSV={hoverDimsSV}
         />
       </View>
     </DraxContext>

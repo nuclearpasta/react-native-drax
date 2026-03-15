@@ -1,7 +1,16 @@
-import { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView } from 'react-native';
+import { useRef, useState } from 'react';
+import { StyleSheet, View, Text, FlatList, useWindowDimensions } from 'react-native';
+import type { ListRenderItemInfo } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DraxProvider, DraxView } from 'react-native-drax';
+import {
+  DraxProvider,
+  SortableBoardContainer,
+  SortableContainer,
+  SortableItem,
+  useSortableBoard,
+  useSortableList,
+} from 'react-native-drax';
+import Reanimated from 'react-native-reanimated';
 
 interface Card {
   id: string;
@@ -9,22 +18,26 @@ interface Card {
   color: string;
 }
 
-type ColumnId = 'todo' | 'progress' | 'done';
+type ColumnId = 'backlog' | 'todo' | 'done';
+
+function isColumnId(id: string): id is ColumnId {
+  return id === 'backlog' || id === 'todo' || id === 'done';
+}
 
 interface Columns {
+  backlog: Card[];
   todo: Card[];
-  progress: Card[];
   done: Card[];
 }
 
 const INITIAL_COLUMNS: Columns = {
-  todo: [
+  backlog: [
     { id: '1', title: 'Design mockups', color: '#fecaca' },
     { id: '2', title: 'Write tests', color: '#fed7aa' },
     { id: '3', title: 'API integration', color: '#fef08a' },
     { id: '4', title: 'Fix login bug', color: '#bbf7d0' },
   ],
-  progress: [
+  todo: [
     { id: '5', title: 'User auth flow', color: '#bfdbfe' },
     { id: '6', title: 'Dashboard UI', color: '#c7d2fe' },
   ],
@@ -33,88 +46,175 @@ const INITIAL_COLUMNS: Columns = {
   ],
 };
 
-const COLUMN_LABELS: Record<ColumnId, string> = {
-  todo: 'To Do',
-  progress: 'In Progress',
-  done: 'Done',
-};
+const cardKeyExtractor = (card: Card) => card.id;
 
-interface CardPayload {
-  card: Card;
-  fromColumn: ColumnId;
-}
-
-const isCardPayload = (value: unknown): value is CardPayload =>
-  typeof value === 'object' &&
-  value !== null &&
-  'card' in value &&
-  'fromColumn' in value;
-
-function KanbanCard({ card, column }: { card: Card; column: ColumnId }) {
+function KanbanCard({ card, width }: { card: Card; width: number }) {
   return (
-    <DraxView
-      testID={`kanban-card-${card.id}`}
-      style={[styles.card, { backgroundColor: card.color }]}
-      draggingStyle={styles.dragging}
-      hoverDraggingStyle={styles.hoverCard}
-      dragPayload={{ card, fromColumn: column } satisfies CardPayload}
-      longPressDelay={150}
-    >
+    <View style={[styles.card, { backgroundColor: card.color, width }]}>
       <Text style={styles.cardTitle}>{card.title}</Text>
-    </DraxView>
+    </View>
   );
 }
 
-function KanbanColumn({
-  columnId,
+// ── Horizontal Backlog Column ─────────────────────────────────────────
+
+function BacklogColumn({
   cards,
-  onReceive,
+  onReorder,
+  cardWidth,
+}: {
+  cards: Card[];
+  onReorder: (data: Card[]) => void;
+  cardWidth: number;
+}) {
+  // Typed as FlatList (not Reanimated.FlatList) — Reanimated's generic types
+  // are incompatible with React's RefObject. The ref is only used for
+  // scrollToOffset/flashScrollIndicators which both types share.
+  const listRef = useRef<FlatList>(null);
+
+  const sortable = useSortableList({
+    id: 'backlog',
+    data: cards,
+    keyExtractor: cardKeyExtractor,
+    onReorder: ({ data }) => onReorder(data),
+    horizontal: true,
+    longPressDelay: 150,
+  });
+
+  return (
+    <View style={styles.backlogSection}>
+      <View style={styles.backlogHeader}>
+        <Text style={styles.columnHeader}>Backlog</Text>
+        <Text style={styles.columnCount}>{cards.length}</Text>
+      </View>
+      <SortableContainer
+        sortable={sortable}
+        scrollRef={listRef}
+        style={styles.backlogContent}
+        draxViewProps={{
+          testID: 'kanban-column-backlog',
+        }}
+      >
+        <Reanimated.FlatList
+          ref={listRef}
+          data={sortable.data}
+          keyExtractor={sortable.stableKeyExtractor}
+          onScroll={sortable.onScroll}
+          onContentSizeChange={sortable.onContentSizeChange}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.backlogListContent}
+          initialNumToRender={cards.length}
+          windowSize={100}
+          maxToRenderPerBatch={cards.length}
+          removeClippedSubviews={false}
+          renderItem={(info: ListRenderItemInfo<Card>) => (
+            <SortableItem
+              sortable={sortable}
+              index={info.index}
+              testID={`kanban-card-${info.item.id}`}
+              hoverDraggingStyle={styles.hoverCard}
+            >
+              <KanbanCard card={info.item} width={cardWidth} />
+            </SortableItem>
+          )}
+        />
+      </SortableContainer>
+    </View>
+  );
+}
+
+// ── Vertical Column ───────────────────────────────────────────────────
+
+function VerticalColumn({
+  columnId,
+  label,
+  cards,
+  onReorder,
+  cardWidth,
 }: {
   columnId: ColumnId;
+  label: string;
   cards: Card[];
-  onReceive: (payload: CardPayload) => void;
+  onReorder: (data: Card[]) => void;
+  cardWidth: number;
 }) {
+  const listRef = useRef<FlatList>(null);
+
+  const sortable = useSortableList({
+    id: columnId,
+    data: cards,
+    keyExtractor: cardKeyExtractor,
+    onReorder: ({ data }) => onReorder(data),
+    longPressDelay: 150,
+  });
+
   return (
-    <DraxView
-      testID={`kanban-column-${columnId}`}
-      style={styles.column}
-      receivingStyle={styles.columnReceiving}
-      onReceiveDragDrop={(event) => {
-        if (isCardPayload(event.dragged.payload)) {
-          onReceive(event.dragged.payload);
-        }
-      }}
-    >
-      <Text style={styles.columnHeader}>{COLUMN_LABELS[columnId]}</Text>
+    <View style={styles.column}>
+      <Text style={styles.columnHeader}>{label}</Text>
       <Text style={styles.columnCount}>{cards.length}</Text>
-      <ScrollView style={styles.columnScroll} showsVerticalScrollIndicator={false}>
-        {cards.map((card) => (
-          <KanbanCard key={card.id} card={card} column={columnId} />
-        ))}
-      </ScrollView>
-    </DraxView>
+      <SortableContainer
+        sortable={sortable}
+        scrollRef={listRef}
+        style={styles.columnContent}
+        draxViewProps={{
+          testID: `kanban-column-${columnId}`,
+        }}
+      >
+        <Reanimated.FlatList
+          ref={listRef}
+          data={sortable.data}
+          keyExtractor={sortable.stableKeyExtractor}
+          onScroll={sortable.onScroll}
+          onContentSizeChange={sortable.onContentSizeChange}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={cards.length}
+          windowSize={100}
+          maxToRenderPerBatch={cards.length}
+          removeClippedSubviews={false}
+          renderItem={(info: ListRenderItemInfo<Card>) => (
+            <SortableItem
+              sortable={sortable}
+              index={info.index}
+              testID={`kanban-card-${info.item.id}`}
+              hoverDraggingStyle={styles.hoverCard}
+            >
+              <KanbanCard card={info.item} width={cardWidth} />
+            </SortableItem>
+          )}
+        />
+      </SortableContainer>
+    </View>
   );
 }
+
+// ── Board ─────────────────────────────────────────────────────────────
 
 export default function KanbanBoard() {
   const [columns, setColumns] = useState(INITIAL_COLUMNS);
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
 
-  const handleReceive = (targetColumn: ColumnId, payload: CardPayload) => {
-    if (payload.fromColumn === targetColumn) return;
+  // Consistent card width across all columns — prevents size jump on transfer.
+  // Matches the vertical column's inner width: (screen - board padding - column gap) / 2 - column padding.
+  const cardWidth = (screenWidth - 16 - 8) / 2 - 16;
 
-    setColumns((prev) => {
-      const sourceCards = prev[payload.fromColumn].filter(
-        (c) => c.id !== payload.card.id
-      );
-      const targetCards = [...prev[targetColumn], payload.card];
-      return {
-        ...prev,
-        [payload.fromColumn]: sourceCards,
-        [targetColumn]: targetCards,
-      };
-    });
-  };
+  const board = useSortableBoard<Card>({
+    keyExtractor: cardKeyExtractor,
+    onTransfer: ({ item, fromContainerId, toContainerId, toIndex }) => {
+      if (!isColumnId(fromContainerId) || !isColumnId(toContainerId)) return;
+      setColumns((prev) => {
+        const next = { ...prev };
+        next[fromContainerId] = prev[fromContainerId].filter(
+          (c) => c.id !== item.id
+        );
+        const targetCards = [...prev[toContainerId]];
+        targetCards.splice(toIndex, 0, item);
+        next[toContainerId] = targetCards;
+        return next;
+      });
+    },
+  });
 
   return (
     <DraxProvider>
@@ -124,19 +224,38 @@ export default function KanbanBoard() {
       >
         <View style={styles.header}>
           <Text style={styles.headerText}>
-            Drag cards between columns. Demonstrates cross-container DnD.
+            Drag cards within and between columns. Backlog scrolls horizontally.
           </Text>
         </View>
-        <View style={styles.board}>
-          {(Object.keys(COLUMN_LABELS) as ColumnId[]).map((colId) => (
-            <KanbanColumn
-              key={colId}
-              columnId={colId}
-              cards={columns[colId]}
-              onReceive={(payload) => handleReceive(colId, payload)}
+        <SortableBoardContainer board={board} style={styles.board}>
+          <BacklogColumn
+            cards={columns.backlog}
+            cardWidth={cardWidth}
+            onReorder={(data) =>
+              setColumns((prev) => ({ ...prev, backlog: data }))
+            }
+          />
+          <View style={styles.verticalColumns}>
+            <VerticalColumn
+              columnId="todo"
+              label="To Do"
+              cards={columns.todo}
+              cardWidth={cardWidth}
+              onReorder={(data) =>
+                setColumns((prev) => ({ ...prev, todo: data }))
+              }
             />
-          ))}
-        </View>
+            <VerticalColumn
+              columnId="done"
+              label="Done"
+              cards={columns.done}
+              cardWidth={cardWidth}
+              onReorder={(data) =>
+                setColumns((prev) => ({ ...prev, done: data }))
+              }
+            />
+          </View>
+        </SortableBoardContainer>
       </View>
     </DraxProvider>
   );
@@ -159,8 +278,30 @@ const styles = StyleSheet.create({
   },
   board: {
     flex: 1,
+    paddingHorizontal: 8,
+  },
+  backlogSection: {
+    backgroundColor: '#e2e8f0',
+    borderRadius: 12,
+    padding: 8,
+    marginBottom: 8,
+  },
+  backlogHeader: {
     flexDirection: 'row',
-    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  backlogContent: {
+    minHeight: 60,
+  },
+  backlogListContent: {
+    gap: 6,
+  },
+  verticalColumns: {
+    flex: 1,
+    flexDirection: 'row',
     gap: 8,
   },
   column: {
@@ -168,12 +309,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#e2e8f0',
     borderRadius: 12,
     padding: 8,
-    borderWidth: 2,
-    borderColor: 'transparent',
   },
-  columnReceiving: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#dbeafe',
+  columnContent: {
+    flex: 1,
   },
   columnHeader: {
     fontSize: 15,
@@ -187,9 +325,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
-  columnScroll: {
-    flex: 1,
-  },
   card: {
     borderRadius: 8,
     padding: 10,
@@ -199,9 +334,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 1 },
     elevation: 1,
-  },
-  dragging: {
-    opacity: 0.2,
   },
   hoverCard: {
     shadowOpacity: 0.25,

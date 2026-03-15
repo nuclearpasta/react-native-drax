@@ -1,6 +1,5 @@
 import { usePanGesture } from 'react-native-gesture-handler';
-import type { AnimatedRef, SharedValue } from 'react-native-reanimated';
-import Reanimated, { measure } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { runOnJS } from 'react-native-worklets';
 
 import { computeAbsolutePositionWorklet, hitTestWorklet } from '../math';
@@ -18,7 +17,6 @@ import { useDraxContext } from './useDraxContext';
  */
 export const useDragGesture = (
   id: string,
-  viewRef: AnimatedRef<Reanimated.View>,
   viewSpatialIndexSV: SharedValue<number>,
   enabledSV: SharedValue<boolean>,
   longPressDelaySV: SharedValue<number>,
@@ -41,10 +39,6 @@ export const useDragGesture = (
     handleDragEnd,
   } = useDraxContext();
 
-  const debugLog = (msg: string) => {
-    console.log(msg);
-  };
-
   const gesture = usePanGesture({
     enabled: enabledSV,
     activateAfterLongPress: longPressDelaySV,
@@ -53,27 +47,24 @@ export const useDragGesture = (
     onActivate: (event) => {
       'worklet';
 
-      runOnJS(debugLog)('[onActivate] entered for id: ' + id);
       // Convert screen-absolute touch to root-view-relative
       const rootOffset = rootOffsetSV.value;
       const rootRelX = event.absoluteX - rootOffset.x;
       const rootRelY = event.absoluteY - rootOffset.y;
 
-      // Fresh measurement on UI thread — always accurate regardless of
-      // ancestor layout shifts (e.g. SafeAreaView insets arriving late).
-      const measured = measure(viewRef);
-      if (!measured) return;
-
-      // Convert page-relative measurement to root-relative
+      // Derive the view's visual position from the gesture event.
+      // event.x/y = touch relative to the view's bounds (accounts for transforms).
+      // This is more accurate than the spatial index for sortable items where
+      // permanent shifts move views via CSS transform without updating layout.
       const viewAbsPos: Position = {
-        x: measured.pageX - rootOffset.x,
-        y: measured.pageY - rootOffset.y,
+        x: rootRelX - event.x,
+        y: rootRelY - event.y,
       };
 
-      // Compute grab offset (touch position relative to view, both root-relative)
+      // Grab offset = touch position within the view
       const grabOffset: Position = {
-        x: rootRelX - viewAbsPos.x,
-        y: rootRelY - viewAbsPos.y,
+        x: event.x,
+        y: event.y,
       };
 
       // Store shared state (all positions in root-relative space).
@@ -164,7 +155,6 @@ export const useDragGesture = (
     onDeactivate: (_event) => {
       'worklet';
 
-      runOnJS(debugLog)('[onDeactivate] entered');
       const currentDraggedId = draggedIdSV.value;
       const currentReceiverId = receiverIdSV.value;
 
@@ -195,7 +185,6 @@ export const useDragGesture = (
     onFinalize: (_event, didSucceed) => {
       'worklet';
 
-      runOnJS(debugLog)('[onFinalize] entered, didSucceed: ' + didSucceed);
       // If gesture was cancelled (not ended normally).
       // Check draggedIdSV (set in onActivate) instead of dragPhaseSV
       // because phase is now set later in handleDragStart via runOnUI.

@@ -1,7 +1,9 @@
 import { useRef } from 'react';
+import type { SharedValue } from 'react-native-reanimated';
 import { useSharedValue } from 'react-native-reanimated';
 
 import type {
+  CollisionAlgorithm,
   DraxViewMeasurements,
   DraxViewProps,
   Position,
@@ -9,6 +11,33 @@ import type {
   SpatialEntry,
   ViewRegistryEntry,
 } from '../types';
+
+/**
+ * Module-level helper to update spatial entry capabilities.
+ * Defined outside the hook so the worklet closure cannot capture
+ * any React refs from the hook scope — only the explicitly passed values.
+ */
+function updateSpatialEntryCapabilities(
+  spatialIndexSV: SharedValue<SpatialEntry[]>,
+  idx: number,
+  draggable: boolean,
+  receptive: boolean,
+  monitoring: boolean,
+  rejectOwnChildren: boolean,
+  collisionAlgorithm: CollisionAlgorithm,
+) {
+  spatialIndexSV.modify((entries) => {
+    'worklet';
+    if (idx >= 0 && idx < entries.length && entries[idx]) {
+      entries[idx]!.receptive = receptive;
+      entries[idx]!.monitoring = monitoring;
+      entries[idx]!.draggable = draggable;
+      entries[idx]!.rejectOwnChildren = rejectOwnChildren;
+      entries[idx]!.collisionAlgorithm = collisionAlgorithm;
+    }
+    return entries;
+  });
+}
 
 /**
  * Manages the spatial index (SharedValue<SpatialEntry[]>) and the JS-thread
@@ -106,17 +135,11 @@ export const useSpatialIndex = () => {
       existing.props = props;
 
       const idx = existing.spatialIndex;
-      spatialIndexSV.modify((entries) => {
-        'worklet';
-        if (idx >= 0 && idx < entries.length && entries[idx]) {
-          entries[idx]!.receptive = receptive;
-          entries[idx]!.monitoring = monitoring;
-          entries[idx]!.draggable = draggable;
-          entries[idx]!.rejectOwnChildren = props.rejectOwnChildren ?? false;
-          entries[idx]!.collisionAlgorithm = props.collisionAlgorithm ?? 'center';
-        }
-        return entries;
-      });
+      updateSpatialEntryCapabilities(
+        spatialIndexSV, idx, draggable, receptive, monitoring,
+        props.rejectOwnChildren ?? false,
+        props.collisionAlgorithm ?? 'center',
+      );
       return;
     }
 
@@ -247,17 +270,11 @@ export const useSpatialIndex = () => {
     const monitoring = isMonitoring(props);
 
     const idx = entry.spatialIndex;
-    spatialIndexSV.modify((entries) => {
-      'worklet';
-      if (idx >= 0 && idx < entries.length && entries[idx]) {
-        entries[idx]!.receptive = receptive;
-        entries[idx]!.monitoring = monitoring;
-        entries[idx]!.draggable = draggable;
-        entries[idx]!.rejectOwnChildren = props.rejectOwnChildren ?? false;
-        entries[idx]!.collisionAlgorithm = props.collisionAlgorithm ?? 'center';
-      }
-      return entries;
-    });
+    updateSpatialEntryCapabilities(
+      spatialIndexSV, idx, draggable, receptive, monitoring,
+      props.rejectOwnChildren ?? false,
+      props.collisionAlgorithm ?? 'center',
+    );
   };
 
   /** Get a view registry entry by id */

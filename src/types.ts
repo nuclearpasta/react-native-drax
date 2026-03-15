@@ -455,6 +455,9 @@ export interface DraxContextValue {
    *  Checked by onSnapComplete to skip immediate hover clearing — the clearing is
    *  deferred to useSortableList's useLayoutEffect (after FlatList re-render). */
   hoverClearDeferredRef: { current: boolean };
+  /** Animated hover content dimensions for cross-container transfer.
+   *  x = width, y = height. {0,0} = no constraint (natural size). */
+  hoverDimsSV: SharedValue<Position>;
 
   // ── Registry methods (JS thread) ───────────────────────────────────
   registerView: (payload: RegisterViewPayload) => void;
@@ -719,6 +722,18 @@ export interface SortableItemPayload {
   originalIndex: number;
 }
 
+/** Type guard for SortableItemPayload */
+export function isSortableItemPayload(value: unknown): value is SortableItemPayload {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'index' in value &&
+    'originalIndex' in value &&
+    typeof value.index === 'number' &&
+    typeof value.originalIndex === 'number'
+  );
+}
+
 /** Event data for sortable drag start */
 export interface SortableDragStartEvent<T> {
   index: number;
@@ -840,8 +855,10 @@ export interface SortableListInternal<T> {
   dropTargetPositionSV: SharedValue<Position>;
   /** Whether the drop indicator is visible (animated) */
   dropTargetVisibleSV: SharedValue<boolean>;
-  /** Called by SortableItem's onSnapEnd to finalize the drag */
-  onItemSnapEnd?: () => void;
+  /** Called by SortableItem's onSnapEnd to finalize the drag.
+   *  Stored as a ref so the latest finalizeDrag is always called,
+   *  even if SortableItem has a stale _internal reference. */
+  onItemSnapEndRef: RefObject<(() => void) | undefined>;
   /** Current display index of the dragged item (updated during live reorder) */
   draggedDisplayIndexRef: RefObject<number | undefined>;
   /** Original display index where the drag started */
@@ -863,6 +880,7 @@ export interface SortableListInternal<T> {
   computeShiftsForOrder: (
     order: number[],
     skipIndex?: number,
+    phantom?: SortablePhantomSlot,
   ) => Record<string, Position> | undefined;
   /** Committed visual order from last completed drag (indices into rawData) */
   committedOrderRef: RefObject<number[]>;
@@ -872,6 +890,83 @@ export interface SortableListInternal<T> {
   cancelDrag: () => void;
   /** Compute target display index from a container-local content position */
   getSlotFromPosition: (contentPos: Position) => number;
+  /** Current phantom slot (cross-container drag) */
+  phantomRef: RefObject<SortablePhantomSlot | undefined>;
+  /** Reserve space for an incoming item at the given display index */
+  setPhantomSlot: (atDisplayIndex: number, width: number, height: number) => void;
+  /** Remove phantom slot, items shift back */
+  clearPhantomSlot: () => void;
+  /** Remove the dragged item from pending order — items close the gap */
+  ejectDraggedItem: () => void;
+  /** Re-add a previously ejected item into pending order at the given display index */
+  reinjectDraggedItem: (displayIndex: number, originalIndex: number) => void;
+  /** Get snap target position for the current phantom slot */
+  getPhantomSnapTarget: () => DraxSnapbackTarget;
+  /** Off-screen shifts for transferred items (persist across shift recalculations) */
+  ghostShiftsRef: RefObject<Record<string, Position>>;
+  /** Committed shifts from last completed drag (for cancel revert) */
+  committedShiftsRef: RefObject<Record<string, Position>>;
+}
+
+// ─── Board Types (Cross-Container Sortable) ──────────────────────────────
+
+/** Phantom slot for cross-container drag: virtual space in target column */
+export interface SortablePhantomSlot {
+  atDisplayIndex: number;
+  width: number;
+  height: number;
+}
+
+/** Event data for cross-container item transfer */
+export interface SortableBoardTransferEvent<TItem> {
+  item: TItem;
+  fromContainerId: string;
+  fromIndex: number;
+  toContainerId: string;
+  toIndex: number;
+}
+
+/** Options for useSortableBoard hook */
+export interface UseSortableBoardOptions<TItem> {
+  keyExtractor: (item: TItem) => string;
+  onTransfer: (event: SortableBoardTransferEvent<TItem>) => void;
+}
+
+/** Handle returned by useSortableBoard — pass to SortableBoardContainer */
+export interface SortableBoardHandle<TItem> {
+  _internal: SortableBoardInternal<TItem>;
+}
+
+/** Transfer state during cross-container drag */
+export interface SortableBoardTransferState {
+  sourceId: string;
+  sourceOriginalIndex: number;
+  itemKey: string;
+  itemDimensions: ViewDimensions;
+  dragStartIndex: number;
+  targetId?: string;
+  targetSlot?: number;
+}
+
+/** Internal state of the sortable board (not part of public API contract) */
+export interface SortableBoardInternal<TItem> {
+  keyExtractor: (item: TItem) => string;
+  onTransfer: (event: SortableBoardTransferEvent<TItem>) => void;
+  columns: Map<string, SortableListInternal<unknown>>;
+  registerColumn: (id: string, internal: SortableListInternal<unknown>) => void;
+  unregisterColumn: (id: string) => void;
+  transferState: RefObject<SortableBoardTransferState | undefined>;
+  /** Set by SortableBoardContainer — handles cross-container transfer finalization */
+  finalizeTransfer?: () => void;
+}
+
+/** Context value for board coordination.
+ *  Uses Pick to avoid generic variance issues — consumers only need
+ *  transferState and finalizeTransfer, not typed item fields. */
+export interface SortableBoardContextValue {
+  registerColumn: (id: string, internal: SortableListInternal<unknown>) => void;
+  unregisterColumn: (id: string) => void;
+  boardInternal: Pick<SortableBoardInternal<unknown>, 'transferState' | 'finalizeTransfer'>;
 }
 
 // ─── Utility Types ─────────────────────────────────────────────────────────

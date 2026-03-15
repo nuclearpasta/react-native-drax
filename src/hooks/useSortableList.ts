@@ -16,6 +16,7 @@ import type {
   SortableItemMeasurement,
   SortableListHandle,
   SortableListInternal,
+  SortablePhantomSlot,
   UseSortableListOptions,
 } from '../types';
 import { DraxSnapbackTargetPreset } from '../types';
@@ -106,6 +107,8 @@ export const useSortableList = <T,>(
   // ── Drag tracking (refs, no re-render) ────────────────────────────
   const draggedDisplayIndexRef = useRef<number | undefined>(undefined);
   const dragStartIndexRef = useRef<number | undefined>(undefined);
+  /** Stable ref for finalizeDrag callback — SortableContainer sets .current on every render */
+  const onItemSnapEndRef = useRef<(() => void) | undefined>(undefined);
   /**
    * Pending reorder during drag. Tracks the desired display order
    * as indices into rawData. Updated by moveDraggedItem (ref, not state).
@@ -123,6 +126,10 @@ export const useSortableList = <T,>(
   const committedShiftsRef = useRef<Record<string, Position>>({});
   /** Item keys in committed visual order — detects when parent data matches. */
   const committedKeyOrderRef = useRef<string[]>([]);
+  /** Cross-container: phantom slot for incoming items */
+  const phantomRef = useRef<SortablePhantomSlot | undefined>(undefined);
+  /** Cross-container: off-screen shifts for transferred items */
+  const ghostShiftsRef = useRef<Record<string, Position>>({});
 
   // ── Handle data changes ──────────────────────────────────────────────
   // With permanent shifts, FlatList data is NOT changed on reorder.
@@ -130,7 +137,6 @@ export const useSortableList = <T,>(
   // data change), check if it matches the committed visual order. If so,
   // clear shifts (items now at correct FlatList positions). Otherwise reset.
   useLayoutEffect(() => {
-    console.log('[useLayoutEffect rawData] fired, committedOrder.length:', committedOrderRef.current.length);
     // Always keep originalIndexes as identity — permanent shifts handle visual order.
     setOriginalIndexes((prev) => {
       const isIdentity = prev.length === rawData.length && prev.every((v, i) => v === i);
@@ -153,17 +159,16 @@ export const useSortableList = <T,>(
         // Parent accepted our reorder — stableData stays unchanged.
         // FlatList keeps rendering the original data order; permanent shifts
         // handle the visual reorder. No Fabric commit → no race → no blink.
-        console.log('[useLayoutEffect rawData] parent accepted reorder — no-op (stableData unchanged)');
         return;
       }
     }
 
     // External data change or initial mount — update stableData and reset.
-    console.log('[useLayoutEffect rawData] external change, updating stableData');
     setStableData(rawData);
     committedOrderRef.current = [];
     committedKeyOrderRef.current = [];
     committedShiftsRef.current = {};
+    ghostShiftsRef.current = {};
     // Invalidate shifts immediately, clear on next UI frame.
     shiftsValidSV.value = false;
     runOnUI(() => {
@@ -174,7 +179,6 @@ export const useSortableList = <T,>(
     })();
   }, [rawData, keyExtractor, shiftsRef, instantClearSV, shiftsValidSV]);
 
-  console.log('[useSortableList] stableData[0]:', stableData[0] && keyExtractor(stableData[0], 0));
 
   // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -187,15 +191,19 @@ export const useSortableList = <T,>(
     return itemMeasurements.current.get(key);
   };
 
-  /**
-   * Get the measurement for an item by its original data index.
-   * Returns {x, y, width, height} or undefined.
-   */
-  const getMeasForOrigIdx = (origIdx: number) => {
-    const item = stableData[origIdx];
-    if (item === undefined) return undefined;
-    const key = keyExtractor(item, origIdx);
-    return itemMeasurements.current.get(key);
+  // Alias for internal use
+  const getMeasForOrigIdx = getMeasurementByOriginalIndex;
+
+  // ── Shift application (merges ghost shifts for cross-container) ──
+
+  const applyShifts = (shifts: Record<string, Position> | undefined) => {
+    if (!shifts) return;
+    const ghosts = ghostShiftsRef.current;
+    if (Object.keys(ghosts).length > 0) {
+      shiftsRef.value = { ...shifts, ...ghosts };
+    } else {
+      shiftsRef.value = shifts;
+    }
   };
 
   // ── Shift computation ─────────────────────────────────────────────
@@ -241,13 +249,13 @@ export const useSortableList = <T,>(
   const computeShiftsForOrder = (
     order: number[],
     skipIndex?: number,
+    phantom?: SortablePhantomSlot,
   ): Record<string, Position> | undefined => {
     if (order.length === 0) return undefined;
 
     const measurements = order.map((origIdx) => getMeasForOrigIdx(origIdx));
     const missingShiftIdx = measurements.findIndex((m) => !m);
     if (missingShiftIdx >= 0) {
-      console.log('[computeShiftsForOrder] MISSING measurement at idx:', missingShiftIdx, 'origIdx:', order[missingShiftIdx]);
       return undefined;
     }
 
@@ -256,7 +264,6 @@ export const useSortableList = <T,>(
     const firstOrigIdx = originalIndexes[0];
     const startMeas = firstOrigIdx !== undefined ? getMeasForOrigIdx(firstOrigIdx) : undefined;
     if (!startMeas) {
-      console.log('[computeShiftsForOrder] MISSING startMeas for firstOrigIdx:', firstOrigIdx);
       return undefined;
     }
 
@@ -264,7 +271,13 @@ export const useSortableList = <T,>(
 
     if (numColumns <= 1) {
       let cursor = horizontal ? startMeas.x : startMeas.y;
+      let displaySlot = 0;
       for (let i = 0; i < order.length; i++) {
+        // Reserve space for phantom before laying out this item
+        if (phantom && displaySlot === phantom.atDisplayIndex) {
+          cursor += (horizontal ? phantom.width : phantom.height) + gap;
+          displaySlot++;
+        }
         const meas = measurements[i]!;
         if (horizontal) {
           targetPositions.set(i, { x: cursor, y: startMeas.y });
@@ -273,6 +286,7 @@ export const useSortableList = <T,>(
           targetPositions.set(i, { x: startMeas.x, y: cursor });
           cursor += meas.height + gap;
         }
+        displaySlot++;
       }
     } else {
       let cursorY = startMeas.y;
@@ -320,15 +334,15 @@ export const useSortableList = <T,>(
     const shifts = computeShiftsForOrder(
       pendingOrderRef.current,
       draggedDisplayIndexRef.current,
+      phantomRef.current ?? undefined,
     );
-    if (shifts) shiftsRef.value = shifts;
+    applyShifts(shifts);
   };
 
   // ── Reorder during drag (ref-only, no state) ─────────────────────
 
   const moveDraggedItem = (toDisplayIndex: number) => {
     const fromIdx = draggedDisplayIndexRef.current;
-    console.log('[moveDraggedItem] from:', fromIdx, 'to:', toDisplayIndex);
     if (fromIdx === undefined || fromIdx === toDisplayIndex) return;
 
     const prev = pendingOrderRef.current;
@@ -374,7 +388,6 @@ export const useSortableList = <T,>(
     // Store final shifts (all items including formerly-dragged) for cancel revert.
     const finalShifts = computeShiftsForOrder(pending);
     committedShiftsRef.current = finalShifts ?? {};
-    console.log('[commitVisualOrder] stored committed order, keys, and shifts');
   };
 
   // ── Drag state methods ─────────────────────────────────────────────
@@ -384,7 +397,7 @@ export const useSortableList = <T,>(
   };
 
   const resetDraggedItem = () => {
-    draggedItem.value = undefined;
+    draggedItem.value = -1;
     draggedDisplayIndexRef.current = undefined;
     dragStartIndexRef.current = undefined;
     pendingOrderRef.current = [];
@@ -414,6 +427,114 @@ export const useSortableList = <T,>(
     shiftsRef.value = committedShiftsRef.current;
   };
 
+  // ── Cross-container phantom slot methods ────────────────────────────
+
+  const setPhantomSlot = (atDisplayIndex: number, width: number, height: number) => {
+    if (pendingOrderRef.current.length === 0) {
+      const committed = committedOrderRef.current;
+      pendingOrderRef.current = committed.length > 0
+        ? [...committed]
+        : [...originalIndexes];
+    }
+    instantClearSV.value = false;
+    phantomRef.current = { atDisplayIndex, width, height };
+    const shifts = computeShiftsForOrder(
+      pendingOrderRef.current,
+      undefined,
+      phantomRef.current,
+    );
+    applyShifts(shifts);
+  };
+
+  const clearPhantomSlot = () => {
+    phantomRef.current = undefined;
+    instantClearSV.value = false;
+    const shifts = computeShiftsForOrder(pendingOrderRef.current);
+    if (shifts !== undefined) {
+      applyShifts(shifts);
+    } else {
+      shiftsRef.value = committedShiftsRef.current;
+    }
+    pendingOrderRef.current = [];
+  };
+
+  const ejectDraggedItem = () => {
+    const dragIdx = draggedDisplayIndexRef.current;
+    if (dragIdx === undefined) return;
+    const pending = pendingOrderRef.current;
+    if (pending.length === 0 || dragIdx >= pending.length) return;
+    const newOrder = [...pending];
+    newOrder.splice(dragIdx, 1);
+    pendingOrderRef.current = newOrder;
+    instantClearSV.value = false;
+    applyShifts(computeShiftsForOrder(newOrder));
+    draggedDisplayIndexRef.current = undefined;
+  };
+
+  const reinjectDraggedItem = (displayIndex: number, originalIndex: number) => {
+    const pending = pendingOrderRef.current;
+    if (pending.length === 0) {
+      const committed = committedOrderRef.current;
+      pendingOrderRef.current = committed.length > 0
+        ? [...committed]
+        : [...originalIndexes];
+    }
+    const newOrder = [...pendingOrderRef.current];
+    newOrder.splice(displayIndex, 0, originalIndex);
+    pendingOrderRef.current = newOrder;
+    draggedDisplayIndexRef.current = displayIndex;
+    instantClearSV.value = false;
+    computeShifts();
+  };
+
+  const getPhantomSnapTarget = (): DraxSnapbackTarget => {
+    const containerMeasurements = containerMeasurementsRef.current;
+    if (!containerMeasurements) return DraxSnapbackTargetPreset.Default;
+    const phantom = phantomRef.current;
+    if (!phantom) return DraxSnapbackTargetPreset.Default;
+    const pending = pendingOrderRef.current;
+
+    if (pending.length === 0) {
+      return {
+        x: containerMeasurements.x - scrollPosition.value.x,
+        y: containerMeasurements.y - scrollPosition.value.y,
+      };
+    }
+
+    const gap = computeItemGap();
+    const firstOrigIdx = originalIndexes[0];
+    const startMeas = firstOrigIdx !== undefined ? getMeasForOrigIdx(firstOrigIdx) : undefined;
+    if (!startMeas) return DraxSnapbackTargetPreset.Default;
+
+    let cursor = horizontal ? startMeas.x : startMeas.y;
+    let displaySlot = 0;
+
+    for (let i = 0; i < pending.length; i++) {
+      if (displaySlot === phantom.atDisplayIndex) {
+        const phantomPos = horizontal
+          ? { x: cursor, y: startMeas.y }
+          : { x: startMeas.x, y: cursor };
+        return {
+          x: containerMeasurements.x + phantomPos.x - scrollPosition.value.x,
+          y: containerMeasurements.y + phantomPos.y - scrollPosition.value.y,
+        };
+      }
+      const meas = getMeasForOrigIdx(pending[i]!);
+      if (!meas) return DraxSnapbackTargetPreset.Default;
+      cursor += (horizontal ? meas.width : meas.height) + gap;
+      displaySlot++;
+    }
+
+    // Phantom at end
+    const phantomPos = horizontal
+      ? { x: cursor, y: startMeas.y }
+      : { x: startMeas.x, y: cursor };
+    return {
+      x: containerMeasurements.x + phantomPos.x - scrollPosition.value.x,
+      y: containerMeasurements.y + phantomPos.y - scrollPosition.value.y,
+    };
+  };
+
   /**
    * Compute the display slot (index) from a container-local content position.
    * Used when dragging over empty space (no receiver hit) to determine
@@ -432,7 +553,6 @@ export const useSortableList = <T,>(
     const measurements = originalIndexes.map((origIdx) => getMeasForOrigIdx(origIdx));
     const missingIdx = measurements.findIndex((m) => !m);
     if (missingIdx >= 0) {
-      console.log('[getSlotFromPosition] MISSING measurement at idx:', missingIdx, 'origIdx:', originalIndexes[missingIdx], 'returning:', draggedDisplayIndexRef.current ?? 0);
       return draggedDisplayIndexRef.current ?? 0;
     }
 
@@ -624,6 +744,7 @@ export const useSortableList = <T,>(
     getMeasurementByOriginalIndex,
     dropTargetPositionSV,
     dropTargetVisibleSV,
+    onItemSnapEndRef,
     draggedDisplayIndexRef,
     dragStartIndexRef,
     shiftsRef,
@@ -636,6 +757,14 @@ export const useSortableList = <T,>(
     pendingOrderRef,
     cancelDrag,
     getSlotFromPosition,
+    phantomRef,
+    setPhantomSlot,
+    clearPhantomSlot,
+    ejectDraggedItem,
+    reinjectDraggedItem,
+    getPhantomSnapTarget,
+    ghostShiftsRef,
+    committedShiftsRef,
   };
 
   // Stable index-based keyExtractor prevents FlatList from unmounting cells

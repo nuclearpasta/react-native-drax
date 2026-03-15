@@ -1,5 +1,5 @@
 import type { ReactNode, RefObject } from 'react';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
@@ -8,6 +8,7 @@ import { runOnJS, runOnUI } from 'react-native-worklets';
 import { DraxView } from './DraxView';
 import { useDraxContext } from './hooks/useDraxContext';
 import { defaultAutoScrollIntervalLength, ITEM_SHIFT_ANIMATION_DURATION } from './params';
+import { useSortableBoardContext } from './SortableBoardContext';
 import type {
   DropIndicatorProps,
   Position,
@@ -17,11 +18,11 @@ import type {
   DraxMonitorEventData,
   DraxProtocolDragEndResponse,
   DraxViewProps,
-  SortableItemPayload,
   SortableListHandle,
 } from './types';
 import {
   AutoScrollDirection,
+  isSortableItemPayload,
   isWithCancelledFlag,
 } from './types';
 
@@ -49,17 +50,6 @@ export interface SortableContainerProps {
   children: ReactNode;
   draxViewProps?: Partial<DraxViewProps>;
   renderDropIndicator?: (props: DropIndicatorProps) => ReactNode;
-}
-
-function isSortableItemPayload(value: unknown): value is SortableItemPayload {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'index' in value &&
-    'originalIndex' in value &&
-    typeof value.index === 'number' &&
-    typeof value.originalIndex === 'number'
-  );
 }
 
 export const SortableContainer = ({
@@ -116,12 +106,25 @@ export const SortableContainer = ({
     setHoverContent,
   } = useDraxContext();
 
+  const boardContext = useSortableBoardContext();
+
+  useEffect(() => {
+    if (!boardContext) return;
+    boardContext.registerColumn(id, sortable._internal);
+    return () => boardContext.unregisterColumn(id);
+  }, [boardContext, id, sortable._internal]);
+
   const itemCount = rawData.length;
   const scrollStateRef = useRef(AutoScrollDirection.None);
   const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(
     undefined
   );
   const draggedToIndex = useRef<number | undefined>(undefined);
+  /** JS-thread guard: true while a drag is active in this container.
+   *  Using a ref instead of draggedItem SharedValue because SharedValue
+   *  writes from onSnapComplete→finalizeDrag callback chain silently fail
+   *  (Reanimated 4 bug with runOnJS-originated SharedValue writes). */
+  const isDraggingRef = useRef(false);
   const jitterExceededRef = useRef(false);
   // Track last receiver that triggered a reorder to prevent oscillation.
   // After moveDraggedItem inserts at position R, the receiver shifts to R-1.
@@ -132,10 +135,13 @@ export const SortableContainer = ({
   // ── Finalize drag (called after snap animation completes) ──────────
 
   const finalizeDrag = () => {
-    console.log('[finalizeDrag] called');
+    isDraggingRef.current = false;
+    if (boardContext?.boardInternal.transferState.current?.targetId) {
+      boardContext.boardInternal.finalizeTransfer?.();
+      return;
+    }
     const startIdx = dragStartIndexRef.current;
     const endIdx = draggedDisplayIndexRef.current;
-    console.log('[finalizeDrag] startIdx:', startIdx, 'endIdx:', endIdx);
 
     const pending = pendingOrderRef.current;
     const didReorder = startIdx !== undefined && endIdx !== undefined
@@ -149,15 +155,6 @@ export const SortableContainer = ({
       const fromOrigIdx = pending[startIdx];
       const toOrigIdx = pending[endIdx];
 
-      // ── PERMANENT SHIFTS: no FlatList data change, no blink ──
-      // Compute final shifts for ALL items (including the formerly-dragged
-      // item) so they stay at their visual positions permanently.
-      const finalShifts = computeShiftsForOrder(pending) ?? {};
-
-      // Store the committed visual order BEFORE clearing refs.
-      commitVisualOrder();
-
-      // Build the reorder event before clearing refs.
       const reorderEvent = {
         data: finalData,
         fromIndex: startIdx,
@@ -167,44 +164,95 @@ export const SortableContainer = ({
         isExternalDrag: false,
       };
 
-      // Clear JS-thread refs BEFORE the runOnUI block.
-      draggedDisplayIndexRef.current = undefined;
-      dragStartIndexRef.current = undefined;
-      pendingOrderRef.current = [];
+      if (boardContext) {
+        // ── BOARD (kanban): hover-bridge + data commit ──
+        // Clear refs first (no commitVisualOrder — we want RESET path).
+        draggedDisplayIndexRef.current = undefined;
+        dragStartIndexRef.current = undefined;
+        pendingOrderRef.current = [];
 
-      // Atomically on the UI thread:
-      // 1. Apply permanent shifts with duration 0 (instantClear)
-      // 2. Make dragged item visible (clear draggedItem)
-      // 3. Dismiss hover overlay
-      // 4. THEN fire onReorder via runOnJS — this ensures the parent's
-      //    setData (which triggers useLayoutEffect → shift clearing)
-      //    only fires AFTER permanent shifts are established on the UI
-      //    thread. Without this, there's a race where useLayoutEffect
-      //    clears shifts before the runOnUI worklet executes, causing
-      //    items to flash at their old FlatList positions for 1 frame.
-      hoverClearDeferredRef.current = true;
-      console.log('[finalizeDrag] setting permanent shifts + clearing hover via runOnUI');
-      runOnUI((_shifts: Record<string, Position>) => {
-        'worklet';
-        instantClearSV.value = true;
-        shiftsValidSV.value = true;
-        shiftsRef.value = _shifts;
-        draggedItem.value = undefined;
-        hoverReadySV.value = false;
-        dragPhaseSV.value = 'idle';
-        draggedIdSV.value = '';
-        hoverPositionSV.value = { x: 0, y: 0 };
-        runOnJS(setHoverContent)(null);
-      })(finalShifts);
+        hoverClearDeferredRef.current = true;
+        const finalShifts = computeShiftsForOrder(pending) ?? {};
+        runOnUI((
+          _shifts: Record<string, Position>,
+          _instantClearSV: typeof instantClearSV,
+          _shiftsValidSV: typeof shiftsValidSV,
+          _shiftsRef: typeof shiftsRef,
+          _draggedItem: typeof draggedItem,
+        ) => {
+          'worklet';
+          _instantClearSV.value = true;
+          _shiftsValidSV.value = true;
+          _shiftsRef.value = _shifts;
+          _draggedItem.value = -1;
+        })(finalShifts, instantClearSV, shiftsValidSV, shiftsRef, draggedItem);
 
-      // Defer onReorder to AFTER the runOnUI worklet has executed.
-      // runOnUI schedules on the next UI frame. requestAnimationFrame
-      // fires after the current JS frame, giving the UI thread time
-      // to process the worklet before the parent's setData triggers
-      // a React re-render and useLayoutEffect.
-      requestAnimationFrame(() => {
-        onReorder(reorderEvent);
-      });
+        // Fire onReorder → parent setState → useLayoutEffect RESET
+        // (NOT MATCH — see useSortableList change).
+        // Hover covers the transition. Clear hover after settle.
+        requestAnimationFrame(() => {
+          onReorder(reorderEvent);
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              runOnUI((
+                _hoverReadySV: typeof hoverReadySV,
+                _dragPhaseSV: typeof dragPhaseSV,
+                _draggedIdSV: typeof draggedIdSV,
+                _hoverPositionSV: typeof hoverPositionSV,
+                _setHoverContent: typeof setHoverContent,
+              ) => {
+                'worklet';
+                _hoverReadySV.value = false;
+                _dragPhaseSV.value = 'idle';
+                _draggedIdSV.value = '';
+                _hoverPositionSV.value = { x: 0, y: 0 };
+                runOnJS(_setHoverContent)(null);
+              })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV, setHoverContent);
+            });
+          });
+        });
+      } else {
+        // ── LIST/GRID (no board): permanent shifts ──
+        // Blink-free. Touch targeting works because items don't
+        // cross cell boundaries from cross-container transfers.
+        const finalShifts = computeShiftsForOrder(pending) ?? {};
+        commitVisualOrder();
+
+        // Clear refs AFTER commitVisualOrder (it reads pendingOrderRef).
+        draggedDisplayIndexRef.current = undefined;
+        dragStartIndexRef.current = undefined;
+        pendingOrderRef.current = [];
+        resetDraggedItem();
+
+        hoverClearDeferredRef.current = true;
+        runOnUI((
+          _shifts: Record<string, Position>,
+          _instantClearSV: typeof instantClearSV,
+          _shiftsValidSV: typeof shiftsValidSV,
+          _shiftsRef: typeof shiftsRef,
+          _draggedItem: typeof draggedItem,
+          _hoverReadySV: typeof hoverReadySV,
+          _dragPhaseSV: typeof dragPhaseSV,
+          _draggedIdSV: typeof draggedIdSV,
+          _hoverPositionSV: typeof hoverPositionSV,
+          _setHoverContent: typeof setHoverContent,
+        ) => {
+          'worklet';
+          _instantClearSV.value = true;
+          _shiftsValidSV.value = true;
+          _shiftsRef.value = _shifts;
+          _draggedItem.value = -1;
+          _hoverReadySV.value = false;
+          _dragPhaseSV.value = 'idle';
+          _draggedIdSV.value = '';
+          _hoverPositionSV.value = { x: 0, y: 0 };
+          runOnJS(_setHoverContent)(null);
+        })(finalShifts, instantClearSV, shiftsValidSV, shiftsRef, draggedItem, hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV, setHoverContent);
+
+        requestAnimationFrame(() => {
+          onReorder(reorderEvent);
+        });
+      }
     } else {
       // No reorder — cancel drag: revert to committed shifts + make item visible.
       cancelDrag();
@@ -213,8 +261,10 @@ export const SortableContainer = ({
     }
   };
 
-  // Register finalizeDrag so SortableItem can call it from onSnapEnd
-  sortable._internal.onItemSnapEnd = finalizeDrag;
+  // Register finalizeDrag via the stable ref so SortableItem always
+  // calls the latest version, even if it has a stale _internal reference
+  // (e.g., after MATCH path skips FlatList re-render).
+  sortable._internal.onItemSnapEndRef.current = finalizeDrag;
 
   // ── Auto-scroll ─────────────────────────────────────────────────────
 
@@ -342,7 +392,6 @@ export const SortableContainer = ({
       // Shifts stay active during snap animation — items remain at their
       // shifted positions. finalizeDrag will set permanent shifts after snap.
       const snapbackTarget = getSnapbackTarget();
-      console.log('[handleInternalDragEnd] snapbackTarget:', JSON.stringify(snapbackTarget));
       return snapbackTarget;
     }
 
@@ -372,15 +421,15 @@ export const SortableContainer = ({
     lastMoveDirectionRef.current = 0;
 
     const { dragged } = eventData;
-    console.log('[onMonitorDragStart] dragged.parentId:', dragged.parentId, 'id:', id, 'payload:', JSON.stringify(dragged.payload), 'draggedItem.value:', draggedItem.value);
 
-    if (typeof draggedItem.value === 'number') return;
+    if (isDraggingRef.current) return;
 
     if (
       dragged.parentId === id &&
       isSortableItemPayload(dragged.payload)
     ) {
       const { index, originalIndex } = dragged.payload;
+      isDraggingRef.current = true;
       setDraggedItem(originalIndex);
       // Initialize pending order BEFORE setting display index.
       // initPendingOrder copies the committed visual order into pendingOrderRef.
@@ -397,7 +446,6 @@ export const SortableContainer = ({
       }
       draggedDisplayIndexRef.current = displayIndex;
       dragStartIndexRef.current = displayIndex;
-      console.log('[onMonitorDragStart] flatListIdx:', index, 'originalIdx:', originalIndex, 'displayIdx:', displayIndex, 'committed:', JSON.stringify(committed), 'pending:', JSON.stringify(pendingOrderRef.current));
       // Item visibility is controlled by hoverReadySV from DraxContext.
       onDragStartCallback?.({
         index: displayIndex,
@@ -431,7 +479,7 @@ export const SortableContainer = ({
       ? undefined
       : rawData[draggedPayload?.originalIndex ?? fromIndex];
 
-    if (typeof draggedItem.value !== 'number') {
+    if (typeof draggedItem.value !== 'number' || draggedItem.value < 0) {
       setDraggedItem(itemCount);
     }
 
@@ -446,7 +494,6 @@ export const SortableContainer = ({
 
     // Track drag position changes (log only on slot change to avoid per-frame noise)
     if (targetSlot !== draggedToIndex.current) {
-      console.log('[onMonitorDragOver] slot changed:', draggedToIndex.current, '→', targetSlot, 'contentPos:', JSON.stringify(contentPos), 'monitorOffset:', JSON.stringify(monitorOffset), 'scroll:', JSON.stringify(scrollPosition.value));
       onDragPositionChangeCallback?.({
         toIndex: targetSlot,
         index: fromIndex,
@@ -501,7 +548,6 @@ export const SortableContainer = ({
         }
         moveDraggedItem(targetSlot);
       } else {
-        console.log('[anti-oscillation] BLOCKED slot:', targetSlot, 'dir:', direction, 'lastDir:', lastMoveDirectionRef.current);
       }
     }
 
@@ -530,7 +576,10 @@ export const SortableContainer = ({
   };
 
   const onMonitorDragEnd = (eventData: DraxMonitorEndEventData) => {
-    console.log('[onMonitorDragEnd] fired');
+    if (boardContext?.boardInternal.transferState.current?.targetId) {
+      draxViewProps?.onMonitorDragEnd?.(eventData);
+      return undefined;
+    }
     const defaultSnapbackTarget = handleInternalDragEnd(eventData, true);
     const providedSnapTarget =
       draxViewProps?.onMonitorDragEnd?.(eventData);
@@ -539,7 +588,10 @@ export const SortableContainer = ({
   };
 
   const onMonitorDragDrop = (eventData: DraxMonitorDragDropEventData) => {
-    console.log('[onMonitorDragDrop] fired');
+    if (boardContext?.boardInternal.transferState.current?.targetId) {
+      draxViewProps?.onMonitorDragDrop?.(eventData);
+      return undefined;
+    }
     const defaultSnapbackTarget = handleInternalDragEnd(eventData, true);
     const providedSnapTarget =
       draxViewProps?.onMonitorDragDrop?.(eventData);

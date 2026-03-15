@@ -4,7 +4,6 @@ import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { FlatList, ScrollView } from 'react-native';
 import {
   runOnUI,
-  useAnimatedRef,
   useSharedValue,
 } from 'react-native-reanimated';
 
@@ -30,7 +29,7 @@ export const useDraxScrollHandler = <T extends ScrollableComponents>({
   externalRef,
   doScroll,
 }: DraxScrollHandlerArgs<T>) => {
-  const scrollRef = useAnimatedRef<T>();
+  const scrollRef = useRef<T>(null);
   const id = useDraxId(idProp);
   const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(
     undefined
@@ -54,18 +53,18 @@ export const useDraxScrollHandler = <T extends ScrollableComponents>({
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     onScrollProp?.(event);
 
-    runOnUI((_event: NativeScrollEvent) => {
-      scrollPosition.value = {
+    runOnUI((_scrollPos: typeof scrollPosition, _event: NativeScrollEvent) => {
+      'worklet';
+      _scrollPos.value = {
         x: _event.contentOffset.x,
         y: _event.contentOffset.y,
       };
-    })(event.nativeEvent);
+    })(scrollPosition, event.nativeEvent);
   };
 
   const setScrollRefs = (instance: T | null) => {
     if (instance) {
-      // @ts-expect-error — generic T cannot resolve AnimatedRefCurrent<T> at the type level
-      scrollRef(instance);
+      scrollRef.current = instance;
       if (externalRef) {
         if (typeof externalRef === 'function') {
           externalRef(instance);
