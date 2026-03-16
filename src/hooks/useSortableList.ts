@@ -95,6 +95,10 @@ export const useSortableList = <T,>(
    */
   const [stableData, setStableData] = useState(rawData);
 
+  // Always-current rawData for deferred flushVisualOrder
+  const rawDataRef = useRef(rawData);
+  rawDataRef.current = rawData;
+
   const itemMeasurements = useRef<Map<string, SortableItemMeasurement>>(
     new Map()
   );
@@ -107,8 +111,6 @@ export const useSortableList = <T,>(
   // ── Drag tracking (refs, no re-render) ────────────────────────────
   const draggedDisplayIndexRef = useRef<number | undefined>(undefined);
   const dragStartIndexRef = useRef<number | undefined>(undefined);
-  /** Stable ref for finalizeDrag callback — SortableContainer sets .current on every render */
-  const onItemSnapEndRef = useRef<(() => void) | undefined>(undefined);
   /**
    * Pending reorder during drag. Tracks the desired display order
    * as indices into rawData. Updated by moveDraggedItem (ref, not state).
@@ -130,6 +132,10 @@ export const useSortableList = <T,>(
   const phantomRef = useRef<SortablePhantomSlot | undefined>(undefined);
   /** Cross-container: off-screen shifts for transferred items */
   const ghostShiftsRef = useRef<Record<string, Position>>({});
+  /** When true, the next useLayoutEffect RESET skips the sync shiftsValidSV=false
+   *  write. Set by board-path finalizeDrag which keeps the hover visible to cover
+   *  the transition — the sync write would prematurely zero shifts on other items. */
+  const skipShiftsInvalidationRef = useRef(false);
 
   // ── Handle data changes ──────────────────────────────────────────────
   // With permanent shifts, FlatList data is NOT changed on reorder.
@@ -169,14 +175,25 @@ export const useSortableList = <T,>(
     committedKeyOrderRef.current = [];
     committedShiftsRef.current = {};
     ghostShiftsRef.current = {};
-    // Invalidate shifts immediately, clear on next UI frame.
-    shiftsValidSV.value = false;
-    runOnUI(() => {
-      'worklet';
+    if (skipShiftsInvalidationRef.current) {
+      // Board-path reorder: hover covers the transition.
+      // Clear shifts via direct JS-thread write (not runOnUI which processes
+      // before Fabric commits). Both the SharedValue update and the Fabric
+      // commit from setStableData are scheduled from the same JS frame.
+      skipShiftsInvalidationRef.current = false;
       instantClearSV.value = true;
       shiftsRef.value = {};
-      shiftsValidSV.value = true;
-    })();
+    } else {
+      // External data change: invalidate shifts immediately so the animated
+      // style reads zero shifts in the same frame as the Fabric commit.
+      shiftsValidSV.value = false;
+      runOnUI(() => {
+        'worklet';
+        instantClearSV.value = true;
+        shiftsRef.value = {};
+        shiftsValidSV.value = true;
+      })();
+    }
   }, [rawData, keyExtractor, shiftsRef, instantClearSV, shiftsValidSV]);
 
 
@@ -389,6 +406,44 @@ export const useSortableList = <T,>(
     const finalShifts = computeShiftsForOrder(pending);
     committedShiftsRef.current = finalShifts ?? {};
   };
+
+  /**
+   * Flush permanent shifts: update stableData to match rawData and clear
+   * shifts. Called after a delay so both the Fabric commit and the shift
+   * clearing are processed on the same UI frame — no visual blink because
+   * items are already at the correct visual positions via permanent shifts.
+   * Restores touch hit testing (FlatList cells at correct Yoga positions).
+   */
+  /** Flag: next stableData change should clear shifts via runOnUI */
+  const pendingShiftFlushRef = useRef(false);
+
+  const flushVisualOrder = () => {
+    const currentRawData = rawDataRef.current;
+    committedOrderRef.current = [];
+    committedKeyOrderRef.current = [];
+    committedShiftsRef.current = {};
+    pendingShiftFlushRef.current = true;
+    setStableData(currentRawData);
+    // Shift clearing happens in the useLayoutEffect below — NOT here.
+    // This ensures it's queued during the same React commit as the
+    // Fabric update, so both land on the same UI frame.
+  };
+
+  // When flushVisualOrder updates stableData, clear shifts during the
+  // same commit phase. The runOnUI worklet and the Fabric commit are
+  // both queued from this useLayoutEffect — processed on the same
+  // UI frame, so items transition from permanent-shift positions to
+  // new FlatList positions atomically. No blink.
+  useLayoutEffect(() => {
+    if (pendingShiftFlushRef.current) {
+      pendingShiftFlushRef.current = false;
+      runOnUI(() => {
+        'worklet';
+        instantClearSV.value = true;
+        shiftsRef.value = {};
+      })();
+    }
+  }, [stableData, instantClearSV, shiftsRef]);
 
   // ── Drag state methods ─────────────────────────────────────────────
 
@@ -744,7 +799,7 @@ export const useSortableList = <T,>(
     getMeasurementByOriginalIndex,
     dropTargetPositionSV,
     dropTargetVisibleSV,
-    onItemSnapEndRef,
+    onItemSnapEnd: undefined as (() => void) | undefined,
     draggedDisplayIndexRef,
     dragStartIndexRef,
     shiftsRef,
@@ -752,6 +807,7 @@ export const useSortableList = <T,>(
     shiftsValidSV,
     initPendingOrder,
     commitVisualOrder,
+    flushVisualOrder,
     computeShiftsForOrder,
     committedOrderRef,
     pendingOrderRef,
@@ -765,6 +821,7 @@ export const useSortableList = <T,>(
     getPhantomSnapTarget,
     ghostShiftsRef,
     committedShiftsRef,
+    skipShiftsInvalidationRef,
   };
 
   // Stable index-based keyExtractor prevents FlatList from unmounting cells

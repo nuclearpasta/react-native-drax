@@ -120,11 +120,6 @@ export const SortableContainer = ({
     undefined
   );
   const draggedToIndex = useRef<number | undefined>(undefined);
-  /** JS-thread guard: true while a drag is active in this container.
-   *  Using a ref instead of draggedItem SharedValue because SharedValue
-   *  writes from onSnapComplete→finalizeDrag callback chain silently fail
-   *  (Reanimated 4 bug with runOnJS-originated SharedValue writes). */
-  const isDraggingRef = useRef(false);
   const jitterExceededRef = useRef(false);
   // Track last receiver that triggered a reorder to prevent oscillation.
   // After moveDraggedItem inserts at position R, the receiver shifts to R-1.
@@ -135,7 +130,6 @@ export const SortableContainer = ({
   // ── Finalize drag (called after snap animation completes) ──────────
 
   const finalizeDrag = () => {
-    isDraggingRef.current = false;
     if (boardContext?.boardInternal.transferState.current?.targetId) {
       boardContext.boardInternal.finalizeTransfer?.();
       return;
@@ -164,93 +158,39 @@ export const SortableContainer = ({
         isExternalDrag: false,
       };
 
-      if (boardContext) {
-        // ── BOARD (kanban): hover-bridge + data commit ──
-        // Clear refs first (no commitVisualOrder — we want RESET path).
-        draggedDisplayIndexRef.current = undefined;
-        dragStartIndexRef.current = undefined;
-        pendingOrderRef.current = [];
-
-        hoverClearDeferredRef.current = true;
-        const finalShifts = computeShiftsForOrder(pending) ?? {};
-        runOnUI((
-          _shifts: Record<string, Position>,
-          _instantClearSV: typeof instantClearSV,
-          _shiftsValidSV: typeof shiftsValidSV,
-          _shiftsRef: typeof shiftsRef,
-          _draggedItem: typeof draggedItem,
-        ) => {
-          'worklet';
-          _instantClearSV.value = true;
-          _shiftsValidSV.value = true;
-          _shiftsRef.value = _shifts;
-          _draggedItem.value = -1;
-        })(finalShifts, instantClearSV, shiftsValidSV, shiftsRef, draggedItem);
-
-        // Fire onReorder → parent setState → useLayoutEffect RESET
-        // (NOT MATCH — see useSortableList change).
-        // Hover covers the transition. Clear hover after settle.
-        requestAnimationFrame(() => {
-          onReorder(reorderEvent);
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              runOnUI((
-                _hoverReadySV: typeof hoverReadySV,
-                _dragPhaseSV: typeof dragPhaseSV,
-                _draggedIdSV: typeof draggedIdSV,
-                _hoverPositionSV: typeof hoverPositionSV,
-                _setHoverContent: typeof setHoverContent,
-              ) => {
-                'worklet';
-                _hoverReadySV.value = false;
-                _dragPhaseSV.value = 'idle';
-                _draggedIdSV.value = '';
-                _hoverPositionSV.value = { x: 0, y: 0 };
-                runOnJS(_setHoverContent)(null);
-              })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV, setHoverContent);
-            });
-          });
-        });
-      } else {
-        // ── LIST/GRID (no board): permanent shifts ──
-        // Blink-free. Touch targeting works because items don't
-        // cross cell boundaries from cross-container transfers.
+      {
+        // ── PERMANENT SHIFTS: blink-free for all contexts ──
         const finalShifts = computeShiftsForOrder(pending) ?? {};
         commitVisualOrder();
 
-        // Clear refs AFTER commitVisualOrder (it reads pendingOrderRef).
+        // Clear JS-thread refs BEFORE the runOnUI block.
         draggedDisplayIndexRef.current = undefined;
         dragStartIndexRef.current = undefined;
         pendingOrderRef.current = [];
-        resetDraggedItem();
 
         hoverClearDeferredRef.current = true;
-        runOnUI((
-          _shifts: Record<string, Position>,
-          _instantClearSV: typeof instantClearSV,
-          _shiftsValidSV: typeof shiftsValidSV,
-          _shiftsRef: typeof shiftsRef,
-          _draggedItem: typeof draggedItem,
-          _hoverReadySV: typeof hoverReadySV,
-          _dragPhaseSV: typeof dragPhaseSV,
-          _draggedIdSV: typeof draggedIdSV,
-          _hoverPositionSV: typeof hoverPositionSV,
-          _setHoverContent: typeof setHoverContent,
-        ) => {
+        runOnUI((_shifts: Record<string, Position>) => {
           'worklet';
-          _instantClearSV.value = true;
-          _shiftsValidSV.value = true;
-          _shiftsRef.value = _shifts;
-          _draggedItem.value = -1;
-          _hoverReadySV.value = false;
-          _dragPhaseSV.value = 'idle';
-          _draggedIdSV.value = '';
-          _hoverPositionSV.value = { x: 0, y: 0 };
-          runOnJS(_setHoverContent)(null);
-        })(finalShifts, instantClearSV, shiftsValidSV, shiftsRef, draggedItem, hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV, setHoverContent);
+          instantClearSV.value = true;
+          shiftsValidSV.value = true;
+          shiftsRef.value = _shifts;
+          draggedItem.value = -1;
+          hoverReadySV.value = false;
+          dragPhaseSV.value = 'idle';
+          draggedIdSV.value = '';
+          hoverPositionSV.value = { x: 0, y: 0 };
+          runOnJS(setHoverContent)(null);
+        })(finalShifts);
 
         requestAnimationFrame(() => {
           onReorder(reorderEvent);
+          // Board only: flush stableData after a delay to restore touch
+          // hit testing. List/grid don't need this (permanent shifts work).
+          if (boardContext) {
+            setTimeout(() => {
+              sortable._internal.flushVisualOrder();
+            }, 300);
+          }
         });
       }
     } else {
@@ -264,7 +204,7 @@ export const SortableContainer = ({
   // Register finalizeDrag via the stable ref so SortableItem always
   // calls the latest version, even if it has a stale _internal reference
   // (e.g., after MATCH path skips FlatList re-render).
-  sortable._internal.onItemSnapEndRef.current = finalizeDrag;
+  sortable._internal.onItemSnapEnd = finalizeDrag;
 
   // ── Auto-scroll ─────────────────────────────────────────────────────
 
@@ -422,14 +362,16 @@ export const SortableContainer = ({
 
     const { dragged } = eventData;
 
-    if (isDraggingRef.current) return;
+    // No guard on draggedItem.value — Reanimated 4 doesn't reliably sync
+    // SharedValue writes from runOnUI worklets, so the value may be stale.
+    // onMonitorDragStart only fires at the start of a new gesture, so
+    // setDraggedItem + initPendingOrder safely overwrite any stale state.
 
     if (
       dragged.parentId === id &&
       isSortableItemPayload(dragged.payload)
     ) {
       const { index, originalIndex } = dragged.payload;
-      isDraggingRef.current = true;
       setDraggedItem(originalIndex);
       // Initialize pending order BEFORE setting display index.
       // initPendingOrder copies the committed visual order into pendingOrderRef.

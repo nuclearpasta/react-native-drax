@@ -81,7 +81,7 @@ const SortableItemInner = ({
     rawData,
     originalIndexes,
     scrollPosition,
-    onItemSnapEndRef,
+    onItemSnapEnd,
   } = sortable._internal;
 
   // Get hoverReadySV and draggedIdSV from DraxContext (provider-level SharedValues)
@@ -134,7 +134,7 @@ const SortableItemInner = ({
           draxViewProps.onDragDrop?.(event);
         }}
         onSnapEnd={(snapData) => {
-          onItemSnapEndRef.current?.();
+          onItemSnapEnd?.();
           draxViewProps.onSnapEnd?.(snapData);
         }}
         onMeasure={(measurements) => {

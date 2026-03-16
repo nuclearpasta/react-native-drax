@@ -858,7 +858,7 @@ export interface SortableListInternal<T> {
   /** Called by SortableItem's onSnapEnd to finalize the drag.
    *  Stored as a ref so the latest finalizeDrag is always called,
    *  even if SortableItem has a stale _internal reference. */
-  onItemSnapEndRef: RefObject<(() => void) | undefined>;
+  onItemSnapEnd?: () => void;
   /** Current display index of the dragged item (updated during live reorder) */
   draggedDisplayIndexRef: RefObject<number | undefined>;
   /** Original display index where the drag started */
@@ -876,6 +876,9 @@ export interface SortableListInternal<T> {
   initPendingOrder: () => void;
   /** Store committed visual order after drag (permanent shifts, no data change) */
   commitVisualOrder: () => void;
+  /** Flush permanent shifts: sync stableData to rawData and clear shifts.
+   *  Restores touch hit testing after permanent shifts. */
+  flushVisualOrder: () => void;
   /** Compute shifts for a given order. Returns undefined if measurements missing. */
   computeShiftsForOrder: (
     order: number[],
@@ -906,6 +909,8 @@ export interface SortableListInternal<T> {
   ghostShiftsRef: RefObject<Record<string, Position>>;
   /** Committed shifts from last completed drag (for cancel revert) */
   committedShiftsRef: RefObject<Record<string, Position>>;
+  /** When true, the next useLayoutEffect RESET skips sync shiftsValidSV=false */
+  skipShiftsInvalidationRef: RefObject<boolean>;
 }
 
 // ─── Board Types (Cross-Container Sortable) ──────────────────────────────
