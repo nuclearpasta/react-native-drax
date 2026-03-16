@@ -32,12 +32,9 @@ export function DraxHandle({ children, style }: DraxHandleProps) {
   const ctx = use(DraxHandleContext);
 
   if (!ctx) {
-    if (__DEV__) {
-      console.warn(
-        'DraxHandle must be a descendant of a DraxView with dragHandle={true}. ' +
-        'The handle will not function.'
-      );
-    }
+    // No context = either misconfigured, or rendering inside hover overlay
+    // (which clones children outside the DraxHandleContext tree).
+    // Render as a plain view — the gesture isn't needed in hover.
     return (
       <Reanimated.View style={style}>
         {children}
