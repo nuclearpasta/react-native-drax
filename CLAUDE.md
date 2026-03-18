@@ -13,14 +13,38 @@ Drag-and-drop framework for React Native. Branch `reanimated-v4` is a major rewr
 
 ## Sortable Architecture
 
-- `useSortableList` hook — list-agnostic reorder state
+- `useSortableList` hook — list-agnostic reorder state (works with FlatList, FlashList, LegendList, etc.)
 - `SortableContainer` — monitoring wrapper using `DraxView isParent`, supports `renderDropIndicator` prop
-- `SortableItem` — per-item wrapper with shift animation
-- `DraxSortableList` — convenience FlatList wrapper
+- `SortableItem` — per-item wrapper with shift animation + accessibility (auto a11y labels, reduced motion)
+- `DraxSortableList` — convenience FlatList wrapper (keyExtractor optional, tries item.id/key)
+- `SortableGrid` — convenience grid component (requires numColumns)
 - Map-based measurements (keyed by item key) instead of array-indexed
 - Supports insert + swap reorder strategies
 - Drop indicator support: `SortableContainer` tracks target position via SharedValues, renders indicator at insertion point
 - Old `DraxList`/`DraxListItem` are deprecated
+- **Data ownership**: Library commits reorders internally via `commitReorder`. `onReorder` is a notification — parent stores data but library already committed it. When parent echoes data back, useLayoutEffect detects the match and skips (no double-render).
+
+### Animation Customization
+
+- `animationConfig` prop on `useSortableList` / `DraxSortableList` / `SortableGrid`
+- Presets: `'default'` (200ms timing), `'spring'` (spring physics), `'gentle'` (soft spring), `'snappy'` (fast spring), `'none'` (instant)
+- Custom: `{ shiftDuration, useSpring, springDamping, springStiffness, springMass }`
+- Reduced motion: `useReducedMotion()` from Reanimated — skips all animations automatically
+
+### Accessibility
+
+- `SortableItem` auto-generates `accessibilityLabel` ("Item N of M") and `accessibilityHint` ("Long press to drag and reorder")
+- `accessibilityRole="adjustable"` for screen readers
+- Custom labels via `accessibilityLabel` / `accessibilityHint` props on `SortableItem`
+- `useReducedMotion()` support — all shift animations respect device accessibility settings
+
+### List Agnosticism
+
+The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is deliberately list-agnostic:
+- Works with any list component: FlatList, FlashList, LegendList, ScrollView
+- The hook manages reorder state; the container monitors drags; the item wraps each cell
+- `DraxSortableList` and `SortableGrid` are convenience wrappers around FlatList
+- For FlashList/LegendList: use the composable API directly (same pattern, different list component)
 
 ## Cross-Container Sortable (Board)
 
@@ -41,6 +65,13 @@ Drag-and-drop framework for React Native. Branch `reanimated-v4` is a major rewr
 - `DraxHandle` component wraps the touchable area and receives the gesture via `DraxHandleContext`
 - Only touches on the `DraxHandle` area start a drag; the rest of the view scrolls normally
 - Works with `SortableItem` — just pass `dragHandle` prop and nest a `DraxHandle` inside
+
+## Drop Zone Acceptance
+
+- `dynamicReceptiveCallback` — conditional acceptance with full context (targetId, measurements, draggedId, draggedPayload)
+- `acceptsDrag` — simpler convenience prop: `(draggedPayload: unknown) => boolean`
+- Both checked in `handleReceiverChange` (JS thread). If rejected, receiver is cleared and enter callbacks skipped.
+- Use for max capacity: `acceptsDrag={() => items.length < 5}`
 
 ## Collision Algorithms
 
@@ -66,10 +97,11 @@ We compete with two libraries. Drax must match or exceed their DX while keeping 
 - Drax advantage: cross-container drag, monitoring views, nested contexts, free-form DnD
 
 **react-native-reanimated-dnd** (https://github.com/entropyconquers/react-native-reanimated-dnd)
-- Simpler API, drag handles, collision detection, drag bounds
-- Uses Reanimated 3 (older)
-- Drax advantage: UI-thread hit-testing, 18-callback event system, scroll-aware containers
-- Drax now has: drag handles (`DraxHandle`), collision algorithms (`collisionAlgorithm` prop), drop indicators
+- v2 released March 2026: Reanimated 4, sortable grids, animation presets, accessibility
+- Still on Gesture Handler ~2.30 (NOT v3 beta)
+- No cross-container drag, no monitoring views, no UI-thread spatial index
+- Drax now matches: drag handles, collision algorithms, drop indicators, animation presets, accessibility, SortableGrid, drop zone acceptance
+- Drax advantages: cross-container (kanban), monitoring views, UI-thread hit-testing, 18-callback event system, list-agnostic API
 
 ## Example App
 
