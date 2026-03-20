@@ -1,5 +1,5 @@
 {
   "buildCommand": "npx docusaurus build && mkdir -p _output/react-native-drax && cp -r build/* _output/react-native-drax/",
   "outputDirectory": "_output",
-  "installCommand": "npm install"
+  "installCommand": "cd .. && yarn install"
 }
