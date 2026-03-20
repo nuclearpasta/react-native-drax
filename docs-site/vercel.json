@@ -3,3 +3,4 @@
   "outputDirectory": "_output",
   "installCommand": "cd .. && yarn install"
 }
+
