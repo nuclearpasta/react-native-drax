@@ -8,7 +8,7 @@ const config: Config = {
   favicon: 'img/favicon.ico',
 
   url: 'https://nuclearpasta.com',
-  baseUrl: process.env.BASE_URL ?? '/react-native-drax/',
+  baseUrl: '/react-native-drax/',
 
   organizationName: 'nuclearpasta',
   projectName: 'react-native-drax',

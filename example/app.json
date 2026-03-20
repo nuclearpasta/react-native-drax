@@ -30,7 +30,7 @@
       "output": "static"
     },
     "experiments": {
-      "baseUrl": ""
+      "baseUrl": "/react-native-drax/example"
     },
     "plugins": ["expo-font", "expo-router"]
   }

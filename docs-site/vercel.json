@@ -1,5 +1,11 @@
 {
-  "buildCommand": "BASE_URL=/ yarn build",
+  "buildCommand": "yarn build",
   "outputDirectory": "build",
-  "installCommand": "cd .. && yarn install"
+  "installCommand": "cd .. && yarn install",
+  "redirects": [
+    { "source": "/", "destination": "/react-native-drax/" }
+  ],
+  "rewrites": [
+    { "source": "/react-native-drax/(.*)", "destination": "/$1" }
+  ]
 }
