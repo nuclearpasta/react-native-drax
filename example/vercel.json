@@ -3,6 +3,8 @@
   "outputDirectory": "dist",
   "installCommand": "cd .. && yarn install",
   "framework": null,
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
-
