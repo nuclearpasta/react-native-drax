@@ -1,0 +1,61 @@
+---
+title: Drop Zone Acceptance
+description: Accept or reject drops conditionally with acceptsDrag and dynamicReceptiveCallback.
+keywords: [react-native, drop-zone, acceptance, reject, conditional]
+sidebar_position: 8
+---
+
+# Drop Zone Acceptance
+
+Control which drags a receiver accepts. Useful for max capacity limits, type filtering, and conditional logic.
+
+## Simple: acceptsDrag
+
+The `acceptsDrag` prop is the simplest way to conditionally accept drops:
+
+```tsx
+<DraxView
+  acceptsDrag={(draggedPayload) => items.length < 5}
+  onReceiveDragDrop={({ dragged }) => addItem(dragged.payload)}
+>
+  <Text>Drop zone ({items.length}/5)</Text>
+</DraxView>
+```
+
+When `acceptsDrag` returns `false`:
+- The receiver is **not highlighted** (no `onReceiveDragEnter`)
+- The dragged view doesn't see a receiver (no `onDragEnter`)
+- Dropping has no effect
+
+## Advanced: dynamicReceptiveCallback
+
+For more context, use `dynamicReceptiveCallback` which receives full details:
+
+```tsx
+<DraxView
+  dynamicReceptiveCallback={({ targetId, targetMeasurements, draggedId, draggedPayload }) => {
+    // Only accept items with the right type
+    if (draggedPayload?.type !== 'task') return false;
+    // Only accept if there's room
+    if (items.length >= maxItems) return false;
+    return true;
+  }}
+  onReceiveDragDrop={handleDrop}
+/>
+```
+
+| Parameter | Type | Description |
+|---|---|---|
+| `targetId` | `string` | The receiver's Drax view ID |
+| `targetMeasurements` | `DraxViewMeasurements` | Receiver's position and dimensions |
+| `draggedId` | `string` | The dragged view's ID |
+| `draggedPayload` | `unknown` | The dragged view's payload |
+
+## Both Together
+
+If both are provided, both must return `true` for the receiver to accept the drag.
+
+## Next Steps
+
+- **[Collision Algorithms](/guides/collision-algorithms)** — How receiver detection works
+- **[Hover Styles](/guides/hover-styles)** — Visual feedback during drag

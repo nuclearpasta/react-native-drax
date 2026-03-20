@@ -1,0 +1,9 @@
+{
+  "extends": "../tsconfig",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["app", "components", "screens"]
+}

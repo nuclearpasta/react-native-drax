@@ -1,0 +1,67 @@
+---
+title: Snap Types
+description: TypeScript types for snap-back animation and alignment.
+keywords: [react-native, drax, types, snap, alignment, animation, api]
+sidebar_position: 7
+---
+
+# Snap Types
+
+Types for snap-back animation and alignment targets.
+
+## DraxSnapbackTargetPreset (enum)
+
+```tsx
+enum DraxSnapbackTargetPreset {
+  Default,  // Snap back to original position
+  None,     // No snap animation
+}
+```
+
+## DraxSnapbackTarget
+
+```tsx
+type DraxSnapbackTarget = DraxSnapbackTargetPreset | Position;
+```
+
+Return from `onDragEnd`, `onDragDrop`, `onReceiveDragDrop`, etc. to control snap behavior:
+- `Position` — snap to that absolute coordinate
+- `DraxSnapbackTargetPreset.None` — no snap animation
+- `DraxSnapbackTargetPreset.Default` — default snap-back
+- `undefined` / `void` — default behavior
+
+## DraxSnapData
+
+Data provided to a custom `snapAnimator` function.
+
+```tsx
+interface DraxSnapData {
+  hoverPosition: SharedValue<Position>;  // Animate this
+  toValue: Position;                      // Target position
+  delay: number;                          // Delay before start
+  duration: number;                       // Animation duration
+  scrollPosition?: SharedValue<Position>; // Parent scroll position
+  finishedCallback: (finished: boolean) => void; // Call when done
+}
+```
+
+## DraxSnapEndEventData
+
+Data for `onSnapEnd` and `onReceiveSnapEnd`.
+
+```tsx
+interface DraxSnapEndEventData {
+  dragged: { id: string; parentId?: string; payload: unknown };
+  receiver?: { id: string; parentId?: string; payload: unknown };
+}
+```
+
+## SnapAlignment
+
+```tsx
+type SnapAlignment =
+  | 'center'
+  | 'top-left' | 'top-center' | 'top-right'
+  | 'center-left' | 'center-right'
+  | 'bottom-left' | 'bottom-center' | 'bottom-right';
+```

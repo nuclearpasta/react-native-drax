@@ -1,0 +1,84 @@
+---
+title: Animation Presets
+description: Configure shift animations with presets (spring, gentle, snappy) or custom spring physics.
+keywords: [react-native, animation, spring, presets, reanimated, reduced-motion]
+sidebar_position: 11
+---
+
+# Animation Presets
+
+Control how items animate when shifting during sortable reorder.
+
+## Preset Names
+
+```tsx
+<DraxList animationConfig="default" />  {/* 200ms timing (default) */}
+<DraxList animationConfig="spring" />   {/* Spring physics */}
+<DraxList animationConfig="gentle" />   {/* Soft spring */}
+<DraxList animationConfig="snappy" />   {/* Fast spring */}
+<DraxList animationConfig="none" />     {/* Instant — no animation */}
+```
+
+| Preset | Type | Duration / Config |
+|---|---|---|
+| `'default'` | Timing | 200ms |
+| `'spring'` | Spring | damping: 15, stiffness: 150, mass: 1 |
+| `'gentle'` | Spring | damping: 20, stiffness: 100, mass: 1 |
+| `'snappy'` | Spring | damping: 15, stiffness: 250, mass: 0.8 |
+| `'none'` | Instant | No animation |
+
+## Custom Configuration
+
+Pass an object for fine-grained control:
+
+```tsx
+<DraxList
+  animationConfig={{
+    useSpring: true,
+    springDamping: 12,
+    springStiffness: 180,
+    springMass: 1,
+  }}
+/>
+```
+
+Or a timing-based custom config:
+
+```tsx
+<DraxList
+  animationConfig={{
+    shiftDuration: 300,
+  }}
+/>
+```
+
+| Property | Type | Default | Description |
+|---|---|---|---|
+| `shiftDuration` | `number` | `200` | Duration in ms (timing-based) |
+| `useSpring` | `boolean` | `false` | Use spring physics instead of timing |
+| `springDamping` | `number` | `15` | Spring damping |
+| `springStiffness` | `number` | `150` | Spring stiffness |
+| `springMass` | `number` | `1` | Spring mass |
+
+## With Composable API
+
+```tsx
+const sortable = useSortableList({
+  data: items,
+  keyExtractor: (item) => item.id,
+  onReorder: ({ data }) => setItems(data),
+  animationConfig: 'spring',
+});
+```
+
+## Reduced Motion
+
+Drax automatically respects the device's reduced motion setting via Reanimated's `useReducedMotion()`. When reduced motion is enabled:
+
+- All shift animations are skipped (items snap instantly)
+- No extra code needed — it's built in
+
+## Next Steps
+
+- **[Snap Alignment](/guides/snap-alignment)** — Customize snap-back animations
+- **[Performance](/guides/performance)** — Optimization tips

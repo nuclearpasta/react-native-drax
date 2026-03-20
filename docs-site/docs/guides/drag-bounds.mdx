@@ -1,0 +1,60 @@
+---
+title: Drag Bounds
+description: Constrain dragged views within a boundary using dragBoundsRef.
+keywords: [react-native, drag-bounds, constrain, boundary, clamp]
+sidebar_position: 6
+---
+
+# Drag Bounds
+
+Constrain a dragged view within a parent boundary so it can't be dragged outside a specific area.
+
+## Basic Usage
+
+```tsx
+import { useRef } from 'react';
+import { View } from 'react-native';
+import { DraxProvider, DraxView } from 'react-native-drax';
+
+function BoundedDrag() {
+  const boundsRef = useRef<View>(null);
+
+  return (
+    <DraxProvider>
+      <View ref={boundsRef} style={styles.boundary}>
+        <DraxView dragBoundsRef={boundsRef} style={styles.draggable}>
+          <Text>I stay inside the box</Text>
+        </DraxView>
+      </View>
+    </DraxProvider>
+  );
+}
+```
+
+## How It Works
+
+1. On mount, the bounds view is measured using `measureLayout` relative to the root view
+2. The bounds are stored in a `SharedValue`
+3. In the gesture worklet's `onActivate` and `onUpdate`, the drag position is clamped within bounds
+4. The **entire dragged view** stays within bounds — not just the touch point
+
+## Comparing Bounded vs Free
+
+```tsx
+<View ref={boundsRef} style={styles.boundary}>
+  {/* This stays inside */}
+  <DraxView dragBoundsRef={boundsRef} style={styles.bounded}>
+    <Text>Bounded</Text>
+  </DraxView>
+
+  {/* This can go anywhere */}
+  <DraxView style={styles.free}>
+    <Text>Free</Text>
+  </DraxView>
+</View>
+```
+
+## Next Steps
+
+- **[Collision Algorithms](/guides/collision-algorithms)** — How receiver detection works
+- **[API: DraxView](/api/components/drax-view)** — Full props reference

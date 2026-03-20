@@ -1,0 +1,5 @@
+{
+  "buildCommand": "BASE_URL=/ yarn build",
+  "outputDirectory": "build",
+  "installCommand": "cd .. && yarn install"
+}

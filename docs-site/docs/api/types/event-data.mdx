@@ -1,0 +1,132 @@
+---
+title: Event Data Types
+description: TypeScript types for Drax drag, receiver, and monitor event data.
+keywords: [react-native, drax, types, events, callback, api]
+sidebar_position: 2
+---
+
+# Event Data Types
+
+Types for the data passed to drag, receiver, and monitor callback props.
+
+## DraxEventViewData
+
+Base data about a view in a Drax event.
+
+```tsx
+interface DraxEventViewData {
+  id: string;
+  parentId?: string;
+  payload: unknown;
+  measurements?: DraxViewMeasurements;
+}
+```
+
+## DraxEventDraggedViewData
+
+Extended data about the dragged view.
+
+```tsx
+interface DraxEventDraggedViewData extends DraxEventViewData {
+  dragTranslationRatio: Position;
+  dragOffset: Position;
+  grabOffset: Position;
+  grabOffsetRatio: Position;
+  hoverPosition: Position;
+}
+```
+
+## DraxEventReceiverViewData
+
+Extended data about the receiver view.
+
+```tsx
+interface DraxEventReceiverViewData extends DraxEventViewData {
+  receiveOffset: Position;
+  receiveOffsetRatio: Position;
+}
+```
+
+## DraxDragEventData
+
+Data for drag callbacks (`onDragStart`, `onDrag`).
+
+```tsx
+interface DraxDragEventData {
+  dragAbsolutePosition: Position;
+  dragTranslation: Position;
+  dragged: DraxEventDraggedViewData;
+}
+```
+
+## DraxDragEndEventData
+
+Data for `onDragEnd`.
+
+```tsx
+interface DraxDragEndEventData extends DraxDragEventData {
+  cancelled: boolean;
+}
+```
+
+## DraxDragWithReceiverEventData
+
+Data for callbacks involving a receiver (`onDragEnter`, `onDragOver`, `onDragExit`, `onDragDrop`, `onReceiveDragEnter`, etc.).
+
+```tsx
+interface DraxDragWithReceiverEventData extends DraxDragEventData {
+  receiver: DraxEventReceiverViewData;
+}
+```
+
+## DraxDragWithReceiverEndEventData
+
+Data for `onReceiveDragExit`.
+
+```tsx
+interface DraxDragWithReceiverEndEventData extends DraxDragWithReceiverEventData {
+  cancelled: boolean;
+}
+```
+
+## DraxMonitorEventData
+
+Data for monitor callbacks.
+
+```tsx
+interface DraxMonitorEventData extends DraxDragEventData {
+  receiver?: DraxEventReceiverViewData;
+  monitorOffset: Position;
+  monitorOffsetRatio: Position;
+}
+```
+
+## DraxMonitorEndEventData
+
+Data for `onMonitorDragEnd`.
+
+```tsx
+interface DraxMonitorEndEventData extends DraxMonitorEventData {
+  cancelled: boolean;
+}
+```
+
+## DraxMonitorDragDropEventData
+
+Data for `onMonitorDragDrop`.
+
+```tsx
+interface DraxMonitorDragDropEventData extends Required<DraxMonitorEventData> {}
+```
+
+The `receiver` field is always present (not optional).
+
+## DraxProtocolDragEndResponse
+
+Return type for drag end/drop callbacks that can override snap behavior.
+
+```tsx
+type DraxProtocolDragEndResponse = void | DraxSnapbackTarget;
+```
+
+Return a `Position` to snap to that point, `DraxSnapbackTargetPreset.None` to skip snap, or `undefined`/`void` for default behavior.

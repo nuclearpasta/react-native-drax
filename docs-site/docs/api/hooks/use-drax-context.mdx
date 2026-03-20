@@ -1,0 +1,53 @@
+---
+title: useDraxContext
+description: API reference for useDraxContext — access the Drax context value.
+keywords: [react-native, drax, context, hook, api]
+sidebar_position: 3
+---
+
+# useDraxContext
+
+Access the Drax context value, which contains SharedValues for drag state and methods for view management.
+
+## Import
+
+```tsx
+import { useDraxContext } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+function CustomComponent() {
+  const { draggedIdSV, receiverIdSV, dragPhaseSV } = useDraxContext();
+
+  // Use in animated styles
+  const style = useAnimatedStyle(() => ({
+    backgroundColor: dragPhaseSV.value === 'dragging' ? 'red' : 'blue',
+  }));
+
+  return <Reanimated.View style={style} />;
+}
+```
+
+## Return Value
+
+The hook returns the `DraxContextValue` with SharedValues and methods. Key fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `draggedIdSV` | `SharedValue<string>` | ID of the currently dragged view |
+| `receiverIdSV` | `SharedValue<string>` | ID of the current receiver |
+| `dragPhaseSV` | `SharedValue<DragPhase>` | `'idle'` \| `'dragging'` \| `'releasing'` |
+| `hoverPositionSV` | `SharedValue<Position>` | Current hover position |
+| `hoverReadySV` | `SharedValue<boolean>` | Whether hover content is rendered |
+| `spatialIndexSV` | `SharedValue<SpatialEntry[]>` | View positions for hit-testing |
+
+:::warning
+This is an advanced API. Most use cases are covered by DraxView's callback props and style props. Use `useDraxContext` only when you need direct access to drag state SharedValues.
+:::
+
+## Related
+
+- [Core Concepts](/core-concepts) — Architecture overview
+- [DraxProvider](/api/components/drax-provider) — Provider component

@@ -1,0 +1,38 @@
+---
+title: "Example: Knight Moves"
+description: Chess knight drag puzzle with conditional drop acceptance.
+keywords: [react-native, drax, example, chess, knight, puzzle]
+sidebar_position: 9
+---
+
+# Knight Moves
+
+A chess knight puzzle — drag the knight to valid L-shaped moves. Demonstrates conditional drop acceptance with `acceptsDrag`.
+
+## Key Concepts
+
+- **Conditional acceptance** — only valid knight moves are accepted
+- **`acceptsDrag`** — returns `true` only for L-shaped destinations
+- **Visual feedback** — valid squares highlight during drag
+- **Grid layout** — 8x8 chess board
+
+## Features Shown
+
+| Feature | How |
+|---|---|
+| `acceptsDrag` | Validates L-shaped knight moves |
+| `receivingStyle` | Valid squares highlight green |
+| `payload` | Knight carries its current position |
+| Grid of DraxViews | 64 squares, each a receptive DraxView |
+
+## Source Code
+
+```tsx title="example/app/(tabs)/knight-moves.tsx"
+// Full source available at:
+// https://github.com/nuclearpasta/react-native-drax/blob/main/example/app/(tabs)/knight-moves.tsx
+```
+
+## Related
+
+- [Drop Zone Acceptance Guide](/guides/drop-zone-acceptance) — Conditional drops
+- [Drag & Drop Guide](/guides/drag-and-drop) — Free-form DnD

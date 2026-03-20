@@ -1,0 +1,37 @@
+---
+title: "Example: Collision Modes"
+description: Compare center, intersect, and contain collision algorithms.
+keywords: [react-native, drax, example, collision, intersect, contain]
+sidebar_position: 7
+---
+
+# Collision Modes
+
+Demonstrates the three collision algorithms side-by-side.
+
+## Key Concepts
+
+- **Center** — hover center must be inside receiver (default)
+- **Intersect** — any overlap counts
+- **Contain** — dragged view must be fully inside
+
+## Features Shown
+
+| Feature | How |
+|---|---|
+| `collisionAlgorithm="center"` | Default precise detection |
+| `collisionAlgorithm="intersect"` | Forgiving overlap detection |
+| `collisionAlgorithm="contain"` | Strict containment |
+| Visual feedback | Zones highlight when detection triggers |
+
+## Source Code
+
+```tsx title="example/app/(tabs)/collision-modes.tsx"
+// Full source available at:
+// https://github.com/nuclearpasta/react-native-drax/blob/main/example/app/(tabs)/collision-modes.tsx
+```
+
+## Related
+
+- [Collision Algorithms Guide](/guides/collision-algorithms) — Full tutorial
+- [API: DraxView](/api/components/drax-view) — `collisionAlgorithm` prop
