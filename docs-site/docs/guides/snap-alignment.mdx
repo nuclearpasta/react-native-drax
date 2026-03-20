@@ -1,0 +1,92 @@
+---
+title: Snap Alignment
+description: Snap dropped items to specific positions within a receiver using snapToAlignment.
+keywords: [react-native, snap, alignment, drop, position]
+sidebar_position: 10
+---
+
+# Snap Alignment
+
+After a drop, animate the hover view to snap to a specific position within the receiver.
+
+## Basic Usage
+
+```tsx
+import { snapToAlignment } from 'react-native-drax';
+
+<DraxView
+  onReceiveDragDrop={({ dragged, receiver }) =>
+    snapToAlignment(receiver.measurements, dragged.measurements, 'center')
+  }
+/>
+```
+
+Return the result from `onDragDrop`, `onReceiveDragDrop`, or `onMonitorDragDrop` to override the default snap-back behavior.
+
+## 9-Point Alignment
+
+```
+top-left      top-center      top-right
+center-left     center      center-right
+bottom-left  bottom-center  bottom-right
+```
+
+```tsx
+snapToAlignment(receiver, dragged, 'top-left')
+snapToAlignment(receiver, dragged, 'center')
+snapToAlignment(receiver, dragged, 'bottom-right')
+```
+
+## With Offset
+
+Add pixel offsets for padding:
+
+```tsx
+snapToAlignment(receiver.measurements, dragged.measurements, 'top-left', { x: 8, y: 8 })
+```
+
+## Function Signature
+
+```tsx
+snapToAlignment(
+  receiver: { x: number; y: number; width: number; height: number },
+  dragged: { width: number; height: number } | undefined,
+  alignment?: SnapAlignment,  // default: 'center'
+  offset?: Position           // default: { x: 0, y: 0 }
+): Position
+```
+
+## Custom Snap Targets
+
+You can return any `Position` from a drop callback to snap anywhere:
+
+```tsx
+<DraxView
+  onReceiveDragDrop={({ receiver }) => ({
+    x: receiver.measurements.x + 50,
+    y: receiver.measurements.y + 50,
+  })}
+/>
+```
+
+## Snap Animation Control
+
+Control the snap-back animation:
+
+```tsx
+<DraxView
+  animateSnap={true}        // Enable/disable snap animation (default: true)
+  snapDelay={0}             // Delay before snap starts (ms)
+  snapDuration={300}        // Snap animation duration (ms)
+  snapAnimator={(data) => {  // Custom snap animation
+    // data.hoverPosition — SharedValue<Position>
+    // data.toValue — target Position
+    // data.finishedCallback — call when done
+  }}
+/>
+```
+
+## Next Steps
+
+- **[Animation Presets](/guides/animation-presets)** — Customize shift animations
+- **[API: snapToAlignment](/api/utilities/snap-to-alignment)** — Full reference

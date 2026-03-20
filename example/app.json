@@ -25,7 +25,12 @@
       "package": "drax.example"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "static"
+    },
+    "experiments": {
+      "baseUrl": "/react-native-drax/example"
     },
     "plugins": ["expo-font", "expo-router"]
   }

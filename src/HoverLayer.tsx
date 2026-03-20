@@ -1,5 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 import { memo, useLayoutEffect } from 'react';
+import type { ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
@@ -7,16 +8,28 @@ import { runOnUI } from 'react-native-worklets';
 
 import type { DragPhase, Position } from './types';
 
+/** Flattened hover styles for the currently dragged view */
+export interface FlattenedHoverStyles {
+  hoverStyle: ViewStyle | null;
+  hoverDraggingStyle: ViewStyle | null;
+  hoverDraggingWithReceiverStyle: ViewStyle | null;
+  hoverDraggingWithoutReceiverStyle: ViewStyle | null;
+  hoverDragReleasedStyle: ViewStyle | null;
+}
+
 interface HoverLayerProps {
   hoverContentRef: RefObject<ReactNode>;
   /** Changing this value triggers a re-render to pick up new ref content */
   hoverVersion: number;
   hoverPositionSV: SharedValue<Position>;
   dragPhaseSV: SharedValue<DragPhase>;
+  receiverIdSV: SharedValue<string>;
   /** Set to true after hover content is committed — SortableItem reads this for visibility */
   hoverReadySV: SharedValue<boolean>;
   /** Animated hover content dimensions. x=width, y=height. {0,0}=no constraint. */
   hoverDimsSV: SharedValue<Position>;
+  /** Ref to flattened hover styles of the currently dragged view */
+  hoverStylesRef: RefObject<FlattenedHoverStyles | null>;
 }
 
 /**
@@ -29,7 +42,7 @@ interface HoverLayerProps {
  * Only this component re-renders when hover content changes (via hoverVersion).
  */
 export const HoverLayer = memo(
-  ({ hoverContentRef, hoverVersion, hoverPositionSV, dragPhaseSV, hoverReadySV, hoverDimsSV }: HoverLayerProps) => {
+  ({ hoverContentRef, hoverVersion, hoverPositionSV, dragPhaseSV, receiverIdSV, hoverReadySV, hoverDimsSV, hoverStylesRef }: HoverLayerProps) => {
     // After hover content is committed to the DOM, activate drag phase + signal readiness.
     // dragPhaseSV is NOT set in the gesture handler — it's set HERE, ensuring:
     //   1. HoverLayer becomes visible (opacity 1) only AFTER content is rendered
@@ -43,19 +56,58 @@ export const HoverLayer = memo(
           _hoverReadySV.value = true;
         })(dragPhaseSV, hoverReadySV);
       }
-    }, [hoverVersion]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [hoverVersion]);
+
+    // Read hover styles from ref in the component body — they're captured by the
+    // worklet closure when the component re-renders (on hoverVersion change).
+    // This ensures the latest styles are available without SharedValues.
+    const hs = hoverStylesRef.current;
+    const flatHoverStyle = hs?.hoverStyle ?? null;
+    const flatHoverDraggingStyle = hs?.hoverDraggingStyle ?? null;
+    const flatHoverDraggingWithReceiverStyle = hs?.hoverDraggingWithReceiverStyle ?? null;
+    const flatHoverDraggingWithoutReceiverStyle = hs?.hoverDraggingWithoutReceiverStyle ?? null;
+    const flatHoverDragReleasedStyle = hs?.hoverDragReleasedStyle ?? null;
 
     const animatedStyle = useAnimatedStyle(() => {
       const phase = dragPhaseSV.value;
       if (phase === 'idle') {
         return { opacity: 0 };
       }
+
+      // Positioning transform — must always be first so the hover follows the finger.
+      const positionTransform = [
+        { translateX: hoverPositionSV.value.x },
+        { translateY: hoverPositionSV.value.y },
+      ] as const;
+
+      let hoverStyles: ViewStyle;
+      if (phase === 'dragging') {
+        const hasReceiver = receiverIdSV.value !== '';
+        hoverStyles = {
+          ...(flatHoverStyle ?? {}),
+          ...(flatHoverDraggingStyle ?? {}),
+          ...(hasReceiver
+            ? (flatHoverDraggingWithReceiverStyle ?? {})
+            : (flatHoverDraggingWithoutReceiverStyle ?? {})),
+        };
+      } else {
+        // phase === 'releasing'
+        hoverStyles = {
+          ...(flatHoverStyle ?? {}),
+          ...(flatHoverDragReleasedStyle ?? flatHoverDraggingStyle ?? {}),
+        };
+      }
+
+      // Merge transforms: positioning first, then any user-provided transforms (rotate, scale, etc.)
+      const { transform: userTransform, ...restStyles } = hoverStyles;
+      const mergedTransform = userTransform
+        ? [...positionTransform, ...(userTransform as { [key: string]: number }[])]
+        : positionTransform;
+
       return {
         opacity: 1,
-        transform: [
-          { translateX: hoverPositionSV.value.x },
-          { translateY: hoverPositionSV.value.y },
-        ] as const,
+        ...restStyles,
+        transform: mergedTransform,
       };
     });
 

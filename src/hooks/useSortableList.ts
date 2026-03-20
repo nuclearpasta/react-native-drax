@@ -50,6 +50,7 @@ export const useSortableList = <T,>(
     autoScrollJumpRatio = defaultAutoScrollJumpRatio,
     autoScrollBackThreshold = defaultAutoScrollBackThreshold,
     autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
+    animationConfig = 'default',
     onDragStart,
     onDragPositionChange,
     onDragEnd,
@@ -177,9 +178,6 @@ export const useSortableList = <T,>(
     ghostShiftsRef.current = {};
     if (skipShiftsInvalidationRef.current) {
       // Board-path reorder: hover covers the transition.
-      // Clear shifts via direct JS-thread write (not runOnUI which processes
-      // before Fabric commits). Both the SharedValue update and the Fabric
-      // commit from setStableData are scheduled from the same JS frame.
       skipShiftsInvalidationRef.current = false;
       instantClearSV.value = true;
       shiftsRef.value = {};
@@ -613,6 +611,10 @@ export const useSortableList = <T,>(
 
     const gap = computeItemGap();
 
+    // Use the shorter of measurements and pending to avoid out-of-bounds access.
+    const itemCount = Math.min(measurements.length, pending.length);
+    if (itemCount === 0) return 0;
+
     if (numColumns <= 1) {
       // Single-column list — find which slot the position falls in.
       // Boundary is at the gap midpoint between adjacent items, making
@@ -620,11 +622,13 @@ export const useSortableList = <T,>(
       // Using item centers (50%) would be asymmetric: the hover center
       // starts AT the forward boundary but a full item-height from the
       // backward boundary, making forward too sensitive and backward too sluggish.
-      const firstMeas = measurements[0]!;
+      const firstMeas = measurements[0];
+      if (!firstMeas) return 0;
       let cursor = horizontal ? firstMeas.x : firstMeas.y;
 
-      for (let i = 0; i < pending.length; i++) {
-        const meas = measurements[i]!;
+      for (let i = 0; i < itemCount; i++) {
+        const meas = measurements[i];
+        if (!meas) continue;
         const size = horizontal ? meas.width : meas.height;
         const boundary = cursor + size + gap / 2; // midpoint of gap after item
         const pos = horizontal ? contentPos.x : contentPos.y;
@@ -632,22 +636,24 @@ export const useSortableList = <T,>(
         if (pos < boundary) return i;
         cursor += size + gap;
       }
-      return pending.length - 1;
+      return itemCount - 1;
     } else {
       // Multi-column grid — find row then column
-      const firstMeas = measurements[0]!;
+      const firstMeas = measurements[0];
+      if (!firstMeas) return 0;
       let cursorY = firstMeas.y;
 
       // Find row — use full row boundary (not center) so the bottom
       // half of a row doesn't spill into the next row.
       let targetRow = 0;
-      const totalRows = Math.ceil(pending.length / numColumns);
+      const totalRows = Math.ceil(itemCount / numColumns);
       for (let row = 0; row < totalRows; row++) {
         const rowStart = row * numColumns;
-        const rowEnd = Math.min(rowStart + numColumns, pending.length);
+        const rowEnd = Math.min(rowStart + numColumns, itemCount);
         let rowHeight = 0;
         for (let col = rowStart; col < rowEnd; col++) {
-          rowHeight = Math.max(rowHeight, measurements[col]!.height);
+          const colMeas = measurements[col];
+          if (colMeas) rowHeight = Math.max(rowHeight, colMeas.height);
         }
         if (contentPos.y < cursorY + rowHeight + gap / 2) {
           targetRow = row;
@@ -660,17 +666,20 @@ export const useSortableList = <T,>(
       // Find column within row — use gap midpoint for symmetric sensitivity
       const colXPositions: number[] = [];
       for (let c = 0; c < numColumns && c < originalIndexes.length; c++) {
-        const colMeas = getMeasForOrigIdx(originalIndexes[c]!);
+        const origIdx = originalIndexes[c];
+        const colMeas = origIdx !== undefined ? getMeasForOrigIdx(origIdx) : undefined;
         colXPositions.push(colMeas ? colMeas.x : 0);
       }
+      const firstMeasWidth = firstMeas.width;
       const colGap = numColumns >= 2 && colXPositions.length >= 2
-        ? colXPositions[1]! - (colXPositions[0]! + measurements[0]!.width)
+        ? (colXPositions[1] ?? 0) - ((colXPositions[0] ?? 0) + firstMeasWidth)
         : 0;
 
       let targetCol = 0;
       for (let c = 0; c < numColumns; c++) {
         const colX = colXPositions[c] ?? 0;
-        const colMeas = measurements[Math.min(c, measurements.length - 1)]!;
+        const colMeas = measurements[Math.min(c, measurements.length - 1)];
+        if (!colMeas) break;
         const colBoundary = colX + colMeas.width + colGap / 2;
         if (contentPos.x < colBoundary) {
           targetCol = c;
@@ -776,6 +785,7 @@ export const useSortableList = <T,>(
     reorderStrategy,
     longPressDelay,
     lockToMainAxis,
+    animationConfig,
     draggedItem,
     itemMeasurements,
     originalIndexes,

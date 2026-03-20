@@ -1,0 +1,42 @@
+---
+title: useDraxId
+description: API reference for useDraxId — generate a stable unique Drax view ID.
+keywords: [react-native, drax, id, hook, api]
+sidebar_position: 4
+---
+
+# useDraxId
+
+Generate a stable unique ID for a Drax view. Useful when you need to reference a view's ID from external code.
+
+## Import
+
+```tsx
+import { useDraxId } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+function MyComponent() {
+  const draxId = useDraxId();
+
+  return (
+    <DraxView id={draxId}>
+      <Text>My view ID: {draxId}</Text>
+    </DraxView>
+  );
+}
+```
+
+## Return Value
+
+| Type | Description |
+|---|---|
+| `string` | A unique, stable ID string |
+
+The ID is generated once and remains stable across re-renders.
+
+## Related
+
+- [DraxView](/api/components/drax-view) — `id` prop

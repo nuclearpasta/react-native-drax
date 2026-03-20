@@ -1,7 +1,8 @@
-import { usePanGesture } from 'react-native-gesture-handler';
+import { Platform } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import { runOnJS } from 'react-native-worklets';
 
+import { useDraxPanGesture } from '../compat';
 import { computeAbsolutePositionWorklet, hitTestWorklet } from '../math';
 import type { Position } from '../types';
 import { useDraxContext } from './useDraxContext';
@@ -11,9 +12,9 @@ import { useDraxContext } from './useDraxContext';
  * Hit-testing runs entirely on the UI thread — zero runOnJS per frame
  * unless the receiver changes.
  *
- * `enabledSV`, `longPressDelaySV`, and `viewSpatialIndexSV` are SharedValues so RNGH 3.0
- * reconfigures the native gesture handler on the UI thread — zero JS bridge,
- * zero React rerender.
+ * On RNGH v3, `enabledSV` and `longPressDelaySV` are SharedValues that
+ * reconfigure the native gesture handler on the UI thread — zero JS bridge.
+ * On RNGH v2, they are mirrored to plain values with gesture recreation on change.
  */
 export const useDragGesture = (
   id: string,
@@ -21,11 +22,13 @@ export const useDragGesture = (
   enabledSV: SharedValue<boolean>,
   longPressDelaySV: SharedValue<number>,
   lockDragXPosition?: boolean,
-  lockDragYPosition?: boolean
+  lockDragYPosition?: boolean,
+  dragBoundsSV?: SharedValue<{ x: number; y: number; width: number; height: number } | null>
 ) => {
   const {
     draggedIdSV,
     receiverIdSV,
+    rejectedReceiverIdSV,
     dragPhaseSV,
     hoverPositionSV,
     dragAbsolutePositionSV,
@@ -39,11 +42,19 @@ export const useDragGesture = (
     handleDragEnd,
   } = useDraxContext();
 
-  const gesture = usePanGesture({
-    enabled: enabledSV,
-    activateAfterLongPress: longPressDelaySV,
+  // On web, RNGH defaults touch-action to 'none' which blocks native scroll.
+  // Allow the scroll direction so users can scroll before long-press activates.
+  // SortableContainer freezes the scroll container when drag starts.
+  const touchAction = Platform.OS === 'web'
+    ? (lockDragYPosition ? 'pan-x' : 'pan-y')
+    : undefined;
+
+  const gesture = useDraxPanGesture({
+    enabledSV,
+    longPressDelaySV,
     maxPointers: 1,
     shouldCancelWhenOutside: false,
+    touchAction,
     onActivate: (event) => {
       'worklet';
 
@@ -77,12 +88,25 @@ export const useDragGesture = (
       dragAbsolutePositionSV.value = { x: rootRelX, y: rootRelY };
 
       // Compute initial hover position (root-relative)
-      const hoverX = lockDragXPosition ? viewAbsPos.x : rootRelX - grabOffset.x;
-      const hoverY = lockDragYPosition ? viewAbsPos.y : rootRelY - grabOffset.y;
+      let hoverX = lockDragXPosition ? viewAbsPos.x : rootRelX - grabOffset.x;
+      let hoverY = lockDragYPosition ? viewAbsPos.y : rootRelY - grabOffset.y;
+
+      // Clamp to drag bounds if specified
+      if (dragBoundsSV?.value) {
+        const b = dragBoundsSV.value;
+        const entries = spatialIndexSV.value;
+        const viewEntry = entries[viewSpatialIndexSV.value];
+        const vw = viewEntry ? viewEntry.width : 0;
+        const vh = viewEntry ? viewEntry.height : 0;
+        hoverX = Math.max(b.x, Math.min(b.x + b.width - vw, hoverX));
+        hoverY = Math.max(b.y, Math.min(b.y + b.height - vh, hoverY));
+      }
+
       hoverPositionSV.value = { x: hoverX, y: hoverY };
 
-      // Reset receiver
+      // Reset receiver and rejection cache
       receiverIdSV.value = '';
+      rejectedReceiverIdSV.value = '';
 
       // Bounce to JS for callback dispatch + hover content setup
       runOnJS(handleDragStart)(
@@ -114,8 +138,19 @@ export const useDragGesture = (
         scrollOffsetsSV.value
       );
 
-      const hoverX = lockDragXPosition ? viewAbsPos.x : rootRelX - grabOffset.x;
-      const hoverY = lockDragYPosition ? viewAbsPos.y : rootRelY - grabOffset.y;
+      let hoverX = lockDragXPosition ? viewAbsPos.x : rootRelX - grabOffset.x;
+      let hoverY = lockDragYPosition ? viewAbsPos.y : rootRelY - grabOffset.y;
+
+      // Clamp to drag bounds if specified
+      if (dragBoundsSV?.value) {
+        const b = dragBoundsSV.value;
+        const viewEntry = entries[spatialIndex];
+        const vw = viewEntry ? viewEntry.width : 0;
+        const vh = viewEntry ? viewEntry.height : 0;
+        hoverX = Math.max(b.x, Math.min(b.x + b.width - vw, hoverX));
+        hoverY = Math.max(b.y, Math.min(b.y + b.height - vh, hoverY));
+      }
+
       hoverPositionSV.value = { x: hoverX, y: hoverY };
 
       // Hit-test at the center of the hover view (not at the raw finger position)
@@ -135,22 +170,33 @@ export const useDragGesture = (
         viewEntry ? { width: viewEntry.width, height: viewEntry.height } : undefined
       );
 
-      // Bounce to JS when receiver changes OR monitors need continuous updates.
-      // handleReceiverChange safely handles same-receiver calls (skips exit/enter)
-      // so monitors get continuous position updates for slot detection.
-      const receiverChanged = result.receiverId !== receiverIdSV.value;
-      if (receiverChanged || result.monitorIds.length > 0) {
-        const oldReceiver = receiverIdSV.value;
-        if (receiverChanged) {
-          receiverIdSV.value = result.receiverId;
-        }
-        runOnJS(handleReceiverChange)(
-          oldReceiver,
-          result.receiverId,
-          hitTestPos,
-          result.monitorIds
-        );
+      // Skip the rejected receiver — don't set it in receiverIdSV and don't
+      // send it to JS. This prevents the reject → clear → re-detect → reject loop.
+      let candidateReceiverId = result.receiverId;
+      if (candidateReceiverId === rejectedReceiverIdSV.value) {
+        candidateReceiverId = '';
       }
+
+      // Clear rejection cache once drag leaves the rejected receiver's bounds
+      if (result.receiverId !== rejectedReceiverIdSV.value && rejectedReceiverIdSV.value !== '') {
+        rejectedReceiverIdSV.value = '';
+      }
+
+      // Always bounce to JS for callback dispatch.
+      // handleReceiverChange safely handles same-receiver calls (skips exit/enter)
+      // and dispatches continuous callbacks (onDrag, onDragOver, onReceiveDragOver)
+      // plus monitor position updates for slot detection.
+      const oldReceiver = receiverIdSV.value;
+      const receiverChanged = candidateReceiverId !== oldReceiver;
+      if (receiverChanged) {
+        receiverIdSV.value = candidateReceiverId;
+      }
+      runOnJS(handleReceiverChange)(
+        oldReceiver,
+        candidateReceiverId,
+        hitTestPos,
+        result.monitorIds
+      );
     },
     onDeactivate: (_event) => {
       'worklet';

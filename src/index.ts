@@ -3,6 +3,7 @@ export { Drax } from './Drax';
 
 // ── Public Components ────────────────────────────────────────────────
 export { DraxHandle } from './DraxHandle';
+export { DraxList } from './DraxList';
 export { DraxProvider } from './DraxProvider';
 export { DraxScrollView } from './DraxScrollView';
 export { DraxView } from './DraxView';
@@ -10,22 +11,20 @@ export { DraxView } from './DraxView';
 // Sortable (list-agnostic)
 export { SortableContainer } from './SortableContainer';
 export { SortableItem } from './SortableItem';
-export { DraxSortableList } from './DraxSortableList';
 
 // Cross-container sortable (board)
 export { SortableBoardContainer } from './SortableBoardContainer';
 export type { SortableBoardContainerProps } from './SortableBoardContainer';
-
-/** @deprecated Use `DraxSortableList`, `SortableContainer`, or `useSortableList` instead */
-export { DraxList } from './DraxList';
-/** @deprecated Use `SortableItem` instead */
-export { DraxListItem } from './DraxListItem';
 
 // ── Public Hooks ─────────────────────────────────────────────────────
 export { useDraxContext } from './hooks/useDraxContext';
 export { useDraxId } from './hooks/useDraxId';
 export { useSortableList } from './hooks/useSortableList';
 export { useSortableBoard } from './hooks/useSortableBoard';
+
+// ── Public Utilities ─────────────────────────────────────────────────
+export { snapToAlignment } from './math';
+export type { SnapAlignment } from './math';
 
 // ── Public Types ─────────────────────────────────────────────────────
 export type {
@@ -78,6 +77,9 @@ export type {
   SortableDragPositionChangeEvent,
   SortableDragEndEvent,
   SortableReorderStrategy,
+  SortableAnimationConfig,
+  SortableAnimationPreset,
+  SortableAnimationCustomConfig,
   SortableItemMeasurement,
   DropIndicatorProps,
 
@@ -85,20 +87,9 @@ export type {
   UseSortableBoardOptions,
   SortableBoardHandle,
   SortableBoardTransferEvent,
-
-  // Legacy list types (deprecated)
-  DraxListProps,
-  DraxListDraggedItemData,
-  DraxListOnItemDragStartEventData,
-  DraxListOnItemDragPositionChangeEventData,
-  DraxListOnItemDragEndEventData,
-  DraxListOnItemReorderEventData,
-  DraxListRenderItemContent,
-  DraxListRenderItemHoverContent,
-  DraxListOnItemReorder,
-  DraxListItemProps,
 } from './types';
 
+export type { DraxListProps } from './DraxList';
 export type { DraxHandleProps } from './DraxHandle';
 
 export {

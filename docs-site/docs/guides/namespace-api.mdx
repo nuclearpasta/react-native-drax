@@ -1,0 +1,56 @@
+---
+title: Namespace API
+description: Use Drax.View, Drax.Provider, and other components via the Drax namespace.
+keywords: [react-native, namespace, import, drax, convenience]
+sidebar_position: 17
+---
+
+# Namespace API
+
+For convenience, all Drax components are available under a single `Drax` namespace.
+
+## Usage
+
+```tsx
+import { Drax } from 'react-native-drax';
+
+<Drax.Provider>
+  <Drax.View draggable payload="item">
+    <Drax.Handle>
+      <GripIcon />
+    </Drax.Handle>
+    <Text>Drag by the handle</Text>
+  </Drax.View>
+
+  <Drax.ScrollView>
+    <Drax.View receptive onReceiveDragDrop={handleDrop}>
+      <Text>Drop here</Text>
+    </Drax.View>
+  </Drax.ScrollView>
+</Drax.Provider>
+```
+
+## Available Members
+
+| Namespace | Component |
+|---|---|
+| `Drax.Provider` | `DraxProvider` |
+| `Drax.View` | `DraxView` |
+| `Drax.List` | `DraxList` |
+| `Drax.Handle` | `DraxHandle` |
+| `Drax.ScrollView` | `DraxScrollView` |
+
+## Individual Imports
+
+Individual exports still work for tree-shaking:
+
+```tsx
+import { DraxView, DraxProvider } from 'react-native-drax';
+```
+
+Both import styles are supported — choose whichever fits your codebase.
+
+## Next Steps
+
+- **[Getting Started](/getting-started)** — Setup guide
+- **[API: Drax Namespace](/api/utilities/drax-namespace)** — Full reference

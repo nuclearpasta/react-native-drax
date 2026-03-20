@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 
 import { DraxContext } from './DraxContext';
+import type { FlattenedHoverStyles } from './HoverLayer';
 import { HoverLayer } from './HoverLayer';
 import { useCallbackDispatch } from './hooks/useCallbackDispatch';
 import { useSpatialIndex } from './hooks/useSpatialIndex';
@@ -31,6 +32,9 @@ export const DraxProvider = ({
   // Changes every frame during drag. Used by gesture worklet for hit-testing.
   // NOT read by any useAnimatedStyle.
   const dragAbsolutePositionSV = useSharedValue<Position>({ x: 0, y: 0 });
+  // ID of the most recently rejected receiver. Read by gesture worklet to skip
+  // re-detecting the same rejected receiver. Cleared when drag leaves its bounds.
+  const rejectedReceiverIdSV = useSharedValue<string>('');
   // Set once per drag start.
   const grabOffsetSV = useSharedValue<Position>({ x: 0, y: 0 });
   const startPositionSV = useSharedValue<Position>({ x: 0, y: 0 });
@@ -60,9 +64,13 @@ export const DraxProvider = ({
   // Store content in a ref so changing it doesn't re-render the entire tree.
   // Only HoverLayer re-renders via the version counter.
   const hoverContentRef: RefObject<ReactNode> = useRef<ReactNode>(null);
+  const hoverStylesRef: RefObject<FlattenedHoverStyles | null> = useRef<FlattenedHoverStyles | null>(null);
   const [hoverVersion, setHoverVersion] = useState(0);
   const setHoverContent = useCallback((content: ReactNode | null) => {
     hoverContentRef.current = content;
+    if (content === null) {
+      hoverStylesRef.current = null;
+    }
     setHoverVersion((v) => v + 1);
   }, []);
 
@@ -74,6 +82,7 @@ export const DraxProvider = ({
       scrollOffsetsSV,
       draggedIdSV,
       receiverIdSV,
+      rejectedReceiverIdSV,
       dragPhaseSV,
       hoverPositionSV,
       grabOffsetSV,
@@ -81,6 +90,7 @@ export const DraxProvider = ({
       setHoverContent,
       hoverReadySV,
       hoverClearDeferredRef,
+      hoverStylesRef,
     });
 
   // ── Root view ref ──────────────────────────────────────────────────
@@ -109,6 +119,7 @@ export const DraxProvider = ({
       dragPhaseSV,
       hoverPositionSV,
       dragAbsolutePositionSV,
+      rejectedReceiverIdSV,
       spatialIndexSV,
       scrollOffsetsSV,
       grabOffsetSV,
@@ -143,6 +154,7 @@ export const DraxProvider = ({
       dragPhaseSV,
       hoverPositionSV,
       dragAbsolutePositionSV,
+      rejectedReceiverIdSV,
       spatialIndexSV,
       scrollOffsetsSV,
       grabOffsetSV,
@@ -173,8 +185,10 @@ export const DraxProvider = ({
           hoverVersion={hoverVersion}
           hoverPositionSV={hoverPositionSV}
           dragPhaseSV={dragPhaseSV}
+          receiverIdSV={receiverIdSV}
           hoverReadySV={hoverReadySV}
           hoverDimsSV={hoverDimsSV}
+          hoverStylesRef={hoverStylesRef}
         />
       </View>
     </DraxContext>

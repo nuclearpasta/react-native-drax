@@ -16,6 +16,7 @@ import type {
   Position,
   SortableBoardContextValue,
   SortableBoardHandle,
+  SortableBoardInternal,
   SortableListInternal,
   ViewDimensions,
 } from './types';
@@ -108,12 +109,9 @@ export const SortableBoardContainer = <TItem,>({
     if (!source || !target) return;
 
     const phantomIndex = target.phantomRef.current?.atDisplayIndex ?? transfer.targetSlot ?? 0;
-    // source.rawData is unknown[] (from SortableListInternal<unknown>).
-    // The board's onTransfer callback expects TItem. This is safe because
-    // the board and its columns always contain items of the same type.
-    // Safe narrowing: columns store unknown items, but the board guarantees
-    // all columns hold items of type TItem (same generic parameter).
+
     const item = source.rawData[transfer.sourceOriginalIndex] as TItem;
+
 
     // 1. Clear source drag refs
     source.draggedDisplayIndexRef.current = undefined;
@@ -121,7 +119,6 @@ export const SortableBoardContainer = <TItem,>({
     source.pendingOrderRef.current = [];
 
     // Clear target phantom ref (JS-thread only, shifts stay for now).
-    // useLayoutEffect clears shifts atomically when new data arrives.
     target.phantomRef.current = undefined;
     target.pendingOrderRef.current = [];
 
@@ -133,16 +130,8 @@ export const SortableBoardContainer = <TItem,>({
     sourceInfoRef.current = undefined;
 
     // 2. Clear source draggedItem AND draggedIdSV on UI thread.
-    // Must clear draggedIdSV BEFORE onTransfer changes FlatList data,
-    // otherwise the cell that held the dragged item gets reused for a
-    // different item — and that item inherits isDragged=true (opacity:0),
-    // causing a blink when the hover finally clears.
-    //
-    // To prevent a 1-frame flash of the source item at its old position,
-    // shift it off-screen BEFORE clearing draggedIdSV. Both writes happen
-    // in the same UI frame, so the item goes from hidden → off-screen
-    // (never visible on-screen).
     const sourceItemKey = transfer.itemKey;
+
     runOnUI((
       _srcDraggedItem: typeof source.draggedItem,
       _draggedIdSV: typeof draggedIdSV,
@@ -157,10 +146,10 @@ export const SortableBoardContainer = <TItem,>({
     })(source.draggedItem, draggedIdSV, source.shiftsRef, sourceItemKey);
 
     // 3. rAF → onTransfer → parent setState
-    // Both columns' useLayoutEffect: external data path → setStableData
-    // + clear shifts. React 18 flushes synchronously before paint.
     const gen = ++cleanupGenRef.current;
+
     requestAnimationFrame(() => {
+
       boardInternal.onTransfer({
         item,
         fromContainerId: transfer.sourceId,
@@ -168,12 +157,17 @@ export const SortableBoardContainer = <TItem,>({
         toContainerId: transfer.targetId!,
         toIndex: phantomIndex,
       });
+
       // 4. Wait for React render + Fabric commit, then clear hover.
-      // Guard: if a new drag started (gen changed), skip — the new drag
-      // manages its own hover lifecycle.
       requestAnimationFrame(() => {
+
         requestAnimationFrame(() => {
-          if (cleanupGenRef.current !== gen) return;
+
+          if (cleanupGenRef.current !== gen) {
+
+            return;
+          }
+
           runOnUI((
             _hoverReadySV: typeof hoverReadySV,
             _dragPhaseSV: typeof dragPhaseSV,
@@ -293,12 +287,11 @@ export const SortableBoardContainer = <TItem,>({
           const prevTarget = columns.get(transfer.targetId);
           prevTarget?.clearPhantomSlot();
         }
-        transfer.targetId = targetColId;
-        transfer.targetSlot = insertIdx;
+        transferStateRef.current = { ...transfer, targetId: targetColId, targetSlot: insertIdx };
         targetCol.setPhantomSlot(insertIdx, source.dimensions.width, source.dimensions.height);
       } else if (transfer.targetSlot !== insertIdx) {
         // Same target column — update phantom position only if slot changed
-        transfer.targetSlot = insertIdx;
+        transferStateRef.current = { ...transfer, targetSlot: insertIdx };
         targetCol.setPhantomSlot(insertIdx, source.dimensions.width, source.dimensions.height);
       }
     } else if (targetColId === source.colId && transfer) {
@@ -415,13 +408,15 @@ export const SortableBoardContainer = <TItem,>({
 
   // ── Context value ──────────────────────────────────────────────────
 
+  // Pass boardInternal directly — NOT a copy. The useEffect above mutates
+  // boardInternal.finalizeTransfer after render. A snapshot copy would capture
+  // `undefined` and React Compiler's memoization would never update it.
+  // Cast needed: SortableBoardInternal<TItem> → SortableBoardInternal<unknown>
+  // is safe because consumers only read transferState and finalizeTransfer.
   const contextValue: SortableBoardContextValue = {
     registerColumn: boardInternal.registerColumn,
     unregisterColumn: boardInternal.unregisterColumn,
-    boardInternal: {
-      transferState: boardInternal.transferState,
-      finalizeTransfer: boardInternal.finalizeTransfer,
-    },
+    boardInternal: boardInternal as SortableBoardInternal<unknown>,
   };
 
   return (

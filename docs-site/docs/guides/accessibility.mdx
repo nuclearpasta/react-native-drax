@@ -1,0 +1,57 @@
+---
+title: Accessibility
+description: Accessibility features in Drax — auto-generated labels, reduced motion, screen reader support.
+keywords: [react-native, accessibility, a11y, reduced-motion, screen-reader]
+sidebar_position: 15
+---
+
+# Accessibility
+
+Drax includes built-in accessibility support for screen readers and reduced motion preferences.
+
+## Auto-Generated Labels
+
+`SortableItem` automatically generates accessibility attributes:
+
+- **`accessibilityLabel`**: `"Item N of M"` — position in list
+- **`accessibilityHint`**: `"Long press to drag and reorder"` — interaction hint
+- **`accessibilityRole`**: `"adjustable"` — indicates a reorderable element
+
+```tsx
+// These are generated automatically:
+<SortableItem sortable={sortable} index={2}>
+  {/* accessibilityLabel="Item 3 of 10" */}
+  {/* accessibilityHint="Long press to drag and reorder" */}
+  {/* accessibilityRole="adjustable" */}
+  <Text>Cherry</Text>
+</SortableItem>
+```
+
+## Custom Labels
+
+Override the defaults by passing your own props:
+
+```tsx
+<SortableItem
+  sortable={sortable}
+  index={index}
+  accessibilityLabel={`Task: ${item.title}`}
+  accessibilityHint="Long press and drag to change priority"
+>
+  <TaskCard item={item} />
+</SortableItem>
+```
+
+## Reduced Motion
+
+Drax automatically respects the device's reduced motion setting using Reanimated's `useReducedMotion()`:
+
+- When reduced motion is **on**: all shift animations are skipped (items snap instantly)
+- When reduced motion is **off**: animations play normally
+
+No configuration needed — it's built into `SortableItem`.
+
+## Next Steps
+
+- **[Animation Presets](/guides/animation-presets)** — Customize animation behavior
+- **[API: SortableItem](/api/components/sortable-item)** — Full component reference

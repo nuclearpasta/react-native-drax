@@ -8,7 +8,7 @@ import {
 } from 'react-native-reanimated';
 
 import { defaultAutoScrollIntervalLength } from '../params';
-import type { DraxListProps, DraxViewMeasurements, Position } from '../types';
+import type { DraxViewMeasurements, Position } from '../types';
 import { useDraxId } from './useDraxId';
 
 // FlatList is invariant in its type parameter — `any` is the only valid union constraint
@@ -16,8 +16,8 @@ type ScrollableComponents = FlatList<any> | ScrollView;
 
 type DraxScrollHandlerArgs<T extends ScrollableComponents> = {
   idProp?: string;
-  onContentSizeChangeProp?: DraxListProps<unknown>['onContentSizeChange'];
-  onScrollProp: DraxListProps<unknown>['onScroll'];
+  onContentSizeChangeProp?: (w: number, h: number) => void;
+  onScrollProp?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   externalRef?: Ref<T>;
   doScroll: RefObject<() => void>;
 };

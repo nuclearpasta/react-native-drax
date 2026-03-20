@@ -1,12 +1,13 @@
 import type { ReactNode, RefObject } from 'react';
-import { useEffect, useRef } from 'react';
-import { StyleSheet } from 'react-native';
+import { useEffect, useLayoutEffect, useRef } from 'react';
+import { Platform, StyleSheet } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Reanimated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { runOnJS, runOnUI } from 'react-native-worklets';
 import { DraxView } from './DraxView';
 import { useDraxContext } from './hooks/useDraxContext';
+import { useWebScrollFreeze } from './hooks/useWebScrollFreeze';
 import { defaultAutoScrollIntervalLength, ITEM_SHIFT_ANIMATION_DURATION } from './params';
 import { useSortableBoardContext } from './SortableBoardContext';
 import type {
@@ -127,13 +128,19 @@ export const SortableContainer = ({
   const lastMoveReceiverRef = useRef<number | undefined>(undefined);
   const lastMoveDirectionRef = useRef<number>(0); // +1 forward, -1 backward
 
+
+  const { freeze: freezeScroll, unfreeze: unfreezeScroll } = useWebScrollFreeze(scrollRef);
+
   // ── Finalize drag (called after snap animation completes) ──────────
 
   const finalizeDrag = () => {
+    unfreezeScroll();
+
     if (boardContext?.boardInternal.transferState.current?.targetId) {
       boardContext.boardInternal.finalizeTransfer?.();
       return;
     }
+
     const startIdx = dragStartIndexRef.current;
     const endIdx = draggedDisplayIndexRef.current;
 
@@ -146,15 +153,15 @@ export const SortableContainer = ({
       const finalData = pending
         .map((idx) => rawData[idx])
         .filter((item): item is any => item !== undefined);
-      const fromOrigIdx = pending[startIdx];
-      const toOrigIdx = pending[endIdx];
+      const draggedOrigIdx = pending[endIdx];
+      const displacedOrigIdx = pending[startIdx];
 
       const reorderEvent = {
         data: finalData,
         fromIndex: startIdx,
         toIndex: endIdx,
-        fromItem: fromOrigIdx !== undefined ? rawData[fromOrigIdx] as any : undefined as any,
-        toItem: toOrigIdx !== undefined ? rawData[toOrigIdx] as any : undefined as any,
+        fromItem: draggedOrigIdx !== undefined ? rawData[draggedOrigIdx] as any : undefined as any,
+        toItem: displacedOrigIdx !== undefined ? rawData[displacedOrigIdx] as any : undefined as any,
         isExternalDrag: false,
       };
 
@@ -184,12 +191,15 @@ export const SortableContainer = ({
 
         requestAnimationFrame(() => {
           onReorder(reorderEvent);
-          // Board only: flush stableData after a delay to restore touch
-          // hit testing. List/grid don't need this (permanent shifts work).
           if (boardContext) {
             setTimeout(() => {
               sortable._internal.flushVisualOrder();
             }, 300);
+          } else if (Platform.OS === 'web') {
+            // On web, flush synchronously after onReorder so FlatList cells
+            // move to correct positions immediately. The delayed flush caused
+            // races when the user grabbed another item before it fired.
+            sortable._internal.flushVisualOrder();
           }
         });
       }
@@ -197,14 +207,15 @@ export const SortableContainer = ({
       // No reorder — cancel drag: revert to committed shifts + make item visible.
       cancelDrag();
       resetDraggedItem();
-      // Hover clearing is NOT deferred — onSnapComplete will handle it.
     }
   };
 
   // Register finalizeDrag via the stable ref so SortableItem always
   // calls the latest version, even if it has a stale _internal reference
   // (e.g., after MATCH path skips FlatList re-render).
-  sortable._internal.onItemSnapEnd = finalizeDrag;
+  useLayoutEffect(() => {
+    sortable._internal.onItemSnapEnd = finalizeDrag;
+  }, [sortable._internal, finalizeDrag]);
 
   // ── Auto-scroll ─────────────────────────────────────────────────────
 
@@ -274,6 +285,7 @@ export const SortableContainer = ({
   ): DraxProtocolDragEndResponse => {
     scrollStateRef.current = AutoScrollDirection.None;
     stopScroll();
+    unfreezeScroll();
     dropTargetVisibleSV.value = false;
 
     const { dragged, receiver } = eventData;
@@ -359,6 +371,7 @@ export const SortableContainer = ({
     jitterExceededRef.current = false;
     lastMoveReceiverRef.current = undefined;
     lastMoveDirectionRef.current = 0;
+    freezeScroll();
 
     const { dragged } = eventData;
 
@@ -489,7 +502,6 @@ export const SortableContainer = ({
           lastMoveDirectionRef.current = direction;
         }
         moveDraggedItem(targetSlot);
-      } else {
       }
     }
 
@@ -509,6 +521,7 @@ export const SortableContainer = ({
   };
 
   const onMonitorDragExit = (eventData: DraxMonitorEventData) => {
+    stopScroll();
     if (scrollIntervalRef.current) {
       draxViewProps?.onMonitorDragExit?.(eventData);
       return;

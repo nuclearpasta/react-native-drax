@@ -1,0 +1,39 @@
+---
+title: "Example: Kanban Board"
+description: Cross-container drag between columns using useSortableBoard.
+keywords: [react-native, drax, example, kanban, board, cross-container]
+sidebar_position: 8
+---
+
+# Kanban Board <span className="badge--experimental">Experimental</span>
+
+Demonstrates cross-container drag — moving items between sortable columns (kanban board pattern).
+
+## Key Concepts
+
+- **`useSortableBoard`** — board-level coordinator
+- **`SortableBoardContainer`** — monitoring wrapper for the board
+- **Phantom slots** — target column reserves space for incoming item
+- **Smooth transfers** — hover covers the transition between columns
+
+## Features Shown
+
+| Feature | How |
+|---|---|
+| `useSortableBoard` | Board-level coordinator with `onTransfer` |
+| `SortableBoardContainer` | Wraps all columns, detects cross-boundary drags |
+| Per-column `useSortableList` | Each column manages its own reorder state |
+| Cross-container transfer | Items move between columns on drop |
+
+## Source Code
+
+```tsx title="example/app/(tabs)/kanban-board.tsx"
+// Full source available at:
+// https://github.com/nuclearpasta/react-native-drax/blob/main/example/app/(tabs)/kanban-board.tsx
+```
+
+## Related
+
+- [Cross-Container Drag Guide](/guides/cross-container-drag) — Full tutorial
+- [API: useSortableBoard](/api/hooks/use-sortable-board) — Hook reference
+- [API: SortableBoardContainer](/api/components/sortable-board-container) — Container reference

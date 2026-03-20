@@ -21,7 +21,7 @@ export const getRelativePosition = (
 };
 
 export const generateRandomId = () =>
-  `${Math.random().toString(36).substr(2)}${Math.random().toString(36).substr(2)}`;
+  `${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}`;
 
 /**
  * Compute the absolute position of a spatial entry by walking the parent chain.
@@ -102,7 +102,7 @@ export const hitTestWorklet = (
   const dragBottom = dragTop + dh;
 
   for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i]!;
+    const entry = entries[i];
     if (!entry) continue;
     if (entry.id === excludeId) continue;
     if (!entry.receptive && !entry.monitoring) continue;
@@ -169,4 +169,83 @@ export const hitTestWorklet = (
   }
 
   return { receiverId, monitorIds };
+};
+
+// ─── Snap Alignment Helper ──────────────────────────────────────────────
+
+/** Named alignment positions for snap targets within a receiver */
+export type SnapAlignment =
+  | 'center'
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'center-left'
+  | 'center-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
+
+/**
+ * Compute a snap target position that aligns a dragged view within a receiver
+ * at the specified alignment point, with an optional pixel offset.
+ *
+ * Use as the return value from onDragDrop/onReceiveDragDrop/onMonitorDragDrop:
+ * ```
+ * onReceiveDragDrop={({ dragged, receiver }) =>
+ *   snapToAlignment(receiver.measurements, dragged.measurements, 'top-left', { x: 8, y: 8 })
+ * }
+ * ```
+ */
+export const snapToAlignment = (
+  receiver: { x: number; y: number; width: number; height: number },
+  dragged: { width: number; height: number } | undefined,
+  alignment: SnapAlignment = 'center',
+  offset: Position = { x: 0, y: 0 }
+): Position => {
+  const dw = dragged?.width ?? 0;
+  const dh = dragged?.height ?? 0;
+
+  let x: number;
+  let y: number;
+
+  switch (alignment) {
+    case 'top-left':
+      x = receiver.x;
+      y = receiver.y;
+      break;
+    case 'top-center':
+      x = receiver.x + (receiver.width - dw) / 2;
+      y = receiver.y;
+      break;
+    case 'top-right':
+      x = receiver.x + receiver.width - dw;
+      y = receiver.y;
+      break;
+    case 'center-left':
+      x = receiver.x;
+      y = receiver.y + (receiver.height - dh) / 2;
+      break;
+    case 'center':
+      x = receiver.x + (receiver.width - dw) / 2;
+      y = receiver.y + (receiver.height - dh) / 2;
+      break;
+    case 'center-right':
+      x = receiver.x + receiver.width - dw;
+      y = receiver.y + (receiver.height - dh) / 2;
+      break;
+    case 'bottom-left':
+      x = receiver.x;
+      y = receiver.y + receiver.height - dh;
+      break;
+    case 'bottom-center':
+      x = receiver.x + (receiver.width - dw) / 2;
+      y = receiver.y + receiver.height - dh;
+      break;
+    case 'bottom-right':
+      x = receiver.x + receiver.width - dw;
+      y = receiver.y + receiver.height - dh;
+      break;
+  }
+
+  return { x: x + offset.x, y: y + offset.y };
 };

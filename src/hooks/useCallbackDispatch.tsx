@@ -1,10 +1,12 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { useRef } from 'react';
-import { View } from 'react-native';
+import type { ViewStyle } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import { withDelay, withTiming } from 'react-native-reanimated';
 import { runOnJS, runOnUI } from 'react-native-worklets';
 
+import type { FlattenedHoverStyles } from '../HoverLayer';
 import { computeAbsolutePositionWorklet, getRelativePosition } from '../math';
 import {
   defaultSnapbackDelay,
@@ -45,6 +47,7 @@ interface CallbackDispatchDeps {
   scrollOffsetsSV: SharedValue<Position[]>;
   draggedIdSV: SharedValue<string>;
   receiverIdSV: SharedValue<string>;
+  rejectedReceiverIdSV: SharedValue<string>;
   dragPhaseSV: SharedValue<DragPhase>;
   hoverPositionSV: SharedValue<Position>;
   grabOffsetSV: SharedValue<Position>;
@@ -52,6 +55,7 @@ interface CallbackDispatchDeps {
   setHoverContent: (content: ReactNode | null) => void;
   hoverReadySV: SharedValue<boolean>;
   hoverClearDeferredRef: { current: boolean };
+  hoverStylesRef: RefObject<FlattenedHoverStyles | null>;
 }
 
 /**
@@ -178,6 +182,16 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       dragged,
     });
 
+    // Setup hover styles — set BEFORE setHoverContent so HoverLayer
+    // captures them when it re-renders on hoverVersion change.
+    deps.hoverStylesRef.current = {
+      hoverStyle: flattenOrNull(draggedEntry.props.hoverStyle),
+      hoverDraggingStyle: flattenOrNull(draggedEntry.props.hoverDraggingStyle),
+      hoverDraggingWithReceiverStyle: flattenOrNull(draggedEntry.props.hoverDraggingWithReceiverStyle),
+      hoverDraggingWithoutReceiverStyle: flattenOrNull(draggedEntry.props.hoverDraggingWithoutReceiverStyle),
+      hoverDragReleasedStyle: flattenOrNull(draggedEntry.props.hoverDragReleasedStyle),
+    };
+
     // Setup hover content
     if (isDraggable(draggedEntry.props) && !draggedEntry.props.noHover) {
       const renderFn =
@@ -227,7 +241,9 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     currentMonitorIdsRef.current = [];
   };
 
-  /** Called via runOnJS when receiver changes (enter/exit) */
+  /** Called via runOnJS on every gesture update for callback dispatch.
+   *  Handles: enter/exit (on receiver change), onDragOver/onReceiveDragOver
+   *  (continuous, same receiver), onDrag (continuous, no receiver), and monitors. */
   const handleReceiverChange = (
     oldReceiverId: string,
     newReceiverId: string,
@@ -237,6 +253,9 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     const draggedId = draggedIdSV.value;
     const dragged = buildDraggedViewData(draggedId, absolutePosition);
     if (!dragged) return;
+
+    const draggedEntry = getViewEntry(draggedId);
+    const draggedPayload = draggedEntry?.props.dragPayload ?? draggedEntry?.props.payload;
 
     const startPos = startPositionSV.value;
     const dragTranslation = {
@@ -249,8 +268,49 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       dragged,
     };
 
+    // ── Check dynamicReceptiveCallback / acceptsDrag on new receiver ──
+    let acceptedReceiverId = newReceiverId;
+    if (newReceiverId && oldReceiverId !== newReceiverId) {
+      const newReceiverEntry = getViewEntry(newReceiverId);
+      if (newReceiverEntry) {
+        // Check acceptsDrag first (simpler convenience prop)
+        const acceptsDrag = newReceiverEntry.props.acceptsDrag;
+        if (acceptsDrag && !acceptsDrag(draggedPayload)) {
+          acceptedReceiverId = '';
+        }
+
+        // Check dynamicReceptiveCallback (more detailed)
+        const dynamicCallback = newReceiverEntry.props.dynamicReceptiveCallback;
+        if (acceptedReceiverId && dynamicCallback && newReceiverEntry.measurements) {
+          const accepted = dynamicCallback({
+            targetId: newReceiverId,
+            targetMeasurements: newReceiverEntry.measurements,
+            draggedId,
+            draggedPayload,
+          });
+          if (!accepted) {
+            acceptedReceiverId = '';
+          }
+        }
+      }
+
+      // If rejected, tell the gesture worklet to skip this receiver on future frames.
+      // Also clear receiverIdSV so animated styles don't flash the receiving state.
+      if (!acceptedReceiverId) {
+        runOnUI((
+          _receiverIdSV: typeof deps.receiverIdSV,
+          _rejectedReceiverIdSV: typeof deps.rejectedReceiverIdSV,
+          _rejectedId: string,
+        ) => {
+          'worklet';
+          _receiverIdSV.value = '';
+          _rejectedReceiverIdSV.value = _rejectedId;
+        })(deps.receiverIdSV, deps.rejectedReceiverIdSV, newReceiverId);
+      }
+    }
+
     // Fire exit on old receiver (only when receiver actually changed)
-    if (oldReceiverId && oldReceiverId !== newReceiverId) {
+    if (oldReceiverId && oldReceiverId !== acceptedReceiverId) {
       const oldReceiverEntry = getViewEntry(oldReceiverId);
       const oldReceiverData = buildReceiverViewData(
         oldReceiverId,
@@ -258,7 +318,6 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       );
       if (oldReceiverEntry && oldReceiverData) {
         // Dragged view: onDragExit
-        const draggedEntry = getViewEntry(draggedId);
         draggedEntry?.props.onDragExit?.({
           ...baseEventData,
           receiver: oldReceiverData,
@@ -274,15 +333,14 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     }
 
     // Fire enter on new receiver (only when receiver actually changed)
-    if (newReceiverId && oldReceiverId !== newReceiverId) {
-      const newReceiverEntry = getViewEntry(newReceiverId);
+    if (acceptedReceiverId && oldReceiverId !== acceptedReceiverId) {
+      const newReceiverEntry = getViewEntry(acceptedReceiverId);
       const newReceiverData = buildReceiverViewData(
-        newReceiverId,
+        acceptedReceiverId,
         absolutePosition
       );
       if (newReceiverEntry && newReceiverData) {
         // Dragged view: onDragEnter
-        const draggedEntry = getViewEntry(draggedId);
         draggedEntry?.props.onDragEnter?.({
           ...baseEventData,
           receiver: newReceiverData,
@@ -296,14 +354,34 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       }
     }
 
+    // ── Continuous callbacks: onDragOver / onReceiveDragOver / onDrag ──
+    if (acceptedReceiverId && oldReceiverId === acceptedReceiverId) {
+      // Dragging over the same receiver — fire onDragOver + onReceiveDragOver
+      const receiverEntry = getViewEntry(acceptedReceiverId);
+      const receiverData = buildReceiverViewData(acceptedReceiverId, absolutePosition);
+      if (receiverEntry && receiverData) {
+        draggedEntry?.props.onDragOver?.({
+          ...baseEventData,
+          receiver: receiverData,
+        });
+        receiverEntry.props.onReceiveDragOver?.({
+          ...baseEventData,
+          receiver: receiverData,
+        });
+      }
+    } else if (!acceptedReceiverId) {
+      // No receiver — fire onDrag (continuous, not over any receiver)
+      draggedEntry?.props.onDrag?.(baseEventData);
+    }
+
     // ── Dispatch monitor events ──────────────────────────────────────
     const newMonitorIds = monitorIds ?? [];
     const prevMonitorIds = currentMonitorIdsRef.current;
     const prevWasEmpty = prevMonitorIds.length === 0;
 
-    // Build receiver data for monitor event payload
-    const receiverData = newReceiverId
-      ? buildReceiverViewData(newReceiverId, absolutePosition)
+    // Build receiver data for monitor event payload (use accepted receiver, not raw hit-test)
+    const receiverData = acceptedReceiverId
+      ? buildReceiverViewData(acceptedReceiverId, absolutePosition)
       : undefined;
 
     // Fire events on current monitors (start/enter before over)
@@ -606,19 +684,17 @@ function performSnapback(
    *   Then hover clears on next UI frame. Items at visual positions. No blink.
    */
   const onSnapComplete = () => {
+
     // Reset the deferred flag before firing callbacks.
     // finalizeDrag (called via onSnapEnd) may set it to true for reorder.
     hoverClearDeferredRef.current = false;
 
     // Step 1: Fire callbacks → finalizeDrag runs synchronously.
-    // For reorder: finalizeDrag sets hoverClearDeferredRef=true and handles
-    // all visual state via a single runOnUI block (permanent shifts + hover clear).
-    // For cancel: finalizeDrag clears hover SharedValues immediately.
     draggedEntry.props.onSnapEnd?.(snapEventData);
     receiverEntry?.props.onReceiveSnapEnd?.(snapEventData);
 
+
     // Step 2: Clear hover if NOT deferred by a sortable reorder.
-    // When deferred, finalizeDrag's runOnUI block handles the clearing.
     if (!hoverClearDeferredRef.current) {
       runOnUI((
         _hoverReadySV: typeof hoverReadySV,
@@ -683,4 +759,11 @@ function performSnapback(
       })
     );
   }
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+function flattenOrNull(s: unknown): ViewStyle | null {
+  if (!s) return null;
+  return StyleSheet.flatten(s as ViewStyle) ?? null;
 }

@@ -6,6 +6,7 @@ import Reanimated from 'react-native-reanimated';
 import { DraxSubprovider } from './DraxSubprovider';
 import { DraxView } from './DraxView';
 import { useDraxScrollHandler } from './hooks/useDraxScrollHandler';
+import { useWebScrollFreeze } from './hooks/useWebScrollFreeze';
 import {
   defaultAutoScrollBackThreshold,
   defaultAutoScrollForwardThreshold,
@@ -112,12 +113,15 @@ export const DraxScrollView = (
     }
   };
 
+  const { freeze: freezeScroll, unfreeze: unfreezeScroll } = useWebScrollFreeze(scrollRef);
+
   // Clear auto-scroll direction and stop the auto-scrolling interval.
   const resetScroll = () => {
     const autoScrollState = autoScrollStateRef.current;
     autoScrollState.x = AutoScrollDirection.None;
     autoScrollState.y = AutoScrollDirection.None;
     stopScroll();
+    unfreezeScroll();
   };
 
   // Monitor drag-over events to react with auto-scrolling.
@@ -147,12 +151,13 @@ export const DraxScrollView = (
 
   const scrollViewParent = { id, viewRef: scrollRef, isScrollContainer: true };
 
-  return id ? (
+  return (
     <DraxView
       id={id}
       style={style}
       scrollPosition={scrollPosition}
       onMeasure={onMeasureContainer}
+      onMonitorDragStart={freezeScroll}
       onMonitorDragOver={onMonitorDragOver}
       onMonitorDragExit={resetScroll}
       onMonitorDragEnd={resetScroll}
@@ -171,5 +176,5 @@ export const DraxScrollView = (
         </Reanimated.ScrollView>
       </DraxSubprovider>
     </DraxView>
-  ) : null;
+  );
 };

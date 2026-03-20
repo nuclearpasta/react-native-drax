@@ -1,6 +1,9 @@
 {
   "extends": "../tsconfig",
   "compilerOptions": {
-    // Avoid expo-cli auto-generating a tsconfig
-  }
+    "lib": ["ESNext", "DOM"],
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["app", "components", "screens"]
 }

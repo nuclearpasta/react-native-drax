@@ -27,5 +27,5 @@
     "target": "ESNext",
     "verbatimModuleSyntax": true
   },
-  "include": ["src", "example"]
+  "include": ["src"]
 }

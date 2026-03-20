@@ -1,8 +1,5 @@
 import type { ReactNode, RefObject } from 'react';
 import type {
-  FlatListProps,
-  ListRenderItem,
-  ListRenderItemInfo,
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollViewProps,
@@ -13,7 +10,6 @@ import type {
 import type { HostInstance } from 'react-native';
 import type {
   AnimatedStyle,
-  FlatListPropsWithLayout,
   SharedValue,
 } from 'react-native-reanimated';
 
@@ -44,15 +40,6 @@ export interface ViewDimensions {
 
 /** Measurements of a Drax view for bounds checking purposes */
 export interface DraxViewMeasurements extends Position, ViewDimensions {}
-
-/** Measurement with optional key for list item tracking (no index signature) */
-export interface DraxListItemMeasurement {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  key?: string;
-}
 
 // ─── Drag Phase & Status Types ─────────────────────────────────────────────
 
@@ -322,7 +309,11 @@ export interface DraxViewProps
     targetId: string;
     targetMeasurements: DraxViewMeasurements;
     draggedId: string;
+    draggedPayload: unknown;
   }) => boolean;
+
+  /** Simpler convenience prop for conditional drop acceptance based on payload */
+  acceptsDrag?: (draggedPayload: unknown) => boolean;
 
   /** Called in the dragged view when a drag action begins */
   onDragStart?: (data: DraxDragEventData) => void;
@@ -405,6 +396,8 @@ export interface DraxViewProps
   dragHandle?: boolean;
   /** Collision algorithm for receiving drags: 'center' (default), 'intersect', or 'contain' */
   collisionAlgorithm?: CollisionAlgorithm;
+  /** Ref to a View that constrains the drag area. The dragged view will be clamped within these bounds. */
+  dragBoundsRef?: RefObject<any>;
 }
 
 // ─── View Registry (JS Thread) ─────────────────────────────────────────────
@@ -438,6 +431,9 @@ export interface DraxContextValue {
   hoverPositionSV: SharedValue<Position>;
   /** Changes every frame during drag. Used by gesture worklet for hit-testing. */
   dragAbsolutePositionSV: SharedValue<Position>;
+  /** ID of the most recently rejected receiver (cleared when drag leaves its bounds).
+   *  Read by gesture worklet to skip re-detecting the same rejected receiver. */
+  rejectedReceiverIdSV: SharedValue<string>;
   /** Changes on view mount/layout. Read by gesture worklet for hit-testing. */
   spatialIndexSV: SharedValue<SpatialEntry[]>;
   /** Changes during scroll. Indexed parallel to spatialIndex. */
@@ -571,137 +567,30 @@ export interface DraxScrollViewProps
   id?: string;
 }
 
-// ─── List Types ────────────────────────────────────────────────────────────
-
-/** DraxList item being dragged */
-export interface DraxListDraggedItemData<TItem> {
-  index: number;
-  item?: TItem;
-  isExternalDrag: boolean;
-}
-
-/** Event data for when a list item reorder drag action begins */
-export interface DraxListOnItemDragStartEventData<TItem>
-  extends DraxDragEventData, DraxListDraggedItemData<TItem> {}
-
-/** Event data for when a list item position (index) changes during a reorder drag */
-export interface DraxListOnItemDragPositionChangeEventData<TItem>
-  extends DraxMonitorEventData, DraxListDraggedItemData<TItem> {
-  toIndex: number | undefined;
-  previousIndex: number | undefined;
-}
-
-/** Event data for when a list item reorder drag action ends */
-export interface DraxListOnItemDragEndEventData<TItem>
-  extends
-    DraxMonitorEventData,
-    WithCancelledFlag,
-    DraxListDraggedItemData<TItem> {
-  toIndex?: number;
-  toItem?: TItem;
-}
-
-/** Event data for when an item is released in a new position within a DraxList */
-export interface DraxListOnItemReorderEventData<TItem> {
-  fromItem?: TItem;
-  fromIndex: number;
-  toItem?: TItem;
-  toIndex: number;
-  isExternalDrag: boolean;
-}
-
-/** Render function for content of a DraxList item's DraxView */
-export interface DraxListRenderItemContent<TItem> {
-  (info: ListRenderItemInfo<TItem>, props: DraxRenderContentProps): ReactNode;
-}
-
-/** Render function for content of a DraxList item's hovering copy */
-export interface DraxListRenderItemHoverContent<TItem> {
-  (
-    info: ListRenderItemInfo<TItem>,
-    props: DraxRenderHoverContentProps
-  ): ReactNode;
-}
-
-/** Callback handler for when a list item is moved within a DraxList */
-export interface DraxListOnItemReorder<TItem> {
-  (eventData: DraxListOnItemReorderEventData<TItem>): void;
-}
-
-/** Props for a DraxList */
-export interface DraxListProps<TItem>
-  extends
-    Omit<RemoveSharedValues<FlatListPropsWithLayout<TItem>>, 'renderItem'>,
-    DraxAutoScrollProps {
-  /**
-   * @deprecated Please use `parentDraxViewProps.id` instead
-   */
-  id?: never;
-
-  /**
-   * @experimental
-   * Style props to apply to the parent DraxView when monitoring an External item drag
-   */
-  monitoringExternalDragStyle?: DraxStyleProp;
-
-  onItemDragStart?: (
-    eventData: DraxListOnItemDragStartEventData<TItem>
-  ) => void;
-  onItemDragPositionChange?: (
-    eventData: DraxListOnItemDragPositionChangeEventData<TItem>
-  ) => void;
-  onItemDragEnd?: (eventData: DraxListOnItemDragEndEventData<TItem>) => void;
-  onItemReorder?: DraxListOnItemReorder<TItem>;
-
-  /** Can the list be reordered by dragging items? Defaults to true if onItemReorder is set. */
-  reorderable?: boolean;
-  /** If true, lock item drags to the list's main axis */
-  lockItemDragsToMainAxis?: boolean;
-  /** Time in milliseconds view needs to be pressed before drag starts */
-  longPressDelay?: number;
-
-  renderItem: (
-    info: ListRenderItemInfo<TItem>,
-    itemProps: DraxListItemProps<TItem>
-  ) => ReturnType<ListRenderItem<TItem>>;
-
-  data: FlatListProps<WithoutIndexAndOriginalIndex<TItem>>['data'];
-
-  /**
-   * @experimental
-   * Props to apply to the parent DraxView that's wrapping the FlatList
-   */
-  parentDraxViewProps?: DraxViewProps;
-
-  /**
-   * When true, items will shift based on their centers instead of edges.
-   * Always true for grid layouts (numColumns > 1).
-   * @default false
-   */
-  centerShift?: boolean;
-}
-
-export interface DraxListItemProps<T extends unknown> {
-  index: number;
-  item: T;
-  originalIndex: number;
-  horizontal: boolean;
-  lockItemDragsToMainAxis: boolean;
-  draggedItem: SharedValue<number | undefined>;
-  shiftsRef: SharedValue<Position[]>;
-  itemMeasurementsRef: RefObject<(DraxListItemMeasurement | undefined)[]>;
-  prevItemMeasurementsRef: RefObject<(DraxListItemMeasurement | undefined)[]>;
-  resetDraggedItem: () => void;
-  keyExtractor?: (item: T, index: number) => string;
-  previousShiftsRef: SharedValue<Position[]>;
-  registrationsRef: RefObject<(DraxViewRegistration | undefined)[]>;
-  data: DraxListProps<T>['data'];
-}
-
 // ─── Sortable Types (List-Agnostic) ─────────────────────────────────────────
 
 /** Reorder strategy for sortable lists */
 export type SortableReorderStrategy = 'insert' | 'swap';
+
+/** Named animation preset for sortable item shift animations */
+export type SortableAnimationPreset = 'default' | 'spring' | 'gentle' | 'snappy' | 'none';
+
+/** Custom animation configuration for sortable item shifts */
+export interface SortableAnimationCustomConfig {
+  /** Duration in ms for timing-based animations. Ignored when useSpring is true. @default 200 */
+  shiftDuration?: number;
+  /** Use spring physics instead of timing. @default false */
+  useSpring?: boolean;
+  /** Spring damping. @default 15 */
+  springDamping?: number;
+  /** Spring stiffness. @default 150 */
+  springStiffness?: number;
+  /** Spring mass. @default 1 */
+  springMass?: number;
+}
+
+/** Animation configuration: a preset name or custom config object */
+export type SortableAnimationConfig = SortableAnimationPreset | SortableAnimationCustomConfig;
 
 /** Measurement for a single sortable item, keyed by item key */
 export interface SortableItemMeasurement {
@@ -797,6 +686,8 @@ export interface UseSortableListOptions<T> {
   autoScrollBackThreshold?: number;
   /** Drag position threshold for forward auto-scroll. @default 0.9 */
   autoScrollForwardThreshold?: number;
+  /** Animation config for item shift animations. @default 'default' */
+  animationConfig?: SortableAnimationConfig;
   /** Callback when drag starts */
   onDragStart?: (event: SortableDragStartEvent<T>) => void;
   /** Callback when drag position (index) changes */
@@ -827,6 +718,7 @@ export interface SortableListInternal<T> {
   reorderStrategy: SortableReorderStrategy;
   longPressDelay: number;
   lockToMainAxis: boolean;
+  animationConfig: SortableAnimationConfig;
   draggedItem: SharedValue<number | undefined>;
   itemMeasurements: RefObject<Map<string, SortableItemMeasurement>>;
   originalIndexes: number[];
@@ -971,26 +863,9 @@ export interface SortableBoardInternal<TItem> {
 export interface SortableBoardContextValue {
   registerColumn: (id: string, internal: SortableListInternal<unknown>) => void;
   unregisterColumn: (id: string) => void;
-  boardInternal: Pick<SortableBoardInternal<unknown>, 'transferState' | 'finalizeTransfer'>;
+  boardInternal: SortableBoardInternal<unknown>;
 }
 
 // ─── Utility Types ─────────────────────────────────────────────────────────
 
-type UnwrapSharedValue<T> = T extends SharedValue<infer U> ? U : T;
 
-type RemoveSharedValues<T> = {
-  [K in keyof T]: UnwrapSharedValue<T[K]>;
-};
-
-type IsAny<T> = 0 extends 1 & T ? true : false;
-
-type WithoutIndexAndOriginalIndex<T> =
-  IsAny<T> extends true
-    ? T
-    : T extends object
-      ? 'index' extends keyof T
-        ? never
-        : 'originalIndex' extends keyof T
-          ? never
-          : T
-      : T;

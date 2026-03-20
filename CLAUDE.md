@@ -1,6 +1,6 @@
 # react-native-drax
 
-Drag-and-drop framework for React Native. Branch `reanimated-v4` is a major rewrite. **Breaking changes are allowed.**
+Drag-and-drop framework for React Native (iOS, Android, Web). v1.0.0 — major rewrite.
 
 ## Architecture
 
@@ -15,27 +15,26 @@ Drag-and-drop framework for React Native. Branch `reanimated-v4` is a major rewr
 
 - `useSortableList` hook — list-agnostic reorder state (works with FlatList, FlashList, LegendList, etc.)
 - `SortableContainer` — monitoring wrapper using `DraxView isParent`, supports `renderDropIndicator` prop
-- `SortableItem` — per-item wrapper with shift animation + accessibility (auto a11y labels, reduced motion)
-- `DraxSortableList` — convenience FlatList wrapper (keyExtractor optional, tries item.id/key)
-- `SortableGrid` — convenience grid component (requires numColumns)
+- `SortableItem` — per-item wrapper with shift animation
+- `DraxList` — list-agnostic convenience wrapper (accepts `component` prop for FlatList, FlashList, LegendList, etc.)
 - Map-based measurements (keyed by item key) instead of array-indexed
 - Supports insert + swap reorder strategies
 - Drop indicator support: `SortableContainer` tracks target position via SharedValues, renders indicator at insertion point
-- Old `DraxList`/`DraxListItem` are deprecated
 - **Data ownership**: Library commits reorders internally via `commitReorder`. `onReorder` is a notification — parent stores data but library already committed it. When parent echoes data back, useLayoutEffect detects the match and skips (no double-render).
 
 ### Animation Customization
 
-- `animationConfig` prop on `useSortableList` / `DraxSortableList` / `SortableGrid`
+- `animationConfig` prop on `useSortableList` / `DraxList`
 - Presets: `'default'` (200ms timing), `'spring'` (spring physics), `'gentle'` (soft spring), `'snappy'` (fast spring), `'none'` (instant)
 - Custom: `{ shiftDuration, useSpring, springDamping, springStiffness, springMass }`
-- Reduced motion: `useReducedMotion()` from Reanimated — skips all animations automatically
+- Reduced motion: `useReducedMotion()` from Reanimated — skips all shift animations automatically
+- Snap-back animation: fully configurable via `animateSnap`, `snapDelay`, `snapDuration`, `snapAnimator` props
 
 ### Accessibility
 
 - `SortableItem` auto-generates `accessibilityLabel` ("Item N of M") and `accessibilityHint` ("Long press to drag and reorder")
 - `accessibilityRole="adjustable"` for screen readers
-- Custom labels via `accessibilityLabel` / `accessibilityHint` props on `SortableItem`
+- Custom labels override defaults via `accessibilityLabel` / `accessibilityHint` props on `SortableItem`
 - `useReducedMotion()` support — all shift animations respect device accessibility settings
 
 ### List Agnosticism
@@ -43,8 +42,8 @@ Drag-and-drop framework for React Native. Branch `reanimated-v4` is a major rewr
 The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is deliberately list-agnostic:
 - Works with any list component: FlatList, FlashList, LegendList, ScrollView
 - The hook manages reorder state; the container monitors drags; the item wraps each cell
-- `DraxSortableList` and `SortableGrid` are convenience wrappers around FlatList
-- For FlashList/LegendList: use the composable API directly (same pattern, different list component)
+- `DraxList` is a convenience wrapper that accepts a `component` prop (defaults to FlatList)
+- For FlashList/LegendList: pass as `component` prop to `DraxList`, or use the composable API directly
 
 ## Cross-Container Sortable (Board)
 
@@ -82,6 +81,34 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - Algorithm is per-receiver (stored in `SpatialEntry`)
 - Dragged view dimensions passed to `hitTestWorklet` for boundary calculations
 
+## Hover Styles
+
+- 5 hover-specific style props on `DraxView`: `hoverStyle`, `hoverDraggingStyle`, `hoverDraggingWithReceiverStyle`, `hoverDraggingWithoutReceiverStyle`, `hoverDragReleasedStyle`
+- Applied in `HoverLayer.useAnimatedStyle` — reacts to `dragPhaseSV` and `receiverIdSV`
+- Set once per drag in `handleDragStart` via `hoverStylesRef`, captured by worklet on HoverLayer re-render
+- Supports `AnimatedViewStylePropWithoutLayout` (no layout props — hover is positioned via translateX/Y)
+
+## Drag Bounds
+
+- `DraxView` accepts `dragBoundsRef` prop — a ref to a `View` that constrains the drag area
+- Measured via `measureLayout` relative to the root view on mount
+- Stored in a SharedValue, clamped in the gesture worklet's `onActivate` and `onUpdate`
+- The entire dragged view is kept within bounds (accounts for view dimensions)
+
+## Snap Alignment Helper
+
+- `snapToAlignment(receiver, dragged, alignment, offset?)` — compute snap target for 9-point alignment
+- Alignments: `'center'`, `'top-left'`, `'top-center'`, `'top-right'`, `'center-left'`, `'center-right'`, `'bottom-left'`, `'bottom-center'`, `'bottom-right'`
+- Use as return value from `onDragDrop`/`onReceiveDragDrop` callbacks
+- Exported from `react-native-drax`
+
+## Continuous Drag Callbacks
+
+- `onDrag` — fires continuously while dragging over empty space (no receiver)
+- `onDragOver` — fires continuously while dragging over the same receiver
+- `onReceiveDragOver` — fires continuously on the receiver while being dragged over
+- All dispatched from `handleReceiverChange` which now fires on every gesture update frame
+
 ## Namespace API
 
 - `import { Drax } from 'react-native-drax'` for `Drax.View`, `Drax.Provider`, `Drax.Handle`, etc.
@@ -100,12 +127,13 @@ We compete with two libraries. Drax must match or exceed their DX while keeping 
 - v2 released March 2026: Reanimated 4, sortable grids, animation presets, accessibility
 - Still on Gesture Handler ~2.30 (NOT v3 beta)
 - No cross-container drag, no monitoring views, no UI-thread spatial index
-- Drax now matches: drag handles, collision algorithms, drop indicators, animation presets, accessibility, SortableGrid, drop zone acceptance
-- Drax advantages: cross-container (kanban), monitoring views, UI-thread hit-testing, 18-callback event system, list-agnostic API
+- Drax now matches: drag handles, collision algorithms, drop indicators, drop zone acceptance, drag bounds, hover styles, snap alignment, animation presets, accessibility, reduced motion
+- Drax advantages: cross-container (kanban), monitoring views, UI-thread hit-testing, 19-callback event system, list-agnostic API, continuous drag callbacks, custom snap animators, spring physics presets
+- Still missing vs them: item removal animation (`isBeingRemoved` prop)
 
 ## Example App
 
-Expo Router with 9 screens in `example/`. Stack navigation with home screen listing all examples.
+Expo Router with 10 screens in `example/`. Stack navigation with home screen listing all examples.
 
 ### Running
 
@@ -130,6 +158,7 @@ All interactive elements have `testID` for identification via `ui_describe_all` 
 | Reorderable List | `sortable-item-{letter}`, `sortable-list-container` | `sortable-item-A`, `sortable-item-Z` |
 | Reorderable Grid | `grid-tile-{number}`, `sortable-grid-container` | `grid-tile-1`, `grid-tile-30` |
 | Drag Handles | `handle-item-{id}`, `drag-handles-container` | `handle-item-item-0` |
+| Drag Bounds | `bounded-draggable`, `free-draggable`, `drag-bounds-area` | |
 | Collision Modes | `zone-center`, `zone-intersect`, `zone-contain`, `collision-draggable` | |
 | Kanban Board | `kanban-column-{id}`, `kanban-card-{id}` | `kanban-column-todo`, `kanban-card-1` |
 | Knight Moves | `chess-square-{notation}`, `chess-knight`, `chess-board` | `chess-square-e4`, `chess-knight` |

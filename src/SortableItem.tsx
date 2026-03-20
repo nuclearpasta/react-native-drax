@@ -1,16 +1,20 @@
 import type { ReactNode } from 'react';
 import { memo, useRef } from 'react';
+import { Platform } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import { useSharedValue } from 'react-native-reanimated';
 import Reanimated, {
   Easing,
   useAnimatedStyle,
+  useReducedMotion,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
 import { DraxView } from './DraxView';
 import { useDraxContext } from './hooks/useDraxContext';
-import { ITEM_SHIFT_ANIMATION_DURATION } from './params';
+import type { ResolvedAnimationConfig } from './params';
+import { resolveAnimationConfig } from './params';
 import type {
   DraxViewMeasurementHandler,
   DraxViewProps,
@@ -32,26 +36,50 @@ function useSortableItemStyle(
   shiftsRef: SharedValue<Record<string, Position>>,
   instantClearSV: SharedValue<boolean>,
   itemKey: string | undefined,
+  animConfig: ResolvedAnimationConfig,
+  reducedMotion: boolean,
 ) {
   return useAnimatedStyle(() => {
-    const isDragged = hoverReadySV.value && draggedIdSV.value === viewIdSV.value;
+    // Guard: viewIdSV starts as '' before DraxView registers. Without the
+    // non-empty check, a newly mounted item would match a cleared draggedIdSV ('')
+    // and be hidden (opacity 0) until hoverReadySV clears — visible in cross-container transfers.
+    const isDragged = hoverReadySV.value && viewIdSV.value !== '' && draggedIdSV.value === viewIdSV.value;
     const valid = shiftsValidSV.value;
     const shifts = shiftsRef.value;
     const shift = valid && itemKey ? shifts[itemKey] : undefined;
     const instant = instantClearSV.value;
     // When shifts are invalidated (data committing), snap to 0 instantly — no animation.
-    // Without this, items animate from stale shifts to 0 over 200ms, causing a visible jump.
-    const duration = (instant || !valid) ? 0 : ITEM_SHIFT_ANIMATION_DURATION;
+    // When reduced motion is on, skip all animations.
+    const skipAnimation = instant || !valid || reducedMotion;
+
+    const toX = shift?.x ?? 0;
+    const toY = shift?.y ?? 0;
+
+    let translateX: number;
+    let translateY: number;
+
+    if (skipAnimation) {
+      translateX = toX;
+      translateY = toY;
+    } else if (animConfig.useSpring) {
+      const springConfig = {
+        damping: animConfig.springDamping,
+        stiffness: animConfig.springStiffness,
+        mass: animConfig.springMass,
+      };
+      translateX = withSpring(toX, springConfig);
+      translateY = withSpring(toY, springConfig);
+    } else {
+      const timingConfig = { duration: animConfig.shiftDuration, easing: Easing.linear };
+      translateX = withTiming(toX, timingConfig);
+      translateY = withTiming(toY, timingConfig);
+    }
 
     return {
       opacity: isDragged ? 0 : 1,
       transform: [
-        {
-          translateX: withTiming(shift?.x ?? 0, { duration, easing: Easing.linear }),
-        },
-        {
-          translateY: withTiming(shift?.y ?? 0, { duration, easing: Easing.linear }),
-        },
+        { translateX },
+        { translateY },
       ] as const,
     };
   });
@@ -73,6 +101,7 @@ const SortableItemInner = ({
     horizontal,
     lockToMainAxis,
     longPressDelay,
+    animationConfig,
     shiftsRef,
     instantClearSV,
     shiftsValidSV,
@@ -91,6 +120,7 @@ const SortableItemInner = ({
   const item = rawData[originalIndex];
   const itemKey = item !== undefined ? keyExtractor(item, index) : undefined;
 
+
   // Store this DraxView's registered ID in a SharedValue so useAnimatedStyle
   // can compare it with draggedIdSV on the UI thread.
   const viewIdSV = useSharedValue('');
@@ -99,11 +129,21 @@ const SortableItemInner = ({
     ((handler?: DraxViewMeasurementHandler) => void) | null
   >(null);
 
+  // Resolve animation config and check reduced motion preference
+  const resolvedAnimConfig = resolveAnimationConfig(animationConfig);
+  const reducedMotion = useReducedMotion();
+
   // Delegated to isolated hook so worklet closure has no refs from this scope.
   const itemStyle = useSortableItemStyle(
     hoverReadySV, draggedIdSV, viewIdSV,
     shiftsValidSV, shiftsRef, instantClearSV, itemKey,
+    resolvedAnimConfig, reducedMotion,
   );
+
+  // Auto-generate accessibility props (can be overridden via draxViewProps)
+  const totalItems = rawData.length;
+  const defaultA11yLabel = `Item ${index + 1} of ${totalItems}`;
+  const defaultA11yHint = 'Long press to drag and reorder';
 
   return (
     <Reanimated.View style={itemStyle}>
@@ -111,6 +151,9 @@ const SortableItemInner = ({
         longPressDelay={longPressDelay}
         lockDragXPosition={lockToMainAxis && !horizontal}
         lockDragYPosition={lockToMainAxis && horizontal}
+        accessibilityLabel={defaultA11yLabel}
+        accessibilityHint={defaultA11yHint}
+        accessibilityRole="adjustable"
         {...draxViewProps}
         payload={{
           ...(typeof draxViewProps.payload === 'object' &&
@@ -140,8 +183,24 @@ const SortableItemInner = ({
         onMeasure={(measurements) => {
           draxViewProps.onMeasure?.(measurements);
           if (itemKey && measurements) {
+            // On web, measureLayout returns visual positions (includes CSS
+            // transforms). Subtract the current shift to recover the original
+            // FlatList layout position — otherwise subsequent reorders compute
+            // wrong deltas from already-shifted positions.
+            let adjX = measurements.x;
+            let adjY = measurements.y;
+            if (Platform.OS === 'web') {
+              const currentShift = shiftsRef.value[itemKey];
+              if (currentShift) {
+                adjX -= currentShift.x;
+                adjY -= currentShift.y;
+              }
+            }
             const entry: SortableItemMeasurement = {
-              ...measurements,
+              x: adjX,
+              y: adjY,
+              width: measurements.width,
+              height: measurements.height,
               key: itemKey,
               index,
               scrollAtMeasure: { x: scrollPosition.value.x, y: scrollPosition.value.y },

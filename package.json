@@ -1,6 +1,6 @@
 {
   "name": "react-native-drax",
-  "version": "0.11.0-alpha.2",
+  "version": "1.0.0",
   "description": "A drag and drop system for React Native",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
@@ -36,15 +36,23 @@
     "example": "yarn workspace react-native-drax-example",
     "clean": "del-cli lib",
     "prepare": "bob build",
-    "typecheck": "tsc",
-    "lint": "eslint \"**/*.{js,ts,tsx}\"",
+    "typecheck": "tsc && tsc --project example/tsconfig.json",
+    "lint": "eslint .",
     "test": "jest",
     "release": "release-it --only-version"
   },
   "keywords": [
     "react-native",
+    "drag-and-drop",
+    "sortable",
+    "reorderable",
+    "drag",
+    "drop",
+    "reanimated",
+    "gesture-handler",
     "ios",
-    "android"
+    "android",
+    "web"
   ],
   "repository": {
     "type": "git",
@@ -69,11 +77,12 @@
     "@release-it/conventional-changelog": "^10.0.4",
     "@types/jest": "^30.0.0",
     "@types/react": "^19.2.10",
-    "babel-plugin-react-compiler": "^1.0.0",
     "commitlint": "^20.4.1",
     "del-cli": "^7.0.0",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-ft-flow": "^3.0.11",
+    "eslint-plugin-react-compiler": "^19.1.0-rc.2",
     "jest": "^30.2.0",
     "lefthook": "^2.0.16",
     "prettier": "^3.8.1",
@@ -89,11 +98,12 @@
   "peerDependencies": {
     "react": ">=18.0.0",
     "react-native": ">=0.68.0",
-    "react-native-gesture-handler": "^3.0.0-beta.2",
+    "react-native-gesture-handler": ">=2.0.0",
     "react-native-reanimated": "^4.0.0"
   },
   "workspaces": [
-    "example"
+    "example",
+    "docs-site"
   ],
   "packageManager": "yarn@4.11.0",
   "react-native-builder-bob": {

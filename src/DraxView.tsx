@@ -67,6 +67,8 @@ const DRAX_PROP_KEYS: ReadonlySet<string> = new Set([
   'rejectOwnChildren',
   'disableHoverViewMeasurementsOnLayout',
   'dynamicReceptiveCallback',
+  'acceptsDrag',
+  'dragBoundsRef',
   // Style props (handled by useViewStyles)
   'style',
   'dragInactiveStyle',
@@ -142,6 +144,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     lockDragXPosition,
     lockDragYPosition,
     dragHandle,
+    dragBoundsRef,
     children,
     style,
     id: idProp,
@@ -244,6 +247,19 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
 
   const onLayout = () => {
     measureWithHandler();
+    // Re-measure drag bounds on every layout change. The initial useEffect
+    // measurement may fire before the parent flex layout has settled (especially
+    // on native where Fabric commits layout asynchronously). By the time this
+    // DraxView receives onLayout, the bounds view's layout is also finalized.
+    if (dragBoundsRef?.current && rootViewRef.current) {
+      dragBoundsRef.current.measureLayout(
+        rootViewRef.current,
+        (x: number, y: number, width: number, height: number) => {
+          dragBoundsSV.value = { x, y, width, height };
+        },
+        () => {}
+      );
+    }
   };
 
   // External registration — useLayoutEffect so SortableItem's FLIP
@@ -282,13 +298,30 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     longPressDelaySV.value = longPressDelay;
   }, [draggable, longPressDelay, draggableSV, longPressDelaySV]);
 
+  // Drag bounds: measure the bounds view relative to root and store in SharedValue
+  const dragBoundsSV = useSharedValue<{ x: number; y: number; width: number; height: number } | null>(null);
+  useEffect(() => {
+    if (dragBoundsRef?.current && rootViewRef.current) {
+      dragBoundsRef.current.measureLayout(
+        rootViewRef.current,
+        (x: number, y: number, width: number, height: number) => {
+          dragBoundsSV.value = { x, y, width, height };
+        },
+        () => {}
+      );
+    } else {
+      dragBoundsSV.value = null;
+    }
+  }, [dragBoundsRef, rootViewRef, dragBoundsSV]);
+
   const gesture = useDragGesture(
     id,
     spatialIndexSV,
     draggableSV,
     longPressDelaySV,
     lockDragXPosition,
-    lockDragYPosition
+    lockDragYPosition,
+    dragBoundsSV
   );
 
   // ── Animated styles ────────────────────────────────────────────────

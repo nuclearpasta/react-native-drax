@@ -1,0 +1,7 @@
+{
+  "buildCommand": "npx expo export -p web",
+  "outputDirectory": "dist",
+  "installCommand": "cd .. && yarn install",
+  "framework": null,
+  "cleanUrls": true
+}
