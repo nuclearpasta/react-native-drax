@@ -38,7 +38,7 @@
     "prepare": "bob build",
     "typecheck": "tsc && tsc --project example/tsconfig.json",
     "lint": "eslint .",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "release": "release-it --only-version"
   },
   "keywords": [
