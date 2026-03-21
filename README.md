@@ -1,4 +1,4 @@
-# react-native-drax
+# 🥊 react-native-drax
 
 **A drag-and-drop framework for React Native**
 
@@ -13,7 +13,7 @@
 
 [Docs](https://nuclearpasta.com/react-native-drax) | [Live Example](https://nuclearpasta.com/react-native-drax/example)
 
-## Overview
+## 📖 Overview
 
 Drax is a declarative drag-and-drop framework for React Native, written in TypeScript. It supports free-form drag-and-drop, sortable lists and grids, cross-container drag (kanban boards), drag handles, collision algorithms, and more.
 
@@ -21,39 +21,39 @@ Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and
 
 **Platforms:** iOS, Android, Web
 
-### Highlights
+### ✨ Highlights
 
-- **List-agnostic sortable** — works with FlatList, FlashList, LegendList, or any list component
-- **Cross-container drag** — move items between lists (kanban boards)
-- **UI-thread hit-testing** — spatial index worklet for fast receiver detection
-- **Drag handles** — only the handle starts a drag, the rest scrolls
-- **Collision algorithms** — center, intersect, or contain
-- **Drag bounds** — constrain drags within a view
-- **Hover styles** — conditional styles based on drag phase and receiver state
-- **Drop zone acceptance** — accept or reject drops with `acceptsDrag`
-- **Animation presets** — default, spring, gentle, snappy, none — or custom config
-- **Snap alignment** — snap to 9-point alignment within receivers
-- **Accessibility** — auto-generated labels, reduced motion support
-- **19 callback events** — full drag lifecycle control
-- **New Architecture** compatible (Fabric)
+- 📋 **List-agnostic sortable** — works with FlatList, FlashList, LegendList, or any list component
+- 🔀 **Cross-container drag** — move items between lists (kanban boards)
+- ⚡ **UI-thread hit-testing** — spatial index worklet for fast receiver detection
+- ✊ **Drag handles** — only the handle starts a drag, the rest scrolls
+- 💥 **Collision algorithms** — center, intersect, or contain
+- 📐 **Drag bounds** — constrain drags within a view
+- 🎨 **Hover styles** — conditional styles based on drag phase and receiver state
+- 🚫 **Drop zone acceptance** — accept or reject drops with `acceptsDrag`
+- 🎬 **Animation presets** — default, spring, gentle, snappy, none — or custom config
+- 🧲 **Snap alignment** — snap to 9-point alignment within receivers
+- ♿ **Accessibility** — auto-generated labels, reduced motion support
+- 📡 **19 callback events** — full drag lifecycle control
+- 🏗️ **New Architecture** compatible (Fabric)
 
-### Why Drax?
+### 🤔 Why Drax?
 
 | | Drax | [react-native-sortables](https://github.com/MatiPl01/react-native-sortables) | [react-native-reanimated-dnd](https://github.com/entropyconquers/react-native-reanimated-dnd) |
 |---|:---:|:---:|:---:|
-| Free-form drag-and-drop | Yes | - | Yes |
-| Sortable lists & grids | Yes | Yes | Yes |
-| Cross-container drag (kanban) | Yes | - | - |
-| List-agnostic (FlatList, FlashList, etc.) | Yes | - | - |
-| UI-thread hit-testing | Yes | - | - |
-| Drag handles | Yes | - | Yes |
-| Collision algorithms | Yes | - | Yes |
-| Monitoring views | Yes | - | - |
-| 19 callback events | Yes | - | - |
-| Reanimated 4 + Gesture Handler 3 | Yes | Yes | - |
-| New Architecture (Fabric) | Yes | Yes | Yes |
+| Free-form drag-and-drop | ✅ | ➖ | ✅ |
+| Sortable lists & grids | ✅ | ✅ | ✅ |
+| Cross-container drag (kanban) | ✅ | ➖ | ➖ |
+| List-agnostic (FlatList, FlashList, etc.) | ✅ | ➖ | ➖ |
+| UI-thread hit-testing | ✅ | ➖ | ➖ |
+| Drag handles | ✅ | ➖ | ✅ |
+| Collision algorithms | ✅ | ➖ | ✅ |
+| Monitoring views | ✅ | ➖ | ➖ |
+| 19 callback events | ✅ | ➖ | ➖ |
+| Reanimated 4 + Gesture Handler 3 | ✅ | ✅ | ➖ |
+| New Architecture (Fabric) | ✅ | ✅ | ✅ |
 
-## Installation
+## 📦 Installation
 
 ```bash
 npm install react-native-drax
@@ -61,7 +61,7 @@ npm install react-native-drax
 yarn add react-native-drax
 ```
 
-### Peer Dependencies
+### 🔗 Peer Dependencies
 
 ```bash
 npm install react-native-reanimated react-native-gesture-handler
@@ -74,9 +74,9 @@ npm install react-native-reanimated react-native-gesture-handler
 | `react-native-reanimated` | ^4.0.0 |
 | `react-native-gesture-handler` | >= 2.0.0 (v3 recommended) |
 
-## Quick Start
+## 🚀 Quick Start
 
-### Basic Drag-and-Drop
+### 👋 Basic Drag-and-Drop
 
 ```tsx
 import { DraxProvider, DraxView } from 'react-native-drax';
@@ -100,7 +100,7 @@ function App() {
 }
 ```
 
-### Sortable List
+### 📋 Sortable List
 
 The simplest way to make a reorderable list:
 
@@ -144,7 +144,7 @@ import { FlashList } from '@shopify/flash-list';
 />
 ```
 
-### Composable API
+### 🧱 Composable API
 
 For full control, use the composable primitives directly:
 
@@ -190,9 +190,9 @@ function App() {
 
 This pattern works with any list component — FlatList, FlashList, LegendList, ScrollView, etc.
 
-## Features
+## 🎛 Features
 
-### Drag Handles
+### ✊ Drag Handles
 
 Only the handle area starts a drag — the rest of the view scrolls normally:
 
@@ -207,7 +207,7 @@ import { DraxView, DraxHandle } from 'react-native-drax';
 </DraxView>
 ```
 
-### Drag Bounds
+### 📐 Drag Bounds
 
 Constrain a dragged view within a boundary:
 
@@ -221,7 +221,7 @@ const boundsRef = useRef<View>(null);
 </View>
 ```
 
-### Collision Algorithms
+### 💥 Collision Algorithms
 
 Control how receiver detection works:
 
@@ -231,7 +231,7 @@ Control how receiver detection works:
 <DraxView collisionAlgorithm="contain" />   {/* dragged view must be fully inside */}
 ```
 
-### Drop Zone Acceptance
+### 🚫 Drop Zone Acceptance
 
 Accept or reject drops conditionally:
 
@@ -242,7 +242,7 @@ Accept or reject drops conditionally:
 />
 ```
 
-### Hover Styles
+### 🎨 Hover Styles
 
 Style the hover layer based on drag state:
 
@@ -255,7 +255,7 @@ Style the hover layer based on drag state:
 />
 ```
 
-### Snap Alignment
+### 🧲 Snap Alignment
 
 Snap dropped items to specific positions within a receiver:
 
@@ -271,7 +271,7 @@ import { snapToAlignment } from 'react-native-drax';
 
 Alignments: `center`, `top-left`, `top-center`, `top-right`, `center-left`, `center-right`, `bottom-left`, `bottom-center`, `bottom-right`
 
-### Animation Presets
+### 🎬 Animation Presets
 
 ```tsx
 <DraxList animationConfig="spring" />  {/* spring physics */}
@@ -290,7 +290,7 @@ Alignments: `center`, `top-left`, `top-center`, `top-right`, `center-left`, `cen
 
 Device reduced motion settings are respected automatically.
 
-### Continuous Drag Callbacks
+### 📡 Continuous Drag Callbacks
 
 ```tsx
 <DraxView
@@ -299,7 +299,7 @@ Device reduced motion settings are respected automatically.
 />
 ```
 
-### Cross-Container Sortable (Experimental)
+### 🔀 Cross-Container Sortable (Experimental)
 
 Move items between lists (kanban board pattern):
 
@@ -327,7 +327,7 @@ const board = useSortableBoard({
 
 > **Note:** Cross-container drag is experimental. The API may change in future versions.
 
-### Namespace API
+### 🏷️ Namespace API
 
 For convenience, all components are available under the `Drax` namespace:
 
@@ -341,7 +341,7 @@ import { Drax } from 'react-native-drax';
 </Drax.Provider>
 ```
 
-## Components
+## 🧩 Components
 
 | Component | Description |
 |---|---|
@@ -354,7 +354,7 @@ import { Drax } from 'react-native-drax';
 | `SortableItem` | Per-item wrapper with shift animation |
 | `SortableBoardContainer` | Cross-container board coordinator (experimental) |
 
-## Hooks
+## 🪝 Hooks
 
 | Hook | Description |
 |---|---|
@@ -363,7 +363,7 @@ import { Drax } from 'react-native-drax';
 | `useDraxContext` | Access the Drax context |
 | `useDraxId` | Generate a unique Drax view ID |
 
-## Examples
+## 💡 Examples
 
 The `example/` directory contains an Expo Router app with 10 screens demonstrating all features:
 
@@ -386,7 +386,7 @@ To run the example app:
 cd example && yarn start
 ```
 
-## Migration from v0.x
+## 🔄 Migration from v0.x
 
 v1.0.0 is a complete rewrite. Key changes:
 
@@ -395,19 +395,19 @@ v1.0.0 is a complete rewrite. Key changes:
 - **Reanimated 4 + Gesture Handler 3** — required peer dependencies (Gesture Handler v2 supported via compat layer with reduced performance).
 - **New Architecture (Fabric)** compatible.
 
-## Changelog
+## 📋 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for a full list of changes.
 
-## Contributing
+## 🤝 Contributing
 
 Issues, pull requests, and discussion are all welcome. See the [Contribution Guidelines](CONTRIBUTING.md) for details.
 
-## Code of Conduct
+## 📜 Code of Conduct
 
 This project is released with a [Contributor Code of Conduct](CODE-OF-CONDUCT.md). By participating in this project you agree to abide by its terms.
 
-## Contributors
+## 🏆 Contributors
 
 Originally created by [Joe Lafiosca](https://github.com/lafiosca). v1.0.0 rewrite led by [Ovidiu Cristescu](https://github.com/LunatiqueCoder).
 
@@ -437,7 +437,7 @@ Thanks to all contributors who have helped make Drax better:
 <!-- prettier-ignore-end -->
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
-## License
+## 📃 License
 
 [MIT](LICENSE.md)
 
