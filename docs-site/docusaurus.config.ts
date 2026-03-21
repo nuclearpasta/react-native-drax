@@ -155,7 +155,6 @@ const config: Config = {
       { property: 'og:type', content: 'website' },
       { property: 'og:locale', content: 'en_US' },
       { name: 'twitter:card', content: 'summary_large_image' },
-      { name: 'twitter:site', content: '@nuclearpasta' },
     ],
     navbar: {
       title: 'react-native-drax',

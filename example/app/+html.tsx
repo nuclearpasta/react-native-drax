@@ -56,7 +56,6 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="twitter:title" content={TITLE} />
         <meta name="twitter:description" content={DESCRIPTION} />
         <meta name="twitter:image" content={IMAGE} />
-        <meta name="twitter:site" content="@nuclearpasta" />
 
         <ScrollViewStyleReset />
       </head>
