@@ -100,7 +100,7 @@ export default function KnightMoves() {
 
   return (
     <DraxProvider>
-      <View testID="knight-moves-screen" style={[styles.container, { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: theme.bg }]}>
+      <View testID="knight-moves-screen" style={[styles.container, { paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: theme.bg }]}>
         <View style={styles.containerRow}>
           <View testID="chess-board" accessibilityLabel="Chess board, 8 by 8 grid" style={[styles.board, { borderColor: theme.text }]}>
             {rowViews}

@@ -63,9 +63,9 @@ export default function ReorderableGrid() {
         style={[
           styles.container,
           {
-            paddingTop: insets.top,
             paddingLeft: insets.left + 8,
             paddingRight: insets.right + 8,
+            backgroundColor: theme.bg,
           },
         ]}
       >

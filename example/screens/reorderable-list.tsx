@@ -67,7 +67,6 @@ export default function ReorderableList() {
         style={[
           styles.container,
           {
-            paddingTop: insets.top,
             paddingLeft: insets.left,
             paddingRight: insets.right,
           },

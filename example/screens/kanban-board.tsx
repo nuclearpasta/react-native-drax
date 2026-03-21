@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { StyleSheet, View, Text, FlatList, useWindowDimensions } from 'react-native';
 import type { ListRenderItemInfo } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   DraxProvider,
   SortableBoardContainer,
@@ -195,7 +194,6 @@ function VerticalColumn({
 
 export default function KanbanBoard() {
   const [columns, setColumns] = useState(INITIAL_COLUMNS);
-  const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const { theme } = useTheme();
 
@@ -224,7 +222,7 @@ export default function KanbanBoard() {
     <DraxProvider>
       <View
         testID="kanban-board-screen"
-        style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.bg }]}
+        style={[styles.container, { backgroundColor: theme.bg }]}
       >
         <View style={styles.header}>
           <Text style={[styles.headerText, { color: theme.muted }]}>

@@ -1,8 +1,6 @@
-import { FlatList, Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
-import { LogoMark } from '../components/LogoMark';
 import { useTheme } from '../components/ThemeContext';
 
 const DOCS_BASE = 'https://nuclearpasta.com/react-native-drax';
@@ -124,10 +122,9 @@ function ExampleCard({ example }: { example: Example }) {
         <View style={styles.linkRow}>
           <Pressable
             style={styles.linkButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              Linking.openURL(`${GITHUB_BASE}/${example.sourceFile}`);
-            }}
+            onPress={() =>
+              Linking.openURL(`${GITHUB_BASE}/${example.sourceFile}`)
+            }
             hitSlop={4}
           >
             <Icon name="github" size={13} color={theme.muted} />
@@ -137,10 +134,7 @@ function ExampleCard({ example }: { example: Example }) {
           </Pressable>
           <Pressable
             style={styles.linkButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              Linking.openURL(DOCS_BASE);
-            }}
+            onPress={() => Linking.openURL(DOCS_BASE)}
             hitSlop={4}
           >
             <Icon name="book-open-variant" size={13} color={theme.muted} />
@@ -154,65 +148,11 @@ function ExampleCard({ example }: { example: Example }) {
 }
 
 export default function ExamplesList() {
-  const insets = useSafeAreaInsets();
-  const { theme, isDark, toggleTheme } = useTheme();
+  const { theme } = useTheme();
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: theme.line }]}>
-        <Pressable
-          style={styles.brand}
-          onPress={() => Linking.openURL(DOCS_BASE)}
-        >
-          <LogoMark size={36} showTile />
-          <View>
-            <Text style={[styles.brandName, { color: theme.text }]}>
-              Drax
-            </Text>
-            <Text style={[styles.brandSub, { color: theme.muted }]}>
-              react-native-drax
-            </Text>
-          </View>
-        </Pressable>
-        <View style={styles.headerRight}>
-          <Pressable
-            onPress={() => Linking.openURL(DOCS_BASE)}
-            hitSlop={8}
-            style={styles.docsButton}
-          >
-            <Icon name="book-open-variant" size={18} color={theme.muted} />
-          </Pressable>
-          <Pressable
-            onPress={() =>
-              Linking.openURL(
-                'https://github.com/nuclearpasta/react-native-drax',
-              )
-            }
-            hitSlop={8}
-          >
-            <Icon name="github" size={20} color={theme.muted} />
-          </Pressable>
-          <View style={styles.themeToggle}>
-            <Icon
-              name={isDark ? 'weather-night' : 'white-balance-sunny'}
-              size={16}
-              color={isDark ? '#f2b15a' : '#cf5f34'}
-            />
-            <Switch
-              value={isDark}
-              onValueChange={toggleTheme}
-              trackColor={{ false: 'rgba(17,17,17,0.12)', true: 'rgba(245,245,240,0.24)' }}
-              thumbColor={isDark ? '#f5f5f0' : '#111111'}
-              style={styles.switch}
-            />
-          </View>
-        </View>
-      </View>
-
-      {/* Heading */}
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
       <Text style={[styles.heading, { color: theme.text }]}>Examples</Text>
-
       <FlatList
         data={EXAMPLES}
         keyExtractor={(item) => item.route}
@@ -226,44 +166,6 @@ export default function ExamplesList() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  brand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  brandName: {
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 22,
-  },
-  brandSub: {
-    fontSize: 11,
-    lineHeight: 14,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  docsButton: {
-    marginRight: -2,
-  },
-  themeToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  switch: {
-    transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
   },
   heading: {
     fontSize: 28,

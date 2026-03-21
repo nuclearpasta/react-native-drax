@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   DraxProvider,
   DraxView,
@@ -33,12 +32,14 @@ function DropZone({
 }) {
   const [count, setCount] = useState(0);
   const [isReceiving, setIsReceiving] = useState(false);
+  const { theme } = useTheme();
 
   return (
     <DraxView
       testID={testID}
       style={[
         styles.dropZone,
+        { backgroundColor: theme.surface, borderColor: theme.lineStrong },
         isReceiving && styles.dropZoneActive,
       ]}
       collisionAlgorithm={algorithm}
@@ -50,22 +51,21 @@ function DropZone({
       }}
       receivingStyle={styles.receiving}
     >
-      <Text style={styles.dropLabel}>{label}</Text>
-      <Text style={styles.dropAlgorithm}>{algorithm}</Text>
+      <Text style={[styles.dropLabel, { color: theme.text }]}>{label}</Text>
+      <Text style={[styles.dropAlgorithm, { color: theme.muted }]}>{algorithm}</Text>
       <Text style={styles.dropCount}>Drops: {count}</Text>
     </DraxView>
   );
 }
 
 export default function CollisionModes() {
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
 
   return (
     <DraxProvider>
       <View
         testID="collision-modes-screen"
-        style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.bg }]}
+        style={[styles.container, { backgroundColor: theme.bg }]}
       >
         <View style={styles.header}>
           <Text style={[styles.headerText, { color: theme.muted }]}>
@@ -149,10 +149,8 @@ const styles = StyleSheet.create({
   dropZone: {
     flex: 1,
     marginHorizontal: 6,
-    backgroundColor: '#e5e7eb',
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#d1d5db',
     justifyContent: 'center',
     alignItems: 'center',
     borderStyle: 'dashed',
@@ -168,11 +166,9 @@ const styles = StyleSheet.create({
   dropLabel: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#374151',
   },
   dropAlgorithm: {
     fontSize: 13,
-    color: '#6b7280',
     marginTop: 4,
   },
   dropCount: {

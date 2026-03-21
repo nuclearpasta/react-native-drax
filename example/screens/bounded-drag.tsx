@@ -7,7 +7,7 @@ import { useTheme } from '../components/ThemeContext';
 export default function BoundedDrag() {
   const insets = useSafeAreaInsets();
   const boundsRef = useRef(null);
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   return (
     <DraxProvider>
@@ -16,7 +16,6 @@ export default function BoundedDrag() {
         style={[
           styles.container,
           {
-            paddingTop: insets.top,
             paddingLeft: insets.left,
             paddingRight: insets.right,
             backgroundColor: theme.bg,
@@ -32,7 +31,10 @@ export default function BoundedDrag() {
         <View
           ref={boundsRef}
           testID="drag-bounds-area"
-          style={styles.boundsArea}
+          style={[
+            styles.boundsArea,
+            { backgroundColor: isDark ? 'rgba(59,130,246,0.12)' : '#eff6ff' },
+          ]}
           collapsable={false}
         >
           <Text style={[styles.boundsLabel, { color: theme.muted }]}>Bounded Area</Text>
@@ -51,7 +53,12 @@ export default function BoundedDrag() {
           </View>
         </View>
 
-        <View style={styles.freeArea}>
+        <View
+          style={[
+            styles.freeArea,
+            { backgroundColor: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2' },
+          ]}
+        >
           <Text style={[styles.boundsLabel, { color: theme.muted }]}>Free Area</Text>
           <View style={styles.blockCenter}>
             <DraxView
@@ -93,7 +100,6 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: 16,
     padding: 12,
-    backgroundColor: '#eff6ff',
     marginBottom: 12,
   },
   freeArea: {
@@ -103,7 +109,6 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: 16,
     padding: 12,
-    backgroundColor: '#fef2f2',
     marginBottom: 12,
   },
   boundsLabel: {

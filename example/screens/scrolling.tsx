@@ -16,7 +16,7 @@ export default function Scrolling() {
 
   return (
     <DraxProvider>
-      <View testID="scrolling-screen" style={[styles.container, { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: theme.bg }]}>
+      <View testID="scrolling-screen" style={[styles.container, { paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: theme.bg }]}>
         <DraxScrollView horizontal style={styles.scrollView}>
           <DraxView
             testID="scroll-item-1"
@@ -89,7 +89,7 @@ export default function Scrolling() {
               return DraxSnapbackTargetPreset.None;
             }}
           >
-            <Text style={styles.itemText}>{`Sum: ${sum}`}</Text>
+            <Text style={[styles.itemText, { color: theme.text }]}>{`Sum: ${sum}`}</Text>
           </DraxView>
         </View>
       </View>

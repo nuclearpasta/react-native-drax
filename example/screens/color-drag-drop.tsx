@@ -83,7 +83,7 @@ export default function ColorDragDrop() {
 
   return (
     <DraxProvider>
-      <View testID="color-drag-drop-screen" style={[styles.container, { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: theme.bg }]}>
+      <View testID="color-drag-drop-screen" style={[styles.container, { paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: theme.bg }]}>
         <DraxView
           testID="receiving-zone"
           accessibilityLabel={
@@ -312,7 +312,6 @@ const styles = StyleSheet.create({
     flex: 3,
     borderRadius: 10,
     margin: 8,
-    borderColor: '#ffffff',
     borderWidth: 2,
   },
   zoneFull: {
@@ -351,7 +350,7 @@ const styles = StyleSheet.create({
   },
   capacityText: {
     fontSize: 12,
-    color: '#666',
+    opacity: 0.6,
     marginTop: 2,
   },
   fullText: {
@@ -403,7 +402,6 @@ const styles = StyleSheet.create({
   stagingZone: {
     flex: 1,
     borderRadius: 10,
-    borderColor: '#ffffff',
     borderWidth: 2,
   },
   stagedCount: {

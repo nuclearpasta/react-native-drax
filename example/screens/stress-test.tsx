@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { StyleSheet, View, Text, FlatList } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   DraxProvider,
   SortableContainer,
@@ -24,7 +23,6 @@ const INITIAL_DATA = Array.from({ length: ITEM_COUNT }, (_, i) => ({
 export default function StressTest() {
   const [data, setData] = useState(INITIAL_DATA);
   const listRef = useRef<FlatList<(typeof INITIAL_DATA)[0]>>(null);
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
 
   const sortable = useSortableList({
@@ -35,7 +33,7 @@ export default function StressTest() {
 
   return (
     <DraxProvider>
-      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.bg }]}>
+      <View style={[styles.container, { backgroundColor: theme.bg }]}>
         <View style={styles.header}>
           <Text style={[styles.headerText, { color: theme.muted }]}>
             {ITEM_COUNT} items — test scrolling and reorder performance

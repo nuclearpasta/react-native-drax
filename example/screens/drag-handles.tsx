@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { StyleSheet, View, Text, FlatList } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import {
   DraxProvider,
@@ -22,7 +21,6 @@ const ITEMS = Array.from({ length: 20 }, (_, i) => ({
 export default function DragHandles() {
   const [data, setData] = useState(ITEMS);
   const listRef = useRef<FlatList<(typeof ITEMS)[0]>>(null);
-  const insets = useSafeAreaInsets();
   const { theme } = useTheme();
 
   const sortable = useSortableList({
@@ -33,7 +31,7 @@ export default function DragHandles() {
 
   return (
     <DraxProvider>
-      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.bg }]}>
+      <View style={[styles.container, { backgroundColor: theme.bg }]}>
         <View style={styles.header}>
           <Text style={[styles.headerText, { color: theme.muted }]}>
             Only the grip icon on the left starts a drag. Tapping or swiping
