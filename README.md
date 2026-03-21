@@ -2,8 +2,14 @@
 
 **A drag-and-drop framework for React Native**
 
-[![npm version](https://badge.fury.io/js/react-native-drax.svg)](https://badge.fury.io/js/react-native-drax)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE-OF-CONDUCT.md)
+[![React Native CLI](https://img.shields.io/badge/-React%20Native%20CLI-282C34?style=flat-square&logo=react&logoColor=61DAFB)](https://reactnative.dev/)
+[![Expo CLI](https://img.shields.io/badge/-Expo%20CLI-282C34?style=flat-square&logo=expo&logoColor=white)](https://expo.dev/)
+[![platforms](https://img.shields.io/badge/platforms-Android%20%7C%20iOS%20%7C%20Web-brightgreen.svg?style=flat-square&colorB=191A17)](https://necolas.github.io/react-native-web/)
+[![GitHub top language](https://img.shields.io/github/languages/top/nuclearpasta/react-native-drax?style=flat-square)](https://github.com/nuclearpasta/react-native-drax/search?l=typescript)
+[![CI](https://github.com/nuclearpasta/react-native-drax/actions/workflows/ci.yml/badge.svg)](https://github.com/nuclearpasta/react-native-drax/actions/workflows/ci.yml)
+[![GitHub license](https://img.shields.io/github/license/nuclearpasta/react-native-drax?style=flat-square)](https://github.com/nuclearpasta/react-native-drax/blob/main/LICENSE.md)
+[![npm version](https://img.shields.io/npm/v/react-native-drax?style=flat-square)](https://www.npmjs.com/package/react-native-drax)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg?style=flat-square)](CODE-OF-CONDUCT.md)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-9-orange.svg?style=flat-square)](#contributors)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
