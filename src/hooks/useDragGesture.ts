@@ -23,7 +23,8 @@ export const useDragGesture = (
   longPressDelaySV: SharedValue<number>,
   lockDragXPosition?: boolean,
   lockDragYPosition?: boolean,
-  dragBoundsSV?: SharedValue<{ x: number; y: number; width: number; height: number } | null>
+  dragBoundsSV?: SharedValue<{ x: number; y: number; width: number; height: number } | null>,
+  dragActivationFailOffset?: number
 ) => {
   const {
     draggedIdSV,
@@ -49,12 +50,18 @@ export const useDragGesture = (
     ? (lockDragYPosition ? 'pan-x' : 'pan-y')
     : undefined;
 
+  const failOffset = dragActivationFailOffset !== undefined
+    ? [-dragActivationFailOffset, dragActivationFailOffset] as [number, number]
+    : undefined;
+
   const gesture = useDraxPanGesture({
     enabledSV,
     longPressDelaySV,
     maxPointers: 1,
     shouldCancelWhenOutside: false,
     touchAction,
+    failOffsetX: failOffset,
+    failOffsetY: failOffset,
     onActivate: (event) => {
       'worklet';
 

@@ -1,4 +1,4 @@
-# 🥊 react-native-drax
+# react-native-drax
 
 **A drag-and-drop framework for React Native**
 
@@ -39,19 +39,22 @@ Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and
 
 ### 🤔 Why Drax?
 
-| | Drax | [react-native-sortables](https://github.com/MatiPl01/react-native-sortables) | [react-native-reanimated-dnd](https://github.com/entropyconquers/react-native-reanimated-dnd) |
+| Feature | Drax | reanimated-dnd | sortables |
 |---|:---:|:---:|:---:|
-| Free-form drag-and-drop | ✅ | ➖ | ✅ |
-| Sortable lists & grids | ✅ | ✅ | ✅ |
-| Cross-container drag (kanban) | ✅ | ➖ | ➖ |
-| List-agnostic (FlatList, FlashList, etc.) | ✅ | ➖ | ➖ |
-| UI-thread hit-testing | ✅ | ➖ | ➖ |
-| Drag handles | ✅ | ➖ | ✅ |
-| Collision algorithms | ✅ | ➖ | ✅ |
-| Monitoring views | ✅ | ➖ | ➖ |
-| 19 callback events | ✅ | ➖ | ➖ |
-| Reanimated 4 + Gesture Handler 3 | ✅ | ✅ | ➖ |
-| New Architecture (Fabric) | ✅ | ✅ | ✅ |
+| Free-form drag & drop | ✅ | ✅ | ➖ |
+| Sortable list / grid | ✅ | ✅ | ✅ |
+| Cross-container / kanban | ⚠️ Experimental | ➖ | ➖ |
+| List-agnostic (FlatList, FlashList, LegendList) | ✅ | ➖ | ➖ |
+| Drag handles | ✅ | ✅ | ✅ |
+| Drag state styling | 15 props + inactive | onStateChange | 5 props + hook |
+| Drop indicator | ✅ | ➖ | Grid only |
+| UI-thread DnD collision | ✅ | ➖ | ➖ |
+| Event callbacks | 19 types | ~12 types | ~10 types |
+| Accessibility + reduced motion | ✅ | Manual | Manual |
+| Web support | ✅ | ➖ | Partial |
+| Reanimated | 4 | ≥ 4.2 | ≥ 3 |
+
+[See full comparison →](https://nuclearpasta.com/react-native-drax#comparison)
 
 ## 📦 Installation
 

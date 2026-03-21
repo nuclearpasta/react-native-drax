@@ -45,6 +45,8 @@ import { DraxView } from 'react-native-drax';
 | `dragBoundsRef` | `RefObject<any>` | — | Constrains drag within a view |
 | `lockDragXPosition` | `boolean` | `false` | Lock horizontal drag movement |
 | `lockDragYPosition` | `boolean` | `false` | Lock vertical drag movement |
+| `dragActivationFailOffset` | `number` | — | Cancel drag if finger moves more than this (px) during long press |
+| `capacity` | `number` | — | Max items this view can receive (auto-rejects when full) |
 | `rejectOwnChildren` | `boolean` | `false` | Don't receive drags from own children |
 
 ## Drag Callbacks

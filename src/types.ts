@@ -10,6 +10,7 @@ import type {
 import type { HostInstance } from 'react-native';
 import type {
   AnimatedStyle,
+  EntryOrExitLayoutType,
   SharedValue,
 } from 'react-native-reanimated';
 
@@ -301,6 +302,10 @@ export interface DraxViewProps
   scrollPosition?: SharedValue<Position>;
   /** Time in milliseconds view needs to be pressed before drag starts */
   longPressDelay?: number;
+  /** Cancel drag activation if finger moves more than this distance (px).
+   *  Prevents accidental drags when the user is trying to scroll.
+   *  Can be a number (symmetric) or [min, max] tuple per axis. */
+  dragActivationFailOffset?: number;
 
   // ─── Callback props (formerly in DraxProtocol) ─────────────────────
 
@@ -314,6 +319,9 @@ export interface DraxViewProps
 
   /** Simpler convenience prop for conditional drop acceptance based on payload */
   acceptsDrag?: (draggedPayload: unknown) => boolean;
+  /** Maximum number of items this view can receive. Drops are auto-rejected
+   *  when at capacity. Requires DraxProvider to track dropped items centrally. */
+  capacity?: number;
 
   /** Called in the dragged view when a drag action begins */
   onDragStart?: (data: DraxDragEventData) => void;
@@ -485,6 +493,10 @@ export interface DraxContextValue {
   // ── Hover content ──────────────────────────────────────────────────
   setHoverContent: (content: ReactNode | null) => void;
 
+  // ── Dropped items tracking ─────────────────────────────────────────
+  /** Map of receiverId → Set of draggedIds that have been dropped on it */
+  droppedItemsRef: RefObject<Map<string, Set<string>>>;
+
   // ── View refs ──────────────────────────────────────────────────────
   rootViewRef: { current: HostInstance | null };
   parent?: DraxParentView;
@@ -500,10 +512,23 @@ export interface RegisterViewPayload {
 
 // ─── Provider / Subprovider Props ──────────────────────────────────────────
 
+/** Event data for provider-level drag callbacks */
+export interface DraxProviderDragEvent {
+  draggedId: string;
+  receiverId?: string;
+  position: Position;
+}
+
 /** Optional props that can be passed to a DraxProvider */
 export interface DraxProviderProps {
   style?: StyleProp<ViewStyle>;
   debug?: boolean;
+  /** Called when any drag starts */
+  onDragStart?: (event: DraxProviderDragEvent) => void;
+  /** Called on every gesture update during any drag */
+  onDrag?: (event: DraxProviderDragEvent) => void;
+  /** Called when any drag ends (drop or cancel) */
+  onDragEnd?: (event: DraxProviderDragEvent & { cancelled: boolean }) => void;
   children?: ReactNode;
 }
 
@@ -688,6 +713,13 @@ export interface UseSortableListOptions<T> {
   autoScrollForwardThreshold?: number;
   /** Animation config for item shift animations. @default 'default' */
   animationConfig?: SortableAnimationConfig;
+  /** Style applied to all non-dragged items while a drag is active.
+   *  Use for dimming/scaling inactive items (e.g., `{ opacity: 0.5 }`). */
+  inactiveItemStyle?: ViewStyle;
+  /** Reanimated layout animation for items entering the list (e.g., `FadeIn`). */
+  itemEntering?: EntryOrExitLayoutType;
+  /** Reanimated layout animation for items exiting the list (e.g., `FadeOut`). */
+  itemExiting?: EntryOrExitLayoutType;
   /** Callback when drag starts */
   onDragStart?: (event: SortableDragStartEvent<T>) => void;
   /** Callback when drag position (index) changes */
@@ -719,6 +751,11 @@ export interface SortableListInternal<T> {
   longPressDelay: number;
   lockToMainAxis: boolean;
   animationConfig: SortableAnimationConfig;
+  inactiveItemStyle?: ViewStyle;
+  itemEntering?: EntryOrExitLayoutType;
+  itemExiting?: EntryOrExitLayoutType;
+  /** Set of item keys that are fixed (cannot be dragged or displaced) */
+  fixedKeys: RefObject<Set<string>>;
   draggedItem: SharedValue<number | undefined>;
   itemMeasurements: RefObject<Map<string, SortableItemMeasurement>>;
   originalIndexes: number[];

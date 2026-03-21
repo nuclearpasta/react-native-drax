@@ -32,8 +32,42 @@ import { Drax } from 'react-native-drax';
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `style` | `StyleProp<ViewStyle>` | — | Style for the provider's root view |
-| `debug` | `boolean` | `false` | Enable debug logging |
+| `debug` | `boolean` | `false` | Show debug overlay with colored borders around all registered views |
+| `onDragStart` | `(event: DraxProviderDragEvent) => void` | — | Called when any drag starts |
+| `onDrag` | `(event: DraxProviderDragEvent) => void` | — | Called on every gesture update during any drag |
+| `onDragEnd` | `(event: DraxProviderDragEvent & { cancelled }) => void` | — | Called when any drag ends |
 | `children` | `ReactNode` | — | Child components |
+
+### Provider Callbacks
+
+Listen to all drag events globally without per-view callbacks:
+
+```tsx
+<DraxProvider
+  onDragStart={({ draggedId }) => console.log('drag started:', draggedId)}
+  onDrag={({ position, receiverId }) => {
+    // Fires every frame — use for analytics or conditional UI
+  }}
+  onDragEnd={({ draggedId, receiverId, cancelled }) => {
+    if (!cancelled && receiverId) {
+      console.log(`${draggedId} dropped on ${receiverId}`);
+    }
+  }}
+>
+  {children}
+</DraxProvider>
+```
+
+### Debug Mode
+
+Enable the `debug` prop to visualize all registered Drax views:
+
+```tsx
+<DraxProvider debug>
+  {/* Colored dashed borders appear around every DraxView:
+      Blue = draggable, Green = receptive, Orange = both, Yellow = monitor */}
+</DraxProvider>
+```
 
 ## Responsibilities
 

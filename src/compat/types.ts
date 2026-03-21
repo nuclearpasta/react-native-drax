@@ -24,6 +24,10 @@ export interface DraxPanGestureConfig {
   /** Web: CSS touch-action for the gesture view. Set to 'pan-y' or 'pan-x'
    *  to allow native scrolling before the long-press activates. */
   touchAction?: string;
+  /** Fail the gesture if finger moves more than this distance during activation.
+   *  Prevents accidental drags when the user is trying to scroll. */
+  failOffsetX?: number | [number, number];
+  failOffsetY?: number | [number, number];
   onActivate: (event: DraxPanEvent) => void;
   onUpdate: (event: DraxPanEvent) => void;
   onDeactivate: (event: DraxPanEvent) => void;
