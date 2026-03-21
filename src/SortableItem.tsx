@@ -195,6 +195,7 @@ const SortableItemInner = ({
         longPressDelay={longPressDelay}
         lockDragXPosition={lockToMainAxis && !horizontal}
         lockDragYPosition={lockToMainAxis && horizontal}
+        scrollHorizontal={horizontal || undefined}
         draggable={!fixed}
         accessibilityLabel={defaultA11yLabel}
         accessibilityHint={defaultA11yHint}

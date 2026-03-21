@@ -27,6 +27,8 @@ export default function Scrolling() {
             accessibilityRole="button"
             style={[styles.item, styles.item1]}
             dragPayload={1}
+            longPressDelay={200}
+            scrollHorizontal
             onDragStart={() => console.log('[scrolling:item1] dragStart')}
             onDragEnd={() => console.log('[scrolling:item1] dragEnd')}
           >
@@ -39,6 +41,8 @@ export default function Scrolling() {
             accessibilityRole="button"
             style={[styles.item, styles.item2]}
             dragPayload={2}
+            longPressDelay={200}
+            scrollHorizontal
             onDragStart={() => console.log('[scrolling:item2] dragStart')}
             onDragEnd={() => console.log('[scrolling:item2] dragEnd')}
           >
@@ -51,6 +55,8 @@ export default function Scrolling() {
             accessibilityRole="button"
             style={[styles.item, styles.item3]}
             dragPayload={3}
+            longPressDelay={200}
+            scrollHorizontal
             onDragStart={() => console.log('[scrolling:item3] dragStart')}
             onDragEnd={() => console.log('[scrolling:item3] dragEnd')}
           >
@@ -63,6 +69,8 @@ export default function Scrolling() {
             accessibilityRole="button"
             style={[styles.item, styles.item4]}
             dragPayload={4}
+            longPressDelay={200}
+            scrollHorizontal
             onDragStart={() => console.log('[scrolling:item4] dragStart')}
             onDragEnd={() => console.log('[scrolling:item4] dragEnd')}
           >
@@ -72,7 +80,7 @@ export default function Scrolling() {
         <View style={[styles.footer, { borderTopColor: theme.line }]}>
           <Text style={[styles.description, { color: theme.muted }]}>
             The area above is a horizontal DraxScrollView containing 4 draggable
-            number items. The number items can be dragged into the sum bucket
+            number items. Long press an item to drag it into the sum bucket
             below. Dragging an item near the edge of the scroll view will
             auto-scroll.
           </Text>
@@ -108,6 +116,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    alignSelf: 'stretch',
   },
   item: {
     padding: 12,
