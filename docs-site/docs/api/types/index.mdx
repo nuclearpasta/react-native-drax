@@ -1,0 +1,55 @@
+---
+title: Types Overview
+description: Overview of all public TypeScript types exported by react-native-drax.
+keywords: [react-native, drax, types, typescript, api]
+sidebar_position: 1
+slug: /api/types
+---
+
+# Types Overview
+
+All public TypeScript types are exported from `react-native-drax`. This section documents the key type categories.
+
+## Import
+
+```tsx
+import type {
+  Position,
+  DraxViewProps,
+  DraxDragEventData,
+  SortableReorderEvent,
+  // ... etc
+} from 'react-native-drax';
+```
+
+## Categories
+
+| Category | Key Types | Page |
+|---|---|---|
+| **Geometry** | `Position`, `ViewDimensions`, `DraxViewMeasurements` | [Geometry](/api/types/geometry) |
+| **Event Data** | `DraxDragEventData`, `DraxDragWithReceiverEventData`, `DraxMonitorEventData` | [Event Data](/api/types/event-data) |
+| **View State** | `DraxViewState`, `DraxTrackingStatus`, `DraxRenderContentProps` | [View State](/api/types/view-state) |
+| **Sortable** | `SortableReorderEvent`, `UseSortableListOptions`, `SortableListHandle` | [Sortable](/api/types/sortable) |
+| **Board** | `SortableBoardTransferEvent`, `UseSortableBoardOptions` | [Board](/api/types/board) |
+| **Snap** | `DraxSnapbackTarget`, `DraxSnapData`, `SnapAlignment` | [Snap](/api/types/snap) |
+
+## Enums
+
+```tsx
+import {
+  DraxViewDragStatus,      // Inactive, Dragging, Released
+  DraxViewReceiveStatus,    // Inactive, Receiving
+  DraxSnapbackTargetPreset, // Default, None
+  AutoScrollDirection,      // Back, None, Forward
+} from 'react-native-drax';
+```
+
+## Type Guards
+
+```tsx
+import { isPosition } from 'react-native-drax';
+
+if (isPosition(value)) {
+  console.log(value.x, value.y);
+}
+```

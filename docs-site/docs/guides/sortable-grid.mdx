@@ -1,0 +1,81 @@
+---
+title: Sortable Grid
+description: Build reorderable grids with numColumns — multi-column sortable layouts.
+keywords: [react-native, sortable, grid, reorderable, numColumns]
+sidebar_position: 3
+---
+
+# Sortable Grid
+
+Use `numColumns` to create multi-column sortable grids.
+
+## Basic Grid
+
+```tsx
+<DraxList
+  data={items}
+  numColumns={3}
+  keyExtractor={(item) => item.id}
+  onReorder={({ data }) => setItems(data)}
+  renderItem={({ item }) => (
+    <View style={{ flex: 1, aspectRatio: 1, margin: 4, backgroundColor: item.color }}>
+      <Text>{item.label}</Text>
+    </View>
+  )}
+/>
+```
+
+Items shift in grid position during drag — both horizontally and vertically.
+
+## With the Composable API
+
+```tsx
+const sortable = useSortableList({
+  data: items,
+  keyExtractor: (item) => item.id,
+  onReorder: ({ data }) => setItems(data),
+  numColumns: 3,
+});
+
+<SortableContainer sortable={sortable} scrollRef={listRef}>
+  <FlatList
+    ref={listRef}
+    numColumns={3}
+    data={sortable.data}
+    keyExtractor={sortable.stableKeyExtractor}
+    onScroll={sortable.onScroll}
+    onContentSizeChange={sortable.onContentSizeChange}
+    renderItem={({ item, index }) => (
+      <SortableItem sortable={sortable} index={index}>
+        <View style={{ flex: 1, aspectRatio: 1, margin: 4 }}>
+          <Text>{item.label}</Text>
+        </View>
+      </SortableItem>
+    )}
+  />
+</SortableContainer>
+```
+
+:::tip
+Pass `numColumns` to both `useSortableList` and `FlatList` — Drax uses it to calculate grid positions for slot detection.
+:::
+
+## Grid with Swap Strategy
+
+For a tile-swap effect instead of insert-shift:
+
+```tsx
+<DraxList
+  numColumns={4}
+  reorderStrategy="swap"
+  data={tiles}
+  keyExtractor={(t) => t.id}
+  onReorder={({ data }) => setTiles(data)}
+  renderItem={({ item }) => <Tile tile={item} />}
+/>
+```
+
+## Next Steps
+
+- **[Composable API](/guides/composable-api)** — Build custom grid layouts
+- **[Animation Presets](/guides/animation-presets)** — Customize shift animations

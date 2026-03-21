@@ -1,0 +1,102 @@
+---
+title: Performance
+description: Optimization tips for smooth drag-and-drop interactions at 60fps.
+keywords: [react-native, performance, optimization, reanimated, 60fps]
+sidebar_position: 18
+---
+
+# Performance
+
+Drax is designed for 60fps interactions. Here's how the architecture achieves this and how to keep your app fast.
+
+## UI-Thread-First Architecture
+
+### Spatial Index Worklet
+
+All view positions are maintained in a `SharedValue<SpatialEntry[]>`. Hit-testing runs on the UI thread as a worklet — no JS-thread round-trips during the drag gesture:
+
+```
+Gesture frame (UI thread) → hitTestWorklet() → result
+                              ↓ (only on receiver change)
+                         runOnJS(handleReceiverChange)
+```
+
+### SharedValue Frequency Split
+
+SharedValues are split by update frequency to minimize re-renders:
+
+- **Every frame**: `hoverPositionSV`, `dragAbsolutePositionSV` — read only by HoverLayer and gesture worklet
+- **Per receiver change**: `draggedIdSV`, `receiverIdSV`, `dragPhaseSV` — read by DraxView animated styles
+- **On layout**: `spatialIndexSV` — read by gesture worklet
+
+This means most `DraxView` instances only re-evaluate their animated styles 2-5 times per drag, not 60 times per second.
+
+## Best Practices
+
+### 1. Use `memo` for Sortable Item Content
+
+`SortableItem` is already `memo`'d, but your item content should be too:
+
+```tsx
+const ItemCard = memo(({ item }) => (
+  <View style={styles.card}>
+    <Text>{item.title}</Text>
+  </View>
+));
+
+// In renderItem:
+<SortableItem sortable={sortable} index={index}>
+  <ItemCard item={item} />
+</SortableItem>
+```
+
+### 2. Keep Continuous Callbacks Lightweight
+
+`onDrag`, `onDragOver`, and `onReceiveDragOver` fire every frame. Avoid heavy work:
+
+```tsx
+// Bad — causes re-renders every frame
+onDragOver={(data) => setPosition(data.dragAbsolutePosition)}
+
+// Good — update a SharedValue instead
+const positionSV = useSharedValue({ x: 0, y: 0 });
+onDragOver={(data) => { positionSV.value = data.dragAbsolutePosition; }}
+```
+
+### 3. Use `lockToMainAxis` for Lists
+
+Prevents unnecessary cross-axis rendering during sortable drag:
+
+```tsx
+<DraxList lockToMainAxis />
+```
+
+### 4. Avoid Inline Styles in renderItem
+
+```tsx
+// Bad — creates new object every render
+renderItem={({ item }) => (
+  <View style={{ padding: 16, margin: 4 }}>...</View>
+)}
+
+// Good — use StyleSheet
+const styles = StyleSheet.create({ item: { padding: 16, margin: 4 } });
+renderItem={({ item }) => (
+  <View style={styles.item}>...</View>
+)}
+```
+
+### 5. Use stableKeyExtractor
+
+Always use `sortable.stableKeyExtractor` instead of your own key extractor with sortable lists. It returns index-based stable keys that prevent FlatList cell unmounting during reorder.
+
+## Measuring Performance
+
+- Use React DevTools Profiler to identify unnecessary re-renders
+- Use Reanimated's `useFrameCallback` to measure gesture frame timing
+- On iOS, use Instruments to verify the UI thread stays at 60fps during drag
+
+## Next Steps
+
+- **[Core Concepts](/core-concepts)** — Architecture deep dive
+- **[Animation Presets](/guides/animation-presets)** — Reduced motion support

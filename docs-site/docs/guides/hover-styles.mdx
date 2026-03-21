@@ -1,0 +1,66 @@
+---
+title: Hover Styles
+description: Style the floating hover view based on drag phase and receiver state.
+keywords: [react-native, hover, style, drag, animation, reanimated]
+sidebar_position: 9
+---
+
+# Hover Styles
+
+When a view is dragged, a floating copy (the "hover view") follows your finger. Hover styles let you change its appearance based on the drag state.
+
+## The 5 Hover Styles
+
+```tsx
+<DraxView
+  hoverStyle={{ opacity: 0.9, transform: [{ scale: 1.05 }] }}
+  hoverDraggingStyle={{ borderColor: 'blue', borderWidth: 2 }}
+  hoverDraggingWithReceiverStyle={{ borderColor: 'green', borderWidth: 2 }}
+  hoverDraggingWithoutReceiverStyle={{ opacity: 0.5 }}
+  hoverDragReleasedStyle={{ opacity: 0.3 }}
+/>
+```
+
+| Prop | When Applied |
+|---|---|
+| `hoverStyle` | Always on the hover view |
+| `hoverDraggingStyle` | While actively dragging |
+| `hoverDraggingWithReceiverStyle` | Dragging over a receptive view |
+| `hoverDraggingWithoutReceiverStyle` | Dragging but not over any receiver |
+| `hoverDragReleasedStyle` | After release, during snap-back animation |
+
+Styles are applied additively — `hoverStyle` is always applied, then the phase-specific style is merged on top.
+
+## How It Works
+
+Hover styles are applied via `useAnimatedStyle` in the `HoverLayer` component. They react to:
+- `dragPhaseSV` — idle, dragging, or releasing
+- `receiverIdSV` — which receiver (if any) is under the hover
+
+The styles are set once per drag in `handleDragStart` and captured by the worklet.
+
+:::info
+Hover styles use `AnimatedViewStylePropWithoutLayout` — you can use opacity, transform, border, shadow, and other non-layout properties. **Layout properties** (width, height, flex, padding, margin) are not supported because the hover view is positioned via `translateX`/`translateY`.
+:::
+
+## View Styles (non-hover)
+
+The original view (not the hover copy) can also be styled per drag state:
+
+```tsx
+<DraxView
+  style={styles.default}
+  dragInactiveStyle={styles.inactive}
+  draggingStyle={{ opacity: 0 }}           // Hide original while dragging
+  draggingWithReceiverStyle={styles.overTarget}
+  draggingWithoutReceiverStyle={styles.noTarget}
+  dragReleasedStyle={{ opacity: 0.5 }}
+  receiverInactiveStyle={styles.receiverDefault}
+  receivingStyle={{ backgroundColor: 'lightgreen' }}
+/>
+```
+
+## Next Steps
+
+- **[Snap Alignment](/guides/snap-alignment)** — Snap to positions after drop
+- **[API: DraxView](/api/components/drax-view)** — Full style props reference

@@ -1,0 +1,40 @@
+---
+title: "Example: Color Drag & Drop"
+description: Free-form drag-and-drop with colored blocks, drop acceptance, hover styles, and snap alignment.
+keywords: [react-native, drax, example, color, drag-drop]
+sidebar_position: 2
+---
+
+# Color Drag & Drop
+
+Demonstrates free-form drag-and-drop with colored blocks, drop zones, and visual feedback.
+
+## Key Concepts
+
+- **Free-form drag** — colored blocks can be dragged anywhere
+- **Drop acceptance** — zones accept/reject based on payload
+- **Hover styles** — visual feedback while dragging
+- **Snap alignment** — blocks snap to position on drop
+- **Clear buttons** — reset drop zones
+
+## Features Shown
+
+| Feature | How |
+|---|---|
+| `payload` | Each color block carries its color as payload |
+| `onReceiveDragDrop` | Drop zones handle the received color |
+| `hoverStyle` | Hover view gets opacity change |
+| `renderContent` | Dynamic content based on drag state |
+
+## Source Code
+
+```tsx title="example/app/(tabs)/color-drag-drop.tsx"
+// Full source available at:
+// https://github.com/nuclearpasta/react-native-drax/blob/main/example/app/(tabs)/color-drag-drop.tsx
+```
+
+## Related
+
+- [Drag & Drop Guide](/guides/drag-and-drop) — Free-form drag tutorial
+- [Hover Styles Guide](/guides/hover-styles) — Styling the hover layer
+- [Drop Zone Acceptance Guide](/guides/drop-zone-acceptance) — Conditional drops

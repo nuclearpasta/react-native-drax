@@ -1,0 +1,36 @@
+---
+title: "Example: Drag Bounds"
+description: Constrain a dragged view within a boundary area.
+keywords: [react-native, drax, example, bounds, constrain]
+sidebar_position: 6
+---
+
+# Drag Bounds
+
+Demonstrates `dragBoundsRef` — constraining a dragged view within a parent boundary.
+
+## Key Concepts
+
+- **`dragBoundsRef`** — ref to the constraining view
+- **Clamped on UI thread** — bounds enforced in the gesture worklet
+- **Full view inside bounds** — accounts for view dimensions
+
+## Features Shown
+
+| Feature | How |
+|---|---|
+| `dragBoundsRef` | Constrains drag within the referenced view |
+| Bounded vs free | Side-by-side comparison |
+| Visual boundary | Visible border showing the constraint area |
+
+## Source Code
+
+```tsx title="example/app/(tabs)/bounded-drag.tsx"
+// Full source available at:
+// https://github.com/nuclearpasta/react-native-drax/blob/main/example/app/(tabs)/bounded-drag.tsx
+```
+
+## Related
+
+- [Drag Bounds Guide](/guides/drag-bounds) — Full tutorial
+- [API: DraxView](/api/components/drax-view) — `dragBoundsRef` prop

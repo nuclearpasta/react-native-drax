@@ -1,0 +1,150 @@
+---
+title: DraxView
+description: API reference for DraxView — the core building block with 19 callbacks and 30+ props.
+keywords: [react-native, drax, view, draggable, receptive, monitor, api]
+sidebar_position: 2
+---
+
+# DraxView
+
+The core building block of Drax. Any `DraxView` can be dragged, receive drops, and/or monitor drags. Extends React Native's `ViewProps`.
+
+## Import
+
+```tsx
+import { DraxView } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+<DraxView
+  payload={{ id: 'task-1' }}
+  onDragStart={() => console.log('dragging')}
+  onReceiveDragDrop={({ dragged }) => handleDrop(dragged.payload)}
+  hoverStyle={{ opacity: 0.8 }}
+/>
+```
+
+## Core Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `id` | `string` | auto-generated | Unique Drax view identifier |
+| `draggable` | `boolean` | `true` | Whether the view can be dragged |
+| `receptive` | `boolean` | `true` | Whether the view can receive drags |
+| `monitoring` | `boolean` | `false` | Whether the view monitors drags inside it |
+| `isParent` | `boolean` | `false` | Treat as parent for nested DraxViews |
+| `payload` | `unknown` | — | Data for both `dragPayload` and `receiverPayload` |
+| `dragPayload` | `unknown` | — | Data delivered to receivers when dragged |
+| `receiverPayload` | `unknown` | — | Data delivered to dragged views when receiving |
+| `longPressDelay` | `number` | `250` | ms before drag activates |
+| `noHover` | `boolean` | `false` | Don't render hover copy |
+| `dragHandle` | `boolean` | `false` | Only `DraxHandle` descendants start drag |
+| `collisionAlgorithm` | `CollisionAlgorithm` | `'center'` | `'center'` \| `'intersect'` \| `'contain'` |
+| `dragBoundsRef` | `RefObject<any>` | — | Constrains drag within a view |
+| `lockDragXPosition` | `boolean` | `false` | Lock horizontal drag movement |
+| `lockDragYPosition` | `boolean` | `false` | Lock vertical drag movement |
+| `rejectOwnChildren` | `boolean` | `false` | Don't receive drags from own children |
+
+## Drag Callbacks
+
+| Callback | Type | Description |
+|---|---|---|
+| `onDragStart` | `(data: DraxDragEventData) => void` | Drag begins |
+| `onDrag` | `(data: DraxDragEventData) => void` | Every frame, no receiver |
+| `onDragEnter` | `(data: DraxDragWithReceiverEventData) => void` | Entered new receiver |
+| `onDragOver` | `(data: DraxDragWithReceiverEventData) => void` | Every frame, over receiver |
+| `onDragExit` | `(data: DraxDragWithReceiverEventData) => void` | Left a receiver |
+| `onDragEnd` | `(data: DraxDragEndEventData) => DraxProtocolDragEndResponse` | Drag ended (no receiver / cancelled) |
+| `onDragDrop` | `(data: DraxDragWithReceiverEventData) => DraxProtocolDragEndResponse` | Dropped on receiver |
+| `onSnapEnd` | `(data: DraxSnapEndEventData) => void` | Snap-back animation completed |
+
+## Receiver Callbacks
+
+| Callback | Type | Description |
+|---|---|---|
+| `onReceiveDragEnter` | `(data: DraxDragWithReceiverEventData) => void` | Something dragged over |
+| `onReceiveDragOver` | `(data: DraxDragWithReceiverEventData) => void` | Every frame while hovering |
+| `onReceiveDragExit` | `(data: DraxDragWithReceiverEndEventData) => void` | Dragged item left |
+| `onReceiveDragDrop` | `(data: DraxDragWithReceiverEventData) => DraxProtocolDragEndResponse` | Item dropped on this view |
+| `onReceiveSnapEnd` | `(data: DraxSnapEndEventData) => void` | Snap animation completed |
+
+## Monitor Callbacks
+
+| Callback | Type | Description |
+|---|---|---|
+| `onMonitorDragStart` | `(data: DraxMonitorEventData) => void` | Drag started inside |
+| `onMonitorDragEnter` | `(data: DraxMonitorEventData) => void` | Dragged into area |
+| `onMonitorDragOver` | `(data: DraxMonitorEventData) => void` | Every frame inside area |
+| `onMonitorDragExit` | `(data: DraxMonitorEventData) => void` | Left monitored area |
+| `onMonitorDragEnd` | `(data: DraxMonitorEndEventData) => DraxProtocolDragEndResponse` | Drag ended inside |
+| `onMonitorDragDrop` | `(data: DraxMonitorDragDropEventData) => DraxProtocolDragEndResponse` | Drop inside area |
+
+## Acceptance Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `acceptsDrag` | `(draggedPayload: unknown) => boolean` | Simple payload-based acceptance |
+| `dynamicReceptiveCallback` | `(data: { targetId, targetMeasurements, draggedId, draggedPayload }) => boolean` | Advanced acceptance with full context |
+
+## Style Props
+
+### View Styles (original view)
+
+| Prop | Type | Description |
+|---|---|---|
+| `style` | `DraxStyleProp` | Default style |
+| `dragInactiveStyle` | `DraxStyleProp` | When not being dragged |
+| `draggingStyle` | `DraxStyleProp` | While being dragged |
+| `draggingWithReceiverStyle` | `DraxStyleProp` | Dragging over a receiver |
+| `draggingWithoutReceiverStyle` | `DraxStyleProp` | Dragging, no receiver |
+| `dragReleasedStyle` | `DraxStyleProp` | After release, during snap |
+| `receiverInactiveStyle` | `DraxStyleProp` | Receiver, nothing hovering |
+| `receivingStyle` | `DraxStyleProp` | Something hovering over |
+| `otherDraggingStyle` | `DraxStyleProp` | Another view is being dragged |
+| `otherDraggingWithReceiverStyle` | `DraxStyleProp` | Another view over a receiver |
+| `otherDraggingWithoutReceiverStyle` | `DraxStyleProp` | Another view, no receiver |
+
+### Hover Styles (floating copy)
+
+| Prop | Type | Description |
+|---|---|---|
+| `hoverStyle` | `AnimatedViewStylePropWithoutLayout` | Always on hover view |
+| `hoverDraggingStyle` | `AnimatedViewStylePropWithoutLayout` | While actively dragging |
+| `hoverDraggingWithReceiverStyle` | `AnimatedViewStylePropWithoutLayout` | Over a receiver |
+| `hoverDraggingWithoutReceiverStyle` | `AnimatedViewStylePropWithoutLayout` | No receiver |
+| `hoverDragReleasedStyle` | `AnimatedViewStylePropWithoutLayout` | After release |
+
+## Snap Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `animateSnap` | `boolean` | `true` | Animate snap after release |
+| `snapDelay` | `number` | — | Delay before snap starts (ms) |
+| `snapDuration` | `number` | — | Snap animation duration (ms) |
+| `snapAnimator` | `(data: DraxSnapData) => void` | — | Custom snap animation |
+
+## Render Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `renderContent` | `(props: DraxRenderContentProps) => ReactNode` | Custom render for view content |
+| `renderHoverContent` | `(props: DraxRenderHoverContentProps) => ReactNode` | Custom render for hover copy |
+
+## Other Props
+
+| Prop | Type | Description |
+|---|---|---|
+| `registration` | `(reg: DraxViewRegistration \| undefined) => void` | External registration callback |
+| `onMeasure` | `(measurements: DraxViewMeasurements \| undefined) => void` | Measurement callback |
+| `parent` | `DraxParentView` | Parent view (set automatically by `isParent`) |
+| `scrollPosition` | `SharedValue<Position>` | Scroll position (internal use) |
+
+All standard `ViewProps` (except `style`) are also supported.
+
+## Related
+
+- [Drag & Drop Guide](/guides/drag-and-drop)
+- [Hover Styles Guide](/guides/hover-styles)
+- [Core Concepts](/core-concepts) — Event system

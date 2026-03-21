@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2019-2020 Nuclear Pasta, LLC
+Copyright (c) 2019-2026 Nuclear Pasta, SRL
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

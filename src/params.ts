@@ -24,3 +24,44 @@ export const defaultAutoScrollBackThreshold = 0.1;
 
 /** Default drag-over minimum position threshold for auto-scroll forward, as a fraction relative to content width/length */
 export const defaultAutoScrollForwardThreshold = 0.9;
+
+/** Duration in milliseconds for list item shift/reorder animations */
+export const ITEM_SHIFT_ANIMATION_DURATION = 200;
+
+/** Resolved animation configuration for sortable item shifts */
+export interface ResolvedAnimationConfig {
+  useSpring: boolean;
+  shiftDuration: number;
+  springDamping: number;
+  springStiffness: number;
+  springMass: number;
+}
+
+/** Resolve a SortableAnimationConfig (preset or custom) to concrete values */
+export function resolveAnimationConfig(
+  config: import('./types').SortableAnimationConfig | undefined
+): ResolvedAnimationConfig {
+  if (!config || config === 'default') {
+    return { useSpring: false, shiftDuration: 200, springDamping: 15, springStiffness: 150, springMass: 1 };
+  }
+  if (config === 'spring') {
+    return { useSpring: true, shiftDuration: 200, springDamping: 15, springStiffness: 150, springMass: 1 };
+  }
+  if (config === 'gentle') {
+    return { useSpring: true, shiftDuration: 200, springDamping: 20, springStiffness: 100, springMass: 1.2 };
+  }
+  if (config === 'snappy') {
+    return { useSpring: true, shiftDuration: 200, springDamping: 20, springStiffness: 300, springMass: 0.8 };
+  }
+  if (config === 'none') {
+    return { useSpring: false, shiftDuration: 0, springDamping: 15, springStiffness: 150, springMass: 1 };
+  }
+  // Custom config
+  return {
+    useSpring: config.useSpring ?? false,
+    shiftDuration: config.shiftDuration ?? 200,
+    springDamping: config.springDamping ?? 15,
+    springStiffness: config.springStiffness ?? 150,
+    springMass: config.springMass ?? 1,
+  };
+}

@@ -1,47 +1,176 @@
 {
-	"name": "react-native-drax",
-	"version": "0.10.3",
-	"description": "A drag-and-drop system for React Native",
-	"repository": {
-		"type": "git",
-		"url": "git+ssh://git@github.com/nuclearpasta/react-native-drax.git"
-	},
-	"main": "build/index.js",
-	"types": "build/index.d.ts",
-	"scripts": {
-		"lint": "yarn run eslint src",
-		"build": "yarn run tsc",
-		"prepublish": "yarn run build"
-	},
-	"author": "Joe Lafiosca <joe@proxi.gg>",
-	"license": "MIT",
-	"dependencies": {
-		"lodash.isequal": "^4.5.0",
-		"lodash.throttle": "^4.1.1",
-		"typesafe-actions": "^5.1.0"
-	},
-	"peerDependencies": {
-		"react": "*",
-		"react-native": ">=0.65.0",
-		"react-native-gesture-handler": ">=1.8.0"
-	},
-	"devDependencies": {
-		"@types/lodash.isequal": "^4.5.5",
-		"@types/lodash.throttle": "^4.1.6",
-		"@types/node": "^14.14.43",
-		"@types/react-native": "^0.65.22",
-		"@typescript-eslint/eslint-plugin": "^4.22.0",
-		"@typescript-eslint/parser": "^4.22.0",
-		"eslint": "^7.25.0",
-		"eslint-config-airbnb-typescript": "^12.3.1",
-		"eslint-plugin-import": "^2.22.1",
-		"eslint-plugin-jsx-a11y": "^6.4.1",
-		"eslint-plugin-react": "^7.23.2",
-		"eslint-plugin-react-hooks": "^4.2.0",
-		"eslint-plugin-react-native": "^3.10.0",
-		"react": "^17.0.2",
-		"react-native": "^0.65.2",
-		"react-native-gesture-handler": "^1.8.0",
-		"typescript": "^4.7.3"
-	}
+  "name": "react-native-drax",
+  "version": "1.0.0",
+  "description": "A drag and drop system for React Native",
+  "main": "./lib/module/index.js",
+  "types": "./lib/typescript/src/index.d.ts",
+  "react-native": "./src/index.ts",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "types": "./lib/typescript/src/index.d.ts",
+      "react-native": "./src/index.ts",
+      "default": "./lib/module/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src",
+    "lib",
+    "android",
+    "ios",
+    "cpp",
+    "*.podspec",
+    "!ios/build",
+    "!android/build",
+    "!android/gradle",
+    "!android/gradlew",
+    "!android/gradlew.bat",
+    "!android/local.properties",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__",
+    "!**/.*"
+  ],
+  "scripts": {
+    "example": "yarn workspace react-native-drax-example",
+    "clean": "del-cli lib",
+    "prepare": "bob build",
+    "typecheck": "tsc && tsc --project example/tsconfig.json",
+    "lint": "eslint .",
+    "test": "jest --passWithNoTests",
+    "release": "release-it --only-version"
+  },
+  "keywords": [
+    "react-native",
+    "drag-and-drop",
+    "sortable",
+    "reorderable",
+    "drag",
+    "drop",
+    "reanimated",
+    "gesture-handler",
+    "ios",
+    "android",
+    "web"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nuclearpasta/react-native-drax.git"
+  },
+  "author": "Joe Lafiosca <joe@proxi.gg> (https://github.com/lafiosca)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nuclearpasta/react-native-drax/issues"
+  },
+  "homepage": "https://github.com/nuclearpasta/react-native-drax#readme",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "devDependencies": {
+    "@commitlint/config-conventional": "^20.4.1",
+    "@eslint/compat": "^2.0.2",
+    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^9.39.2",
+    "@react-native/babel-preset": "0.83.1",
+    "@react-native/eslint-config": "0.83.1",
+    "@release-it/conventional-changelog": "^10.0.4",
+    "@types/jest": "^30.0.0",
+    "@types/react": "^19.2.10",
+    "commitlint": "^20.4.1",
+    "del-cli": "^7.0.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-ft-flow": "^3.0.11",
+    "eslint-plugin-react-compiler": "^19.1.0-rc.2",
+    "jest": "^30.2.0",
+    "lefthook": "^2.0.16",
+    "prettier": "^3.8.1",
+    "react": "19.2.4",
+    "react-native": "0.83.1",
+    "react-native-builder-bob": "^0.40.13",
+    "react-native-gesture-handler": "^3.0.0-beta.2",
+    "react-native-reanimated": "^4.3.0-rc.0",
+    "react-native-worklets": "^0.8.0-rc.0",
+    "release-it": "^19.0.4",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-native": ">=0.68.0",
+    "react-native-gesture-handler": ">=2.0.0",
+    "react-native-reanimated": "^4.0.0"
+  },
+  "workspaces": [
+    "example",
+    "docs-site"
+  ],
+  "packageManager": "yarn@4.11.0",
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      [
+        "module",
+        {
+          "esm": true
+        }
+      ],
+      [
+        "typescript",
+        {
+          "project": "tsconfig.build.json"
+        }
+      ]
+    ]
+  },
+  "prettier": {
+    "quoteProps": "consistent",
+    "singleQuote": true,
+    "tabWidth": 2,
+    "trailingComma": "es5",
+    "useTabs": false
+  },
+  "jest": {
+    "preset": "react-native",
+    "modulePathIgnorePatterns": [
+      "<rootDir>/example/node_modules",
+      "<rootDir>/lib/"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "release-it": {
+    "git": {
+      "commitMessage": "chore: release ${version}",
+      "tagName": "v${version}"
+    },
+    "npm": {
+      "publish": true
+    },
+    "github": {
+      "release": true
+    },
+    "plugins": {
+      "@release-it/conventional-changelog": {
+        "preset": {
+          "name": "angular"
+        }
+      }
+    }
+  },
+  "create-react-native-library": {
+    "type": "library",
+    "languages": "js",
+    "tools": [
+      "eslint",
+      "jest",
+      "lefthook",
+      "release-it"
+    ],
+    "version": "0.56.0"
+  }
 }

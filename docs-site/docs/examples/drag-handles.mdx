@@ -1,0 +1,36 @@
+---
+title: "Example: Drag Handles"
+description: Sortable list where only the grip icon starts a drag.
+keywords: [react-native, drax, example, drag-handle, grip]
+sidebar_position: 5
+---
+
+# Drag Handles
+
+Demonstrates drag handles — only the grip area starts a drag, the rest of the row can scroll or receive taps.
+
+## Key Concepts
+
+- **`dragHandle` prop** — tells DraxView not to attach gesture directly
+- **`DraxHandle` component** — wraps the touchable grip area
+- **Mixed interaction** — taps on content work normally
+
+## Features Shown
+
+| Feature | How |
+|---|---|
+| `dragHandle` on SortableItem | Gesture not attached to full item |
+| `DraxHandle` | Grip area that activates drag |
+| Normal taps | Content area remains tappable |
+
+## Source Code
+
+```tsx title="example/app/(tabs)/drag-handles.tsx"
+// Full source available at:
+// https://github.com/nuclearpasta/react-native-drax/blob/main/example/app/(tabs)/drag-handles.tsx
+```
+
+## Related
+
+- [Drag Handles Guide](/guides/drag-handles) — Full tutorial
+- [API: DraxHandle](/api/components/drax-handle) — Component reference

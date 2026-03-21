@@ -1,0 +1,48 @@
+---
+title: Web Support
+description: Using react-native-drax on the web with React Native Web.
+keywords: [react-native, web, react-native-web, expo, browser]
+sidebar_position: 16
+---
+
+# Web Support
+
+Drax works on the web via React Native Web (and Expo). The same code runs on iOS, Android, and web browsers.
+
+## Platform Differences
+
+| Aspect | Native (iOS/Android) | Web |
+|---|---|---|
+| Gesture system | Native gesture recognizers | Pointer events |
+| Measurements | Fabric `measureLayout` (synchronous) | `getBoundingClientRect` |
+| Scroll handling | Content-relative positions | Visual positions (needs scroll adjustment) |
+| Performance | UI-thread worklets | Main thread (no worker offloading) |
+
+## Setup with Expo
+
+If you're using Expo, web support works out of the box:
+
+```bash
+npx expo start --web
+```
+
+Make sure both Reanimated and Gesture Handler are configured for web in your `babel.config.js`.
+
+## Known Limitations
+
+- **No UI-thread hit-testing on web** — the spatial index worklet runs on the main thread
+- **Touch vs pointer events** — mouse drag works, but touch events on mobile browsers may differ from native gesture behavior
+- **Measurement timing** — `measureLayout` returns visual positions on web (not content-relative like Fabric), so scroll offset adjustments are applied automatically
+
+## Testing
+
+The example app includes web support. Run it to verify your setup:
+
+```bash
+cd example && npx expo start --web
+```
+
+## Next Steps
+
+- **[Performance](/guides/performance)** — Platform-specific optimization tips
+- **[Getting Started](/getting-started)** — Installation and setup

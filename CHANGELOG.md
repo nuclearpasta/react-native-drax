@@ -6,8 +6,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
-## [Unreleased]
-- Nothing yet
+
+## [1.0.0] - 2026-03-20
+
+Complete rewrite of the library. This is a major release with breaking changes from all prior versions.
+
+### Architecture
+
+- Rewritten on **Reanimated 4** and **Gesture Handler 3** (beta)
+- **UI-thread-first** architecture: spatial index worklet for hit-testing, SharedValues split by update frequency
+- **New Architecture (Fabric)** compatible
+- **Web** platform support
+- **React Compiler** enabled
+- Single `HoverLayer`, per-view gesture handlers
+- Gesture Handler v2 supported via compatibility layer (v3 recommended for best performance)
+
+### Added
+
+- **List-agnostic sortable API**: `useSortableList` hook + `SortableContainer` + `SortableItem` composable primitives — works with FlatList, FlashList, LegendList, or any list component
+- **`DraxList`** convenience wrapper: list-agnostic sortable list with `component` prop to swap list implementations
+- **Cross-container sortable** (experimental): `useSortableBoard` + `SortableBoardContainer` for kanban board patterns
+- **Drag handles**: `DraxHandle` component + `dragHandle` prop — only the handle area starts a drag
+- **Drag bounds**: `dragBoundsRef` prop constrains drags within a boundary view
+- **Collision algorithms**: `collisionAlgorithm` prop — `'center'` (default), `'intersect'`, `'contain'`
+- **Drop zone acceptance**: `acceptsDrag` convenience prop + `dynamicReceptiveCallback` for conditional drop acceptance
+- **Hover styles**: 5 hover-specific style props — `hoverStyle`, `hoverDraggingStyle`, `hoverDraggingWithReceiverStyle`, `hoverDraggingWithoutReceiverStyle`, `hoverDragReleasedStyle`
+- **Snap alignment**: `snapToAlignment()` utility for 9-point alignment within receivers
+- **Animation presets**: `'default'`, `'spring'`, `'gentle'`, `'snappy'`, `'none'` — plus custom spring/timing config
+- **Continuous drag callbacks**: `onDrag`, `onDragOver`, `onReceiveDragOver` fire every gesture frame
+- **Accessibility**: auto-generated `accessibilityLabel`/`accessibilityHint` on sortable items, `useReducedMotion()` support
+- **Namespace API**: `import { Drax } from 'react-native-drax'` for `Drax.View`, `Drax.Provider`, etc.
+- **Drop indicator support**: `renderDropIndicator` prop on `SortableContainer`
+- **Insert + swap** reorder strategies
+- 10 example screens in the bundled Expo Router example app
+
+### Changed
+
+- (BREAKING) Peer dependency: `react-native-reanimated ^4.0.0` required
+- (BREAKING) Peer dependency: `react-native-gesture-handler >=2.0.0` required (v3 recommended)
+- (BREAKING) Peer dependency: `react >=18.0.0` required
+- (BREAKING) `DraxList` is completely new — list-agnostic wrapper using the new sortable architecture
+- (BREAKING) `dynamicReceptiveCallback` signature changed: receives `draggedPayload` parameter
+
+### Removed
+
+- (BREAKING) Old `DraxList` component (v0.10.x API with `renderItemContent`/`renderHoverContent` and v0.11.0-alpha API with `renderItem(info, itemProps)`)
+- (BREAKING) `DraxListItem` component — replaced by `SortableItem`
+- (BREAKING) All legacy list types: `DraxListProps` (old), `DraxListItemProps`, `DraxListDraggedItemData`, `DraxListOnItemDragStartEventData`, `DraxListOnItemDragPositionChangeEventData`, `DraxListOnItemDragEndEventData`, `DraxListOnItemReorderEventData`, `DraxListRenderItemContent`, `DraxListRenderItemHoverContent`, `DraxListOnItemReorder`
 
 
 ## [0.10.3] - 2022-09-06
