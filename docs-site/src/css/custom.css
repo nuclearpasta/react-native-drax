@@ -546,6 +546,9 @@ table td code {
   color: var(--np-muted);
   font-weight: 400;
   margin-left: 6px;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline !important;
 }
 
 .comparison-section table {
