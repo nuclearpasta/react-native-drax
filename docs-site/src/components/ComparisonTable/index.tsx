@@ -18,8 +18,10 @@ function cellClass(val: string, allVals: [string, string, string]): string {
 
 export default function ComparisonTable(): JSX.Element {
   return (
-    <section id="comparison" className="container comparison-section">
-      <Heading as="h2">How Drax compares</Heading>
+    <section className="container comparison-section">
+      <Heading as="h2" id="comparison">
+        <a href="#comparison" className="comparison-anchor">Choose your library</a>
+      </Heading>
       <p className="comparison-disclaimer">
         This comparison was researched with the help of AI and may contain inaccuracies.
         If you spot an error, please{' '}

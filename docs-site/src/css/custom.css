@@ -532,6 +532,28 @@ table td code {
   margin-bottom: 20px;
 }
 
+.comparison-anchor {
+  color: inherit;
+  text-decoration: none;
+}
+
+.comparison-anchor:hover {
+  text-decoration: none;
+  color: inherit;
+}
+
+.comparison-anchor::after {
+  content: ' #';
+  color: var(--np-muted);
+  opacity: 0;
+  transition: opacity 180ms ease;
+  font-weight: 400;
+}
+
+.comparison-anchor:hover::after {
+  opacity: 1;
+}
+
 .comparison-section table {
   min-width: 580px;
 }
