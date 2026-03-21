@@ -3,6 +3,7 @@ import Heading from '@theme/Heading';
 function cellClass(val: string, allVals: [string, string, string]): string {
   if (val === 'No') return 'cross';
   if (val === 'Experimental') return 'warning';
+  if (val === 'Partial') return 'partial';
 
   const hasNo = allVals.some(v => v === 'No');
   const allEqual = allVals[0] === allVals[1] && allVals[1] === allVals[2];
@@ -17,8 +18,13 @@ function cellClass(val: string, allVals: [string, string, string]): string {
 
 export default function ComparisonTable(): JSX.Element {
   return (
-    <section className="container comparison-section">
+    <section id="comparison" className="container comparison-section">
       <Heading as="h2">How Drax compares</Heading>
+      <p className="comparison-disclaimer">
+        This comparison was researched with the help of AI and may contain inaccuracies.
+        If you spot an error, please{' '}
+        <a href="https://github.com/nuclearpasta/react-native-drax/issues">open an issue</a>.
+      </p>
       <table>
         <thead>
           <tr>
@@ -89,6 +95,7 @@ const rows: [string, string, string, string][] = [
   // Platform & accessibility
   ['Accessibility',                                    'Yes',                    'Manual',         'Manual'],
   ['Reduced motion',                                   'Yes',                    'No',             'No'],
+  ['AI agent skills',                                  'No',                     'Yes',            'No'],
   ['Web support',                                      'Yes',                    'No',             'Partial'],
   ['Reanimated',                                       '4',                      '\u2265 4.2',     '\u2265 3'],
   ['Gesture Handler',                                  '3 (beta)',               '\u2265 2.28',    '\u2265 2'],
