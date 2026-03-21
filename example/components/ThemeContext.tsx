@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import { createContext, useCallback, useContext, useSyncExternalStore } from 'react';
+import { Appearance } from 'react-native';
 
 type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -17,7 +17,7 @@ export interface Theme {
   logoTileBorder: string;
 }
 
-const light: Theme = {
+export const light: Theme = {
   bg: '#f3f3f0',
   surface: '#fcfcfa',
   surfaceStrong: '#ffffff',
@@ -31,7 +31,7 @@ const light: Theme = {
   logoTileBorder: 'rgba(17, 17, 17, 0.12)',
 };
 
-const dark: Theme = {
+export const dark: Theme = {
   bg: '#0c0c0e',
   surface: '#17171a',
   surfaceStrong: '#202025',
@@ -44,6 +44,41 @@ const dark: Theme = {
   logoTileBg: '#17171a',
   logoTileBorder: 'rgba(245, 245, 240, 0.16)',
 };
+
+// ── Module-level shared state ────────────────────────────────────────
+// Guarantees a single source of truth even if Metro resolves this module
+// through multiple paths in a monorepo.
+
+let _mode: ThemeMode = 'system';
+const _listeners = new Set<() => void>();
+
+function getSnapshot(): ThemeMode {
+  return _mode;
+}
+
+function subscribe(cb: () => void) {
+  _listeners.add(cb);
+  return () => _listeners.delete(cb);
+}
+
+function setMode(next: ThemeMode) {
+  _mode = next;
+  _listeners.forEach((cb) => cb());
+}
+
+function useSystemScheme(): 'light' | 'dark' {
+  const scheme = useSyncExternalStore(
+    (cb) => {
+      const sub = Appearance.addChangeListener(cb);
+      return () => sub.remove();
+    },
+    () => Appearance.getColorScheme() ?? 'light',
+    () => 'light',
+  );
+  return scheme === 'dark' ? 'dark' : 'light';
+}
+
+// ── Context (for convenience, but backed by module state) ────────────
 
 interface ThemeContextValue {
   theme: Theme;
@@ -60,18 +95,19 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = useColorScheme();
-  const [mode, setMode] = useState<ThemeMode>('system');
+  const systemScheme = useSystemScheme();
+  const mode = useSyncExternalStore(subscribe, getSnapshot, () => 'system' as ThemeMode);
 
-  const isDark =
-    mode === 'system' ? systemScheme === 'dark' : mode === 'dark';
+  const isDark = mode === 'system' ? systemScheme === 'dark' : mode === 'dark';
   const theme = isDark ? dark : light;
 
   const toggleTheme = useCallback(() => {
-    setMode((prev) => {
-      if (prev === 'system') return systemScheme === 'dark' ? 'light' : 'dark';
-      return prev === 'dark' ? 'light' : 'dark';
-    });
+    const prev = _mode;
+    if (prev === 'system') {
+      setMode(systemScheme === 'dark' ? 'light' : 'dark');
+    } else {
+      setMode(prev === 'dark' ? 'light' : 'dark');
+    }
   }, [systemScheme]);
 
   return (

@@ -1,6 +1,15 @@
 import { ScrollViewStyleReset } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
+// Static inline CSS for initial dark mode background (prevents white flash).
+// Content is a static string literal — no user input, no XSS risk.
+const darkModeCSS = `
+  body { background-color: #f3f3f0; }
+  @media (prefers-color-scheme: dark) {
+    body { background-color: #0c0c0e; }
+  }
+`;
+
 export default function Root({ children }: PropsWithChildren) {
   return (
     <html lang="en">
@@ -21,6 +30,7 @@ export default function Root({ children }: PropsWithChildren) {
           content="react-native, drag-and-drop, sortable, drax, examples, demo"
         />
         <ScrollViewStyleReset />
+        <style dangerouslySetInnerHTML={{ __html: darkModeCSS }} />
       </head>
       <body>{children}</body>
     </html>

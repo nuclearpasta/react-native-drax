@@ -19,70 +19,72 @@ export function AppHeader() {
   return (
     <View
       style={[
-        styles.header,
+        styles.safeArea,
         {
-          paddingTop: insets.top + 4,
+          paddingTop: insets.top,
           backgroundColor: theme.surfaceStrong,
           borderBottomColor: theme.line,
         },
       ]}
     >
-      {!isHome && (
+      <View style={styles.row}>
+        {!isHome && (
+          <Pressable
+            onPress={() => router.navigate('/' as any)}
+            hitSlop={8}
+            style={styles.homeButton}
+          >
+            <Icon name="chevron-left" size={26} color={theme.text} />
+          </Pressable>
+        )}
         <Pressable
-          onPress={() => router.navigate('/' as any)}
-          hitSlop={8}
-          style={styles.homeButton}
+          style={styles.brand}
+          onPress={() =>
+            isHome ? Linking.openURL(DOCS_URL) : router.navigate('/' as any)
+          }
         >
-          <Icon name="chevron-left" size={26} color={theme.text} />
+          <LogoMark size={32} showTile />
+          <View>
+            <Text style={[styles.brandName, { color: theme.text }]}>Drax</Text>
+            <Text style={[styles.brandSub, { color: theme.muted }]}>
+              react-native-drax
+            </Text>
+          </View>
         </Pressable>
-      )}
-      <Pressable
-        style={styles.brand}
-        onPress={() =>
-          isHome ? Linking.openURL(DOCS_URL) : router.navigate('/' as any)
-        }
-      >
-        <LogoMark size={32} showTile />
-        <View>
-          <Text style={[styles.brandName, { color: theme.text }]}>Drax</Text>
-          <Text style={[styles.brandSub, { color: theme.muted }]}>
-            react-native-drax
-          </Text>
-        </View>
-      </Pressable>
-      <View style={styles.headerRight}>
-        <Pressable
-          style={styles.headerLink}
-          onPress={() => Linking.openURL(DOCS_URL)}
-          hitSlop={4}
-        >
-          <Icon name="book-open-variant" size={16} color={theme.muted} />
-          <Text style={[styles.headerLinkText, { color: theme.muted }]}>
-            Docs
-          </Text>
-        </Pressable>
-        <Pressable onPress={() => Linking.openURL(NPM_URL)} hitSlop={8}>
-          <Icon name="npm" size={28} color="#CB3837" />
-        </Pressable>
-        <Pressable onPress={() => Linking.openURL(GITHUB_URL)} hitSlop={8}>
-          <Icon name="github" size={20} color={theme.muted} />
-        </Pressable>
-        <View style={styles.themeToggle}>
-          <Icon
-            name={isDark ? 'weather-night' : 'white-balance-sunny'}
-            size={16}
-            color={isDark ? '#f2b15a' : '#cf5f34'}
-          />
-          <Switch
-            value={isDark}
-            onValueChange={toggleTheme}
-            trackColor={{
-              false: 'rgba(17,17,17,0.12)',
-              true: 'rgba(245,245,240,0.24)',
-            }}
-            thumbColor={isDark ? '#f5f5f0' : '#111111'}
-            style={styles.switch}
-          />
+        <View style={styles.headerRight}>
+          <Pressable
+            style={styles.headerLink}
+            onPress={() => Linking.openURL(DOCS_URL)}
+            hitSlop={4}
+          >
+            <Icon name="book-open-variant" size={16} color={theme.muted} />
+            <Text style={[styles.headerLinkText, { color: theme.muted }]}>
+              Docs
+            </Text>
+          </Pressable>
+          <Pressable onPress={() => Linking.openURL(NPM_URL)} hitSlop={8}>
+            <Icon name="npm" size={28} color="#CB3837" />
+          </Pressable>
+          <Pressable onPress={() => Linking.openURL(GITHUB_URL)} hitSlop={8}>
+            <Icon name="github" size={20} color={theme.muted} />
+          </Pressable>
+          <View style={styles.themeToggle}>
+            <Icon
+              name={isDark ? 'weather-night' : 'white-balance-sunny'}
+              size={16}
+              color={isDark ? '#f2b15a' : '#cf5f34'}
+            />
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{
+                false: 'rgba(17,17,17,0.12)',
+                true: 'rgba(245,245,240,0.24)',
+              }}
+              thumbColor={isDark ? '#f5f5f0' : '#111111'}
+              style={styles.switch}
+            />
+          </View>
         </View>
       </View>
     </View>
@@ -90,12 +92,14 @@ export function AppHeader() {
 }
 
 const styles = StyleSheet.create({
-  header: {
+  safeArea: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingBottom: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 10,
   },
   homeButton: {
     marginRight: 2,
