@@ -7,7 +7,6 @@ Drag-and-drop framework for React Native (iOS, Android, Web). v1.0.0 — major r
 - **UI-thread-first**: spatial index worklet for hit-testing, SharedValues split by update frequency. We need to use the UI thread as much as possible.
 - **Reanimated 4 + Gesture Handler 3** (beta)
 - Single `HoverLayer`, per-view gesture handlers
-- React compiler turned on
 - Latest React features.
 
 
@@ -118,18 +117,34 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 
 We compete with two libraries. Drax must match or exceed their DX while keeping unique advantages.
 
-**react-native-sortables** (https://github.com/MatiPl01/react-native-sortables)
-- SortableGrid, SortableFlex with insert + swap strategies, haptic feedback
-- Sorting only — no free-form DnD, no cross-container drag
-- Drax advantage: cross-container drag, monitoring views, nested contexts, free-form DnD
+**react-native-sortables** (https://github.com/MatiPl01/react-native-sortables) — Docs: https://react-native-sortables-docs.vercel.app/
+- SortableGrid, SortableFlex with insert + swap + custom strategies (swap grid-only), haptic feedback, drag handles (3 modes: draggable/non-draggable/fixed-order)
+- Item removal/addition animations (itemExiting/itemEntering), auto-scrolling, portal rendering (PortalProvider + Layer), collapsible items
+- 5 active item decoration props (scale, opacity, shadow) + inactive styling + useItemContext hook for custom animated styles
+- Drop zones via BaseZone + MultiZoneProvider (deletion only, NOT cross-container transfer). Drop indicators on grid (DropIndicatorComponent + dropIndicatorStyle)
+- Reanimated ≥3, Gesture Handler ≥2, partial web support, ~281K monthly npm downloads
+- Sorting only — no free-form DnD, no cross-container drag, no collision algorithms, no built-in accessibility (manual only), no snap alignment
+- Grid/Flex components do NOT spread ViewProps — accessibility props must go on inner children content
+- Drax advantage: cross-container drag, monitoring views, free-form DnD, collision algorithms, built-in accessibility + reduced motion, animation presets, snap alignment (9-point + custom), 15 drag state style props, list-agnostic API, 19-callback event system, UI-thread DnD collision
+- Drax missing: sortable flex layout, haptic feedback, item removal animation, fixed-order items, collapsible items, debug mode
 
-**react-native-reanimated-dnd** (https://github.com/entropyconquers/react-native-reanimated-dnd)
-- v2 released March 2026: Reanimated 4, sortable grids, animation presets, accessibility
-- Still on Gesture Handler ~2.30 (NOT v3 beta)
-- No cross-container drag, no monitoring views, no UI-thread spatial index
-- Drax now matches: drag handles, collision algorithms, drop indicators, drop zone acceptance, drag bounds, hover styles, snap alignment, animation presets, accessibility, reduced motion
-- Drax advantages: cross-container (kanban), monitoring views, UI-thread hit-testing, 19-callback event system, list-agnostic API, continuous drag callbacks, custom snap animators, spring physics presets
-- Still missing vs them: item removal animation (`isBeingRemoved` prop)
+**react-native-reanimated-dnd** (https://github.com/entropyconquers/react-native-reanimated-dnd) — Docs: https://reanimated-dnd-docs.vercel.app/
+- v2 released March 2026: Reanimated ≥4.2 + react-native-worklets ≥0.7, sortable grids (insert + swap), free-form DnD
+- Drag handles, 3 collision modes, drag bounds + axis lock (x/y/both), 9-point snap alignment (dropAlignment on Droppable), auto-scrolling (8-dir for grids)
+- Horizontal sorting, dynamic item heights (number/array/function modes), FlatList integration (useFlatList prop)
+- DropProvider with global callbacks (onDragStart/End/Dragging) + imperative methods (requestPositionUpdate, getDroppedItems)
+- 8 hooks for granular control: useDraggable, useDroppable, useSortable, useSortableList, useHorizontalSortable/List, useGridSortable/List
+- Drag styling: onStateChange callback with DraggableState enum (IDLE/DRAGGING/DROPPED) for manual styling. activeStyle on Droppable only. Sortable items have hardcoded shadow + grid scale (NOT configurable)
+- Custom animation via animationFunction worklet (no named presets — docs show copy-paste recipes only)
+- Still on Gesture Handler ≥2.28 (NOT v3 beta), no web support, New Architecture required (≥RN 0.80)
+- No cross-container drag, no monitoring views, no UI-thread DnD collision (free-form collision on JS thread), no overlay/portal (items can clip behind siblings)
+- No built-in accessibility (components do NOT spread rest ViewProps — a11y must go on inner children), no reduced motion, no haptic feedback
+- No drop indicators, no named animation presets
+- Drop acceptance: capacity + dropDisabled only (no data-based acceptsDrag callback)
+- Item removal animation: grid only (isBeingRemoved on SortableGridItem)
+- ~12 callback types, onDragging fires every frame (throttled 50ms on sortables), no receiver-side continuous callbacks
+- Drax advantages: cross-container (kanban), monitoring views, UI-thread DnD collision, list-agnostic API, 5 named presets + custom fn(), built-in accessibility + reduced motion, 15 drag state style props, callback-based drop acceptance, 4 continuous drag callback types, 19-callback event system, web support, drop indicators, snap alignment with custom coordinates + snapAnimator
+- Drax missing: item removal animation, DropProvider global callbacks + imperative methods
 
 ## Example App
 

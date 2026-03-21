@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react';
-import { memo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
+import type { ViewStyle } from 'react-native';
 import { Platform } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
-import { useSharedValue } from 'react-native-reanimated';
+import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import Reanimated, {
   Easing,
   useAnimatedStyle,
@@ -13,6 +14,8 @@ import Reanimated, {
 
 import { DraxView } from './DraxView';
 import { useDraxContext } from './hooks/useDraxContext';
+import type { SortableItemContextValue } from './SortableItemContext';
+import { SortableItemContext } from './SortableItemContext';
 import type { ResolvedAnimationConfig } from './params';
 import { resolveAnimationConfig } from './params';
 import type {
@@ -38,12 +41,14 @@ function useSortableItemStyle(
   itemKey: string | undefined,
   animConfig: ResolvedAnimationConfig,
   reducedMotion: boolean,
+  inactiveItemStyle?: ViewStyle,
 ) {
   return useAnimatedStyle(() => {
     // Guard: viewIdSV starts as '' before DraxView registers. Without the
     // non-empty check, a newly mounted item would match a cleared draggedIdSV ('')
     // and be hidden (opacity 0) until hoverReadySV clears — visible in cross-container transfers.
     const isDragged = hoverReadySV.value && viewIdSV.value !== '' && draggedIdSV.value === viewIdSV.value;
+    const dragActive = draggedIdSV.value !== '';
     const valid = shiftsValidSV.value;
     const shifts = shiftsRef.value;
     const shift = valid && itemKey ? shifts[itemKey] : undefined;
@@ -75,12 +80,16 @@ function useSortableItemStyle(
       translateY = withTiming(toY, timingConfig);
     }
 
+    // Apply inactive style to non-dragged items while a drag is active
+    const isInactive = dragActive && !isDragged;
+
     return {
       opacity: isDragged ? 0 : 1,
       transform: [
         { translateX },
         { translateY },
       ] as const,
+      ...(isInactive && inactiveItemStyle ? inactiveItemStyle : {}),
     };
   });
 }
@@ -88,12 +97,16 @@ function useSortableItemStyle(
 export interface SortableItemProps extends DraxViewProps {
   sortable: SortableListHandle<any>;
   index: number;
+  /** When true, this item cannot be dragged and stays in its position.
+   *  Other items will skip over it during reorder. */
+  fixed?: boolean;
   children: ReactNode;
 }
 
 const SortableItemInner = ({
   sortable,
   index,
+  fixed = false,
   children,
   ...draxViewProps
 }: SortableItemProps) => {
@@ -102,6 +115,9 @@ const SortableItemInner = ({
     lockToMainAxis,
     longPressDelay,
     animationConfig,
+    inactiveItemStyle,
+    itemEntering,
+    itemExiting,
     shiftsRef,
     instantClearSV,
     shiftsValidSV,
@@ -111,6 +127,7 @@ const SortableItemInner = ({
     originalIndexes,
     scrollPosition,
     onItemSnapEnd,
+    fixedKeys,
   } = sortable._internal;
 
   // Get hoverReadySV and draggedIdSV from DraxContext (provider-level SharedValues)
@@ -120,6 +137,16 @@ const SortableItemInner = ({
   const item = rawData[originalIndex];
   const itemKey = item !== undefined ? keyExtractor(item, index) : undefined;
 
+  // Register/unregister fixed items so reorder logic can skip them.
+  useEffect(() => {
+    if (!itemKey) return;
+    if (fixed) {
+      fixedKeys.current.add(itemKey);
+    } else {
+      fixedKeys.current.delete(itemKey);
+    }
+    return () => { fixedKeys.current.delete(itemKey); };
+  }, [fixed, itemKey, fixedKeys]);
 
   // Store this DraxView's registered ID in a SharedValue so useAnimatedStyle
   // can compare it with draggedIdSV on the UI thread.
@@ -137,8 +164,24 @@ const SortableItemInner = ({
   const itemStyle = useSortableItemStyle(
     hoverReadySV, draggedIdSV, viewIdSV,
     shiftsValidSV, shiftsRef, instantClearSV, itemKey,
-    resolvedAnimConfig, reducedMotion,
+    resolvedAnimConfig, reducedMotion, inactiveItemStyle,
   );
+
+  // Derive isActive SharedValue for useItemContext consumers
+  const isActive = useDerivedValue(() => {
+    return viewIdSV.value !== '' && draggedIdSV.value === viewIdSV.value;
+  });
+
+  // Build context value for useItemContext
+  const itemContextValue = useMemo<SortableItemContextValue | null>(() => {
+    if (!itemKey) return null;
+    return {
+      itemKey,
+      index,
+      isActive,
+      activeItemId: draggedIdSV,
+    };
+  }, [itemKey, index, isActive, draggedIdSV]);
 
   // Auto-generate accessibility props (can be overridden via draxViewProps)
   const totalItems = rawData.length;
@@ -146,11 +189,13 @@ const SortableItemInner = ({
   const defaultA11yHint = 'Long press to drag and reorder';
 
   return (
-    <Reanimated.View style={itemStyle}>
+    <SortableItemContext value={itemContextValue}>
+    <Reanimated.View style={itemStyle} entering={itemEntering} exiting={itemExiting}>
       <DraxView
         longPressDelay={longPressDelay}
         lockDragXPosition={lockToMainAxis && !horizontal}
         lockDragYPosition={lockToMainAxis && horizontal}
+        draggable={!fixed}
         accessibilityLabel={defaultA11yLabel}
         accessibilityHint={defaultA11yHint}
         accessibilityRole="adjustable"
@@ -212,6 +257,7 @@ const SortableItemInner = ({
         {children}
       </DraxView>
     </Reanimated.View>
+    </SortableItemContext>
   );
 };
 

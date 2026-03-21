@@ -10,6 +10,7 @@ import type {
 import { useSortableList } from './hooks/useSortableList';
 import { SortableContainer } from './SortableContainer';
 import { SortableItem } from './SortableItem';
+import type { EntryOrExitLayoutType } from 'react-native-reanimated';
 import type {
   DraxViewProps,
   SortableAnimationConfig,
@@ -42,6 +43,13 @@ export interface DraxListProps<T> {
   lockToMainAxis?: boolean;
   /** Animation config for item shift animations. @default 'default' */
   animationConfig?: SortableAnimationConfig;
+  /** Style applied to all non-dragged items while a drag is active.
+   *  Use for dimming/scaling inactive items (e.g., `{ opacity: 0.5 }`). */
+  inactiveItemStyle?: ViewStyle;
+  /** Reanimated layout animation for items entering the list (e.g., `FadeIn`). */
+  itemEntering?: EntryOrExitLayoutType;
+  /** Reanimated layout animation for items exiting the list (e.g., `FadeOut`). */
+  itemExiting?: EntryOrExitLayoutType;
   /** DraxView props to apply to each item */
   itemDraxViewProps?: Partial<DraxViewProps>;
   /** DraxView props for the container */
@@ -86,6 +94,9 @@ export const DraxList = <T,>({
   longPressDelay,
   lockToMainAxis,
   animationConfig,
+  inactiveItemStyle,
+  itemEntering,
+  itemExiting,
   itemDraxViewProps,
   containerDraxViewProps,
   containerStyle,
@@ -111,6 +122,9 @@ export const DraxList = <T,>({
     longPressDelay,
     lockToMainAxis,
     animationConfig,
+    inactiveItemStyle,
+    itemEntering,
+    itemExiting,
     onDragStart,
     onDragPositionChange,
     onDragEnd,

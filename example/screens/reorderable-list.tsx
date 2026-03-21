@@ -98,6 +98,7 @@ export default function ReorderableList() {
           data={alphaData}
           keyExtractor={(item) => item}
           animationConfig={animPreset}
+          inactiveItemStyle={{ opacity: 0.5 }}
           containerStyle={styles.container}
           style={styles.list}
           containerDraxViewProps={{

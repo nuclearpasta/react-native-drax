@@ -1,0 +1,72 @@
+---
+title: useDraxMethods
+description: API reference for useDraxMethods — imperative methods for querying and controlling the Drax provider.
+keywords: [react-native, drax, hook, imperative, methods, api]
+sidebar_position: 4
+---
+
+# useDraxMethods
+
+Imperative methods for querying and controlling the Drax provider state. Must be called within a `DraxProvider`.
+
+## Import
+
+```tsx
+import { useDraxMethods } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+function MyComponent() {
+  const { isDragging, getDroppedItems, clearDroppedItems } = useDraxMethods();
+
+  return (
+    <Button
+      title="Clear all drops"
+      onPress={() => clearDroppedItems()}
+    />
+  );
+}
+```
+
+## Methods
+
+| Method | Return Type | Description |
+|---|---|---|
+| `isDragging()` | `boolean` | Check if a drag is currently active |
+| `getDraggedId()` | `string \| undefined` | Get the ID of the currently dragged view |
+| `getDroppedItems(receiverId?)` | `Map \| Set` | Get dropped items for a receiver (or all) |
+| `clearDroppedItems(receiverId?)` | `void` | Clear tracking for capacity reset |
+| `requestPositionUpdate()` | `void` | Trigger re-measurement of all views |
+
+## Examples
+
+### Capacity with manual reset
+
+```tsx
+<DraxView
+  capacity={3}
+  onReceiveDragDrop={({ dragged }) => {
+    addItem(dragged.payload);
+  }}
+/>
+
+// Later, when items are removed:
+const { clearDroppedItems } = useDraxMethods();
+clearDroppedItems('my-drop-zone-id');
+```
+
+### Conditional UI based on drag state
+
+```tsx
+const { isDragging } = useDraxMethods();
+
+// Show trash zone only during drag
+{isDragging() && <TrashZone />}
+```
+
+## Related
+
+- [DraxProvider](/api/components/drax-provider)
+- [Drop Zone Acceptance Guide](/guides/drop-zone-acceptance)

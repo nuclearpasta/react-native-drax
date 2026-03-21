@@ -28,7 +28,7 @@
 
 Before creating a worktree from `reanimated-v4` branch, be sure to check any local changes that I did locally without committing and/or pushing. That's because I started working there on a new major version.
 
-We need to upgrade to expo 55, reanimated v4, gesture handler v3 beta, while also keeping in mind that react compiler should work for react-native-drax.
+We need to upgrade to expo 55, reanimated v4, gesture handler v3 beta.
 
 That is just a POC. Breaking changes are allowed since we are working on a new major version. You can rewrite anything that you want. Be sure to do everything you can so we will have the best performance and developer experience. 
 

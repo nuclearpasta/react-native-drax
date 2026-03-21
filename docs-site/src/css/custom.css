@@ -532,6 +532,25 @@ table td code {
   margin-bottom: 20px;
 }
 
+.comparison-anchor {
+  color: inherit;
+  text-decoration: none;
+}
+
+.comparison-anchor:hover {
+  text-decoration: none;
+  color: inherit;
+}
+
+.comparison-hash {
+  color: var(--np-muted);
+  font-weight: 400;
+  margin-left: 6px;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline !important;
+}
+
 .comparison-section table {
   min-width: 580px;
 }
@@ -548,6 +567,23 @@ table td code {
 .cross {
   color: var(--np-muted);
   opacity: 0.5;
+}
+
+.warning {
+  color: var(--np-accent-pole);
+  font-weight: 600;
+}
+
+.partial {
+  color: var(--np-text);
+  font-weight: 600;
+}
+
+.comparison-disclaimer {
+  color: var(--np-muted);
+  font-size: 0.82rem;
+  font-style: italic;
+  margin-bottom: 16px;
 }
 
 /* ── Code Tabs ───────────────────────────────────────────────────────── */

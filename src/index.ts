@@ -19,6 +19,8 @@ export type { SortableBoardContainerProps } from './SortableBoardContainer';
 // ── Public Hooks ─────────────────────────────────────────────────────
 export { useDraxContext } from './hooks/useDraxContext';
 export { useDraxId } from './hooks/useDraxId';
+export { useDraxMethods } from './hooks/useDraxMethods';
+export { useItemContext } from './SortableItemContext';
 export { useSortableList } from './hooks/useSortableList';
 export { useSortableBoard } from './hooks/useSortableBoard';
 
@@ -66,12 +68,16 @@ export type {
   // Props
   DraxViewProps,
   DraxProviderProps,
+  DraxProviderDragEvent,
   DraxScrollViewProps,
   DraxAutoScrollProps,
 
   // Sortable types
   UseSortableListOptions,
   SortableListHandle,
+} from './types';
+export type { SortableItemContextValue } from './SortableItemContext';
+export type {
   SortableReorderEvent,
   SortableDragStartEvent,
   SortableDragPositionChangeEvent,
