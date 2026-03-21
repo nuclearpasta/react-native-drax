@@ -550,6 +550,11 @@ table td code {
   opacity: 0.5;
 }
 
+.warning {
+  color: var(--np-accent-pole);
+  font-weight: 600;
+}
+
 /* ── Code Tabs ───────────────────────────────────────────────────────── */
 
 .tabs-container {

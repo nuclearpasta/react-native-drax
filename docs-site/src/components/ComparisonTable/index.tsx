@@ -1,5 +1,20 @@
 import Heading from '@theme/Heading';
 
+function cellClass(val: string, allVals: [string, string, string]): string {
+  if (val === 'No') return 'cross';
+  if (val === 'Experimental') return 'warning';
+
+  const hasNo = allVals.some(v => v === 'No');
+  const allEqual = allVals[0] === allVals[1] && allVals[1] === allVals[2];
+
+  // All three equal → all green
+  if (allEqual) return 'check';
+  // Some are "No" → those who have it get green
+  if (hasNo) return 'check';
+  // All have it but values differ → only "Yes" stands out as green
+  return val === 'Yes' ? 'check' : '';
+}
+
 export default function ComparisonTable(): JSX.Element {
   return (
     <section className="container comparison-section">
@@ -14,14 +29,19 @@ export default function ComparisonTable(): JSX.Element {
           </tr>
         </thead>
         <tbody>
-          {rows.map(([feature, drax, rndnd, sortables]) => (
-            <tr key={feature}>
-              <td>{feature}</td>
-              <td className={drax === 'No' ? 'cross' : 'check'}>{drax}</td>
-              <td className={rndnd === 'No' ? 'cross' : rndnd === 'Yes' ? 'check' : ''}>{rndnd}</td>
-              <td className={sortables === 'No' ? 'cross' : sortables === 'Yes' ? 'check' : ''}>{sortables}</td>
-            </tr>
-          ))}
+          {rows.map(([feature, drax, rndnd, sortables]) => {
+            const vals: [string, string, string] = [drax, rndnd, sortables];
+            return (
+              <tr key={feature}>
+                <td>{feature}</td>
+                <td className={cellClass(drax, vals)}>
+                  {drax === 'Experimental' ? '\u26A0\uFE0F Experimental' : drax}
+                </td>
+                <td className={cellClass(rndnd, vals)}>{rndnd}</td>
+                <td className={cellClass(sortables, vals)}>{sortables}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </section>
@@ -29,23 +49,45 @@ export default function ComparisonTable(): JSX.Element {
 }
 
 const rows: [string, string, string, string][] = [
-  ['Free-form drag & drop',        'Yes',              'Yes',  'No'],
-  ['Sortable list',                 'Yes',              'Yes',  'Yes'],
-  ['Sortable grid',                 'Yes',              'Yes',  'Yes'],
-  ['Cross-container drag (kanban)', 'Yes',              'No',   'No'],
-  ['List-agnostic',                 'Yes',              'No',   'No'],
-  ['Drag handles',                  'Yes',              'Yes',  'No'],
-  ['Collision algorithms',          '3 modes',          'Yes',  'No'],
-  ['Drag bounds',                   'Yes',              'Yes',  'No'],
-  ['Drop zone acceptance',          'Yes',              'No',   'No'],
-  ['Monitoring views',              'Yes',              'No',   'No'],
-  ['UI-thread hit-testing',         'Yes',              'No',   'No'],
-  ['Hover styles',                  '5 states',         'No',   'No'],
-  ['Animation presets',             '5 + custom',       'Yes',  'No'],
-  ['Snap alignment',                '9-point',          'No',   'No'],
-  ['Accessibility',                 'Yes',              'Yes',  'No'],
-  ['Continuous drag callbacks',     'Yes',              'No',   'No'],
-  ['Reanimated version',            '4',                '4',    '3'],
-  ['Gesture Handler version',       '3 (beta)',         '~2.30','2'],
-  ['Web support',                   'Yes',              'No',   'No'],
+  // Core capabilities
+  ['Free-form drag & drop',                            'Yes',                    'Yes',            'No'],
+  ['Sortable list',                                    'Yes',                    'Yes',            'Yes'],
+  ['Sortable grid',                                    'Yes',                    'Yes',            'Yes'],
+  ['Sortable flex layout',                             'No',                     'No',             'Yes'],
+  ['Horizontal sorting',                               'Yes',                    'Yes',            'Yes'],
+  ['Cross-container / cross-list (kanban)',             'Experimental',           'No',             'No'],
+  ['List-agnostic (FlatList, FlashList, LegendList)',   'Yes',                    'No',             'No'],
+
+  // Gesture & interaction
+  ['Drag handles',                                     'Yes',                    'Yes',            'Yes'],
+  ['Drag axis locking',                                'Yes',                    'Yes',            'Partial'],
+  ['Drag bounds',                                      'Yes',                    'Yes',            'Container only'],
+  ['Auto-scrolling',                                   'Yes',                    'Yes',            'Yes'],
+  ['Haptic feedback',                                  'No',                     'No',             'Yes'],
+
+  // Visual & animation
+  ['Drag state styling',                               '15 props',               'onStateChange',  '5 props + hook'],
+  ['Reorder animation presets',                        '5 presets + custom',      'No',             'No'],
+  ['Drop animation',                                   'Custom fn()',             'Custom fn()',    'Duration only'],
+  ['Item removal animation',                           'No',                     'Grid only',      'Yes'],
+  ['Drop indicator',                                   'Yes',                    'No',             'Grid only'],
+  ['Dynamic item heights',                             'Yes',                    'Yes',            'Yes'],
+
+  // Hit testing & drop zones
+  ['Collision algorithms',                             '3 modes',                '3 modes',        'No'],
+  ['Snap alignment',                                   '9-point + custom',       '9-point',        'No'],
+  ['Drop zone acceptance',                             'Callback-based',         'Capacity only',  'No'],
+  ['Monitoring views',                                 'Yes',                    'No',             'No'],
+  ['UI-thread DnD collision',                          'Yes',                    'No',             'No'],
+
+  // Callbacks
+  ['Event callbacks',                                  '19 types',               '~12 types',      '~10 types'],
+  ['Continuous drag callbacks',                        '4 types',                '1 type',         '1 type'],
+
+  // Platform & accessibility
+  ['Accessibility',                                    'Yes',                    'Manual',         'Manual'],
+  ['Reduced motion',                                   'Yes',                    'No',             'No'],
+  ['Web support',                                      'Yes',                    'No',             'Partial'],
+  ['Reanimated',                                       '4',                      '\u2265 4.2',     '\u2265 3'],
+  ['Gesture Handler',                                  '3 (beta)',               '\u2265 2.28',    '\u2265 2'],
 ];
