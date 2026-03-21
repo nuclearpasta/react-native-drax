@@ -463,8 +463,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
 
     currentMonitorIdsRef.current = newMonitorIds;
 
-    // Fire provider-level onDrag
-    onProviderDrag?.({ draggedId: draggedIdSV.value, receiverId: newReceiverId || undefined, position: absolutePosition });
+    // Fire provider-level onDrag (use acceptedReceiverId, not raw newReceiverId)
+    onProviderDrag?.({ draggedId: draggedIdSV.value, receiverId: acceptedReceiverId || undefined, position: absolutePosition });
   };
 
   /** Called via runOnJS when drag ends or is cancelled */
@@ -652,8 +652,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       deps.hoverClearDeferredRef
     );
 
-    // Fire provider-level onDragEnd
-    onProviderDragEnd?.({ draggedId, receiverId: receiverId || undefined, position: { x: 0, y: 0 }, cancelled });
+    // Fire provider-level onDragEnd (use last known hover position)
+    onProviderDragEnd?.({ draggedId, receiverId: receiverId || undefined, position: hoverPositionSV.value, cancelled });
   };
 
   return {
