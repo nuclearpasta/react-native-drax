@@ -4,6 +4,9 @@
 
 [![npm version](https://badge.fury.io/js/react-native-drax.svg)](https://badge.fury.io/js/react-native-drax)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg)](CODE-OF-CONDUCT.md)
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-9-orange.svg?style=flat-square)](#contributors)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 
 [Docs](https://nuclearpasta.com/react-native-drax) | [Live Example](https://nuclearpasta.com/react-native-drax/example)
 
@@ -30,6 +33,22 @@ Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and
 - **Accessibility** — auto-generated labels, reduced motion support
 - **19 callback events** — full drag lifecycle control
 - **New Architecture** compatible (Fabric)
+
+### Why Drax?
+
+| | Drax | [react-native-sortables](https://github.com/MatiPl01/react-native-sortables) | [react-native-reanimated-dnd](https://github.com/entropyconquers/react-native-reanimated-dnd) |
+|---|:---:|:---:|:---:|
+| Free-form drag-and-drop | Yes | - | Yes |
+| Sortable lists & grids | Yes | Yes | Yes |
+| Cross-container drag (kanban) | Yes | - | - |
+| List-agnostic (FlatList, FlashList, etc.) | Yes | - | - |
+| UI-thread hit-testing | Yes | - | - |
+| Drag handles | Yes | - | Yes |
+| Collision algorithms | Yes | - | Yes |
+| Monitoring views | Yes | - | - |
+| 19 callback events | Yes | - | - |
+| Reanimated 4 + Gesture Handler 3 | Yes | Yes | - |
+| New Architecture (Fabric) | Yes | Yes | Yes |
 
 ## Installation
 
@@ -373,6 +392,10 @@ v1.0.0 is a complete rewrite. Key changes:
 - **Reanimated 4 + Gesture Handler 3** — required peer dependencies (Gesture Handler v2 supported via compat layer with reduced performance).
 - **New Architecture (Fabric)** compatible.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a full list of changes.
+
 ## Contributing
 
 Issues, pull requests, and discussion are all welcome. See the [Contribution Guidelines](CONTRIBUTING.md) for details.
@@ -381,10 +404,40 @@ Issues, pull requests, and discussion are all welcome. See the [Contribution Gui
 
 This project is released with a [Contributor Code of Conduct](CODE-OF-CONDUCT.md). By participating in this project you agree to abide by its terms.
 
+## Contributors
+
+Originally created by [Joe Lafiosca](https://github.com/lafiosca). v1.0.0 rewrite led by [Ovidiu Cristescu](https://github.com/LunatiqueCoder).
+
+Thanks to all contributors who have helped make Drax better:
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/lafiosca"><img src="https://avatars.githubusercontent.com/u/2390282?v=4" width="100px;" alt="Joe Lafiosca"/><br /><sub><b>Joe Lafiosca</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=lafiosca" title="Code">💻</a> <a href="https://github.com/nuclearpasta/react-native-drax/commits?author=lafiosca" title="Documentation">📖</a> <a href="#example-lafiosca" title="Examples">💡</a> <a href="#maintenance-lafiosca" title="Maintenance">🚧</a> <a href="#infra-lafiosca" title="Infrastructure">🚇</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/LunatiqueCoder"><img src="https://avatars.githubusercontent.com/u/55203625?v=4" width="100px;" alt="Ovidiu Cristescu"/><br /><sub><b>Ovidiu Cristescu</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=LunatiqueCoder" title="Code">💻</a> <a href="https://github.com/nuclearpasta/react-native-drax/commits?author=LunatiqueCoder" title="Documentation">📖</a> <a href="#example-LunatiqueCoder" title="Examples">💡</a> <a href="#maintenance-LunatiqueCoder" title="Maintenance">🚧</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Auticiel"><img src="https://avatars.githubusercontent.com/u/1832music?v=4" width="100px;" alt="François Dupayrat"/><br /><sub><b>François Dupayrat</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=Auticiel" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/jmarnold"><img src="https://avatars.githubusercontent.com/u/124630?v=4" width="100px;" alt="Josh Arnold"/><br /><sub><b>Josh Arnold</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=jmarnold" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/rnz269"><img src="https://avatars.githubusercontent.com/u/46784475?v=4" width="100px;" alt="Rahul Nallappa"/><br /><sub><b>Rahul Nallappa</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=rnz269" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/negue"><img src="https://avatars.githubusercontent.com/u/1816086?v=4" width="100px;" alt="negue"/><br /><sub><b>negue</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=negue" title="Documentation">📖</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/chrisdrackett"><img src="https://avatars.githubusercontent.com/u/60391?v=4" width="100px;" alt="Chris Drackett"/><br /><sub><b>Chris Drackett</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=chrisdrackett" title="Code">💻</a></td>
+    </tr>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/sturdynut"><img src="https://avatars.githubusercontent.com/u/6019471?v=4" width="100px;" alt="Matti Salokangas"/><br /><sub><b>Matti Salokangas</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=sturdynut" title="Code">💻</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/afgarcia86"><img src="https://avatars.githubusercontent.com/u/1498412?v=4" width="100px;" alt="Andres Garcia"/><br /><sub><b>Andres Garcia</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=afgarcia86" title="Code">💻</a></td>
+    </tr>
+  </tbody>
+</table>
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
 ## License
 
 [MIT](LICENSE.md)
 
-## Acknowledgments
+---
 
-Originally created by [Joe Lafiosca](https://github.com/lafiosca). v1.0.0 rewrite by the Drax contributors.
+Built and maintained using [OpenKit](https://www.openkit.work/).
