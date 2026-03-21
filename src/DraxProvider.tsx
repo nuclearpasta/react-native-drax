@@ -18,6 +18,9 @@ import type {
 
 export const DraxProvider = ({
   style = styles.provider,
+  onDragStart: onProviderDragStart,
+  onDrag: onProviderDrag,
+  onDragEnd: onProviderDragEnd,
   children,
 }: DraxProviderProps): ReactNode => {
   // ── Split SharedValues (by update frequency) ───────────────────────
@@ -91,6 +94,9 @@ export const DraxProvider = ({
       hoverReadySV,
       hoverClearDeferredRef,
       hoverStylesRef,
+      onProviderDragStart,
+      onProviderDrag,
+      onProviderDragEnd,
     });
 
   // ── Root view ref ──────────────────────────────────────────────────

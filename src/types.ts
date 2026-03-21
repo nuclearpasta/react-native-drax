@@ -501,10 +501,23 @@ export interface RegisterViewPayload {
 
 // ─── Provider / Subprovider Props ──────────────────────────────────────────
 
+/** Event data for provider-level drag callbacks */
+export interface DraxProviderDragEvent {
+  draggedId: string;
+  receiverId?: string;
+  position: Position;
+}
+
 /** Optional props that can be passed to a DraxProvider */
 export interface DraxProviderProps {
   style?: StyleProp<ViewStyle>;
   debug?: boolean;
+  /** Called when any drag starts */
+  onDragStart?: (event: DraxProviderDragEvent) => void;
+  /** Called on every gesture update during any drag */
+  onDrag?: (event: DraxProviderDragEvent) => void;
+  /** Called when any drag ends (drop or cancel) */
+  onDragEnd?: (event: DraxProviderDragEvent & { cancelled: boolean }) => void;
   children?: ReactNode;
 }
 

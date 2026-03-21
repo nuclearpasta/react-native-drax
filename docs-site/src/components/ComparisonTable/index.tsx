@@ -84,6 +84,7 @@ const rows: [string, string, string, string][] = [
   // Callbacks
   ['Event callbacks',                                  '19 types',               '~12 types',      '~10 types'],
   ['Continuous drag callbacks',                        '4 types',                '1 type',         '1 type'],
+  ['Provider-level callbacks',                        'Yes',                    'Yes',            'No'],
 
   // Platform & accessibility
   ['Accessibility',                                    'Yes',                    'Manual',         'Manual'],

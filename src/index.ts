@@ -66,6 +66,7 @@ export type {
   // Props
   DraxViewProps,
   DraxProviderProps,
+  DraxProviderDragEvent,
   DraxScrollViewProps,
   DraxAutoScrollProps,
 

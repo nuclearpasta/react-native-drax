@@ -16,6 +16,7 @@ import type {
   DragPhase,
   DraxEventDraggedViewData,
   DraxEventReceiverViewData,
+  DraxProviderDragEvent,
   DraxSnapbackTarget,
   DraxSnapEndEventData,
   Position,
@@ -56,6 +57,10 @@ interface CallbackDispatchDeps {
   hoverReadySV: SharedValue<boolean>;
   hoverClearDeferredRef: { current: boolean };
   hoverStylesRef: RefObject<FlattenedHoverStyles | null>;
+  // Provider-level callbacks
+  onProviderDragStart?: (event: DraxProviderDragEvent) => void;
+  onProviderDrag?: (event: DraxProviderDragEvent) => void;
+  onProviderDragEnd?: (event: DraxProviderDragEvent & { cancelled: boolean }) => void;
 }
 
 /**
@@ -75,6 +80,9 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     startPositionSV,
     setHoverContent,
     hoverReadySV,
+    onProviderDragStart,
+    onProviderDrag,
+    onProviderDragEnd,
   } = deps;
 
   // Track current monitor ids for exit events
@@ -236,6 +244,9 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     // Phase activation is handled by HoverLayer's useLayoutEffect — it fires
     // AFTER React commits the hover content, ensuring both opacity:1 and
     // draggingStyle apply on the same frame. See HoverLayer.tsx.
+
+    // Fire provider-level onDragStart
+    onProviderDragStart?.({ draggedId, position: absolutePosition });
 
     // Fire monitor onMonitorDragStart callbacks
     currentMonitorIdsRef.current = [];
@@ -438,6 +449,9 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     }
 
     currentMonitorIdsRef.current = newMonitorIds;
+
+    // Fire provider-level onDrag
+    onProviderDrag?.({ draggedId: draggedIdSV.value, receiverId: newReceiverId || undefined, position: absolutePosition });
   };
 
   /** Called via runOnJS when drag ends or is cancelled */
@@ -619,6 +633,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       deps.hoverClearDeferredRef
     );
 
+    // Fire provider-level onDragEnd
+    onProviderDragEnd?.({ draggedId, receiverId: receiverId || undefined, position: { x: 0, y: 0 }, cancelled });
   };
 
   return {
