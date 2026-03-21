@@ -43,7 +43,7 @@ Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and
 |---|:---:|:---:|:---:|
 | Free-form drag & drop | ✅ | ✅ | ➖ |
 | Sortable list / grid | ✅ | ✅ | ✅ |
-| Cross-container / kanban | ⚠️ Experimental | ➖ | ➖ |
+| Cross-container / cross-list /kanban | ⚠️ Experimental | ➖ | ➖ |
 | List-agnostic (FlatList, FlashList, LegendList) | ✅ | ➖ | ➖ |
 | Drag handles | ✅ | ✅ | ✅ |
 | Drag state styling | 15 props + inactive | onStateChange | 5 props + hook |
