@@ -1,0 +1,103 @@
+{
+  "projectName": "react-native-drax",
+  "projectOwner": "nuclearpasta",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "lafiosca",
+      "name": "Joe Lafiosca",
+      "avatar_url": "https://avatars.githubusercontent.com/u/9442662?v=4",
+      "profile": "https://github.com/lafiosca",
+      "contributions": [
+        "code",
+        "doc",
+        "example",
+        "maintenance",
+        "infra"
+      ]
+    },
+    {
+      "login": "LunatiqueCoder",
+      "name": "Ovidiu Cristescu",
+      "avatar_url": "https://avatars.githubusercontent.com/u/55203625?v=4",
+      "profile": "https://github.com/LunatiqueCoder",
+      "contributions": [
+        "code",
+        "doc",
+        "example",
+        "maintenance"
+      ]
+    },
+    {
+      "login": "Auticiel",
+      "name": "Fran\u00e7ois Dupayrat",
+      "avatar_url": "https://avatars.githubusercontent.com/u/8429221?v=4",
+      "profile": "https://github.com/Auticiel",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "jmarnold",
+      "name": "Josh Arnold",
+      "avatar_url": "https://avatars.githubusercontent.com/u/181667?v=4",
+      "profile": "https://github.com/jmarnold",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "rnz269",
+      "name": "Rahul Nallappa",
+      "avatar_url": "https://avatars.githubusercontent.com/u/20953181?v=4",
+      "profile": "https://github.com/rnz269",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "negue",
+      "name": "negue",
+      "avatar_url": "https://avatars.githubusercontent.com/u/842273?v=4",
+      "profile": "https://github.com/negue",
+      "contributions": [
+        "doc"
+      ]
+    },
+    {
+      "login": "chrisdrackett",
+      "name": "Chris Drackett",
+      "avatar_url": "https://avatars.githubusercontent.com/u/4378?v=4",
+      "profile": "https://github.com/chrisdrackett",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "sturdynut",
+      "name": "Matti Salokangas",
+      "avatar_url": "https://avatars.githubusercontent.com/u/8547391?v=4",
+      "profile": "https://github.com/sturdynut",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "afgarcia86",
+      "name": "Andres Garcia",
+      "avatar_url": "https://avatars.githubusercontent.com/u/3606053?v=4",
+      "profile": "https://github.com/afgarcia86",
+      "contributions": [
+        "code"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7
+}

@@ -410,7 +410,7 @@ export const SortableBoardContainer = <TItem,>({
 
   // Pass boardInternal directly — NOT a copy. The useEffect above mutates
   // boardInternal.finalizeTransfer after render. A snapshot copy would capture
-  // `undefined` and React Compiler's memoization would never update it.
+  // `undefined` and memoization would never update it.
   // Cast needed: SortableBoardInternal<TItem> → SortableBoardInternal<unknown>
   // is safe because consumers only read transferState and finalizeTransfer.
   const contextValue: SortableBoardContextValue = {

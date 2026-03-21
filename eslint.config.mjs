@@ -2,7 +2,6 @@ import { fixupConfigRules } from '@eslint/compat';
 import { FlatCompat } from '@eslint/eslintrc';
 import js from '@eslint/js';
 import tsParser from '@typescript-eslint/parser';
-import reactCompiler from 'eslint-plugin-react-compiler';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,17 +31,13 @@ export default defineConfig([
     '**/.expo/',
   ]),
 
-  // src/** — @react-native + prettier + react compiler (strict, no DOM)
+  // src/** — @react-native + prettier (strict, no DOM)
   {
     files: ['src/**/*.{ts,tsx}'],
     extends: reactNativePrettier,
-    plugins: {
-      'react-compiler': reactCompiler,
-    },
     rules: {
       'react/react-in-jsx-scope': 'off',
       'react-hooks/exhaustive-deps': 'off',
-      'react-compiler/react-compiler': 'warn',
     },
   },
 
@@ -54,18 +49,14 @@ export default defineConfig([
     },
   },
 
-  // example/** — @react-native + prettier + react compiler, but no-inline-styles off
+  // example/** — @react-native + prettier, but no-inline-styles off
   {
     files: ['example/**/*.{ts,tsx}'],
     extends: reactNativePrettier,
-    plugins: {
-      'react-compiler': reactCompiler,
-    },
     rules: {
       'react/react-in-jsx-scope': 'off',
       'react-native/no-inline-styles': 'off',
       'react-hooks/exhaustive-deps': 'off',
-      'react-compiler/react-compiler': 'warn',
     },
   },
 

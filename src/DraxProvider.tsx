@@ -4,6 +4,7 @@ import type { HostInstance } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 
+import { DebugOverlay } from './DebugOverlay';
 import { DraxContext } from './DraxContext';
 import type { FlattenedHoverStyles } from './HoverLayer';
 import { HoverLayer } from './HoverLayer';
@@ -18,6 +19,10 @@ import type {
 
 export const DraxProvider = ({
   style = styles.provider,
+  debug = false,
+  onDragStart: onProviderDragStart,
+  onDrag: onProviderDrag,
+  onDragEnd: onProviderDragEnd,
   children,
 }: DraxProviderProps): ReactNode => {
   // ── Split SharedValues (by update frequency) ───────────────────────
@@ -47,6 +52,9 @@ export const DraxProvider = ({
   // Animated dimensions for hover content during cross-container transfer.
   // x = width, y = height. {0,0} = no constraint (natural size).
   const hoverDimsSV = useSharedValue<Position>({ x: 0, y: 0 });
+
+  // ── Dropped items tracking ─────────────────────────────────────────
+  const droppedItemsRef = useRef<Map<string, Set<string>>>(new Map());
 
   // ── Spatial index + registry ───────────────────────────────────────
   const {
@@ -91,6 +99,10 @@ export const DraxProvider = ({
       hoverReadySV,
       hoverClearDeferredRef,
       hoverStylesRef,
+      onProviderDragStart,
+      onProviderDrag,
+      onProviderDragEnd,
+      droppedItemsRef,
     });
 
   // ── Root view ref ──────────────────────────────────────────────────
@@ -145,6 +157,9 @@ export const DraxProvider = ({
       // Hover content
       setHoverContent,
 
+      // Dropped items
+      droppedItemsRef,
+
       // Refs
       rootViewRef,
     }),
@@ -173,6 +188,7 @@ export const DraxProvider = ({
       handleReceiverChange,
       handleDragEnd,
       setHoverContent,
+      droppedItemsRef,
     ]
   );
 
@@ -180,6 +196,12 @@ export const DraxProvider = ({
     <DraxContext value={contextValue}>
       <View style={style} ref={setRootViewRef} onLayout={handleRootLayout} collapsable={false}>
         {children}
+        {debug && (
+          <DebugOverlay
+            spatialIndexSV={spatialIndexSV}
+            scrollOffsetsSV={scrollOffsetsSV}
+          />
+        )}
         <HoverLayer
           hoverContentRef={hoverContentRef}
           hoverVersion={hoverVersion}

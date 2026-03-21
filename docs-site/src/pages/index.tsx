@@ -176,7 +176,7 @@ export default function Home(): JSX.Element {
       title="Drag-and-drop for React Native"
       description="A drag-and-drop framework for React Native with sortable lists, grids, cross-container drag, and more. Built on Reanimated 4."
     >
-      <main className="container" style={{ padding: '20px 0 40px' }}>
+      <main className="container" style={{ paddingTop: 20, paddingBottom: 40 }}>
         <HeroSection />
         <HomepageFeatures />
         <CodeExamples />

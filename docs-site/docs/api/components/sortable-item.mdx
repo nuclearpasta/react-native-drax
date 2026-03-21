@@ -33,6 +33,7 @@ Extends all `DraxViewProps` plus:
 |---|---|---|---|
 | `sortable` | `SortableListHandle<any>` | **required** | Handle from `useSortableList` |
 | `index` | `number` | **required** | Current index in the list |
+| `fixed` | `boolean` | `false` | Pin this item in place — cannot be dragged, other items skip over it |
 | `children` | `ReactNode` | **required** | Item content |
 
 All `DraxViewProps` are supported — they're spread onto the inner `DraxView`:
@@ -58,6 +59,42 @@ Auto-generated attributes (overridable via props):
 | `accessibilityLabel` | `"Item {N} of {M}"` |
 | `accessibilityHint` | `"Long press to drag and reorder"` |
 | `accessibilityRole` | `"adjustable"` |
+
+## Fixed Items
+
+Pin items in place so they can't be dragged and other items skip over them:
+
+```tsx
+<SortableItem sortable={sortable} index={0} fixed>
+  <Text>Pinned header — can't be moved</Text>
+</SortableItem>
+```
+
+## useItemContext
+
+Access per-item drag state from within children using the `useItemContext` hook:
+
+```tsx
+import { useItemContext } from 'react-native-drax';
+import { useAnimatedStyle } from 'react-native-reanimated';
+
+function ItemContent({ label }) {
+  const { isActive } = useItemContext();
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: isActive.value ? 1.1 : 1 }],
+    shadowOpacity: isActive.value ? 0.3 : 0,
+  }));
+
+  return (
+    <Reanimated.View style={style}>
+      <Text>{label}</Text>
+    </Reanimated.View>
+  );
+}
+```
+
+Returns: `itemKey`, `index`, `isActive` (SharedValue), `activeItemId` (SharedValue).
 
 ## How It Works
 

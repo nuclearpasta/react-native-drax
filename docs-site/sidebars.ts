@@ -32,6 +32,7 @@ const sidebars: SidebarsConfig = {
         'guides/web-support',
         'guides/namespace-api',
         'guides/performance',
+        'guides/roadmap',
       ],
     },
     {
@@ -77,6 +78,8 @@ const sidebars: SidebarsConfig = {
         'api/hooks/use-sortable-board',
         'api/hooks/use-drax-context',
         'api/hooks/use-drax-id',
+        'api/hooks/use-drax-methods',
+        'api/hooks/use-item-context',
       ],
     },
     {

@@ -1,0 +1,37 @@
+---
+title: Roadmap
+sidebar_position: 99
+---
+
+# Roadmap
+
+Features planned for future releases of Drax.
+
+## Planned
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Haptic feedback** | `hapticsEnabled` prop — vibrate on drag start and reorder events | Deferred (web compatibility) |
+| **Snap-to-finger** | `snapToFinger` prop — center dragged item on finger instead of preserving grab offset | Deferred (snap architecture review needed) |
+| **Container dimension animation** | Animate container height/width when items are added, removed, or reordered | Planned |
+| **Animated style transitions** | Smooth interpolation between drag style states (e.g., `dragInactiveStyle` to `draggingStyle`) instead of instant swaps | Needs design work |
+| **Custom ordering strategies** | Pluggable `customStrategy` function beyond insert/swap | Planned |
+| **Sortable flex layout** | Full flexbox-based sorting with flex-wrap, direction, gap, alignment | Large effort |
+| **Collapsible items** | Items animate their size during drag | Large effort |
+| **Sortable.Touchable** | Gesture-safe tap/long-press inside sortable items | DraxHandle partially covers this |
+| **Dynamic item heights API** | Explicit `itemHeight` prop (number/array/function) for optimization | Already measures per-item |
+| **AI agent skills** | MCP server or similar integration for AI-assisted drag-and-drop interactions | Planned |
+
+## Recently Shipped
+
+| Feature | Version |
+|---------|---------|
+| `inactiveItemStyle` — dim non-dragged items during drag | v1.0.0 |
+| `itemEntering`/`itemExiting` — Reanimated layout animations | v1.0.0 |
+| `fixed` prop — pin sortable items in place | v1.0.0 |
+| Provider-level `onDragStart`/`onDrag`/`onDragEnd` callbacks | v1.0.0 |
+| `capacity` prop + dropped items tracking | v1.0.0 |
+| Debug mode — visual overlay for spatial index | v1.0.0 |
+| `useDraxMethods` — imperative provider API | v1.0.0 |
+| `dragActivationFailOffset` — cancel drag on finger movement | v1.0.0 |
+| `useItemContext` — per-item SharedValues for custom animations | v1.0.0 |

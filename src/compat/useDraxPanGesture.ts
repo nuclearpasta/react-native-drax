@@ -20,6 +20,8 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
     maxPointers: config.maxPointers,
     shouldCancelWhenOutside: config.shouldCancelWhenOutside,
     touchAction: config.touchAction,
+    failOffsetX: config.failOffsetX,
+    failOffsetY: config.failOffsetY,
     onActivate: config.onActivate,
     onUpdate: config.onUpdate,
     onDeactivate: config.onDeactivate,
@@ -65,11 +67,14 @@ function useDraxPanGestureV2(config: DraxPanGestureConfig): DraxPanGesture {
   // different from v3's PanGesture at compile time, but GestureDetector accepts both at runtime.
   // Since Gesture comes from require() (any), the assignment is valid without a cast.
   const gesture: DraxPanGesture = useMemo(() => {
-    return Gesture.Pan()
+    let g = Gesture.Pan()
       .enabled(enabled)
       .activateAfterLongPress(longPressDelay)
       .maxPointers(config.maxPointers)
-      .shouldCancelWhenOutside(config.shouldCancelWhenOutside)
+      .shouldCancelWhenOutside(config.shouldCancelWhenOutside);
+    if (config.failOffsetX !== undefined) g = g.failOffsetX(config.failOffsetX);
+    if (config.failOffsetY !== undefined) g = g.failOffsetY(config.failOffsetY);
+    return g
       .onStart((event: DraxPanEvent) => {
         'worklet';
         config.onActivate(event);

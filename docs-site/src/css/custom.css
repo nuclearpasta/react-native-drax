@@ -165,6 +165,30 @@ code {
   color: var(--np-text);
 }
 
+/* Navbar icon links (GitHub, npm) */
+.navbar-icon-link {
+  display: flex;
+  align-items: center;
+  color: var(--np-muted);
+  transition: color 180ms ease, transform 180ms ease;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.navbar-icon-link:hover {
+  color: var(--np-text);
+  transform: translateY(-1px);
+}
+
+.navbar-icon-link svg {
+  display: block;
+}
+
+/* Mobile sidebar: icon links get menu-item-like padding */
+.navbar-sidebar .navbar-icon-link {
+  padding: 8px 12px;
+}
+
 /* ── Sidebar ─────────────────────────────────────────────────────────── */
 
 .menu {
@@ -247,13 +271,21 @@ code {
 
 .prism-code {
   border: 1px solid var(--np-line);
-  border-radius: 12px !important;
+  border-radius: 12px;
   font-size: 0.88rem;
 }
 
 pre[class*="language-"] {
   border: 1px solid var(--np-line);
   border-radius: 12px;
+}
+
+@media (max-width: 480px) {
+  .prism-code,
+  pre[class*="language-"] {
+    font-size: 0.8rem;
+    border-radius: 8px;
+  }
 }
 
 /* ── Tables ──────────────────────────────────────────────────────────── */
@@ -277,8 +309,30 @@ table td {
   border-bottom: 1px solid var(--np-line);
 }
 
+/* ── Responsive Table ───────────────────────────────────────────────── */
+
 table td code {
   white-space: nowrap;
+}
+
+.markdown table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+
+  table td code {
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+
+  table th,
+  table td {
+    font-size: 0.84rem;
+    padding: 8px 10px;
+  }
 }
 
 /* ── Admonitions ─────────────────────────────────────────────────────── */
@@ -328,6 +382,17 @@ table td code {
 .footer__link-item:hover {
   color: var(--np-text);
   text-decoration: none;
+}
+
+/* Footer icon links (GitHub, npm, NuclearPasta) */
+.footer-icon-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-icon-link svg {
+  flex-shrink: 0;
 }
 
 .footer__copyright {
@@ -418,6 +483,15 @@ table td code {
   font-size: 0.88rem;
   color: var(--np-text);
   margin-bottom: 20px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+@media (max-width: 480px) {
+  .install-command {
+    font-size: 0.78rem;
+    padding: 0 12px;
+  }
 }
 
 /* ── CTA Buttons (pill) ──────────────────────────────────────────────── */
@@ -472,6 +546,18 @@ table td code {
   color: var(--np-text);
 }
 
+@media (max-width: 480px) {
+  .cta-buttons {
+    flex-direction: column;
+  }
+
+  .cta-buttons .button {
+    width: 100%;
+    min-height: 46px;
+    font-size: 0.9rem;
+  }
+}
+
 /* ── Feature Cards ───────────────────────────────────────────────────── */
 
 .features-grid {
@@ -485,6 +571,7 @@ table td code {
 @media (max-width: 768px) {
   .features-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 }
 
@@ -515,6 +602,17 @@ table td code {
   line-height: 1.58;
 }
 
+@media (max-width: 480px) {
+  .features-grid {
+    gap: 10px;
+  }
+
+  .feature-card {
+    padding: 18px;
+    border-radius: var(--np-radius-md);
+  }
+}
+
 /* ── Comparison Table ────────────────────────────────────────────────── */
 
 .comparison-section {
@@ -532,12 +630,38 @@ table td code {
   margin-bottom: 20px;
 }
 
+.comparison-anchor {
+  color: inherit;
+  text-decoration: none;
+}
+
+.comparison-anchor:hover {
+  text-decoration: none;
+  color: inherit;
+}
+
+.comparison-hash {
+  color: var(--np-muted);
+  font-weight: 400;
+  margin-left: 6px;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: inline !important;
+}
+
 .comparison-section table {
   min-width: 580px;
 }
 
 .comparison-section th:first-child {
   width: 40%;
+}
+
+@media (max-width: 480px) {
+  .comparison-section table {
+    min-width: 500px;
+    font-size: 0.84rem;
+  }
 }
 
 .check {
@@ -548,6 +672,23 @@ table td code {
 .cross {
   color: var(--np-muted);
   opacity: 0.5;
+}
+
+.warning {
+  color: var(--np-accent-pole);
+  font-weight: 600;
+}
+
+.partial {
+  color: var(--np-text);
+  font-weight: 600;
+}
+
+.comparison-disclaimer {
+  color: var(--np-muted);
+  font-size: 0.82rem;
+  font-style: italic;
+  margin-bottom: 16px;
 }
 
 /* ── Code Tabs ───────────────────────────────────────────────────────── */
@@ -610,3 +751,115 @@ table td code {
 .tabs-container { animation-delay: 160ms; }
 .comparison-section { animation-delay: 240ms; }
 .footer-cta { animation-delay: 320ms; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVENESS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Small-screen card section radii + padding ────────────────────────── */
+
+@media (max-width: 480px) {
+  .hero-section,
+  .tabs-container,
+  .comparison-section,
+  .footer-cta {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .feature-card {
+    border-radius: 14px;
+  }
+
+  .hero-section h1 {
+    font-size: clamp(1.8rem, 8vw, 2.4rem);
+    line-height: 1;
+  }
+
+  .hero-section .hero-lead {
+    font-size: 0.92rem;
+  }
+}
+
+/* ── Tabs responsive ──────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .tabs-container [role="tablist"] {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .tabs-container [role="tab"] {
+    font-size: 0.82rem;
+    padding: 6px 12px;
+  }
+}
+
+/* ── Pagination stacking on mobile ────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .pagination-nav {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .pagination-nav__link {
+    width: 100%;
+  }
+
+  .pagination-nav__link--next .pagination-nav__label {
+    text-align: right;
+  }
+}
+
+/* ── Doc content area: prevent overflow ───────────────────────────────── */
+
+.markdown {
+  overflow-wrap: break-word;
+}
+
+.markdown pre {
+  max-width: 100%;
+}
+
+/* ── Footer: stack on mobile ──────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .footer .footer__links {
+    flex-direction: column;
+  }
+
+  .footer__copyright {
+    font-size: 0.82rem;
+  }
+}
+
+/* ── Navbar title: truncate on very small screens ─────────────────────── */
+
+@media (max-width: 360px) {
+  .navbar__title {
+    font-size: 0.84rem;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* ── Large screens (TV) — wider content area ──────────────────────────── */
+
+@media (min-width: 1440px) {
+  .container {
+    max-width: 1400px;
+  }
+}
+
+@media (min-width: 1920px) {
+  .container {
+    max-width: 1600px;
+  }
+
+  .features-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
