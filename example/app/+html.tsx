@@ -5,7 +5,7 @@ const TITLE = 'react-native-drax — Live Demo';
 const DESCRIPTION =
   'Interactive drag-and-drop examples running in your browser — sortable lists, grids, kanban boards, and more.';
 const URL = 'https://nuclearpasta.com/react-native-drax/example/';
-const IMAGE = 'https://nuclearpasta.com/react-native-drax/example/assets/social-card.png';
+const IMAGE = 'https://nuclearpasta.com/react-native-drax/example/social-card.png';
 
 export default function Root({ children }: PropsWithChildren) {
   return (
@@ -56,6 +56,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="twitter:title" content={TITLE} />
         <meta name="twitter:description" content={DESCRIPTION} />
         <meta name="twitter:image" content={IMAGE} />
+        <meta name="twitter:site" content="@nuclearpasta" />
 
         <ScrollViewStyleReset />
       </head>

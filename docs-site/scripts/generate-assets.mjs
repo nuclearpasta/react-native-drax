@@ -85,13 +85,6 @@ await sharp(Buffer.from(socialCardSvg))
 
 console.log('Generated social-card.png (1200x630)');
 
-// Generate favicon as PNG first, then convert to ICO format
-// For simplicity, generate a 32x32 PNG favicon (widely supported)
-await sharp(Buffer.from(faviconSvg))
-  .resize(32, 32)
-  .png()
-  .toFile(join(staticImg, 'favicon-32.png'));
-
 // Generate multiple sizes for favicon
 const sizes = [16, 32, 48];
 for (const size of sizes) {
@@ -106,12 +99,6 @@ await sharp(Buffer.from(faviconSvg))
   .resize(180, 180)
   .png()
   .toFile(join(staticImg, 'apple-touch-icon.png'));
-
-// For .ico, we'll create a simple PNG-based one (32x32 PNG renamed to .ico works in most browsers)
-await sharp(Buffer.from(faviconSvg))
-  .resize(32, 32)
-  .png()
-  .toFile(join(staticImg, 'favicon.ico'));
 
 console.log('Generated favicon files');
 
@@ -170,16 +157,17 @@ const exampleSocialCardSvg = `
   <text x="1120" y="580" font-family="monospace" font-size="14" fill="#5d5d5d" text-anchor="end">nuclearpasta.com</text>
 </svg>`;
 
-// Save example social card to example/assets
-const exampleAssets = join(__dirname, '..', '..', 'example', 'assets');
+// Save example social card to example/public (served as-is by Expo static export)
+const examplePublic = join(__dirname, '..', '..', 'example', 'public');
 await sharp(Buffer.from(exampleSocialCardSvg))
   .resize(1200, 630)
   .png()
-  .toFile(join(exampleAssets, 'social-card.png'));
+  .toFile(join(examplePublic, 'social-card.png'));
 
 console.log('Generated example social-card.png (1200x630)');
 
-// ── Example app icons (replace Expo defaults) ──
+// ── Example app icons (replace Expo defaults — these stay in assets/) ──
+const exampleAssets = join(__dirname, '..', '..', 'example', 'assets');
 
 const logoSvg = `
 <svg width="400" height="400" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">

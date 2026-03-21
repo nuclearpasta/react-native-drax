@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'react-native-drax',
   tagline: 'Drag-and-drop for React Native. Done right.',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon-32.png',
 
   url: 'https://nuclearpasta.com',
   baseUrl: '/react-native-drax/',
