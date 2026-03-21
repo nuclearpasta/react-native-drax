@@ -10,6 +10,7 @@ import type {
 import type { HostInstance } from 'react-native';
 import type {
   AnimatedStyle,
+  EntryOrExitLayoutType,
   SharedValue,
 } from 'react-native-reanimated';
 
@@ -691,6 +692,10 @@ export interface UseSortableListOptions<T> {
   /** Style applied to all non-dragged items while a drag is active.
    *  Use for dimming/scaling inactive items (e.g., `{ opacity: 0.5 }`). */
   inactiveItemStyle?: ViewStyle;
+  /** Reanimated layout animation for items entering the list (e.g., `FadeIn`). */
+  itemEntering?: EntryOrExitLayoutType;
+  /** Reanimated layout animation for items exiting the list (e.g., `FadeOut`). */
+  itemExiting?: EntryOrExitLayoutType;
   /** Callback when drag starts */
   onDragStart?: (event: SortableDragStartEvent<T>) => void;
   /** Callback when drag position (index) changes */
@@ -723,6 +728,8 @@ export interface SortableListInternal<T> {
   lockToMainAxis: boolean;
   animationConfig: SortableAnimationConfig;
   inactiveItemStyle?: ViewStyle;
+  itemEntering?: EntryOrExitLayoutType;
+  itemExiting?: EntryOrExitLayoutType;
   draggedItem: SharedValue<number | undefined>;
   itemMeasurements: RefObject<Map<string, SortableItemMeasurement>>;
   originalIndexes: number[];

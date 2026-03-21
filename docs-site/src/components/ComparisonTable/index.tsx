@@ -69,7 +69,7 @@ const rows: [string, string, string, string][] = [
   ['Drag state styling',                               '15 props + inactive',    'onStateChange',  '5 props + hook'],
   ['Reorder animation presets',                        '5 presets + custom',      'No',             'No'],
   ['Drop animation',                                   'Custom fn()',             'Custom fn()',    'Duration only'],
-  ['Item removal animation',                           'No',                     'Grid only',      'Yes'],
+  ['Item removal animation',                           'Yes',                    'Grid only',      'Yes'],
   ['Drop indicator',                                   'Yes',                    'No',             'Grid only'],
   ['Dynamic item heights',                             'Yes',                    'Yes',            'Yes'],
 

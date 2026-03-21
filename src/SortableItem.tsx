@@ -110,6 +110,8 @@ const SortableItemInner = ({
     longPressDelay,
     animationConfig,
     inactiveItemStyle,
+    itemEntering,
+    itemExiting,
     shiftsRef,
     instantClearSV,
     shiftsValidSV,
@@ -154,7 +156,7 @@ const SortableItemInner = ({
   const defaultA11yHint = 'Long press to drag and reorder';
 
   return (
-    <Reanimated.View style={itemStyle}>
+    <Reanimated.View style={itemStyle} entering={itemEntering} exiting={itemExiting}>
       <DraxView
         longPressDelay={longPressDelay}
         lockDragXPosition={lockToMainAxis && !horizontal}
