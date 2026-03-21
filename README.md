@@ -9,10 +9,7 @@
 [![CI](https://github.com/nuclearpasta/react-native-drax/actions/workflows/ci.yml/badge.svg)](https://github.com/nuclearpasta/react-native-drax/actions/workflows/ci.yml)
 [![GitHub license](https://img.shields.io/github/license/nuclearpasta/react-native-drax?style=flat-square)](https://github.com/nuclearpasta/react-native-drax/blob/main/LICENSE.md)
 [![npm version](https://img.shields.io/npm/v/react-native-drax?style=flat-square)](https://www.npmjs.com/package/react-native-drax)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.0%20adopted-ff69b4.svg?style=flat-square)](CODE-OF-CONDUCT.md)
-<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-9-orange.svg?style=flat-square)](#contributors)
-<!-- ALL-CONTRIBUTORS-BADGE:END -->
+
 
 [Docs](https://nuclearpasta.com/react-native-drax) | [Live Example](https://nuclearpasta.com/react-native-drax/example)
 
