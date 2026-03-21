@@ -28,7 +28,7 @@ export default function Scrolling() {
             onDragStart={() => console.log('[scrolling:item1] dragStart')}
             onDragEnd={() => console.log('[scrolling:item1] dragEnd')}
           >
-            <Text style={styles.itemText}>1</Text>
+            <Text style={styles.scrollItemText}>1</Text>
           </DraxView>
           <DraxView
             testID="scroll-item-2"
@@ -40,7 +40,7 @@ export default function Scrolling() {
             onDragStart={() => console.log('[scrolling:item2] dragStart')}
             onDragEnd={() => console.log('[scrolling:item2] dragEnd')}
           >
-            <Text style={styles.itemText}>2</Text>
+            <Text style={styles.scrollItemText}>2</Text>
           </DraxView>
           <DraxView
             testID="scroll-item-3"
@@ -52,7 +52,7 @@ export default function Scrolling() {
             onDragStart={() => console.log('[scrolling:item3] dragStart')}
             onDragEnd={() => console.log('[scrolling:item3] dragEnd')}
           >
-            <Text style={styles.itemText}>3</Text>
+            <Text style={styles.scrollItemText}>3</Text>
           </DraxView>
           <DraxView
             testID="scroll-item-4"
@@ -64,7 +64,7 @@ export default function Scrolling() {
             onDragStart={() => console.log('[scrolling:item4] dragStart')}
             onDragEnd={() => console.log('[scrolling:item4] dragEnd')}
           >
-            <Text style={styles.itemText}>4</Text>
+            <Text style={styles.scrollItemText}>4</Text>
           </DraxView>
         </DraxScrollView>
         <View style={[styles.footer, { borderTopColor: theme.line }]}>
@@ -89,7 +89,7 @@ export default function Scrolling() {
               return DraxSnapbackTargetPreset.None;
             }}
           >
-            <Text style={[styles.itemText, { color: theme.text }]}>{`Sum: ${sum}`}</Text>
+            <Text style={[styles.bucketText, { color: theme.text }]}>{`Sum: ${sum}`}</Text>
           </DraxView>
         </View>
       </View>
@@ -139,7 +139,11 @@ const styles = StyleSheet.create({
     marginLeft: 80,
     backgroundColor: '#ff80ff',
   },
-  itemText: {
+  scrollItemText: {
+    fontSize: 32,
+    color: '#111',
+  },
+  bucketText: {
     fontSize: 32,
   },
   footer: {
@@ -163,6 +167,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bucketReceiving: {
-    backgroundColor: '#ffffd0',
+    backgroundColor: 'rgba(34,197,94,0.2)',
+    borderColor: '#22c55e',
   },
 });

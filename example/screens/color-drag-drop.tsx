@@ -312,6 +312,7 @@ const styles = StyleSheet.create({
     flex: 3,
     borderRadius: 10,
     margin: 8,
+    borderColor: 'rgba(255,255,255,0.5)',
     borderWidth: 2,
   },
   zoneFull: {
@@ -402,6 +403,7 @@ const styles = StyleSheet.create({
   stagingZone: {
     flex: 1,
     borderRadius: 10,
+    borderColor: 'rgba(255,255,255,0.5)',
     borderWidth: 2,
   },
   stagedCount: {

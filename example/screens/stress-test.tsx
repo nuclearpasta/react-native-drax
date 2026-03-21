@@ -99,6 +99,7 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: 15,
+    color: '#333',
   },
   dragging: {
     opacity: 0,

@@ -105,6 +105,7 @@ const styles = StyleSheet.create({
   itemText: {
     fontSize: 16,
     flex: 1,
+    color: '#333',
   },
   dragging: {
     opacity: 0,

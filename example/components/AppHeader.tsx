@@ -7,6 +7,7 @@ import { useTheme } from './ThemeContext';
 
 const DOCS_URL = 'https://nuclearpasta.com/react-native-drax';
 const GITHUB_URL = 'https://github.com/nuclearpasta/react-native-drax';
+const NPM_URL = 'https://www.npmjs.com/package/react-native-drax';
 
 export function AppHeader() {
   const insets = useSafeAreaInsets();
@@ -37,7 +38,9 @@ export function AppHeader() {
       )}
       <Pressable
         style={styles.brand}
-        onPress={() => (isHome ? Linking.openURL(DOCS_URL) : router.navigate('/' as any))}
+        onPress={() =>
+          isHome ? Linking.openURL(DOCS_URL) : router.navigate('/' as any)
+        }
       >
         <LogoMark size={32} showTile />
         <View>
@@ -48,8 +51,18 @@ export function AppHeader() {
         </View>
       </Pressable>
       <View style={styles.headerRight}>
-        <Pressable onPress={() => Linking.openURL(DOCS_URL)} hitSlop={8}>
-          <Icon name="book-open-variant" size={18} color={theme.muted} />
+        <Pressable
+          style={styles.headerLink}
+          onPress={() => Linking.openURL(DOCS_URL)}
+          hitSlop={4}
+        >
+          <Icon name="book-open-variant" size={16} color={theme.muted} />
+          <Text style={[styles.headerLinkText, { color: theme.muted }]}>
+            Docs
+          </Text>
+        </Pressable>
+        <Pressable onPress={() => Linking.openURL(NPM_URL)} hitSlop={8}>
+          <Icon name="npm" size={22} color={theme.muted} />
         </Pressable>
         <Pressable onPress={() => Linking.openURL(GITHUB_URL)} hitSlop={8}>
           <Icon name="github" size={20} color={theme.muted} />
@@ -105,7 +118,16 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
+  },
+  headerLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  headerLinkText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   themeToggle: {
     flexDirection: 'row',

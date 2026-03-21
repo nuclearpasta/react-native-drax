@@ -69,6 +69,7 @@ export default function ReorderableList() {
           {
             paddingLeft: insets.left,
             paddingRight: insets.right,
+            backgroundColor: theme.bg,
           },
         ]}
       >
@@ -193,5 +194,6 @@ const styles = StyleSheet.create({
   },
   alphaText: {
     fontSize: 28,
+    color: '#333',
   },
 });

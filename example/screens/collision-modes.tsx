@@ -32,7 +32,7 @@ function DropZone({
 }) {
   const [count, setCount] = useState(0);
   const [isReceiving, setIsReceiving] = useState(false);
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   return (
     <DraxView
@@ -40,7 +40,10 @@ function DropZone({
       style={[
         styles.dropZone,
         { backgroundColor: theme.surface, borderColor: theme.lineStrong },
-        isReceiving && styles.dropZoneActive,
+        isReceiving && {
+          backgroundColor: isDark ? 'rgba(34,197,94,0.15)' : '#dcfce7',
+          borderColor: '#22c55e',
+        },
       ]}
       collisionAlgorithm={algorithm}
       onReceiveDragEnter={() => setIsReceiving(true)}
@@ -155,10 +158,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderStyle: 'dashed',
   },
-  dropZoneActive: {
-    backgroundColor: '#dcfce7',
-    borderColor: '#22c55e',
-  },
+  dropZoneActive: {},
   receiving: {
     borderColor: '#22c55e',
     borderStyle: 'solid',
