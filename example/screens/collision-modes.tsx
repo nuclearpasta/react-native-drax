@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   DraxProvider,
   DraxView,
   type CollisionAlgorithm,
 } from 'react-native-drax';
+import { useTheme } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 function DraggableBlock() {
   return (
@@ -32,13 +33,18 @@ function DropZone({
 }) {
   const [count, setCount] = useState(0);
   const [isReceiving, setIsReceiving] = useState(false);
+  const { theme, isDark } = useTheme();
 
   return (
     <DraxView
       testID={testID}
       style={[
         styles.dropZone,
-        isReceiving && styles.dropZoneActive,
+        { backgroundColor: theme.surface, borderColor: theme.lineStrong },
+        isReceiving && {
+          backgroundColor: isDark ? 'rgba(34,197,94,0.15)' : '#dcfce7',
+          borderColor: '#22c55e',
+        },
       ]}
       collisionAlgorithm={algorithm}
       onReceiveDragEnter={() => setIsReceiving(true)}
@@ -49,30 +55,31 @@ function DropZone({
       }}
       receivingStyle={styles.receiving}
     >
-      <Text style={styles.dropLabel}>{label}</Text>
-      <Text style={styles.dropAlgorithm}>{algorithm}</Text>
+      <Text style={[styles.dropLabel, { color: theme.text }]}>{label}</Text>
+      <Text style={[styles.dropAlgorithm, { color: theme.muted }]}>{algorithm}</Text>
       <Text style={styles.dropCount}>Drops: {count}</Text>
     </DraxView>
   );
 }
 
 export default function CollisionModes() {
-  const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
 
   return (
     <DraxProvider>
       <View
         testID="collision-modes-screen"
-        style={[styles.container, { paddingTop: insets.top }]}
+        style={[styles.container, { backgroundColor: theme.bg }]}
       >
         <View style={styles.header}>
-          <Text style={styles.headerText}>
+          <Text style={[styles.headerText, { color: theme.muted }]}>
             Each drop zone uses a different collision algorithm. Notice how
             "intersect" activates as soon as any edge overlaps, "center"
             requires the dragged item's center to be inside, and "contain"
             needs the entire item inside.
           </Text>
         </View>
+        <ExampleLinks slug="collision-modes" />
 
         <View style={styles.draggableRow}>
           <DraggableBlock />
@@ -103,7 +110,6 @@ export default function CollisionModes() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   header: {
     padding: 16,
@@ -112,7 +118,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
     textAlign: 'center',
-    color: '#666',
   },
   draggableRow: {
     alignItems: 'center',
@@ -149,18 +154,13 @@ const styles = StyleSheet.create({
   dropZone: {
     flex: 1,
     marginHorizontal: 6,
-    backgroundColor: '#e5e7eb',
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#d1d5db',
     justifyContent: 'center',
     alignItems: 'center',
     borderStyle: 'dashed',
   },
-  dropZoneActive: {
-    backgroundColor: '#dcfce7',
-    borderColor: '#22c55e',
-  },
+  dropZoneActive: {},
   receiving: {
     borderColor: '#22c55e',
     borderStyle: 'solid',
@@ -168,11 +168,9 @@ const styles = StyleSheet.create({
   dropLabel: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#374151',
   },
   dropAlgorithm: {
     fontSize: 13,
-    color: '#6b7280',
     marginTop: 4,
   },
   dropCount: {

@@ -4,6 +4,8 @@ import { StyleSheet, View, Text, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraxProvider, DraxView } from 'react-native-drax';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
+import { useTheme } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 interface BoardPosition {
   row: number;
@@ -66,6 +68,7 @@ export default function KnightMoves() {
   const [moving, setMoving] = useState(false);
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  const { theme } = useTheme();
   const boardWidth = Math.min(width, height) * 0.75;
   const squareWidth = boardWidth / 8;
   const knightSquareName = `${String.fromCharCode(97 + knightPos.column)}${8 - knightPos.row}`;
@@ -98,9 +101,10 @@ export default function KnightMoves() {
 
   return (
     <DraxProvider>
-      <View testID="knight-moves-screen" style={[styles.container, { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right }]}>
+      <View testID="knight-moves-screen" style={[styles.container, { paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: theme.bg }]}>
+        <ExampleLinks slug="knight-moves" />
         <View style={styles.containerRow}>
-          <View testID="chess-board" accessibilityLabel="Chess board, 8 by 8 grid" style={styles.board}>
+          <View testID="chess-board" accessibilityLabel="Chess board, 8 by 8 grid" style={[styles.board, { borderColor: theme.text }]}>
             {rowViews}
             <DraxView
               testID="chess-knight"
@@ -153,7 +157,7 @@ export default function KnightMoves() {
             </DraxView>
           </View>
           <View style={{ width: boardWidth }}>
-            <Text style={styles.instructionText}>
+            <Text style={[styles.instructionText, { color: theme.muted }]}>
               Start dragging the knight, and the legal move positions will be
               highlighted with blue borders. When dragging the knight over one
               of those positions, the square will be highlighted with a magenta

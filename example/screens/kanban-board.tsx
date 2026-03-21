@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { StyleSheet, View, Text, FlatList, useWindowDimensions } from 'react-native';
 import type { ListRenderItemInfo } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   DraxProvider,
   SortableBoardContainer,
@@ -11,6 +10,8 @@ import {
   useSortableList,
 } from 'react-native-drax';
 import Reanimated from 'react-native-reanimated';
+import { useTheme, itemColor } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 interface Card {
   id: string;
@@ -49,9 +50,10 @@ const INITIAL_COLUMNS: Columns = {
 const cardKeyExtractor = (card: Card) => card.id;
 
 function KanbanCard({ card, width }: { card: Card; width: number }) {
+  const { isDark } = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: card.color, width }]}>
-      <Text style={styles.cardTitle}>{card.title}</Text>
+    <View style={[styles.card, { backgroundColor: itemColor(card.color, isDark), width }]}>
+      <Text style={[styles.cardTitle, isDark && { color: '#e0e0e0' }]}>{card.title}</Text>
     </View>
   );
 }
@@ -71,6 +73,7 @@ function BacklogColumn({
   // are incompatible with React's RefObject. The ref is only used for
   // scrollToOffset/flashScrollIndicators which both types share.
   const listRef = useRef<FlatList>(null);
+  const { theme } = useTheme();
 
   const sortable = useSortableList({
     id: 'backlog',
@@ -82,10 +85,10 @@ function BacklogColumn({
   });
 
   return (
-    <View style={styles.backlogSection}>
+    <View style={[styles.backlogSection, { backgroundColor: theme.surface, borderColor: theme.lineStrong }]}>
       <View style={styles.backlogHeader}>
-        <Text style={styles.columnHeader}>Backlog</Text>
-        <Text style={styles.columnCount}>{cards.length}</Text>
+        <Text style={[styles.columnHeader, { color: theme.text }]}>Backlog</Text>
+        <Text style={[styles.columnCount, { color: theme.muted }]}>{cards.length}</Text>
       </View>
       <SortableContainer
         sortable={sortable}
@@ -140,6 +143,7 @@ function VerticalColumn({
   cardWidth: number;
 }) {
   const listRef = useRef<FlatList>(null);
+  const { theme } = useTheme();
 
   const sortable = useSortableList({
     id: columnId,
@@ -150,9 +154,9 @@ function VerticalColumn({
   });
 
   return (
-    <View style={styles.column}>
-      <Text style={styles.columnHeader}>{label}</Text>
-      <Text style={styles.columnCount}>{cards.length}</Text>
+    <View style={[styles.column, { backgroundColor: theme.surface, borderColor: theme.lineStrong }]}>
+      <Text style={[styles.columnHeader, { color: theme.text }]}>{label}</Text>
+      <Text style={[styles.columnCount, { color: theme.muted }]}>{cards.length}</Text>
       <SortableContainer
         sortable={sortable}
         scrollRef={listRef}
@@ -192,8 +196,8 @@ function VerticalColumn({
 
 export default function KanbanBoard() {
   const [columns, setColumns] = useState(INITIAL_COLUMNS);
-  const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
+  const { theme } = useTheme();
 
   // Consistent card width across all columns — prevents size jump on transfer.
   // Matches the vertical column's inner width: (screen - board padding - column gap) / 2 - column padding.
@@ -220,13 +224,14 @@ export default function KanbanBoard() {
     <DraxProvider>
       <View
         testID="kanban-board-screen"
-        style={[styles.container, { paddingTop: insets.top }]}
+        style={[styles.container, { backgroundColor: theme.bg }]}
       >
         <View style={styles.header}>
-          <Text style={styles.headerText}>
+          <Text style={[styles.headerText, { color: theme.muted }]}>
             Drag cards within and between columns. Backlog scrolls horizontally.
           </Text>
         </View>
+        <ExampleLinks slug="kanban-board" />
         <SortableBoardContainer board={board} style={styles.board}>
           <BacklogColumn
             cards={columns.backlog}
@@ -264,7 +269,6 @@ export default function KanbanBoard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f4f8',
   },
   header: {
     padding: 12,
@@ -273,7 +277,6 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 14,
     fontStyle: 'italic',
-    color: '#666',
     textAlign: 'center',
   },
   board: {
@@ -281,8 +284,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   backlogSection: {
-    backgroundColor: '#e2e8f0',
     borderRadius: 12,
+    borderWidth: 1,
     padding: 8,
     marginBottom: 8,
   },
@@ -306,8 +309,8 @@ const styles = StyleSheet.create({
   },
   column: {
     flex: 1,
-    backgroundColor: '#e2e8f0',
     borderRadius: 12,
+    borderWidth: 1,
     padding: 8,
   },
   columnContent: {
@@ -316,12 +319,10 @@ const styles = StyleSheet.create({
   columnHeader: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1e293b',
     textAlign: 'center',
   },
   columnCount: {
     fontSize: 12,
-    color: '#64748b',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -343,6 +344,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#1e293b',
+    color: '#1e293b', // card text stays dark since cards have light pastel backgrounds
   },
 });

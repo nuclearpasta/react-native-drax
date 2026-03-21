@@ -3,6 +3,8 @@ import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraxProvider, DraxList } from 'react-native-drax';
 import type { SortableAnimationPreset } from 'react-native-drax';
+import { useTheme, itemColor } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -57,6 +59,7 @@ export default function ReorderableList() {
   const [animPreset, setAnimPreset] =
     useState<SortableAnimationPreset>('default');
   const insets = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
 
   return (
     <DraxProvider>
@@ -65,14 +68,14 @@ export default function ReorderableList() {
         style={[
           styles.container,
           {
-            paddingTop: insets.top,
             paddingLeft: insets.left,
             paddingRight: insets.right,
+            backgroundColor: theme.bg,
           },
         ]}
       >
-        <View style={styles.presetBar}>
-          <Text style={styles.presetLabel}>Animation:</Text>
+        <View style={[styles.presetBar, { backgroundColor: theme.surface, borderBottomColor: theme.line }]}>
+          <Text style={[styles.presetLabel, { color: theme.muted }]}>Animation:</Text>
           {PRESETS.map((p) => (
             <Pressable
               key={p.key}
@@ -80,12 +83,14 @@ export default function ReorderableList() {
               onPress={() => setAnimPreset(p.key)}
               style={[
                 styles.presetButton,
+                { backgroundColor: theme.lineStrong },
                 animPreset === p.key && styles.presetButtonActive,
               ]}
             >
               <Text
                 style={[
                   styles.presetButtonText,
+                  { color: theme.muted },
                   animPreset === p.key && styles.presetButtonTextActive,
                 ]}
               >
@@ -94,6 +99,7 @@ export default function ReorderableList() {
             </Pressable>
           ))}
         </View>
+        <ExampleLinks slug="reorderable-list" />
         <DraxList
           data={alphaData}
           keyExtractor={(item) => item}
@@ -132,14 +138,21 @@ export default function ReorderableList() {
               `[reorderableList:onDragEnd] index=${index} item=${item} toIndex=${toIndex} cancelled=${cancelled}`
             );
           }}
-          renderItem={({ item }) => (
+          renderItem={({ item }) => {
+            const tweaks = getItemStyleTweaks(item);
+            return (
             <View
               testID={`sortable-item-${item}`}
-              style={[styles.alphaItem, getItemStyleTweaks(item)]}
+              style={[
+                styles.alphaItem,
+                tweaks,
+                { backgroundColor: itemColor(tweaks.backgroundColor, isDark) },
+              ]}
             >
-              <Text style={styles.alphaText}>{item}</Text>
+              <Text style={[styles.alphaText, { color: isDark ? '#e0e0e0' : '#333' }]}>{item}</Text>
             </View>
-          )}
+            );
+          }}
         />
       </View>
     </DraxProvider>
@@ -158,21 +171,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 6,
-    backgroundColor: '#f0f0f0',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ddd',
   },
   presetLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#555',
     marginRight: 6,
   },
   presetButton: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 14,
-    backgroundColor: '#e0e0e0',
     marginHorizontal: 3,
   },
   presetButtonActive: {
@@ -181,7 +190,6 @@ const styles = StyleSheet.create({
   presetButtonText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#555',
   },
   presetButtonTextActive: {
     color: '#fff',

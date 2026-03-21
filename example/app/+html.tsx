@@ -7,6 +7,14 @@ const DESCRIPTION =
 const URL = 'https://nuclearpasta.com/react-native-drax/example/';
 const IMAGE = 'https://nuclearpasta.com/react-native-drax/example/social-card.png';
 
+// Static inline CSS for initial dark mode background (prevents white flash).
+const darkModeCSS = `
+  body { background-color: #f3f3f0; }
+  @media (prefers-color-scheme: dark) {
+    body { background-color: #0c0c0e; }
+  }
+`;
+
 export default function Root({ children }: PropsWithChildren) {
   return (
     <html lang="en">
@@ -57,7 +65,10 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="twitter:description" content={DESCRIPTION} />
         <meta name="twitter:image" content={IMAGE} />
 
+        <link rel="icon" type="image/svg+xml" href="/react-native-drax/example/assets/favicon.svg" />
+
         <ScrollViewStyleReset />
+        <style dangerouslySetInnerHTML={{ __html: darkModeCSS }} />
       </head>
       <body>{children}</body>
     </html>

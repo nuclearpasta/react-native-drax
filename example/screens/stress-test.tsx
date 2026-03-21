@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
 import { StyleSheet, View, Text, FlatList } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   DraxProvider,
   SortableContainer,
   SortableItem,
   useSortableList,
 } from 'react-native-drax';
+import { useTheme, itemColor } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 const ITEM_COUNT = 100;
 const COLORS = [
@@ -23,7 +24,7 @@ const INITIAL_DATA = Array.from({ length: ITEM_COUNT }, (_, i) => ({
 export default function StressTest() {
   const [data, setData] = useState(INITIAL_DATA);
   const listRef = useRef<FlatList<(typeof INITIAL_DATA)[0]>>(null);
-  const insets = useSafeAreaInsets();
+  const { theme, isDark } = useTheme();
 
   const sortable = useSortableList({
     data,
@@ -33,12 +34,13 @@ export default function StressTest() {
 
   return (
     <DraxProvider>
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { backgroundColor: theme.bg }]}>
         <View style={styles.header}>
-          <Text style={styles.headerText}>
+          <Text style={[styles.headerText, { color: theme.muted }]}>
             {ITEM_COUNT} items — test scrolling and reorder performance
           </Text>
         </View>
+        <ExampleLinks slug="stress-test" />
         <SortableContainer
           sortable={sortable}
           scrollRef={listRef}
@@ -64,10 +66,10 @@ export default function StressTest() {
                 testID={`stress-item-${item.id}`}
                 style={[
                   styles.item,
-                  { backgroundColor: item.color },
+                  { backgroundColor: itemColor(item.color, isDark) },
                 ]}
               >
-                <Text style={styles.itemText}>{item.label}</Text>
+                <Text style={[styles.itemText, { color: isDark ? '#e0e0e0' : '#333' }]}>{item.label}</Text>
               </SortableItem>
             )}
           />
@@ -88,7 +90,6 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 14,
     fontStyle: 'italic',
-    color: '#666',
   },
   item: {
     height: 48,

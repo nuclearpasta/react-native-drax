@@ -2,10 +2,13 @@ import { useRef } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraxProvider, DraxView, DraxSnapbackTargetPreset } from 'react-native-drax';
+import { useTheme } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 export default function BoundedDrag() {
   const insets = useSafeAreaInsets();
   const boundsRef = useRef(null);
+  const { theme, isDark } = useTheme();
 
   return (
     <DraxProvider>
@@ -14,25 +17,29 @@ export default function BoundedDrag() {
         style={[
           styles.container,
           {
-            paddingTop: insets.top,
             paddingLeft: insets.left,
             paddingRight: insets.right,
+            backgroundColor: theme.bg,
           },
         ]}
       >
-        <Text style={styles.heading}>Drag Bounds</Text>
-        <Text style={styles.description}>
+        <Text style={[styles.heading, { color: theme.text }]}>Drag Bounds</Text>
+        <Text style={[styles.description, { color: theme.muted }]}>
           The blue square stays within the dashed boundary.
           The red square can go anywhere.
         </Text>
+        <ExampleLinks slug="bounded-drag" />
 
         <View
           ref={boundsRef}
           testID="drag-bounds-area"
-          style={styles.boundsArea}
+          style={[
+            styles.boundsArea,
+            { backgroundColor: isDark ? 'rgba(59,130,246,0.12)' : '#eff6ff' },
+          ]}
           collapsable={false}
         >
-          <Text style={styles.boundsLabel}>Bounded Area</Text>
+          <Text style={[styles.boundsLabel, { color: theme.muted }]}>Bounded Area</Text>
           <View style={styles.blockCenter}>
             <DraxView
               testID="bounded-draggable"
@@ -48,8 +55,13 @@ export default function BoundedDrag() {
           </View>
         </View>
 
-        <View style={styles.freeArea}>
-          <Text style={styles.boundsLabel}>Free Area</Text>
+        <View
+          style={[
+            styles.freeArea,
+            { backgroundColor: isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2' },
+          ]}
+        >
+          <Text style={[styles.boundsLabel, { color: theme.muted }]}>Free Area</Text>
           <View style={styles.blockCenter}>
             <DraxView
               testID="free-draggable"
@@ -72,7 +84,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#f5f5f5',
   },
   heading: {
     fontSize: 22,
@@ -81,7 +92,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 16,
     lineHeight: 20,
   },
@@ -92,7 +102,6 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: 16,
     padding: 12,
-    backgroundColor: '#eff6ff',
     marginBottom: 12,
   },
   freeArea: {
@@ -102,13 +111,11 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderRadius: 16,
     padding: 12,
-    backgroundColor: '#fef2f2',
     marginBottom: 12,
   },
   boundsLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#888',
     marginBottom: 8,
   },
   blockCenter: {

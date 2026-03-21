@@ -68,6 +68,14 @@ const config: Config = {
     {
       tagName: 'link',
       attributes: {
+        rel: 'icon',
+        type: 'image/svg+xml',
+        href: '/react-native-drax/img/favicon.svg',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
         rel: 'apple-touch-icon',
         sizes: '180x180',
         href: '/react-native-drax/img/apple-touch-icon.png',
