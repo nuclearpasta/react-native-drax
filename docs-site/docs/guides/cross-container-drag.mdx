@@ -1,0 +1,140 @@
+---
+title: Cross-Container Drag
+description: Move items between sortable lists for kanban boards and multi-column layouts.
+keywords: [react-native, cross-container, kanban, board, transfer, sortable]
+sidebar_position: 14
+---
+
+import Admonition from '@theme/Admonition';
+
+# Cross-Container Drag <span className="badge--experimental">Experimental</span>
+
+<Admonition type="caution">
+Cross-container drag is experimental. The API may change in future versions.
+</Admonition>
+
+Move items between sortable lists — perfect for kanban boards, multi-column layouts, and categorization interfaces.
+
+## Architecture
+
+Cross-container drag uses three additional primitives:
+
+| Primitive | Role |
+|---|---|
+| `useSortableBoard` | Board-level coordinator for cross-container transfers |
+| `SortableBoardContainer` | Monitoring wrapper providing board context |
+| `SortableBoardContext` | Auto-registration context for column containers |
+
+Each column independently uses `useSortableList` + `SortableContainer` + `SortableItem`.
+
+## Basic Pattern
+
+```tsx
+import {
+  DraxProvider,
+  useSortableBoard,
+  SortableBoardContainer,
+  useSortableList,
+  SortableContainer,
+  SortableItem,
+} from 'react-native-drax';
+
+function KanbanBoard() {
+  const [columns, setColumns] = useState(initialColumns);
+
+  const board = useSortableBoard({
+    keyExtractor: (item) => item.id,
+    onTransfer: ({ item, fromContainerId, toContainerId, fromIndex, toIndex }) => {
+      setColumns((prev) => {
+        const next = { ...prev };
+        // Remove from source
+        next[fromContainerId] = prev[fromContainerId].filter((_, i) => i !== fromIndex);
+        // Insert into target
+        next[toContainerId] = [
+          ...prev[toContainerId].slice(0, toIndex),
+          item,
+          ...prev[toContainerId].slice(toIndex),
+        ];
+        return next;
+      });
+    },
+  });
+
+  return (
+    <DraxProvider>
+      <SortableBoardContainer board={board} style={styles.board}>
+        {Object.entries(columns).map(([colId, items]) => (
+          <Column key={colId} id={colId} items={items} board={board} />
+        ))}
+      </SortableBoardContainer>
+    </DraxProvider>
+  );
+}
+```
+
+## Column Component
+
+Each column is a standard sortable list:
+
+```tsx
+function Column({ id, items, board }) {
+  const [data, setData] = useState(items);
+  const listRef = useRef<FlatList>(null);
+
+  const sortable = useSortableList({
+    id, // Must match the column key
+    data,
+    keyExtractor: (item) => item.id,
+    onReorder: ({ data }) => setData(data),
+  });
+
+  // Sync external data changes (from transfers)
+  useEffect(() => { setData(items); }, [items]);
+
+  return (
+    <SortableContainer sortable={sortable} scrollRef={listRef}>
+      <FlatList
+        ref={listRef}
+        data={sortable.data}
+        keyExtractor={sortable.stableKeyExtractor}
+        onScroll={sortable.onScroll}
+        onContentSizeChange={sortable.onContentSizeChange}
+        renderItem={({ item, index }) => (
+          <SortableItem sortable={sortable} index={index}>
+            <Card item={item} />
+          </SortableItem>
+        )}
+      />
+    </SortableContainer>
+  );
+}
+```
+
+## How It Works
+
+1. **Drag starts** — `SortableBoardContainer` records source column and item info
+2. **Crosses boundary** — When the hover enters a different column:
+   - Source column **ejects** the item (items close the gap)
+   - Target column creates a **phantom slot** (items make room)
+3. **Position updates** — Phantom slot moves as finger moves within target column
+4. **Drop** — `onTransfer` fires with source/target info, hover snaps to phantom position
+5. **Cleanup** — Both columns re-render with updated data, hover fades out
+
+## Transfer Event
+
+```tsx
+onTransfer: ({ item, fromContainerId, fromIndex, toContainerId, toIndex }) => {
+  // item: the transferred item
+  // fromContainerId: source column id
+  // fromIndex: original index in source
+  // toContainerId: target column id
+  // toIndex: insertion index in target
+}
+```
+
+## Next Steps
+
+- **[Composable API](/guides/composable-api)** — Understanding the primitives
+- **[API: useSortableBoard](/api/hooks/use-sortable-board)** — Full hook reference
+- **[API: SortableBoardContainer](/api/components/sortable-board-container)** — Container reference
+- **[Example: Kanban Board](/examples/kanban-board)** — Full working example

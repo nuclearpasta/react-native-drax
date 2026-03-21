@@ -1,0 +1,55 @@
+---
+title: Geometry Types
+description: TypeScript types for positions, dimensions, and measurements.
+keywords: [react-native, drax, types, position, dimensions, measurements, api]
+sidebar_position: 6
+---
+
+# Geometry Types
+
+Basic geometric types used throughout Drax.
+
+## Position
+
+```tsx
+interface Position {
+  x: number;
+  y: number;
+}
+```
+
+Used for coordinates, offsets, translations, and snap targets.
+
+## ViewDimensions
+
+```tsx
+interface ViewDimensions {
+  width: number;
+  height: number;
+}
+```
+
+## DraxViewMeasurements
+
+```tsx
+interface DraxViewMeasurements extends Position, ViewDimensions {}
+// Equivalent to: { x: number; y: number; width: number; height: number }
+```
+
+Position relative to the parent DraxProvider root view.
+
+## isPosition (type guard)
+
+```tsx
+const isPosition = (something: unknown): something is Position
+```
+
+Returns `true` if the value has numeric `x` and `y` properties.
+
+## DragPhase
+
+```tsx
+type DragPhase = 'idle' | 'dragging' | 'releasing';
+```
+
+Drives all animated styles via `dragPhaseSV` SharedValue.

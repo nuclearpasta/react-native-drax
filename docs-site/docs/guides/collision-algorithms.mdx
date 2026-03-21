@@ -1,0 +1,80 @@
+---
+title: Collision Algorithms
+description: Control receiver detection with center, intersect, and contain collision modes.
+keywords: [react-native, collision, hit-testing, intersect, contain, center]
+sidebar_position: 7
+---
+
+# Collision Algorithms
+
+Drax supports three algorithms for determining when a dragged view is "over" a receiver.
+
+## The Three Modes
+
+### Center (default)
+
+The hover view's **center point** must be inside the receiver bounds.
+
+```tsx
+<DraxView collisionAlgorithm="center" />
+```
+
+Best for: precise drop targets, small receivers, sortable lists.
+
+### Intersect
+
+**Any overlap** between the dragged view and the receiver triggers detection.
+
+```tsx
+<DraxView collisionAlgorithm="intersect" />
+```
+
+Best for: large drop zones, forgiving UX, trash/delete targets.
+
+### Contain
+
+The **entire** dragged view must be inside the receiver bounds.
+
+```tsx
+<DraxView collisionAlgorithm="contain" />
+```
+
+Best for: strict placement, snapping into containers, puzzle pieces.
+
+## Per-Receiver Setting
+
+The algorithm is set on the **receiver**, not the dragged view:
+
+```tsx
+<DraxProvider>
+  <DraxView payload="item">
+    <Text>Drag me</Text>
+  </DraxView>
+
+  {/* Each receiver can use a different algorithm */}
+  <DraxView collisionAlgorithm="center" onReceiveDragDrop={...}>
+    <Text>Center detection</Text>
+  </DraxView>
+
+  <DraxView collisionAlgorithm="intersect" onReceiveDragDrop={...}>
+    <Text>Any overlap counts</Text>
+  </DraxView>
+
+  <DraxView collisionAlgorithm="contain" onReceiveDragDrop={...}>
+    <Text>Must be fully inside</Text>
+  </DraxView>
+</DraxProvider>
+```
+
+## How It Works
+
+The collision algorithm is stored in the `SpatialEntry` for each view. During hit-testing on the UI thread, the worklet uses the dragged view's dimensions to compute:
+
+- **Center**: `position.x >= left && position.x < right && position.y >= top && position.y < bottom`
+- **Intersect**: `dragLeft < recRight && dragRight > recLeft && dragTop < recBottom && dragBottom > recTop`
+- **Contain**: `dragLeft >= recLeft && dragRight <= recRight && dragTop >= recTop && dragBottom <= recBottom`
+
+## Next Steps
+
+- **[Drop Zone Acceptance](/guides/drop-zone-acceptance)** — Conditional accept/reject
+- **[API: DraxView](/api/components/drax-view)** — Full props reference

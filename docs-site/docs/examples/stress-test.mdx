@@ -1,0 +1,36 @@
+---
+title: "Example: Stress Test"
+description: 100 items in a sortable list — performance benchmark.
+keywords: [react-native, drax, example, stress-test, performance]
+sidebar_position: 11
+---
+
+# Stress Test
+
+100 items in a sortable list. Tests performance with a large number of items.
+
+## Key Concepts
+
+- **Large lists** — 100 items with smooth reorder
+- **UI-thread hit-testing** — spatial index stays fast at scale
+- **Stable keys** — prevents FlatList cell unmounting
+
+## Features Shown
+
+| Feature | How |
+|---|---|
+| 100 items | Large data set for performance testing |
+| `DraxList` | Convenience wrapper handles everything |
+| Smooth drag | UI-thread architecture maintains 60fps |
+
+## Source Code
+
+```tsx title="example/app/(tabs)/stress-test.tsx"
+// Full source available at:
+// https://github.com/nuclearpasta/react-native-drax/blob/main/example/app/(tabs)/stress-test.tsx
+```
+
+## Related
+
+- [Performance Guide](/guides/performance) — Optimization tips
+- [API: DraxList](/api/components/drax-list) — Props reference

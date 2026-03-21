@@ -1,0 +1,75 @@
+---
+title: DraxList
+description: API reference for DraxList — a list-agnostic sortable list convenience wrapper.
+keywords: [react-native, drax, list, sortable, reorderable, flatlist, flashlist, api]
+sidebar_position: 3
+---
+
+# DraxList
+
+List-agnostic sortable list component. Wraps any list component (FlatList, FlashList, LegendList) with drag-to-reorder powered by `useSortableList` + `SortableContainer` + `SortableItem`.
+
+## Import
+
+```tsx
+import { DraxList } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+<DraxList
+  data={items}
+  keyExtractor={(item) => item.id}
+  onReorder={({ data }) => setItems(data)}
+  renderItem={({ item }) => <ItemCard item={item} />}
+/>
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `component` | `ComponentType<any>` | `FlatList` | List component to render |
+| `ref` | `Ref<any>` | — | Ref forwarded to the list component |
+| `id` | `string` | auto-generated | DraxView id for the container |
+| `data` | `T[]` | **required** | Array of items |
+| `keyExtractor` | `(item: T, index: number) => string` | **required** | Unique key per item |
+| `onReorder` | `(event: SortableReorderEvent<T>) => void` | **required** | Called after reorder |
+| `renderItem` | `(info: ListRenderItemInfo<T>) => ReactNode` | **required** | Render function per item |
+| `reorderStrategy` | `SortableReorderStrategy` | `'insert'` | `'insert'` or `'swap'` |
+| `longPressDelay` | `number` | `250` | ms before drag activates |
+| `lockToMainAxis` | `boolean` | `false` | Lock drag to list direction |
+| `animationConfig` | `SortableAnimationConfig` | `'default'` | Animation preset or custom config |
+| `horizontal` | `boolean` | `false` | Horizontal list layout |
+| `numColumns` | `number` | `1` | Number of columns (grid) |
+| `containerStyle` | `StyleProp<ViewStyle>` | — | Style for the DraxView wrapper |
+| `style` | `StyleProp<ViewStyle>` | — | Style for the list component |
+| `itemDraxViewProps` | `Partial<DraxViewProps>` | — | Extra DraxView props per item |
+| `containerDraxViewProps` | `Partial<DraxViewProps>` | — | Extra DraxView props for container |
+| `onDragStart` | `(event: SortableDragStartEvent<T>) => void` | — | Drag started |
+| `onDragPositionChange` | `(event: SortableDragPositionChangeEvent<T>) => void` | — | Position changed |
+| `onDragEnd` | `(event: SortableDragEndEvent<T>) => void` | — | Drag ended |
+
+Extra props are forwarded to the underlying list component (e.g., `estimatedItemSize` for FlashList).
+
+## With FlashList
+
+```tsx
+import { FlashList } from '@shopify/flash-list';
+
+<DraxList
+  component={FlashList}
+  estimatedItemSize={60}
+  data={items}
+  keyExtractor={(item) => item.id}
+  onReorder={({ data }) => setItems(data)}
+  renderItem={({ item }) => <ItemCard item={item} />}
+/>
+```
+
+## Related
+
+- [Sortable List Guide](/guides/sortable-list)
+- [Composable API Guide](/guides/composable-api) — For full control
+- [useSortableList](/api/hooks/use-sortable-list) — The hook DraxList uses internally

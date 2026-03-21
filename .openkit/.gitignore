@@ -1,0 +1,6 @@
+# Ignore everything in .openkit by default
+*
+
+# Except these files (tracked/shared)
+!.gitignore
+!config.json

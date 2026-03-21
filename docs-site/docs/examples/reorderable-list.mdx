@@ -1,0 +1,39 @@
+---
+title: "Example: Reorderable List"
+description: Sortable list with DraxList, animation presets, and auto-scroll.
+keywords: [react-native, drax, example, sortable, list, reorder]
+sidebar_position: 3
+---
+
+# Reorderable List
+
+Demonstrates a sortable list using `DraxList` — the simplest way to add drag-to-reorder.
+
+## Key Concepts
+
+- **DraxList** — wraps FlatList with full reorder support
+- **Long-press to drag** — 250ms default delay
+- **Auto-scroll** — scrolls when dragging near edges
+- **Animation presets** — items shift with smooth animations
+
+## Features Shown
+
+| Feature | How |
+|---|---|
+| `DraxList` | Convenience wrapper with `data`, `keyExtractor`, `onReorder` |
+| `animationConfig` | Animation preset for shift animations |
+| `onReorder` | Callback with new data order |
+| `lockToMainAxis` | Items stay on the vertical axis during drag |
+
+## Source Code
+
+```tsx title="example/app/(tabs)/reorderable-list.tsx"
+// Full source available at:
+// https://github.com/nuclearpasta/react-native-drax/blob/main/example/app/(tabs)/reorderable-list.tsx
+```
+
+## Related
+
+- [Sortable List Guide](/guides/sortable-list) — Full tutorial
+- [Animation Presets Guide](/guides/animation-presets) — Customize animations
+- [API: DraxList](/api/components/drax-list) — Props reference

@@ -1,0 +1,164 @@
+---
+title: Core Concepts
+description: Understand Drax's architecture — Provider, View, events, UI-thread hit-testing, and the hover layer.
+keywords: [react-native, drag-and-drop, architecture, concepts, reanimated, gesture-handler]
+sidebar_position: 3
+---
+
+# Core Concepts
+
+Understanding Drax's architecture helps you build better drag-and-drop interactions. This page covers the foundational concepts.
+
+## DraxProvider
+
+Every drag-and-drop area needs a `DraxProvider`. It:
+
+- Manages the **view registry** — tracks all registered `DraxView` instances
+- Maintains **SharedValues** for drag state (split by update frequency for performance)
+- Provides the **spatial index** for UI-thread hit-testing
+- Renders the **hover layer** (the floating copy of the dragged view)
+
+```tsx
+<DraxProvider>
+  {/* All DraxViews must be inside a provider */}
+</DraxProvider>
+```
+
+You can have multiple providers if you need separate drag contexts.
+
+## DraxView
+
+`DraxView` is the core building block. Any `DraxView` can play one or more roles:
+
+| Role | Description | Key Props |
+|---|---|---|
+| **Draggable** | Can be picked up and moved | `draggable`, `payload`, `onDragStart`, `onDragEnd` |
+| **Receptive** | Can receive drops | `receptive`, `onReceiveDragDrop`, `acceptsDrag` |
+| **Monitoring** | Observes drags happening inside it | `monitoring`, `onMonitorDragStart`, `onMonitorDragOver` |
+
+By default, a `DraxView` is both draggable and receptive. Set `draggable={false}` or `receptive={false}` to restrict behavior.
+
+### Nesting with `isParent`
+
+When you nest `DraxView` components (e.g., a list container with draggable items), the parent needs `isParent`:
+
+```tsx
+<DraxView isParent monitoring>
+  <DraxView payload="item-1">...</DraxView>
+  <DraxView payload="item-2">...</DraxView>
+</DraxView>
+```
+
+`isParent` automatically wraps children in a `DraxSubprovider` with the correct view reference. This enables proper coordinate transformation between nested views.
+
+## Event System
+
+Drax has **19 callback events** organized by the view's role:
+
+### Dragged View Events
+| Callback | When |
+|---|---|
+| `onDragStart` | Drag begins |
+| `onDrag` | Every frame while dragging (no receiver) |
+| `onDragEnter` | Dragged into a new receiver |
+| `onDragOver` | Every frame while over same receiver |
+| `onDragExit` | Dragged out of a receiver |
+| `onDragEnd` | Drag ends (no receiver / cancelled) |
+| `onDragDrop` | Drag ends over a receiver |
+| `onSnapEnd` | Snap-back animation completes |
+
+### Receiver View Events
+| Callback | When |
+|---|---|
+| `onReceiveDragEnter` | Something dragged over this view |
+| `onReceiveDragOver` | Every frame while something hovers |
+| `onReceiveDragExit` | Dragged item leaves / drag cancelled |
+| `onReceiveDragDrop` | Item dropped on this view |
+| `onReceiveSnapEnd` | Snap animation to this receiver completes |
+
+### Monitor View Events
+| Callback | When |
+|---|---|
+| `onMonitorDragStart` | Drag starts inside monitored area |
+| `onMonitorDragEnter` | Dragged into monitored area |
+| `onMonitorDragOver` | Every frame inside monitored area |
+| `onMonitorDragExit` | Leaves monitored area |
+| `onMonitorDragEnd` | Drag ends inside monitored area |
+| `onMonitorDragDrop` | Drop occurs inside monitored area |
+
+## UI-Thread Architecture
+
+Drax uses a **UI-thread-first** design for maximum performance:
+
+### Spatial Index Worklet
+
+All view positions are maintained in a `SharedValue<SpatialEntry[]>`. On every gesture frame, a worklet runs **hit-testing on the UI thread** to determine which views are under the finger:
+
+```
+Gesture Update (UI thread)
+  → hitTestWorklet(position, spatialIndex, scrollOffsets)
+  → Returns: { receiverId, monitorIds }
+  → runOnJS(handleReceiverChange) if receiver changed
+```
+
+This means receiver detection happens at 60fps without any JS-thread round-trips.
+
+### SharedValue Split
+
+SharedValues are split by update frequency to minimize unnecessary re-renders:
+
+| SharedValue | Update Frequency | Read By |
+|---|---|---|
+| `hoverPositionSV` | Every frame | HoverLayer only |
+| `dragAbsolutePositionSV` | Every frame | Gesture worklet |
+| `draggedIdSV` | ~2x per drag | All DraxView animated styles |
+| `receiverIdSV` | ~3-5x per drag | All DraxView animated styles |
+| `dragPhaseSV` | ~3x per drag | All DraxView animated styles |
+| `spatialIndexSV` | On mount/layout | Gesture worklet |
+
+## Hover Layer
+
+When a drag starts, Drax renders a **floating copy** of the dragged view in the `HoverLayer`. This copy:
+
+- Follows the finger position using `translateX`/`translateY`
+- Supports 5 conditional style states (see [Hover Styles](/guides/hover-styles))
+- Is rendered above all other content (last child of the provider)
+
+The original view can be styled differently while being dragged using `draggingStyle`, `dragReleasedStyle`, etc.
+
+## Drag Lifecycle
+
+A typical drag goes through these phases:
+
+1. **Long press** — `longPressDelay` (default 250ms) activates the drag
+2. **Dragging** — `dragPhaseSV = 'dragging'`, hover layer follows finger, hit-testing runs every frame
+3. **Receiver change** — Callbacks fire when the hover enters/exits receivers
+4. **Release** — `dragPhaseSV = 'releasing'`, snap animation plays
+5. **Snap complete** — `dragPhaseSV = 'idle'`, hover layer clears, `onSnapEnd` fires
+
+## Payload
+
+Payloads are the data transport mechanism between dragged views and receivers:
+
+```tsx
+// Sender
+<DraxView payload={{ id: 'task-1', color: 'blue' }}>
+  <Text>Task 1</Text>
+</DraxView>
+
+// Receiver
+<DraxView
+  onReceiveDragDrop={({ dragged }) => {
+    const { id, color } = dragged.payload;
+    // Use the payload data
+  }}
+/>
+```
+
+You can also set separate `dragPayload` and `receiverPayload` if the view is both draggable and receptive with different data.
+
+## Next Steps
+
+- **[Guides](/guides/drag-and-drop)** — Feature-specific tutorials
+- **[API Reference](/api/components/drax-view)** — Complete DraxView documentation
+- **[Performance Guide](/guides/performance)** — Optimization tips

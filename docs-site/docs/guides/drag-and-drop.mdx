@@ -1,0 +1,134 @@
+---
+title: Drag & Drop
+description: Learn free-form drag-and-drop with DraxView — payloads, receivers, render props, and conditional styles.
+keywords: [react-native, drag-and-drop, drax-view, payload, receiver]
+sidebar_position: 1
+---
+
+# Drag & Drop
+
+The foundation of Drax — pick up a view, move it, and drop it on a target.
+
+## Basic Setup
+
+Every `DraxView` is draggable and receptive by default:
+
+```tsx
+import { DraxProvider, DraxView } from 'react-native-drax';
+
+<DraxProvider>
+  {/* This view can be dragged */}
+  <DraxView
+    style={{ width: 80, height: 80, backgroundColor: '#cf5f34' }}
+    payload={{ color: 'orange' }}
+    onDragStart={() => console.log('Drag started')}
+  />
+
+  {/* This view receives drops */}
+  <DraxView
+    style={{ width: 150, height: 150, backgroundColor: '#264653' }}
+    onReceiveDragDrop={({ dragged }) => {
+      console.log('Dropped:', dragged.payload);
+    }}
+  />
+</DraxProvider>
+```
+
+## Payloads
+
+Attach data to a drag with `payload`. The receiver accesses it from the event data:
+
+```tsx
+// Draggable — payload can be any value
+<DraxView payload={{ id: 'task-1', priority: 'high' }}>
+  <Text>High Priority Task</Text>
+</DraxView>
+
+// Receiver
+<DraxView
+  onReceiveDragDrop={({ dragged }) => {
+    const task = dragged.payload; // { id: 'task-1', priority: 'high' }
+    addToColumn(task);
+  }}
+/>
+```
+
+Use `dragPayload` and `receiverPayload` for views that are both draggable and receptive with different data.
+
+## Render Props
+
+Customize how a view looks based on drag state using `renderContent`:
+
+```tsx
+<DraxView
+  payload="item"
+  renderContent={({ viewState, hover }) => {
+    const isDragging = viewState?.dragStatus === DraxViewDragStatus.Dragging;
+    const isReceiving = viewState?.receiveStatus === DraxViewReceiveStatus.Receiving;
+
+    return (
+      <View style={[
+        styles.card,
+        isDragging && styles.dragging,
+        isReceiving && styles.receiving,
+      ]}>
+        <Text>{hover ? 'Hovering!' : 'Drag me'}</Text>
+      </View>
+    );
+  }}
+/>
+```
+
+The `hover` prop is `true` when this is the floating copy in the hover layer.
+
+## Conditional Styles
+
+Style views differently based on drag state without render props:
+
+```tsx
+<DraxView
+  style={styles.default}
+  draggingStyle={styles.dragging}
+  draggingWithReceiverStyle={styles.overTarget}
+  draggingWithoutReceiverStyle={styles.noTarget}
+  dragReleasedStyle={styles.released}
+  receivingStyle={styles.receiving}
+/>
+```
+
+See [Hover Styles](/guides/hover-styles) for styling the floating hover copy.
+
+## Restricting Drag Direction
+
+Lock a drag to one axis:
+
+```tsx
+<DraxView lockDragXPosition>  {/* Vertical only */}
+<DraxView lockDragYPosition>  {/* Horizontal only */}
+```
+
+## Long Press Delay
+
+Control how long a press must be held before drag activates:
+
+```tsx
+<DraxView longPressDelay={500}>  {/* 500ms long press */}
+```
+
+Default is 250ms.
+
+## Disabling Hover
+
+By default, a floating copy follows your finger. Disable it:
+
+```tsx
+<DraxView noHover>
+  <Text>No floating copy while dragging</Text>
+</DraxView>
+```
+
+## Next Steps
+
+- **[Sortable List](/guides/sortable-list)** — Reorderable lists
+- **[Hover Styles](/guides/hover-styles)** — Style the floating drag copy
+- **[Drop Zone Acceptance](/guides/drop-zone-acceptance)** — Conditional accept/reject

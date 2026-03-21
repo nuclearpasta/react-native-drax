@@ -1,0 +1,89 @@
+---
+title: View State Types
+description: TypeScript types for DraxView state, render props, and style props.
+keywords: [react-native, drax, types, state, render, style, api]
+sidebar_position: 3
+---
+
+# View State Types
+
+Types for view state, render content props, and style props.
+
+## DraxViewState
+
+Current drag/receive state of a view, provided to `renderContent`.
+
+```tsx
+interface DraxViewState {
+  dragStatus: DraxViewDragStatus;
+  receiveStatus: DraxViewReceiveStatus;
+  dragAbsolutePosition?: Position;
+  dragTranslation?: Position;
+  dragTranslationRatio?: Position;
+  dragOffset?: Position;
+  grabOffset?: Position;
+  grabOffsetRatio?: Position;
+  draggingOverReceiver?: DraxEventViewData;
+  receiveOffset?: Position;
+  receiveOffsetRatio?: Position;
+  receivingDrag?: DraxEventViewData;
+}
+```
+
+## DraxViewDragStatus (enum)
+
+```tsx
+enum DraxViewDragStatus {
+  Inactive,  // Not being dragged
+  Dragging,  // Currently being dragged
+  Released,  // Released, snap in progress
+}
+```
+
+## DraxViewReceiveStatus (enum)
+
+```tsx
+enum DraxViewReceiveStatus {
+  Inactive,   // Nothing hovering
+  Receiving,  // Something is hovering over this view
+}
+```
+
+## DraxTrackingStatus
+
+```tsx
+interface DraxTrackingStatus {
+  dragging: boolean;
+  receiving: boolean;
+}
+```
+
+## DraxRenderContentProps
+
+Props passed to `renderContent` and `renderHoverContent`.
+
+```tsx
+interface DraxRenderContentProps {
+  viewState?: DraxViewState;
+  trackingStatus?: DraxTrackingStatus;
+  hover: boolean;        // true in hover layer copy
+  children: ReactNode;
+  dimensions?: ViewDimensions;
+}
+```
+
+## DraxStyleProp
+
+```tsx
+type DraxStyleProp = StyleProp<ViewStyle>;
+```
+
+## AnimatedViewStylePropWithoutLayout
+
+Used for hover styles — supports animated values but no layout props.
+
+```tsx
+type AnimatedViewStylePropWithoutLayout =
+  | StyleProp<ViewStyle>
+  | StyleProp<AnimatedStyle<StyleProp<ViewStyle>>>;
+```
