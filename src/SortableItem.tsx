@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 import type { ViewStyle } from 'react-native';
 import { Platform } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
-import { useSharedValue } from 'react-native-reanimated';
+import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import Reanimated, {
   Easing,
   useAnimatedStyle,
@@ -14,6 +14,8 @@ import Reanimated, {
 
 import { DraxView } from './DraxView';
 import { useDraxContext } from './hooks/useDraxContext';
+import type { SortableItemContextValue } from './SortableItemContext';
+import { SortableItemContext } from './SortableItemContext';
 import type { ResolvedAnimationConfig } from './params';
 import { resolveAnimationConfig } from './params';
 import type {
@@ -165,12 +167,29 @@ const SortableItemInner = ({
     resolvedAnimConfig, reducedMotion, inactiveItemStyle,
   );
 
+  // Derive isActive SharedValue for useItemContext consumers
+  const isActive = useDerivedValue(() => {
+    return viewIdSV.value !== '' && draggedIdSV.value === viewIdSV.value;
+  });
+
+  // Build context value for useItemContext
+  const itemContextValue = useMemo<SortableItemContextValue | null>(() => {
+    if (!itemKey) return null;
+    return {
+      itemKey,
+      index,
+      isActive,
+      activeItemId: draggedIdSV,
+    };
+  }, [itemKey, index, isActive, draggedIdSV]);
+
   // Auto-generate accessibility props (can be overridden via draxViewProps)
   const totalItems = rawData.length;
   const defaultA11yLabel = `Item ${index + 1} of ${totalItems}`;
   const defaultA11yHint = 'Long press to drag and reorder';
 
   return (
+    <SortableItemContext value={itemContextValue}>
     <Reanimated.View style={itemStyle} entering={itemEntering} exiting={itemExiting}>
       <DraxView
         longPressDelay={longPressDelay}
@@ -238,6 +257,7 @@ const SortableItemInner = ({
         {children}
       </DraxView>
     </Reanimated.View>
+    </SortableItemContext>
   );
 };
 
