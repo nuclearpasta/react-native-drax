@@ -1,0 +1,58 @@
+---
+title: useItemContext
+description: API reference for useItemContext — per-item SharedValues for custom animated styles inside sortable items.
+keywords: [react-native, sortable, hook, context, SharedValue, animation, api]
+sidebar_position: 5
+---
+
+# useItemContext
+
+Access per-item drag state from within a `SortableItem`'s children. Returns SharedValues for building custom animated styles.
+
+## Import
+
+```tsx
+import { useItemContext } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+import { useItemContext } from 'react-native-drax';
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
+
+function ItemContent({ label }) {
+  const { isActive } = useItemContext();
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: isActive.value ? 1.1 : 1 }],
+    shadowOpacity: isActive.value ? 0.3 : 0,
+    shadowRadius: isActive.value ? 8 : 0,
+    shadowColor: '#000',
+  }));
+
+  return (
+    <Reanimated.View style={animatedStyle}>
+      <Text>{label}</Text>
+    </Reanimated.View>
+  );
+}
+```
+
+## Return Value
+
+| Property | Type | Description |
+|---|---|---|
+| `itemKey` | `string` | This item's key (from `keyExtractor`) |
+| `index` | `number` | Current display index |
+| `isActive` | `SharedValue<boolean>` | `true` when THIS item is being dragged |
+| `activeItemId` | `SharedValue<string>` | ID of the currently dragged item (empty if none) |
+
+## Requirements
+
+Must be called within a `SortableItem`. Throws if used outside.
+
+## Related
+
+- [SortableItem](/api/components/sortable-item)
+- [useSortableList](/api/hooks/use-sortable-list)
