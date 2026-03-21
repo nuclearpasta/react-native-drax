@@ -84,3 +84,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function useTheme() {
   return useContext(ThemeContext);
 }
+
+/**
+ * Darken a hex color for dark mode so bright pastels don't burn eyes.
+ * Returns the original color in light mode.
+ */
+export function itemColor(hex: string, isDark: boolean): string {
+  if (!isDark) return hex;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const dr = Math.round(r * 0.3);
+  const dg = Math.round(g * 0.3);
+  const db = Math.round(b * 0.3);
+  return `rgb(${dr}, ${dg}, ${db})`;
+}

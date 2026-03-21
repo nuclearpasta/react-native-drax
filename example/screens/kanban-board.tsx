@@ -10,7 +10,7 @@ import {
   useSortableList,
 } from 'react-native-drax';
 import Reanimated from 'react-native-reanimated';
-import { useTheme } from '../components/ThemeContext';
+import { useTheme, itemColor } from '../components/ThemeContext';
 
 interface Card {
   id: string;
@@ -49,9 +49,10 @@ const INITIAL_COLUMNS: Columns = {
 const cardKeyExtractor = (card: Card) => card.id;
 
 function KanbanCard({ card, width }: { card: Card; width: number }) {
+  const { isDark } = useTheme();
   return (
-    <View style={[styles.card, { backgroundColor: card.color, width }]}>
-      <Text style={styles.cardTitle}>{card.title}</Text>
+    <View style={[styles.card, { backgroundColor: itemColor(card.color, isDark), width }]}>
+      <Text style={[styles.cardTitle, isDark && { color: '#e0e0e0' }]}>{card.title}</Text>
     </View>
   );
 }
@@ -83,7 +84,7 @@ function BacklogColumn({
   });
 
   return (
-    <View style={[styles.backlogSection, { backgroundColor: theme.surface }]}>
+    <View style={[styles.backlogSection, { backgroundColor: theme.surface, borderColor: theme.lineStrong }]}>
       <View style={styles.backlogHeader}>
         <Text style={[styles.columnHeader, { color: theme.text }]}>Backlog</Text>
         <Text style={[styles.columnCount, { color: theme.muted }]}>{cards.length}</Text>
@@ -152,7 +153,7 @@ function VerticalColumn({
   });
 
   return (
-    <View style={[styles.column, { backgroundColor: theme.surface }]}>
+    <View style={[styles.column, { backgroundColor: theme.surface, borderColor: theme.lineStrong }]}>
       <Text style={[styles.columnHeader, { color: theme.text }]}>{label}</Text>
       <Text style={[styles.columnCount, { color: theme.muted }]}>{cards.length}</Text>
       <SortableContainer
@@ -282,6 +283,7 @@ const styles = StyleSheet.create({
   },
   backlogSection: {
     borderRadius: 12,
+    borderWidth: 1,
     padding: 8,
     marginBottom: 8,
   },
@@ -306,6 +308,7 @@ const styles = StyleSheet.create({
   column: {
     flex: 1,
     borderRadius: 12,
+    borderWidth: 1,
     padding: 8,
   },
   columnContent: {

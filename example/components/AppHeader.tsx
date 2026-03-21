@@ -62,7 +62,7 @@ export function AppHeader() {
           </Text>
         </Pressable>
         <Pressable onPress={() => Linking.openURL(NPM_URL)} hitSlop={8}>
-          <Icon name="npm" size={22} color={theme.muted} />
+          <Icon name="npm" size={28} color="#CB3837" />
         </Pressable>
         <Pressable onPress={() => Linking.openURL(GITHUB_URL)} hitSlop={8}>
           <Icon name="github" size={20} color={theme.muted} />

@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraxProvider, DraxList } from 'react-native-drax';
 import type { SortableAnimationPreset } from 'react-native-drax';
-import { useTheme } from '../components/ThemeContext';
+import { useTheme, itemColor } from '../components/ThemeContext';
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -58,7 +58,7 @@ export default function ReorderableList() {
   const [animPreset, setAnimPreset] =
     useState<SortableAnimationPreset>('default');
   const insets = useSafeAreaInsets();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   return (
     <DraxProvider>
@@ -135,14 +135,21 @@ export default function ReorderableList() {
               `[reorderableList:onDragEnd] index=${index} item=${item} toIndex=${toIndex} cancelled=${cancelled}`
             );
           }}
-          renderItem={({ item }) => (
+          renderItem={({ item }) => {
+            const tweaks = getItemStyleTweaks(item);
+            return (
             <View
               testID={`sortable-item-${item}`}
-              style={[styles.alphaItem, getItemStyleTweaks(item)]}
+              style={[
+                styles.alphaItem,
+                tweaks,
+                { backgroundColor: itemColor(tweaks.backgroundColor, isDark) },
+              ]}
             >
-              <Text style={styles.alphaText}>{item}</Text>
+              <Text style={[styles.alphaText, { color: isDark ? '#e0e0e0' : '#333' }]}>{item}</Text>
             </View>
-          )}
+            );
+          }}
         />
       </View>
     </DraxProvider>
@@ -194,6 +201,5 @@ const styles = StyleSheet.create({
   },
   alphaText: {
     fontSize: 28,
-    color: '#333',
   },
 });

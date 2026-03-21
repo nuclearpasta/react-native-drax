@@ -29,16 +29,20 @@ interface ColorPayload {
   text: string;
 }
 
-const getStyleForWeights = ({ red, green, blue }: ColorWeights) => {
+const getStyleForWeights = (
+  { red, green, blue }: ColorWeights,
+  isDark = false,
+) => {
   const total = red + green + blue;
-  let backgroundColor = '#dddddd';
-  if (total > 0) {
-    const r = Math.ceil(128 + 127 * (red / total));
-    const g = Math.ceil(128 + 127 * (green / total));
-    const b = Math.ceil(128 + 127 * (blue / total));
-    backgroundColor = `rgb(${r}, ${g}, ${b})`;
+  if (total === 0) {
+    return { backgroundColor: isDark ? '#28282c' : '#dddddd' };
   }
-  return { backgroundColor };
+  const base = isDark ? 30 : 128;
+  const range = isDark ? 80 : 127;
+  const r = Math.ceil(base + range * (red / total));
+  const g = Math.ceil(base + range * (green / total));
+  const b = Math.ceil(base + range * (blue / total));
+  return { backgroundColor: `rgb(${r}, ${g}, ${b})` };
 };
 
 const getEmptyWeights = (): ColorWeights => ({ red: 0, green: 0, blue: 0 });
@@ -49,7 +53,9 @@ const isColorPayload = (value: unknown): value is ColorPayload =>
   'weights' in value &&
   'text' in value;
 
-const ColorBlock = ({ name, weights }: ColorBlockProps) => (
+const ColorBlock = ({ name, weights }: ColorBlockProps) => {
+  const { isDark } = useTheme();
+  return (
   <DraxView
     testID={`color-block-${name.toLowerCase()}`}
     accessibilityLabel={`Draggable ${name} color block`}
@@ -58,7 +64,7 @@ const ColorBlock = ({ name, weights }: ColorBlockProps) => (
     style={[
       styles.centeredContent,
       styles.colorBlock,
-      getStyleForWeights(weights),
+      getStyleForWeights(weights, isDark),
     ]}
     draggingStyle={styles.dragging}
     dragReleasedStyle={styles.dragging}
@@ -69,7 +75,8 @@ const ColorBlock = ({ name, weights }: ColorBlockProps) => (
   >
     <Text>{name}</Text>
   </DraxView>
-);
+  );
+};
 
 export default function ColorDragDrop() {
   const [receivedWeights, setReceivedWeights] = useState(getEmptyWeights());
@@ -77,7 +84,7 @@ export default function ColorDragDrop() {
   const [stagedWeights, setStagedWeights] = useState(getEmptyWeights());
   const [stagedText, setStagedText] = useState<string[]>([]);
   const insets = useSafeAreaInsets();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   const receivingFull = receivedText.length >= MAX_RECEIVING_ITEMS;
 
@@ -97,7 +104,7 @@ export default function ColorDragDrop() {
           style={[
             styles.centeredContent,
             styles.receivingZone,
-            getStyleForWeights(receivedWeights),
+            getStyleForWeights(receivedWeights, isDark),
             receivingFull && styles.zoneFull,
           ]}
           receivingStyle={styles.receiving}
@@ -214,7 +221,7 @@ export default function ColorDragDrop() {
             const combinedStyles: ViewStyle[] = [
               styles.centeredContent,
               styles.stagingZone,
-              getStyleForWeights(stagedWeights),
+              getStyleForWeights(stagedWeights, isDark),
             ];
             if (active) {
               combinedStyles.push({ opacity: 0.2 });
@@ -261,7 +268,7 @@ export default function ColorDragDrop() {
             const combinedStyles: ViewStyle[] = [
               styles.centeredContent,
               styles.colorBlock,
-              getStyleForWeights(stagedWeights),
+              getStyleForWeights(stagedWeights, isDark),
             ];
             if (viewState?.grabOffset) {
               combinedStyles.push({

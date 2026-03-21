@@ -8,7 +8,7 @@ import {
   SortableItem,
   useSortableList,
 } from 'react-native-drax';
-import { useTheme } from '../components/ThemeContext';
+import { useTheme, itemColor } from '../components/ThemeContext';
 
 const COLORS = ['#ffcccc', '#ccffcc', '#ccccff', '#ffffcc', '#ffccff', '#ccffff'];
 
@@ -21,7 +21,7 @@ const ITEMS = Array.from({ length: 20 }, (_, i) => ({
 export default function DragHandles() {
   const [data, setData] = useState(ITEMS);
   const listRef = useRef<FlatList<(typeof ITEMS)[0]>>(null);
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   const sortable = useSortableList({
     data,
@@ -58,14 +58,14 @@ export default function DragHandles() {
                 testID={`handle-item-${item.id}`}
                 style={[
                   styles.item,
-                  { backgroundColor: item.color },
+                  { backgroundColor: itemColor(item.color, isDark) },
                 ]}
                 dragHandle
               >
                 <DraxHandle style={styles.handle}>
                   <Icon name="drag" size={24} color={theme.muted} />
                 </DraxHandle>
-                <Text style={styles.itemText}>{item.label}</Text>
+                <Text style={[styles.itemText, { color: isDark ? '#e0e0e0' : '#333' }]}>{item.label}</Text>
               </SortableItem>
             )}
           />
@@ -105,7 +105,6 @@ const styles = StyleSheet.create({
   itemText: {
     fontSize: 16,
     flex: 1,
-    color: '#333',
   },
   dragging: {
     opacity: 0,

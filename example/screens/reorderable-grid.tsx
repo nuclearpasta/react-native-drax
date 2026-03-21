@@ -7,7 +7,7 @@ import {
   SortableItem,
   useSortableList,
 } from 'react-native-drax';
-import { useTheme } from '../components/ThemeContext';
+import { useTheme, itemColor } from '../components/ThemeContext';
 
 const COLORS = [
   '#ff6b6b', '#ffa06b', '#ffd96b', '#a8e06b', '#6be0a8',
@@ -33,7 +33,7 @@ export default function ReorderableGrid() {
   const listRef = useRef<FlatList<TileItem>>(null);
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const tileSize = (screenWidth - insets.left - insets.right - 8 * 2) / NUM_COLUMNS - 8;
 
   const sortable = useSortableList({
@@ -114,11 +114,11 @@ export default function ReorderableGrid() {
                   {
                     width: tileSize,
                     height: tileSize,
-                    backgroundColor: item.color,
+                    backgroundColor: itemColor(item.color, isDark),
                   },
                 ]}
               >
-                <Text style={styles.tileText}>{item.label}</Text>
+                <Text style={[styles.tileText, { color: isDark ? '#e0e0e0' : '#333' }]}>{item.label}</Text>
               </SortableItem>
               );
             }}
@@ -151,6 +151,5 @@ const styles = StyleSheet.create({
   tileText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
   },
 });

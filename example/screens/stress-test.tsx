@@ -6,7 +6,7 @@ import {
   SortableItem,
   useSortableList,
 } from 'react-native-drax';
-import { useTheme } from '../components/ThemeContext';
+import { useTheme, itemColor } from '../components/ThemeContext';
 
 const ITEM_COUNT = 100;
 const COLORS = [
@@ -23,7 +23,7 @@ const INITIAL_DATA = Array.from({ length: ITEM_COUNT }, (_, i) => ({
 export default function StressTest() {
   const [data, setData] = useState(INITIAL_DATA);
   const listRef = useRef<FlatList<(typeof INITIAL_DATA)[0]>>(null);
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
 
   const sortable = useSortableList({
     data,
@@ -64,10 +64,10 @@ export default function StressTest() {
                 testID={`stress-item-${item.id}`}
                 style={[
                   styles.item,
-                  { backgroundColor: item.color },
+                  { backgroundColor: itemColor(item.color, isDark) },
                 ]}
               >
-                <Text style={styles.itemText}>{item.label}</Text>
+                <Text style={[styles.itemText, { color: isDark ? '#e0e0e0' : '#333' }]}>{item.label}</Text>
               </SortableItem>
             )}
           />
@@ -99,7 +99,6 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: 15,
-    color: '#333',
   },
   dragging: {
     opacity: 0,
