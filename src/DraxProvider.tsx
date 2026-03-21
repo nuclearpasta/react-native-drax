@@ -188,6 +188,7 @@ export const DraxProvider = ({
       handleReceiverChange,
       handleDragEnd,
       setHoverContent,
+      droppedItemsRef,
     ]
   );
 
