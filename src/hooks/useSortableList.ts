@@ -61,6 +61,9 @@ export const useSortableList = <T,>(
 
   const id = useDraxId(options.id);
 
+  // ── Fixed items tracking ────────────────────────────────────────────
+  const fixedKeys = useRef<Set<string>>(new Set());
+
   // ── SharedValues (UI-thread state) ────────────────────────────────
   const draggedItem = useSharedValue<number | undefined>(undefined);
   const dropTargetPositionSV = useSharedValue<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -363,8 +366,17 @@ export const useSortableList = <T,>(
     const fromIdx = draggedDisplayIndexRef.current;
     if (fromIdx === undefined || fromIdx === toDisplayIndex) return;
 
+    // Don't move to a fixed item's position
     const prev = pendingOrderRef.current;
     if (prev.length === 0) return;
+    const targetOrigIdx = prev[toDisplayIndex];
+    if (targetOrigIdx !== undefined) {
+      const targetItem = stableData[targetOrigIdx];
+      if (targetItem !== undefined) {
+        const targetKey = keyExtractor(targetItem, targetOrigIdx);
+        if (fixedKeys.current.has(targetKey)) return;
+      }
+    }
 
     let newOrder: number[];
     if (reorderStrategy === 'swap') {
@@ -792,6 +804,7 @@ export const useSortableList = <T,>(
     inactiveItemStyle,
     itemEntering,
     itemExiting,
+    fixedKeys,
     draggedItem,
     itemMeasurements,
     originalIndexes,

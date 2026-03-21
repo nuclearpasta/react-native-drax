@@ -730,6 +730,8 @@ export interface SortableListInternal<T> {
   inactiveItemStyle?: ViewStyle;
   itemEntering?: EntryOrExitLayoutType;
   itemExiting?: EntryOrExitLayoutType;
+  /** Set of item keys that are fixed (cannot be dragged or displaced) */
+  fixedKeys: RefObject<Set<string>>;
   draggedItem: SharedValue<number | undefined>;
   itemMeasurements: RefObject<Map<string, SortableItemMeasurement>>;
   originalIndexes: number[];

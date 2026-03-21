@@ -59,6 +59,7 @@ const rows: [string, string, string, string][] = [
   ['List-agnostic (FlatList, FlashList, LegendList)',   'Yes',                    'No',             'No'],
 
   // Gesture & interaction
+  ['Fixed-order items',                                'Yes',                    'No',             '3 modes'],
   ['Drag handles',                                     'Yes',                    'Yes',            'Yes'],
   ['Drag axis locking',                                'Yes',                    'Yes',            'Partial'],
   ['Drag bounds',                                      'Yes',                    'Yes',            'Container only'],

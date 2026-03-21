@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { memo, useRef } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import type { ViewStyle } from 'react-native';
 import { Platform } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
@@ -95,12 +95,16 @@ function useSortableItemStyle(
 export interface SortableItemProps extends DraxViewProps {
   sortable: SortableListHandle<any>;
   index: number;
+  /** When true, this item cannot be dragged and stays in its position.
+   *  Other items will skip over it during reorder. */
+  fixed?: boolean;
   children: ReactNode;
 }
 
 const SortableItemInner = ({
   sortable,
   index,
+  fixed = false,
   children,
   ...draxViewProps
 }: SortableItemProps) => {
@@ -121,6 +125,7 @@ const SortableItemInner = ({
     originalIndexes,
     scrollPosition,
     onItemSnapEnd,
+    fixedKeys,
   } = sortable._internal;
 
   // Get hoverReadySV and draggedIdSV from DraxContext (provider-level SharedValues)
@@ -130,6 +135,16 @@ const SortableItemInner = ({
   const item = rawData[originalIndex];
   const itemKey = item !== undefined ? keyExtractor(item, index) : undefined;
 
+  // Register/unregister fixed items so reorder logic can skip them.
+  useEffect(() => {
+    if (!itemKey) return;
+    if (fixed) {
+      fixedKeys.current.add(itemKey);
+    } else {
+      fixedKeys.current.delete(itemKey);
+    }
+    return () => { fixedKeys.current.delete(itemKey); };
+  }, [fixed, itemKey, fixedKeys]);
 
   // Store this DraxView's registered ID in a SharedValue so useAnimatedStyle
   // can compare it with draggedIdSV on the UI thread.
@@ -161,6 +176,7 @@ const SortableItemInner = ({
         longPressDelay={longPressDelay}
         lockDragXPosition={lockToMainAxis && !horizontal}
         lockDragYPosition={lockToMainAxis && horizontal}
+        draggable={!fixed}
         accessibilityLabel={defaultA11yLabel}
         accessibilityHint={defaultA11yHint}
         accessibilityRole="adjustable"
