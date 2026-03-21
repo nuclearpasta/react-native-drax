@@ -1,5 +1,3 @@
-import Heading from '@theme/Heading';
-
 function cellClass(val: string, allVals: [string, string, string]): string {
   if (val === 'No') return 'cross';
   if (val === 'Experimental') return 'warning';
@@ -19,9 +17,9 @@ function cellClass(val: string, allVals: [string, string, string]): string {
 export default function ComparisonTable(): JSX.Element {
   return (
     <section className="container comparison-section">
-      <Heading as="h2" id="comparison">
-        <a href="#comparison" className="comparison-anchor">Choose your library</a>
-      </Heading>
+      <h2 id="comparison">
+        <a href="#comparison" className="comparison-anchor">Choose your library <span className="comparison-hash">#</span></a>
+      </h2>
       <p className="comparison-disclaimer">
         This comparison was researched with the help of AI and may contain inaccuracies.
         If you spot an error, please{' '}

@@ -542,16 +542,10 @@ table td code {
   color: inherit;
 }
 
-.comparison-anchor::after {
-  content: ' #';
+.comparison-hash {
   color: var(--np-muted);
-  opacity: 0;
-  transition: opacity 180ms ease;
   font-weight: 400;
-}
-
-.comparison-anchor:hover::after {
-  opacity: 1;
+  margin-left: 6px;
 }
 
 .comparison-section table {
