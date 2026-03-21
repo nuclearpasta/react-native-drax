@@ -69,10 +69,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const toggleTheme = useCallback(() => {
     setMode((prev) => {
-      if (prev === 'system') return isDark ? 'light' : 'dark';
+      if (prev === 'system') return systemScheme === 'dark' ? 'light' : 'dark';
       return prev === 'dark' ? 'light' : 'dark';
     });
-  }, [isDark]);
+  }, [systemScheme]);
 
   return (
     <ThemeContext value={{ theme, isDark, mode, toggleTheme }}>

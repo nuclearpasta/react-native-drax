@@ -14,7 +14,6 @@ interface Example {
   title: string;
   subtitle: string;
   icon: React.ComponentProps<typeof Icon>['name'];
-  docsAnchor?: string;
   sourceFile: string;
 }
 

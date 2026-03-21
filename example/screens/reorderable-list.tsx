@@ -82,12 +82,14 @@ export default function ReorderableList() {
               onPress={() => setAnimPreset(p.key)}
               style={[
                 styles.presetButton,
+                { backgroundColor: theme.lineStrong },
                 animPreset === p.key && styles.presetButtonActive,
               ]}
             >
               <Text
                 style={[
                   styles.presetButtonText,
+                  { color: theme.muted },
                   animPreset === p.key && styles.presetButtonTextActive,
                 ]}
               >
@@ -170,7 +172,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 14,
-    backgroundColor: '#e0e0e0',
     marginHorizontal: 3,
   },
   presetButtonActive: {
@@ -179,7 +180,6 @@ const styles = StyleSheet.create({
   presetButtonText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#555', // stays dark since button bg is light
   },
   presetButtonTextActive: {
     color: '#fff',
