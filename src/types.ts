@@ -302,6 +302,10 @@ export interface DraxViewProps
   scrollPosition?: SharedValue<Position>;
   /** Time in milliseconds view needs to be pressed before drag starts */
   longPressDelay?: number;
+  /** Cancel drag activation if finger moves more than this distance (px).
+   *  Prevents accidental drags when the user is trying to scroll.
+   *  Can be a number (symmetric) or [min, max] tuple per axis. */
+  dragActivationFailOffset?: number;
 
   // ─── Callback props (formerly in DraxProtocol) ─────────────────────
 
