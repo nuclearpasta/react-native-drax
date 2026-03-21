@@ -19,6 +19,7 @@ export type { SortableBoardContainerProps } from './SortableBoardContainer';
 // ── Public Hooks ─────────────────────────────────────────────────────
 export { useDraxContext } from './hooks/useDraxContext';
 export { useDraxId } from './hooks/useDraxId';
+export { useDraxMethods } from './hooks/useDraxMethods';
 export { useSortableList } from './hooks/useSortableList';
 export { useSortableBoard } from './hooks/useSortableBoard';
 
