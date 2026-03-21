@@ -7,7 +7,6 @@ Drag-and-drop framework for React Native (iOS, Android, Web). v1.0.0 — major r
 - **UI-thread-first**: spatial index worklet for hit-testing, SharedValues split by update frequency. We need to use the UI thread as much as possible.
 - **Reanimated 4 + Gesture Handler 3** (beta)
 - Single `HoverLayer`, per-view gesture handlers
-- React compiler turned on
 - Latest React features.
 
 

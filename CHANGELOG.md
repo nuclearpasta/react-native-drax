@@ -17,7 +17,6 @@ Complete rewrite of the library. This is a major release with breaking changes f
 - **UI-thread-first** architecture: spatial index worklet for hit-testing, SharedValues split by update frequency
 - **New Architecture (Fabric)** compatible
 - **Web** platform support
-- **React Compiler** enabled
 - Single `HoverLayer`, per-view gesture handlers
 - Gesture Handler v2 supported via compatibility layer (v3 recommended for best performance)
 
