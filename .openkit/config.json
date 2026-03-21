@@ -1,0 +1,17 @@
+{
+  "startCommand": "yarn dev",
+  "installCommand": "yarn install",
+  "baseBranch": "reanimated-v4",
+  "projectDir": "",
+  "autoInstall": true,
+  "localIssuePrefix": "LOCAL",
+  "localAutoStartAgent": "claude",
+  "localAutoStartClaudeOnNewIssue": false,
+  "localAutoStartClaudeSkipPermissions": true,
+  "localAutoStartClaudeFocusTerminal": true,
+  "envMapping": {},
+  "ports": {
+    "discovered": [],
+    "offsetStep": 1
+  }
+}

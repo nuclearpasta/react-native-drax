@@ -1,0 +1,103 @@
+---
+title: Sortable Types
+description: TypeScript types for sortable lists — reorder events, animation config, and measurement.
+keywords: [react-native, drax, types, sortable, reorder, animation, api]
+sidebar_position: 4
+---
+
+# Sortable Types
+
+Types for sortable list configuration, events, and handles.
+
+## SortableReorderEvent&lt;T&gt;
+
+Fired when items are reordered.
+
+```tsx
+interface SortableReorderEvent<T> {
+  data: T[];            // The reordered array
+  fromIndex: number;    // Original position
+  toIndex: number;      // New position
+  fromItem: T;          // The moved item
+  toItem: T;            // The displaced item
+  isExternalDrag: boolean; // Was the drag from outside this list
+}
+```
+
+## SortableDragStartEvent&lt;T&gt;
+
+```tsx
+interface SortableDragStartEvent<T> {
+  index: number;
+  item: T;
+}
+```
+
+## SortableDragPositionChangeEvent&lt;T&gt;
+
+```tsx
+interface SortableDragPositionChangeEvent<T> {
+  index: number;
+  item: T;
+  toIndex: number | undefined;
+  previousIndex: number | undefined;
+}
+```
+
+## SortableDragEndEvent&lt;T&gt;
+
+```tsx
+interface SortableDragEndEvent<T> {
+  index: number;
+  item: T;
+  toIndex: number | undefined;
+  cancelled: boolean;
+}
+```
+
+## SortableReorderStrategy
+
+```tsx
+type SortableReorderStrategy = 'insert' | 'swap';
+```
+
+## SortableAnimationConfig
+
+```tsx
+type SortableAnimationConfig = SortableAnimationPreset | SortableAnimationCustomConfig;
+```
+
+## SortableAnimationPreset
+
+```tsx
+type SortableAnimationPreset = 'default' | 'spring' | 'gentle' | 'snappy' | 'none';
+```
+
+## SortableAnimationCustomConfig
+
+```tsx
+interface SortableAnimationCustomConfig {
+  shiftDuration?: number;   // default: 200
+  useSpring?: boolean;      // default: false
+  springDamping?: number;   // default: 15
+  springStiffness?: number; // default: 150
+  springMass?: number;      // default: 1
+}
+```
+
+## DropIndicatorProps
+
+Props for `renderDropIndicator` on `SortableContainer`.
+
+```tsx
+interface DropIndicatorProps {
+  visible: boolean;
+  horizontal: boolean;
+}
+```
+
+## CollisionAlgorithm
+
+```tsx
+type CollisionAlgorithm = 'center' | 'intersect' | 'contain';
+```

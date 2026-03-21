@@ -1,0 +1,46 @@
+---
+title: DraxHandle
+description: API reference for DraxHandle — restricts drag initiation to a specific area.
+keywords: [react-native, drax, handle, grip, drag, api]
+sidebar_position: 4
+---
+
+# DraxHandle
+
+Drag handle component. Only touches on this area will start a drag. Must be inside a `DraxView` with `dragHandle={true}`.
+
+## Import
+
+```tsx
+import { DraxHandle } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+<DraxView dragHandle style={styles.row}>
+  <DraxHandle style={styles.grip}>
+    <GripIcon />
+  </DraxHandle>
+  <Text>Item content — taps and scrolls work here</Text>
+</DraxView>
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `children` | `ReactNode` | **required** | Content of the handle |
+| `style` | `StyleProp<ViewStyle>` | — | Style for the handle wrapper |
+
+## How It Works
+
+1. Parent `DraxView` has `dragHandle={true}` — skips attaching gesture to its own `GestureDetector`
+2. Parent provides its gesture via `DraxHandleContext`
+3. `DraxHandle` consumes the context and wraps its children with `GestureDetector`
+4. In the hover layer, renders as a plain `Reanimated.View` (no gesture needed)
+
+## Related
+
+- [Drag Handles Guide](/guides/drag-handles)
+- [DraxView](/api/components/drax-view) — `dragHandle` prop

@@ -1,0 +1,67 @@
+---
+title: snapToAlignment
+description: API reference for snapToAlignment — compute snap target positions for 9-point alignment.
+keywords: [react-native, snap, alignment, position, utility, api]
+sidebar_position: 1
+---
+
+# snapToAlignment
+
+Compute a snap target position that aligns a dragged view within a receiver at a specified alignment point.
+
+## Import
+
+```tsx
+import { snapToAlignment } from 'react-native-drax';
+```
+
+## Usage
+
+Return from a drop callback to snap the hover view to a position:
+
+```tsx
+<DraxView
+  onReceiveDragDrop={({ dragged, receiver }) =>
+    snapToAlignment(receiver.measurements, dragged.measurements, 'top-left', { x: 8, y: 8 })
+  }
+/>
+```
+
+## Signature
+
+```tsx
+snapToAlignment(
+  receiver: { x: number; y: number; width: number; height: number },
+  dragged: { width: number; height: number } | undefined,
+  alignment?: SnapAlignment,   // default: 'center'
+  offset?: Position            // default: { x: 0, y: 0 }
+): Position
+```
+
+## Parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `receiver` | `{ x, y, width, height }` | Receiver measurements |
+| `dragged` | `{ width, height } \| undefined` | Dragged view dimensions |
+| `alignment` | `SnapAlignment` | Alignment point (default: `'center'`) |
+| `offset` | `Position` | Pixel offset (default: `{ x: 0, y: 0 }`) |
+
+## Alignments
+
+```
+top-left      top-center      top-right
+center-left     center      center-right
+bottom-left  bottom-center  bottom-right
+```
+
+Type: `'center' | 'top-left' | 'top-center' | 'top-right' | 'center-left' | 'center-right' | 'bottom-left' | 'bottom-center' | 'bottom-right'`
+
+## Return Value
+
+A `Position` (`{ x, y }`) that represents the absolute snap target for the hover view.
+
+## Related
+
+- [Snap Alignment Guide](/guides/snap-alignment)
+- [DraxView](/api/components/drax-view) — `onDragDrop`, `onReceiveDragDrop` callbacks

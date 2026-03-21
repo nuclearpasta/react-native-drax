@@ -1,0 +1,63 @@
+---
+title: DraxProvider
+description: API reference for DraxProvider — the context provider for drag-and-drop operations.
+keywords: [react-native, drax, provider, context, api]
+sidebar_position: 1
+---
+
+# DraxProvider
+
+Context provider that manages drag state, the view registry, spatial index, and hover layer. Wrap your drag-and-drop area with a `DraxProvider`.
+
+## Import
+
+```tsx
+import { DraxProvider } from 'react-native-drax';
+// or
+import { Drax } from 'react-native-drax';
+// then use Drax.Provider
+```
+
+## Usage
+
+```tsx
+<DraxProvider>
+  <DraxView payload="item-1" />
+  <DraxView onReceiveDragDrop={handleDrop} />
+</DraxProvider>
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `style` | `StyleProp<ViewStyle>` | — | Style for the provider's root view |
+| `debug` | `boolean` | `false` | Enable debug logging |
+| `children` | `ReactNode` | — | Child components |
+
+## Responsibilities
+
+- **View Registry** — Tracks all mounted `DraxView` instances with their measurements and props
+- **Spatial Index** — Maintains a `SharedValue<SpatialEntry[]>` for UI-thread hit-testing
+- **Drag State** — SharedValues for `draggedIdSV`, `receiverIdSV`, `dragPhaseSV`, `hoverPositionSV`
+- **Hover Layer** — Renders the floating copy of the dragged view
+- **Callback Dispatch** — Routes `handleDragStart`, `handleReceiverChange`, `handleDragEnd` to registered views
+
+## Multiple Providers
+
+You can have multiple `DraxProvider` instances for independent drag contexts:
+
+```tsx
+<DraxProvider>
+  {/* These views can only drag within this provider */}
+</DraxProvider>
+
+<DraxProvider>
+  {/* Independent drag context */}
+</DraxProvider>
+```
+
+## Related
+
+- [DraxView](/api/components/drax-view) — The core draggable/receptive view
+- [Core Concepts](/core-concepts) — Architecture overview
