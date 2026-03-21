@@ -8,6 +8,7 @@ import {
   DraxSnapbackTargetPreset,
 } from 'react-native-drax';
 import { useTheme } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 export default function Scrolling() {
   const [sum, setSum] = useState(0);
@@ -17,6 +18,7 @@ export default function Scrolling() {
   return (
     <DraxProvider>
       <View testID="scrolling-screen" style={[styles.container, { paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: theme.bg }]}>
+        <ExampleLinks slug="scrolling" />
         <DraxScrollView horizontal style={styles.scrollView}>
           <DraxView
             testID="scroll-item-1"

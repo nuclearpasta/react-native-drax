@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraxProvider, DraxView } from 'react-native-drax';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 interface BoardPosition {
   row: number;
@@ -101,6 +102,7 @@ export default function KnightMoves() {
   return (
     <DraxProvider>
       <View testID="knight-moves-screen" style={[styles.container, { paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: theme.bg }]}>
+        <ExampleLinks slug="knight-moves" />
         <View style={styles.containerRow}>
           <View testID="chess-board" accessibilityLabel="Chess board, 8 by 8 grid" style={[styles.board, { borderColor: theme.text }]}>
             {rowViews}

@@ -7,6 +7,7 @@ import {
   useSortableList,
 } from 'react-native-drax';
 import { useTheme, itemColor } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 const ITEM_COUNT = 100;
 const COLORS = [
@@ -39,6 +40,7 @@ export default function StressTest() {
             {ITEM_COUNT} items — test scrolling and reorder performance
           </Text>
         </View>
+        <ExampleLinks slug="stress-test" />
         <SortableContainer
           sortable={sortable}
           scrollRef={listRef}

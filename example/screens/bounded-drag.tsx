@@ -3,6 +3,7 @@ import { StyleSheet, View, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraxProvider, DraxView, DraxSnapbackTargetPreset } from 'react-native-drax';
 import { useTheme } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 export default function BoundedDrag() {
   const insets = useSafeAreaInsets();
@@ -27,6 +28,7 @@ export default function BoundedDrag() {
           The blue square stays within the dashed boundary.
           The red square can go anywhere.
         </Text>
+        <ExampleLinks slug="bounded-drag" />
 
         <View
           ref={boundsRef}

@@ -6,6 +6,7 @@ import {
   type CollisionAlgorithm,
 } from 'react-native-drax';
 import { useTheme } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 function DraggableBlock() {
   return (
@@ -78,6 +79,7 @@ export default function CollisionModes() {
             needs the entire item inside.
           </Text>
         </View>
+        <ExampleLinks slug="collision-modes" />
 
         <View style={styles.draggableRow}>
           <DraggableBlock />

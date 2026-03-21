@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraxProvider, DraxList } from 'react-native-drax';
 import type { SortableAnimationPreset } from 'react-native-drax';
 import { useTheme, itemColor } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -98,6 +99,7 @@ export default function ReorderableList() {
             </Pressable>
           ))}
         </View>
+        <ExampleLinks slug="reorderable-list" />
         <DraxList
           data={alphaData}
           keyExtractor={(item) => item}

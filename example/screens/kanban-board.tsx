@@ -11,6 +11,7 @@ import {
 } from 'react-native-drax';
 import Reanimated from 'react-native-reanimated';
 import { useTheme, itemColor } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 interface Card {
   id: string;
@@ -230,6 +231,7 @@ export default function KanbanBoard() {
             Drag cards within and between columns. Backlog scrolls horizontally.
           </Text>
         </View>
+        <ExampleLinks slug="kanban-board" />
         <SortableBoardContainer board={board} style={styles.board}>
           <BacklogColumn
             cards={columns.backlog}

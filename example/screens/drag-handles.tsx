@@ -9,6 +9,7 @@ import {
   useSortableList,
 } from 'react-native-drax';
 import { useTheme, itemColor } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 const COLORS = ['#ffcccc', '#ccffcc', '#ccccff', '#ffffcc', '#ffccff', '#ccffff'];
 
@@ -38,6 +39,7 @@ export default function DragHandles() {
             the item content scrolls normally.
           </Text>
         </View>
+        <ExampleLinks slug="drag-handles" />
         <SortableContainer
           sortable={sortable}
           scrollRef={listRef}

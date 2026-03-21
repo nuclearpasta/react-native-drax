@@ -65,6 +65,8 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="twitter:description" content={DESCRIPTION} />
         <meta name="twitter:image" content={IMAGE} />
 
+        <link rel="icon" type="image/svg+xml" href="/react-native-drax/example/assets/favicon.svg" />
+
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: darkModeCSS }} />
       </head>

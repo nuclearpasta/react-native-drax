@@ -8,6 +8,7 @@ import {
   useSortableList,
 } from 'react-native-drax';
 import { useTheme, itemColor } from '../components/ThemeContext';
+import { ExampleLinks } from '../components/ExampleLinks';
 
 const COLORS = [
   '#ff6b6b', '#ffa06b', '#ffd96b', '#a8e06b', '#6be0a8',
@@ -69,6 +70,7 @@ export default function ReorderableGrid() {
           },
         ]}
       >
+        <ExampleLinks slug="reorderable-grid" />
         <SortableContainer
           sortable={sortable}
           scrollRef={listRef}
