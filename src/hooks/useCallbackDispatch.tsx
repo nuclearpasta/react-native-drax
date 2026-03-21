@@ -61,6 +61,8 @@ interface CallbackDispatchDeps {
   onProviderDragStart?: (event: DraxProviderDragEvent) => void;
   onProviderDrag?: (event: DraxProviderDragEvent) => void;
   onProviderDragEnd?: (event: DraxProviderDragEvent & { cancelled: boolean }) => void;
+  // Dropped items tracking (for capacity)
+  droppedItemsRef: RefObject<Map<string, Set<string>>>;
 }
 
 /**
@@ -83,6 +85,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     onProviderDragStart,
     onProviderDrag,
     onProviderDragEnd,
+    droppedItemsRef,
   } = deps;
 
   // Track current monitor ids for exit events
@@ -288,6 +291,16 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
         const acceptsDrag = newReceiverEntry.props.acceptsDrag;
         if (acceptsDrag && !acceptsDrag(draggedPayload)) {
           acceptedReceiverId = '';
+        }
+
+        // Check capacity
+        const capacity = newReceiverEntry.props.capacity;
+        if (acceptedReceiverId && capacity !== undefined) {
+          const droppedSet = droppedItemsRef.current.get(newReceiverId);
+          const count = droppedSet ? droppedSet.size : 0;
+          if (count >= capacity) {
+            acceptedReceiverId = '';
+          }
         }
 
         // Check dynamicReceptiveCallback (more detailed)
@@ -556,6 +569,12 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
         });
         if (receiveDropResponse !== undefined)
           snapTarget = receiveDropResponse as DraxSnapbackTarget;
+
+        // Track the drop for capacity enforcement
+        if (!droppedItemsRef.current.has(receiverId)) {
+          droppedItemsRef.current.set(receiverId, new Set());
+        }
+        droppedItemsRef.current.get(receiverId)!.add(draggedId);
       }
     } else {
       // No receiver or cancelled

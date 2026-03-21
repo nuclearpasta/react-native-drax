@@ -51,6 +51,9 @@ export const DraxProvider = ({
   // x = width, y = height. {0,0} = no constraint (natural size).
   const hoverDimsSV = useSharedValue<Position>({ x: 0, y: 0 });
 
+  // ── Dropped items tracking ─────────────────────────────────────────
+  const droppedItemsRef = useRef<Map<string, Set<string>>>(new Map());
+
   // ── Spatial index + registry ───────────────────────────────────────
   const {
     spatialIndexSV,
@@ -97,6 +100,7 @@ export const DraxProvider = ({
       onProviderDragStart,
       onProviderDrag,
       onProviderDragEnd,
+      droppedItemsRef,
     });
 
   // ── Root view ref ──────────────────────────────────────────────────
@@ -150,6 +154,9 @@ export const DraxProvider = ({
 
       // Hover content
       setHoverContent,
+
+      // Dropped items
+      droppedItemsRef,
 
       // Refs
       rootViewRef,

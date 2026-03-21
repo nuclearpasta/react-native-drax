@@ -77,7 +77,7 @@ const rows: [string, string, string, string][] = [
   // Hit testing & drop zones
   ['Collision algorithms',                             '3 modes',                '3 modes',        'No'],
   ['Snap alignment',                                   '9-point + custom',       '9-point',        'No'],
-  ['Drop zone acceptance',                             'Callback-based',         'Capacity only',  'No'],
+  ['Drop zone acceptance',                             'Callback + capacity',    'Capacity only',  'No'],
   ['Monitoring views',                                 'Yes',                    'No',             'No'],
   ['UI-thread DnD collision',                          'Yes',                    'No',             'No'],
 

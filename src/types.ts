@@ -319,6 +319,9 @@ export interface DraxViewProps
 
   /** Simpler convenience prop for conditional drop acceptance based on payload */
   acceptsDrag?: (draggedPayload: unknown) => boolean;
+  /** Maximum number of items this view can receive. Drops are auto-rejected
+   *  when at capacity. Requires DraxProvider to track dropped items centrally. */
+  capacity?: number;
 
   /** Called in the dragged view when a drag action begins */
   onDragStart?: (data: DraxDragEventData) => void;
@@ -489,6 +492,10 @@ export interface DraxContextValue {
 
   // ── Hover content ──────────────────────────────────────────────────
   setHoverContent: (content: ReactNode | null) => void;
+
+  // ── Dropped items tracking ─────────────────────────────────────────
+  /** Map of receiverId → Set of draggedIds that have been dropped on it */
+  droppedItemsRef: RefObject<Map<string, Set<string>>>;
 
   // ── View refs ──────────────────────────────────────────────────────
   rootViewRef: { current: HostInstance | null };
