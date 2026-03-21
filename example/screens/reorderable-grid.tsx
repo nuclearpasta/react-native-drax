@@ -7,6 +7,7 @@ import {
   SortableItem,
   useSortableList,
 } from 'react-native-drax';
+import { useTheme } from '../components/ThemeContext';
 
 const COLORS = [
   '#ff6b6b', '#ffa06b', '#ffd96b', '#a8e06b', '#6be0a8',
@@ -32,6 +33,7 @@ export default function ReorderableGrid() {
   const listRef = useRef<FlatList<TileItem>>(null);
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
+  const { theme } = useTheme();
   const tileSize = (screenWidth - insets.left - insets.right - 8 * 2) / NUM_COLUMNS - 8;
 
   const sortable = useSortableList({
@@ -90,7 +92,7 @@ export default function ReorderableGrid() {
             removeClippedSubviews={false}
             ListHeaderComponent={
               <View testID="grid-header" style={styles.header}>
-                <Text style={styles.headerText}>
+                <Text style={[styles.headerText, { color: theme.muted }]}>
                   Long-press any tile to drag it to a new position in the grid.
                 </Text>
               </View>

@@ -9,6 +9,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { DraxProvider, DraxView, DraxViewDragStatus, snapToAlignment } from 'react-native-drax';
+import { useTheme } from '../components/ThemeContext';
 
 const MAX_RECEIVING_ITEMS = 4;
 
@@ -76,12 +77,13 @@ export default function ColorDragDrop() {
   const [stagedWeights, setStagedWeights] = useState(getEmptyWeights());
   const [stagedText, setStagedText] = useState<string[]>([]);
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
 
   const receivingFull = receivedText.length >= MAX_RECEIVING_ITEMS;
 
   return (
     <DraxProvider>
-      <View testID="color-drag-drop-screen" style={[styles.container, { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right }]}>
+      <View testID="color-drag-drop-screen" style={[styles.container, { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: theme.bg }]}>
         <DraxView
           testID="receiving-zone"
           accessibilityLabel={

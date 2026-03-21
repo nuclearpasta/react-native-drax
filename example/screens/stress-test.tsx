@@ -7,6 +7,7 @@ import {
   SortableItem,
   useSortableList,
 } from 'react-native-drax';
+import { useTheme } from '../components/ThemeContext';
 
 const ITEM_COUNT = 100;
 const COLORS = [
@@ -24,6 +25,7 @@ export default function StressTest() {
   const [data, setData] = useState(INITIAL_DATA);
   const listRef = useRef<FlatList<(typeof INITIAL_DATA)[0]>>(null);
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
 
   const sortable = useSortableList({
     data,
@@ -33,9 +35,9 @@ export default function StressTest() {
 
   return (
     <DraxProvider>
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.bg }]}>
         <View style={styles.header}>
-          <Text style={styles.headerText}>
+          <Text style={[styles.headerText, { color: theme.muted }]}>
             {ITEM_COUNT} items — test scrolling and reorder performance
           </Text>
         </View>
@@ -88,7 +90,6 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 14,
     fontStyle: 'italic',
-    color: '#666',
   },
   item: {
     height: 48,

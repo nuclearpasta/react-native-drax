@@ -8,7 +8,7 @@ function Placeholder({ name }: { name: string }) {
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
       <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>{name}</Text>
-      <Text style={{ color: '#666', textAlign: 'center' }}>
+      <Text style={{ textAlign: 'center', opacity: 0.6 }}>
         Interactive drag-and-drop example. Loading...
       </Text>
     </View>

@@ -6,6 +6,7 @@ import {
   DraxView,
   type CollisionAlgorithm,
 } from 'react-native-drax';
+import { useTheme } from '../components/ThemeContext';
 
 function DraggableBlock() {
   return (
@@ -58,15 +59,16 @@ function DropZone({
 
 export default function CollisionModes() {
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
 
   return (
     <DraxProvider>
       <View
         testID="collision-modes-screen"
-        style={[styles.container, { paddingTop: insets.top }]}
+        style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.bg }]}
       >
         <View style={styles.header}>
-          <Text style={styles.headerText}>
+          <Text style={[styles.headerText, { color: theme.muted }]}>
             Each drop zone uses a different collision algorithm. Notice how
             "intersect" activates as soon as any edge overlaps, "center"
             requires the dragged item's center to be inside, and "contain"
@@ -103,7 +105,6 @@ export default function CollisionModes() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   header: {
     padding: 16,
@@ -112,7 +113,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
     textAlign: 'center',
-    color: '#666',
   },
   draggableRow: {
     alignItems: 'center',

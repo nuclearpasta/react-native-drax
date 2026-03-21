@@ -1,13 +1,21 @@
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Linking, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
+import { LogoMark } from '../components/LogoMark';
+import { useTheme } from '../components/ThemeContext';
+
+const DOCS_BASE = 'https://nuclearpasta.com/react-native-drax';
+const GITHUB_BASE =
+  'https://github.com/nuclearpasta/react-native-drax/blob/main/example/screens';
 
 interface Example {
   route: string;
   title: string;
   subtitle: string;
   icon: React.ComponentProps<typeof Icon>['name'];
+  docsAnchor?: string;
+  sourceFile: string;
 }
 
 const EXAMPLES: Example[] = [
@@ -16,88 +24,196 @@ const EXAMPLES: Example[] = [
     title: 'Color Drag & Drop',
     subtitle: 'Drop acceptance, hover styles, snap alignment',
     icon: 'water',
+    sourceFile: 'color-drag-drop.tsx',
   },
   {
     route: '/reorderable-list',
     title: 'Reorderable List',
     subtitle: 'Animation presets, auto-scroll, drop indicator',
     icon: 'format-list-bulleted',
+    sourceFile: 'reorderable-list.tsx',
   },
   {
     route: '/reorderable-grid',
     title: 'Reorderable Grid',
     subtitle: 'Sortable grid with multi-column layout',
     icon: 'view-grid',
+    sourceFile: 'reorderable-grid.tsx',
   },
   {
     route: '/drag-handles',
     title: 'Drag Handles',
     subtitle: 'Only the grip icon starts a drag',
     icon: 'drag',
+    sourceFile: 'drag-handles.tsx',
   },
   {
     route: '/bounded-drag',
     title: 'Drag Bounds',
     subtitle: 'Constrain drag within a view',
     icon: 'selection',
+    sourceFile: 'bounded-drag.tsx',
   },
   {
     route: '/collision-modes',
     title: 'Collision Modes',
     subtitle: 'Center vs Intersect vs Contain',
     icon: 'vector-intersection',
+    sourceFile: 'collision-modes.tsx',
   },
   {
     route: '/kanban-board',
     title: 'Kanban Board',
     subtitle: 'Drag cards between columns',
     icon: 'view-column',
+    sourceFile: 'kanban-board.tsx',
   },
   {
     route: '/knight-moves',
     title: 'Knight Moves',
     subtitle: 'Chess knight drag puzzle',
     icon: 'chess-knight',
+    sourceFile: 'knight-moves.tsx',
   },
   {
     route: '/scrolling',
     title: 'Scrolling',
     subtitle: 'Drag from scroll view to drop zone',
     icon: 'arrow-left-right',
+    sourceFile: 'scrolling.tsx',
   },
   {
     route: '/stress-test',
     title: 'Stress Test',
     subtitle: '100 items in a sortable list',
     icon: 'speedometer',
+    sourceFile: 'stress-test.tsx',
   },
 ];
 
 function ExampleCard({ example }: { example: Example }) {
   const router = useRouter();
+  const { theme } = useTheme();
 
   return (
     <Pressable
       testID={`example-${example.route.slice(1)}`}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          backgroundColor: theme.surfaceStrong,
+          shadowColor: theme.cardShadowColor,
+          shadowOpacity: theme.cardShadowOpacity,
+          borderColor: theme.line,
+        },
+        pressed && styles.cardPressed,
+      ]}
       onPress={() => router.push(example.route as any)}
     >
-      <Icon name={example.icon} size={28} color="#333" style={styles.icon} />
-      <View style={styles.cardText}>
-        <Text style={styles.title}>{example.title}</Text>
-        <Text style={styles.subtitle}>{example.subtitle}</Text>
+      <View
+        style={[styles.iconContainer, { backgroundColor: theme.logoTileBg }]}
+      >
+        <Icon name={example.icon} size={22} color="#cf5f34" />
       </View>
-      <Icon name="chevron-right" size={24} color="#999" />
+      <View style={styles.cardText}>
+        <Text style={[styles.title, { color: theme.text }]}>
+          {example.title}
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.muted }]}>
+          {example.subtitle}
+        </Text>
+        <View style={styles.linkRow}>
+          <Pressable
+            style={styles.linkButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              Linking.openURL(`${GITHUB_BASE}/${example.sourceFile}`);
+            }}
+            hitSlop={4}
+          >
+            <Icon name="github" size={13} color={theme.muted} />
+            <Text style={[styles.linkText, { color: theme.muted }]}>
+              Source
+            </Text>
+          </Pressable>
+          <Pressable
+            style={styles.linkButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              Linking.openURL(DOCS_BASE);
+            }}
+            hitSlop={4}
+          >
+            <Icon name="book-open-variant" size={13} color={theme.muted} />
+            <Text style={[styles.linkText, { color: theme.muted }]}>Docs</Text>
+          </Pressable>
+        </View>
+      </View>
+      <Icon name="chevron-right" size={24} color={theme.muted} />
     </Pressable>
   );
 }
 
 export default function ExamplesList() {
   const insets = useSafeAreaInsets();
+  const { theme, isDark, toggleTheme } = useTheme();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Text style={styles.heading}>Drax Examples</Text>
+    <View style={[styles.container, { backgroundColor: theme.bg, paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: theme.line }]}>
+        <Pressable
+          style={styles.brand}
+          onPress={() => Linking.openURL(DOCS_BASE)}
+        >
+          <LogoMark size={36} showTile />
+          <View>
+            <Text style={[styles.brandName, { color: theme.text }]}>
+              Drax
+            </Text>
+            <Text style={[styles.brandSub, { color: theme.muted }]}>
+              react-native-drax
+            </Text>
+          </View>
+        </Pressable>
+        <View style={styles.headerRight}>
+          <Pressable
+            onPress={() => Linking.openURL(DOCS_BASE)}
+            hitSlop={8}
+            style={styles.docsButton}
+          >
+            <Icon name="book-open-variant" size={18} color={theme.muted} />
+          </Pressable>
+          <Pressable
+            onPress={() =>
+              Linking.openURL(
+                'https://github.com/nuclearpasta/react-native-drax',
+              )
+            }
+            hitSlop={8}
+          >
+            <Icon name="github" size={20} color={theme.muted} />
+          </Pressable>
+          <View style={styles.themeToggle}>
+            <Icon
+              name={isDark ? 'weather-night' : 'white-balance-sunny'}
+              size={16}
+              color={isDark ? '#f2b15a' : '#cf5f34'}
+            />
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: 'rgba(17,17,17,0.12)', true: 'rgba(245,245,240,0.24)' }}
+              thumbColor={isDark ? '#f5f5f0' : '#111111'}
+              style={styles.switch}
+            />
+          </View>
+        </View>
+      </View>
+
+      {/* Heading */}
+      <Text style={[styles.heading, { color: theme.text }]}>Examples</Text>
+
       <FlatList
         data={EXAMPLES}
         keyExtractor={(item) => item.route}
@@ -111,13 +227,50 @@ export default function ExamplesList() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  brand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  brandName: {
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
+  brandSub: {
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  docsButton: {
+    marginRight: -2,
+  },
+  themeToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  switch: {
+    transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
   },
   heading: {
     fontSize: 28,
     fontWeight: '700',
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 16,
     paddingBottom: 8,
   },
   list: {
@@ -127,33 +280,48 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 14,
     marginVertical: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
   cardPressed: {
     opacity: 0.7,
   },
-  icon: {
-    marginRight: 14,
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   cardText: {
     flex: 1,
   },
   title: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#222',
   },
   subtitle: {
     fontSize: 13,
-    color: '#888',
-    marginTop: 2,
+    marginTop: 1,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 6,
+  },
+  linkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  linkText: {
+    fontSize: 11,
+    fontWeight: '500',
   },
 });

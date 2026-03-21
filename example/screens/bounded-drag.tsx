@@ -2,10 +2,12 @@ import { useRef } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraxProvider, DraxView, DraxSnapbackTargetPreset } from 'react-native-drax';
+import { useTheme } from '../components/ThemeContext';
 
 export default function BoundedDrag() {
   const insets = useSafeAreaInsets();
   const boundsRef = useRef(null);
+  const { theme } = useTheme();
 
   return (
     <DraxProvider>
@@ -17,11 +19,12 @@ export default function BoundedDrag() {
             paddingTop: insets.top,
             paddingLeft: insets.left,
             paddingRight: insets.right,
+            backgroundColor: theme.bg,
           },
         ]}
       >
-        <Text style={styles.heading}>Drag Bounds</Text>
-        <Text style={styles.description}>
+        <Text style={[styles.heading, { color: theme.text }]}>Drag Bounds</Text>
+        <Text style={[styles.description, { color: theme.muted }]}>
           The blue square stays within the dashed boundary.
           The red square can go anywhere.
         </Text>
@@ -32,7 +35,7 @@ export default function BoundedDrag() {
           style={styles.boundsArea}
           collapsable={false}
         >
-          <Text style={styles.boundsLabel}>Bounded Area</Text>
+          <Text style={[styles.boundsLabel, { color: theme.muted }]}>Bounded Area</Text>
           <View style={styles.blockCenter}>
             <DraxView
               testID="bounded-draggable"
@@ -49,7 +52,7 @@ export default function BoundedDrag() {
         </View>
 
         <View style={styles.freeArea}>
-          <Text style={styles.boundsLabel}>Free Area</Text>
+          <Text style={[styles.boundsLabel, { color: theme.muted }]}>Free Area</Text>
           <View style={styles.blockCenter}>
             <DraxView
               testID="free-draggable"
@@ -72,7 +75,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#f5f5f5',
   },
   heading: {
     fontSize: 22,
@@ -81,7 +83,6 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    color: '#666',
     marginBottom: 16,
     lineHeight: 20,
   },
@@ -108,7 +109,6 @@ const styles = StyleSheet.create({
   boundsLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#888',
     marginBottom: 8,
   },
   blockCenter: {

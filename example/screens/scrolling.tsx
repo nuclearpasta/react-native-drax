@@ -7,14 +7,16 @@ import {
   DraxView,
   DraxSnapbackTargetPreset,
 } from 'react-native-drax';
+import { useTheme } from '../components/ThemeContext';
 
 export default function Scrolling() {
   const [sum, setSum] = useState(0);
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
 
   return (
     <DraxProvider>
-      <View testID="scrolling-screen" style={[styles.container, { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right }]}>
+      <View testID="scrolling-screen" style={[styles.container, { paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right, backgroundColor: theme.bg }]}>
         <DraxScrollView horizontal style={styles.scrollView}>
           <DraxView
             testID="scroll-item-1"
@@ -65,8 +67,8 @@ export default function Scrolling() {
             <Text style={styles.itemText}>4</Text>
           </DraxView>
         </DraxScrollView>
-        <View style={styles.footer}>
-          <Text style={styles.description}>
+        <View style={[styles.footer, { borderTopColor: theme.line }]}>
+          <Text style={[styles.description, { color: theme.muted }]}>
             The area above is a horizontal DraxScrollView containing 4 draggable
             number items. The number items can be dragged into the sum bucket
             below. Dragging an item near the edge of the scroll view will
@@ -76,7 +78,7 @@ export default function Scrolling() {
             testID="sum-bucket"
             accessibilityLabel={`Sum bucket, current value: ${sum}`}
             accessibilityHint="Drop number items here to add to the sum"
-            style={styles.bucket}
+            style={[styles.bucket, { backgroundColor: theme.surface, borderColor: theme.text }]}
             receivingStyle={styles.bucketReceiving}
             onReceiveDragDrop={(event) => {
               const payload = event.dragged.payload;
@@ -144,7 +146,6 @@ const styles = StyleSheet.create({
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    borderTopColor: '#d0d0d0',
     borderTopWidth: 1,
     padding: 20,
   },
@@ -156,8 +157,6 @@ const styles = StyleSheet.create({
   bucket: {
     width: 180,
     height: 120,
-    backgroundColor: '#d0d0d0',
-    borderColor: '#000000',
     borderWidth: 3,
     borderRadius: 4,
     justifyContent: 'center',

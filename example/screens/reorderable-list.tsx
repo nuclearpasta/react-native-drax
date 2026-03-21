@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraxProvider, DraxList } from 'react-native-drax';
 import type { SortableAnimationPreset } from 'react-native-drax';
+import { useTheme } from '../components/ThemeContext';
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -57,6 +58,7 @@ export default function ReorderableList() {
   const [animPreset, setAnimPreset] =
     useState<SortableAnimationPreset>('default');
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
 
   return (
     <DraxProvider>
@@ -71,8 +73,8 @@ export default function ReorderableList() {
           },
         ]}
       >
-        <View style={styles.presetBar}>
-          <Text style={styles.presetLabel}>Animation:</Text>
+        <View style={[styles.presetBar, { backgroundColor: theme.surface, borderBottomColor: theme.line }]}>
+          <Text style={[styles.presetLabel, { color: theme.muted }]}>Animation:</Text>
           {PRESETS.map((p) => (
             <Pressable
               key={p.key}
@@ -157,14 +159,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 6,
-    backgroundColor: '#f0f0f0',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ddd',
   },
   presetLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#555',
     marginRight: 6,
   },
   presetButton: {
@@ -180,7 +179,7 @@ const styles = StyleSheet.create({
   presetButtonText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#555',
+    color: '#555', // stays dark since button bg is light
   },
   presetButtonTextActive: {
     color: '#fff',

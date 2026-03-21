@@ -11,6 +11,7 @@ import {
   useSortableList,
 } from 'react-native-drax';
 import Reanimated from 'react-native-reanimated';
+import { useTheme } from '../components/ThemeContext';
 
 interface Card {
   id: string;
@@ -71,6 +72,7 @@ function BacklogColumn({
   // are incompatible with React's RefObject. The ref is only used for
   // scrollToOffset/flashScrollIndicators which both types share.
   const listRef = useRef<FlatList>(null);
+  const { theme } = useTheme();
 
   const sortable = useSortableList({
     id: 'backlog',
@@ -82,10 +84,10 @@ function BacklogColumn({
   });
 
   return (
-    <View style={styles.backlogSection}>
+    <View style={[styles.backlogSection, { backgroundColor: theme.surface }]}>
       <View style={styles.backlogHeader}>
-        <Text style={styles.columnHeader}>Backlog</Text>
-        <Text style={styles.columnCount}>{cards.length}</Text>
+        <Text style={[styles.columnHeader, { color: theme.text }]}>Backlog</Text>
+        <Text style={[styles.columnCount, { color: theme.muted }]}>{cards.length}</Text>
       </View>
       <SortableContainer
         sortable={sortable}
@@ -140,6 +142,7 @@ function VerticalColumn({
   cardWidth: number;
 }) {
   const listRef = useRef<FlatList>(null);
+  const { theme } = useTheme();
 
   const sortable = useSortableList({
     id: columnId,
@@ -150,9 +153,9 @@ function VerticalColumn({
   });
 
   return (
-    <View style={styles.column}>
-      <Text style={styles.columnHeader}>{label}</Text>
-      <Text style={styles.columnCount}>{cards.length}</Text>
+    <View style={[styles.column, { backgroundColor: theme.surface }]}>
+      <Text style={[styles.columnHeader, { color: theme.text }]}>{label}</Text>
+      <Text style={[styles.columnCount, { color: theme.muted }]}>{cards.length}</Text>
       <SortableContainer
         sortable={sortable}
         scrollRef={listRef}
@@ -194,6 +197,7 @@ export default function KanbanBoard() {
   const [columns, setColumns] = useState(INITIAL_COLUMNS);
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
+  const { theme } = useTheme();
 
   // Consistent card width across all columns — prevents size jump on transfer.
   // Matches the vertical column's inner width: (screen - board padding - column gap) / 2 - column padding.
@@ -220,10 +224,10 @@ export default function KanbanBoard() {
     <DraxProvider>
       <View
         testID="kanban-board-screen"
-        style={[styles.container, { paddingTop: insets.top }]}
+        style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.bg }]}
       >
         <View style={styles.header}>
-          <Text style={styles.headerText}>
+          <Text style={[styles.headerText, { color: theme.muted }]}>
             Drag cards within and between columns. Backlog scrolls horizontally.
           </Text>
         </View>
@@ -264,7 +268,6 @@ export default function KanbanBoard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f4f8',
   },
   header: {
     padding: 12,
@@ -273,7 +276,6 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 14,
     fontStyle: 'italic',
-    color: '#666',
     textAlign: 'center',
   },
   board: {
@@ -281,7 +283,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   backlogSection: {
-    backgroundColor: '#e2e8f0',
     borderRadius: 12,
     padding: 8,
     marginBottom: 8,
@@ -306,7 +307,6 @@ const styles = StyleSheet.create({
   },
   column: {
     flex: 1,
-    backgroundColor: '#e2e8f0',
     borderRadius: 12,
     padding: 8,
   },
@@ -316,12 +316,10 @@ const styles = StyleSheet.create({
   columnHeader: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1e293b',
     textAlign: 'center',
   },
   columnCount: {
     fontSize: 12,
-    color: '#64748b',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -343,6 +341,6 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#1e293b',
+    color: '#1e293b', // card text stays dark since cards have light pastel backgrounds
   },
 });

@@ -9,6 +9,7 @@ import {
   SortableItem,
   useSortableList,
 } from 'react-native-drax';
+import { useTheme } from '../components/ThemeContext';
 
 const COLORS = ['#ffcccc', '#ccffcc', '#ccccff', '#ffffcc', '#ffccff', '#ccffff'];
 
@@ -22,6 +23,7 @@ export default function DragHandles() {
   const [data, setData] = useState(ITEMS);
   const listRef = useRef<FlatList<(typeof ITEMS)[0]>>(null);
   const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
 
   const sortable = useSortableList({
     data,
@@ -31,9 +33,9 @@ export default function DragHandles() {
 
   return (
     <DraxProvider>
-      <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: theme.bg }]}>
         <View style={styles.header}>
-          <Text style={styles.headerText}>
+          <Text style={[styles.headerText, { color: theme.muted }]}>
             Only the grip icon on the left starts a drag. Tapping or swiping
             the item content scrolls normally.
           </Text>
@@ -63,7 +65,7 @@ export default function DragHandles() {
                 dragHandle
               >
                 <DraxHandle style={styles.handle}>
-                  <Icon name="drag" size={24} color="#666" />
+                  <Icon name="drag" size={24} color={theme.muted} />
                 </DraxHandle>
                 <Text style={styles.itemText}>{item.label}</Text>
               </SortableItem>
@@ -87,7 +89,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
     textAlign: 'center',
-    color: '#666',
   },
   item: {
     flexDirection: 'row',

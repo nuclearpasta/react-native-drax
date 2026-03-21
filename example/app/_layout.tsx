@@ -1,5 +1,6 @@
 import { Platform, StyleSheet, View } from 'react-native';
 import { Stack } from 'expo-router';
+import { ThemeProvider } from '../components/ThemeContext';
 
 // Lazy import to avoid crashing during static render pass (SSG).
 // GestureHandler v3 beta has circular dependency issues when loaded server-side.
@@ -10,9 +11,11 @@ const GestureHandlerRootView =
 
 export default function RootLayout() {
   return (
-    <GestureHandlerRootView style={styles.container}>
-      <Stack screenOptions={{ headerShown: false }} />
-    </GestureHandlerRootView>
+    <ThemeProvider>
+      <GestureHandlerRootView style={styles.container}>
+        <Stack screenOptions={{ headerShown: false }} />
+      </GestureHandlerRootView>
+    </ThemeProvider>
   );
 }
 
