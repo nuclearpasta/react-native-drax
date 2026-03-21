@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { memo, useRef } from 'react';
+import type { ViewStyle } from 'react-native';
 import { Platform } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import { useSharedValue } from 'react-native-reanimated';
@@ -38,12 +39,14 @@ function useSortableItemStyle(
   itemKey: string | undefined,
   animConfig: ResolvedAnimationConfig,
   reducedMotion: boolean,
+  inactiveItemStyle?: ViewStyle,
 ) {
   return useAnimatedStyle(() => {
     // Guard: viewIdSV starts as '' before DraxView registers. Without the
     // non-empty check, a newly mounted item would match a cleared draggedIdSV ('')
     // and be hidden (opacity 0) until hoverReadySV clears — visible in cross-container transfers.
     const isDragged = hoverReadySV.value && viewIdSV.value !== '' && draggedIdSV.value === viewIdSV.value;
+    const dragActive = draggedIdSV.value !== '';
     const valid = shiftsValidSV.value;
     const shifts = shiftsRef.value;
     const shift = valid && itemKey ? shifts[itemKey] : undefined;
@@ -75,12 +78,16 @@ function useSortableItemStyle(
       translateY = withTiming(toY, timingConfig);
     }
 
+    // Apply inactive style to non-dragged items while a drag is active
+    const isInactive = dragActive && !isDragged;
+
     return {
       opacity: isDragged ? 0 : 1,
       transform: [
         { translateX },
         { translateY },
       ] as const,
+      ...(isInactive && inactiveItemStyle ? inactiveItemStyle : {}),
     };
   });
 }
@@ -102,6 +109,7 @@ const SortableItemInner = ({
     lockToMainAxis,
     longPressDelay,
     animationConfig,
+    inactiveItemStyle,
     shiftsRef,
     instantClearSV,
     shiftsValidSV,
@@ -137,7 +145,7 @@ const SortableItemInner = ({
   const itemStyle = useSortableItemStyle(
     hoverReadySV, draggedIdSV, viewIdSV,
     shiftsValidSV, shiftsRef, instantClearSV, itemKey,
-    resolvedAnimConfig, reducedMotion,
+    resolvedAnimConfig, reducedMotion, inactiveItemStyle,
   );
 
   // Auto-generate accessibility props (can be overridden via draxViewProps)

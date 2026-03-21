@@ -42,6 +42,9 @@ export interface DraxListProps<T> {
   lockToMainAxis?: boolean;
   /** Animation config for item shift animations. @default 'default' */
   animationConfig?: SortableAnimationConfig;
+  /** Style applied to all non-dragged items while a drag is active.
+   *  Use for dimming/scaling inactive items (e.g., `{ opacity: 0.5 }`). */
+  inactiveItemStyle?: ViewStyle;
   /** DraxView props to apply to each item */
   itemDraxViewProps?: Partial<DraxViewProps>;
   /** DraxView props for the container */
@@ -86,6 +89,7 @@ export const DraxList = <T,>({
   longPressDelay,
   lockToMainAxis,
   animationConfig,
+  inactiveItemStyle,
   itemDraxViewProps,
   containerDraxViewProps,
   containerStyle,
@@ -111,6 +115,7 @@ export const DraxList = <T,>({
     longPressDelay,
     lockToMainAxis,
     animationConfig,
+    inactiveItemStyle,
     onDragStart,
     onDragPositionChange,
     onDragEnd,

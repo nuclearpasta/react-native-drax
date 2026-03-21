@@ -66,7 +66,7 @@ const rows: [string, string, string, string][] = [
   ['Haptic feedback',                                  'No',                     'No',             'Yes'],
 
   // Visual & animation
-  ['Drag state styling',                               '15 props',               'onStateChange',  '5 props + hook'],
+  ['Drag state styling',                               '15 props + inactive',    'onStateChange',  '5 props + hook'],
   ['Reorder animation presets',                        '5 presets + custom',      'No',             'No'],
   ['Drop animation',                                   'Custom fn()',             'Custom fn()',    'Duration only'],
   ['Item removal animation',                           'No',                     'Grid only',      'Yes'],

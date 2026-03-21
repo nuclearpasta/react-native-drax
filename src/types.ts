@@ -688,6 +688,9 @@ export interface UseSortableListOptions<T> {
   autoScrollForwardThreshold?: number;
   /** Animation config for item shift animations. @default 'default' */
   animationConfig?: SortableAnimationConfig;
+  /** Style applied to all non-dragged items while a drag is active.
+   *  Use for dimming/scaling inactive items (e.g., `{ opacity: 0.5 }`). */
+  inactiveItemStyle?: ViewStyle;
   /** Callback when drag starts */
   onDragStart?: (event: SortableDragStartEvent<T>) => void;
   /** Callback when drag position (index) changes */
@@ -719,6 +722,7 @@ export interface SortableListInternal<T> {
   longPressDelay: number;
   lockToMainAxis: boolean;
   animationConfig: SortableAnimationConfig;
+  inactiveItemStyle?: ViewStyle;
   draggedItem: SharedValue<number | undefined>;
   itemMeasurements: RefObject<Map<string, SortableItemMeasurement>>;
   originalIndexes: number[];
