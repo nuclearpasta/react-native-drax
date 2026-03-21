@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'react-native-drax',
   tagline: 'Drag-and-drop for React Native. Done right.',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon-32.png',
 
   url: 'https://nuclearpasta.com',
   baseUrl: '/react-native-drax/',
@@ -27,6 +27,52 @@ const config: Config = {
   },
 
   headTags: [
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'robots',
+        content: 'index, follow',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'googlebot',
+        content:
+          'index, follow, max-video-preview:-1, max-image-preview:large, max-snippet:-1',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'author',
+        content: 'Nuclear Pasta',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'theme-color',
+        content: '#0c0c0e',
+        media: '(prefers-color-scheme: dark)',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'theme-color',
+        content: '#f3f3f0',
+        media: '(prefers-color-scheme: light)',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'apple-touch-icon',
+        sizes: '180x180',
+        href: '/react-native-drax/img/apple-touch-icon.png',
+      },
+    },
     {
       tagName: 'link',
       attributes: {
@@ -105,6 +151,10 @@ const config: Config = {
         content:
           'A drag-and-drop framework for React Native with sortable lists, grids, cross-container drag, drag handles, collision algorithms, and more.',
       },
+      { property: 'og:site_name', content: 'react-native-drax' },
+      { property: 'og:type', content: 'website' },
+      { property: 'og:locale', content: 'en_US' },
+      { name: 'twitter:card', content: 'summary_large_image' },
     ],
     navbar: {
       title: 'react-native-drax',
