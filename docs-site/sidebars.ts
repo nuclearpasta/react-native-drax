@@ -1,0 +1,108 @@
+import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
+
+const sidebars: SidebarsConfig = {
+  docs: [
+    'getting-started',
+    'quick-start',
+    'core-concepts',
+    {
+      type: 'category',
+      label: 'Guides',
+      collapsed: false,
+      items: [
+        'guides/drag-and-drop',
+        'guides/sortable-list',
+        'guides/sortable-grid',
+        'guides/composable-api',
+        'guides/drag-handles',
+        'guides/drag-bounds',
+        'guides/collision-algorithms',
+        'guides/drop-zone-acceptance',
+        'guides/hover-styles',
+        'guides/snap-alignment',
+        'guides/animation-presets',
+        'guides/continuous-callbacks',
+        'guides/scrollable-containers',
+        {
+          type: 'doc',
+          id: 'guides/cross-container-drag',
+          label: 'Cross-Container Drag',
+        },
+        'guides/accessibility',
+        'guides/web-support',
+        'guides/namespace-api',
+        'guides/performance',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Examples',
+      items: [
+        'examples/index',
+        'examples/color-drag-drop',
+        'examples/reorderable-list',
+        'examples/reorderable-grid',
+        'examples/drag-handles',
+        'examples/drag-bounds',
+        'examples/collision-modes',
+        'examples/kanban-board',
+        'examples/knight-moves',
+        'examples/scrolling',
+        'examples/stress-test',
+      ],
+    },
+  ],
+  api: [
+    {
+      type: 'category',
+      label: 'Components',
+      collapsed: false,
+      items: [
+        'api/components/drax-provider',
+        'api/components/drax-view',
+        'api/components/drax-list',
+        'api/components/drax-handle',
+        'api/components/drax-scroll-view',
+        'api/components/sortable-container',
+        'api/components/sortable-item',
+        'api/components/sortable-board-container',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Hooks',
+      collapsed: false,
+      items: [
+        'api/hooks/use-sortable-list',
+        'api/hooks/use-sortable-board',
+        'api/hooks/use-drax-context',
+        'api/hooks/use-drax-id',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Utilities',
+      collapsed: false,
+      items: [
+        'api/utilities/snap-to-alignment',
+        'api/utilities/drax-namespace',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Types',
+      collapsed: false,
+      items: [
+        'api/types/index',
+        'api/types/event-data',
+        'api/types/view-state',
+        'api/types/sortable',
+        'api/types/board',
+        'api/types/geometry',
+        'api/types/snap',
+      ],
+    },
+  ],
+};
+
+export default sidebars;

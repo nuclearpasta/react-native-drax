@@ -1,128 +1,121 @@
-import { ForwardedRef, useCallback, useEffect, useRef } from 'react';
-import { FlatList, NativeScrollEvent, NativeSyntheticEvent, ScrollView } from 'react-native';
-import { runOnUI, useAnimatedRef, useSharedValue } from 'react-native-reanimated';
-import { AnimatedComponentType } from 'react-native-reanimated/lib/typescript/createAnimatedComponent';
-import { ExtractElementRef } from 'react-native-reanimated/lib/typescript/hook/commonTypes';
+import type { Ref, RefObject } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { FlatList, ScrollView } from 'react-native';
+import {
+  runOnUI,
+  useSharedValue,
+} from 'react-native-reanimated';
 
-import { INITIAL_REANIMATED_POSITION } from '../params';
-import { DraxListProps, DraxViewMeasurements, Position } from '../types';
+import { defaultAutoScrollIntervalLength } from '../params';
+import type { DraxViewMeasurements, Position } from '../types';
 import { useDraxId } from './useDraxId';
 
-type DraxScrollHandlerArgs<T> = {
-    idProp?: string;
-    onContentSizeChangeProp?: DraxListProps<T>['onContentSizeChange'];
-    onScrollProp: DraxListProps<any>['onScroll'];
-    forwardedRef?: ForwardedRef<any>;
-    doScroll: () => void;
-};
-
+// FlatList is invariant in its type parameter — `any` is the only valid union constraint
 type ScrollableComponents = FlatList<any> | ScrollView;
 
+type DraxScrollHandlerArgs<T extends ScrollableComponents> = {
+  idProp?: string;
+  onContentSizeChangeProp?: (w: number, h: number) => void;
+  onScrollProp?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  externalRef?: Ref<T>;
+  doScroll: RefObject<() => void>;
+};
+
 export const useDraxScrollHandler = <T extends ScrollableComponents>({
-    idProp,
-    onContentSizeChangeProp,
-    onScrollProp,
-    forwardedRef,
-    doScroll,
+  idProp,
+  onContentSizeChangeProp,
+  onScrollProp,
+  externalRef,
+  doScroll,
 }: DraxScrollHandlerArgs<T>) => {
-    // Scrollable view, used for scrolling.
-    const scrollRef = useAnimatedRef<T>();
+  const scrollRef = useRef<T>(null);
+  const id = useDraxId(idProp);
+  const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(
+    undefined
+  );
+  const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(
+    undefined
+  );
+  const contentSizeRef = useRef<Position | undefined>(undefined);
 
-    // The unique identifer for this view.
-    const id = useDraxId(idProp);
-    // Container view measurements, for scrolling by percentage.
-    const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(undefined);
+  const scrollPosition = useSharedValue<Position>({ x: 0, y: 0 });
 
-    // Auto-scrolling interval.
-    const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const onMeasureContainer = (measurements: DraxViewMeasurements | undefined) => {
+    containerMeasurementsRef.current = measurements;
+  };
 
-    // Content size, for scrolling by percentage.
-    const contentSizeRef = useRef<Position | undefined>(undefined);
+  const onContentSizeChange = (width: number, height: number) => {
+    contentSizeRef.current = { x: width, y: height };
+    return onContentSizeChangeProp?.(width, height);
+  };
 
-    const scrollPosition = useSharedValue<Position>(INITIAL_REANIMATED_POSITION.value);
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    onScrollProp?.(event);
 
-    // Track the size of the container view.
-    const onMeasureContainer = useCallback((measurements: DraxViewMeasurements | undefined) => {
-        containerMeasurementsRef.current = measurements;
-    }, []);
+    runOnUI((_scrollPos: typeof scrollPosition, _event: NativeScrollEvent) => {
+      'worklet';
+      _scrollPos.value = {
+        x: _event.contentOffset.x,
+        y: _event.contentOffset.y,
+      };
+    })(scrollPosition, event.nativeEvent);
+  };
 
-    // Track content size.
-    const onContentSizeChange = useCallback(
-        (width: number, height: number) => {
-            contentSizeRef.current = { x: width, y: height };
-            return onContentSizeChangeProp?.(width, height);
-        },
-        [onContentSizeChangeProp]
-    );
-
-    // Update tracked scroll position when list is scrolled.
-    const onScroll = useCallback(
-        (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-            onScrollProp?.(event);
-
-            runOnUI((_event: NativeScrollEvent) => {
-                scrollPosition.value = {
-                    x: _event.contentOffset.x,
-                    y: _event.contentOffset.y,
-                };
-            })(event.nativeEvent);
-        },
-        [onScrollProp]
-    );
-
-    // Set the ScrollView/FlatList refs.
-    const setScrollRefs = useCallback(
-        (ref: ExtractElementRef<T extends AnimatedComponentType<any, infer Instance> ? Instance : T>) => {
-            if (ref) {
-                scrollRef(ref);
-                if (forwardedRef) {
-                    if (typeof forwardedRef === 'function') {
-                        forwardedRef(ref);
-                    } else {
-                        forwardedRef.current = ref;
-                    }
-                }
-            }
-        },
-        [forwardedRef, scrollRef]
-    );
-
-    // Start the auto-scrolling interval.
-    const startScroll = useCallback(() => {
-        if (scrollIntervalRef.current) {
-            return;
+  const setScrollRefs = (instance: T | null) => {
+    if (instance) {
+      scrollRef.current = instance;
+      if (externalRef) {
+        if (typeof externalRef === 'function') {
+          externalRef(instance);
+        } else {
+          externalRef.current = instance;
         }
-        doScroll();
-        scrollIntervalRef.current = setInterval(doScroll, 250);
-    }, [doScroll]);
+      }
+    }
+  };
 
-    // Stop the auto-scrolling interval.
-    const stopScroll = useCallback(() => {
-        if (scrollIntervalRef.current) {
-            clearInterval(scrollIntervalRef.current);
-            scrollIntervalRef.current = undefined;
-        }
-    }, []);
+  const startScroll = useCallback(() => {
+    if (scrollIntervalRef.current) {
+      return;
+    }
+    doScroll.current();
+    scrollIntervalRef.current = setInterval(
+      () => doScroll.current(),
+      defaultAutoScrollIntervalLength
+    );
+  }, [doScroll]);
 
-    // If startScroll changes, refresh our interval.
-    useEffect(() => {
-        if (scrollIntervalRef.current) {
-            stopScroll();
-            startScroll();
-        }
-    }, [stopScroll, startScroll]);
+  const stopScroll = useCallback(() => {
+    if (scrollIntervalRef.current) {
+      clearInterval(scrollIntervalRef.current);
+      scrollIntervalRef.current = undefined;
+    }
+  }, []);
 
-    return {
-        id,
-        containerMeasurementsRef,
-        contentSizeRef,
-        onContentSizeChange,
-        onMeasureContainer,
-        onScroll,
-        scrollRef,
-        scrollPosition,
-        setScrollRefs,
-        startScroll,
-        stopScroll,
-    };
+  useEffect(() => {
+    if (scrollIntervalRef.current) {
+      stopScroll();
+      startScroll();
+    }
+  }, [stopScroll, startScroll]);
+
+  // Clean up interval on unmount
+  useEffect(() => {
+    return () => stopScroll();
+  }, [stopScroll]);
+
+  return {
+    id,
+    containerMeasurementsRef,
+    contentSizeRef,
+    onContentSizeChange,
+    onMeasureContainer,
+    onScroll,
+    scrollRef,
+    scrollPosition,
+    setScrollRefs,
+    startScroll,
+    stopScroll,
+  };
 };

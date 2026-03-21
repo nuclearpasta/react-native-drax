@@ -1,0 +1,197 @@
+---
+title: Callbacks & Monitoring
+description: Master Drax's 19-callback event system — drag lifecycle, receiver events, continuous callbacks, and monitoring.
+keywords: [react-native, drax, callbacks, monitoring, events, lifecycle, drag-drop, continuous]
+sidebar_position: 12
+---
+
+# Callbacks & Monitoring
+
+Drax has **19 callback events** that cover the full drag-and-drop lifecycle. This guide walks through all three roles — dragged, receiver, and monitor — plus the continuous (per-frame) callbacks.
+
+## Dragged View Events
+
+Fired on **the view being dragged**:
+
+| # | Callback | When |
+|---|---|---|
+| 1 | `onDragStart` | The view starts being dragged |
+| 2 | `onDrag` | While dragged over no receiver (every frame) |
+| 3 | `onDragEnter` | Dragged into a receiver |
+| 4 | `onDragOver` | While dragged over a receiver (every frame) |
+| 5 | `onDragExit` | Dragged out of a receiver |
+| 6 | `onDragEnd` | Drag ends outside a receiver (or is cancelled) |
+| 7 | `onDragDrop` | Drag ends successfully over a receiver |
+| 8 | `onSnapEnd` | Snap-back animation completes |
+
+## Receiver View Events
+
+Fired on **the view being dragged over**:
+
+| # | Callback | When |
+|---|---|---|
+| A | `onReceiveDragEnter` | A drag enters this view |
+| B | `onReceiveDragOver` | While a drag is over this view (every frame) |
+| C | `onReceiveDragExit` | A drag exits this view (or is cancelled) |
+| D | `onReceiveDragDrop` | A drag ends successfully over this view |
+| E | `onReceiveSnapEnd` | Snap animation to this view completes |
+
+## Lifecycle Examples
+
+### Example I — Drag, enter, exit
+
+1. A `DraxView` is long-pressed → **`onDragStart (1)`**
+2. Dragged to the right → a series of **`onDrag (2)`** events
+3. Drag crosses into a receiver → **`onDragEnter (3)`** + **`onReceiveDragEnter (A)`**
+4. Continues through the receiver → **`onDragOver (4)`** + **`onReceiveDragOver (B)`** every frame
+5. Drag exits → **`onDragExit (5)`** + **`onReceiveDragExit (C)`**
+6. Released → **`onDragEnd (6)`**
+
+### Example II — Drag and drop
+
+Same flow, but released while over the receiver:
+- **`onDragDrop (7)`** on the dragged view
+- **`onReceiveDragDrop (D)`** on the receiver
+
+### Example III — Cancelled drag
+
+Drag is cancelled by the gesture system (no drop occurs):
+- **`onDragEnd (6)`** with `cancelled: true`
+- **`onReceiveDragExit (C)`** with `cancelled: true`
+
+## Continuous Callbacks
+
+Standard callbacks fire once per transition. Three continuous callbacks fire **every gesture frame** (~60fps):
+
+| Callback | Fires | On View |
+|---|---|---|
+| `onDrag` | Every frame while over empty space | Dragged |
+| `onDragOver` | Every frame while over the same receiver | Dragged |
+| `onReceiveDragOver` | Every frame while something hovers | Receiver |
+
+```tsx
+<DraxView
+  onDrag={(data) => {
+    // Every frame while dragging over empty space
+    console.log('Position:', data.dragAbsolutePosition);
+  }}
+  onDragOver={(data) => {
+    // Every frame while over a receiver
+    console.log('Over:', data.receiver.id);
+  }}
+/>
+
+<DraxView
+  onReceiveDragOver={(data) => {
+    const { receiveOffset } = data.receiver;
+    // Use position for visual feedback, cursor tracking, etc.
+  }}
+/>
+```
+
+:::warning Performance
+These fire every frame. Keep handlers lightweight — avoid state updates. Use `SharedValue` for UI-thread animations driven by continuous position data.
+:::
+
+## Monitoring
+
+For complex use cases, Drax has the concept of a **monitoring view**. A monitor observes drags happening inside it without the dragged view knowing.
+
+### Monitors vs Receivers
+
+| Aspect | Receiver | Monitor |
+|---|---|---|
+| **Dragged view awareness** | Informed via `onDragOver` etc. | Dragged view is **not** informed |
+| **Overlap** | Only the top-most receiver fires | Any number of overlapping monitors fire |
+| **Start/end events** | Not received | `onMonitorDragStart`, `onMonitorDragEnd` |
+| **Use case** | Drop targets | Centralized drag tracking, sortable containers |
+
+### When to Use Monitors
+
+Monitors track drags centrally. This is exactly how Drax's sortable architecture works internally:
+
+- `SortableContainer` is a monitoring `DraxView` — watches all drags to determine reorder positions
+- `SortableBoardContainer` monitors at the board level for cross-container detection
+
+### Monitor Events
+
+| Callback | When |
+|---|---|
+| `onMonitorDragStart` | A drag starts within this view |
+| `onMonitorDragEnter` | A drag enters this view |
+| `onMonitorDragOver` | While a drag is over this view (every frame) |
+| `onMonitorDragExit` | A drag exits this view |
+| `onMonitorDragEnd` | Drag ends (no receiver / cancelled) within this view |
+| `onMonitorDragDrop` | Drop occurs over a receiver within this view |
+
+### Example: Full-Screen Monitor
+
+```tsx
+<DraxView
+  style={{ flex: 1 }}
+  monitoring
+  draggable={false}
+  receptive={false}
+  onMonitorDragStart={({ dragged }) => {
+    console.log(`Drag started: ${dragged.id}`);
+  }}
+  onMonitorDragOver={({ dragged, receiver, monitorOffset }) => {
+    console.log(`At offset: ${monitorOffset.x}, ${monitorOffset.y}`);
+    if (receiver) {
+      console.log(`Over receiver: ${receiver.id}`);
+    }
+  }}
+  onMonitorDragDrop={({ dragged, receiver }) => {
+    console.log(`Dropped ${dragged.id} onto ${receiver.id}`);
+  }}
+>
+  <DraxView payload="item-1" style={styles.draggable}>
+    <Text>Drag me</Text>
+  </DraxView>
+  <DraxView onReceiveDragDrop={handleDrop} style={styles.receiver}>
+    <Text>Drop here</Text>
+  </DraxView>
+</DraxView>
+```
+
+### Monitor Event Data
+
+```tsx
+interface DraxMonitorEventData {
+  dragAbsolutePosition: Position;
+  dragTranslation: Position;
+  dragged: DraxEventDraggedViewData;
+  receiver?: DraxEventReceiverViewData;  // present if over a receiver
+  monitorOffset: Position;               // relative to monitor view
+  monitorOffsetRatio: Position;          // ratio (0-1) within monitor
+}
+```
+
+`monitorOffset` and `monitorOffsetRatio` are useful for:
+- **Auto-scroll** — detect when near edges (`ratio > 0.9`)
+- **Position-based reorder** — determine which slot the drag is over
+- **Custom visual feedback** — animate indicators based on position
+
+## Returning Snap Targets
+
+`onDragEnd`, `onDragDrop`, `onReceiveDragDrop`, `onMonitorDragEnd`, and `onMonitorDragDrop` can return a snap target:
+
+```tsx
+<DraxView
+  onReceiveDragDrop={({ dragged, receiver }) =>
+    snapToAlignment(receiver.measurements, dragged.measurements, 'center')
+  }
+/>
+```
+
+Return values:
+- **`Position`** — snap to that absolute coordinate
+- **`DraxSnapbackTargetPreset.None`** — no snap animation
+- **`DraxSnapbackTargetPreset.Default`** — default snap-back
+- **`undefined`** — default behavior
+
+## Next Steps
+
+- **[Core Concepts](/core-concepts)** — Architecture overview
+- **[API: DraxView](/api/components/drax-view)** — All 19 callbacks documented
+- **[Types: Event Data](/api/types/event-data)** — Event data types

@@ -1,0 +1,47 @@
+---
+title: DraxScrollView
+description: API reference for DraxScrollView — scrollable container with auto-scroll during drag.
+keywords: [react-native, drax, scroll, auto-scroll, api]
+sidebar_position: 5
+---
+
+# DraxScrollView
+
+Scrollable container that tracks scroll position for coordinate transformation and supports auto-scroll during drag operations.
+
+## Import
+
+```tsx
+import { DraxScrollView } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+<DraxProvider>
+  <DraxScrollView style={{ flex: 1 }}>
+    {items.map((item) => (
+      <DraxView key={item.id} payload={item}>
+        <Text>{item.label}</Text>
+      </DraxView>
+    ))}
+  </DraxScrollView>
+</DraxProvider>
+```
+
+## Props
+
+Extends all `ScrollViewProps` plus:
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `id` | `string` | auto-generated | DraxView id |
+| `autoScrollIntervalLength` | `number` | `200` | ms between auto-scroll jumps |
+| `autoScrollJumpRatio` | `number` | `0.2` | Jump distance as fraction of container |
+| `autoScrollBackThreshold` | `number` | `0.1` | Start back-scroll at this ratio |
+| `autoScrollForwardThreshold` | `number` | `0.9` | Start forward-scroll at this ratio |
+
+## Related
+
+- [Scrollable Containers Guide](/guides/scrollable-containers)
+- [DraxView](/api/components/drax-view) — Core view component

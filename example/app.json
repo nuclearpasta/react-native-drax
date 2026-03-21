@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "example",
+    "slug": "example",
+    "version": "1.0.0",
+    "scheme": "drax-example",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "drax.example"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "drax.example"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "static"
+    },
+    "experiments": {
+      "baseUrl": "/react-native-drax/example"
+    },
+    "plugins": ["expo-font", "expo-router"]
+  }
+}

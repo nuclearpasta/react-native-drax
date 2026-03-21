@@ -1,0 +1,73 @@
+---
+title: Scrollable Containers
+description: Use DraxScrollView for auto-scrolling during drag operations.
+keywords: [react-native, scroll, auto-scroll, DraxScrollView, drag]
+sidebar_position: 13
+---
+
+# Scrollable Containers
+
+`DraxScrollView` adds auto-scroll behavior when dragging near the edges of a scrollable area.
+
+## Basic Usage
+
+```tsx
+import { DraxProvider, DraxScrollView, DraxView } from 'react-native-drax';
+
+<DraxProvider>
+  <DraxScrollView style={{ flex: 1 }}>
+    {items.map((item) => (
+      <DraxView key={item.id} payload={item}>
+        <Text>{item.label}</Text>
+      </DraxView>
+    ))}
+  </DraxScrollView>
+</DraxProvider>
+```
+
+When you drag near the top or bottom edge, the scroll view automatically scrolls to reveal more content.
+
+## Auto-Scroll Configuration
+
+Control the auto-scroll behavior:
+
+```tsx
+<DraxScrollView
+  autoScrollIntervalLength={200}     // ms between scroll jumps (default: 200)
+  autoScrollJumpRatio={0.2}          // scroll jump as fraction of container (default: 0.2)
+  autoScrollBackThreshold={0.1}      // start back-scrolling at 10% from top
+  autoScrollForwardThreshold={0.9}   // start forward-scrolling at 90% from bottom
+/>
+```
+
+## With DraxList
+
+`DraxList` and `SortableContainer` handle auto-scroll internally — no `DraxScrollView` needed:
+
+```tsx
+// DraxList handles its own scrolling
+<DraxList
+  data={items}
+  keyExtractor={(item) => item}
+  onReorder={({ data }) => setItems(data)}
+  renderItem={({ item }) => <ItemCard item={item} />}
+/>
+```
+
+You can customize auto-scroll thresholds in `useSortableList`:
+
+```tsx
+const sortable = useSortableList({
+  data: items,
+  keyExtractor: (item) => item.id,
+  onReorder: ({ data }) => setItems(data),
+  autoScrollJumpRatio: 0.15,
+  autoScrollBackThreshold: 0.1,
+  autoScrollForwardThreshold: 0.9,
+});
+```
+
+## Next Steps
+
+- **[Sortable List](/guides/sortable-list)** — Reorderable lists with auto-scroll
+- **[API: DraxScrollView](/api/components/drax-scroll-view)** — Full reference
