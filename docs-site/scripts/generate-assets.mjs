@@ -178,3 +178,38 @@ await sharp(Buffer.from(exampleSocialCardSvg))
   .toFile(join(exampleAssets, 'social-card.png'));
 
 console.log('Generated example social-card.png (1200x630)');
+
+// ── Example app icons (replace Expo defaults) ──
+
+const logoSvg = `
+<svg width="400" height="400" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+  <rect width="40" height="40" rx="8" fill="#cf5f34"/>
+  <path d="M12 14h16v3H12zM12 19h16v3H12zM12 24h16v3H12z" fill="white" opacity="0.9"/>
+  <path d="M28 11l4 4-4 4" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>`;
+
+// icon.png — 1024x1024 (app icon)
+await sharp(Buffer.from(logoSvg))
+  .resize(1024, 1024)
+  .png()
+  .toFile(join(exampleAssets, 'icon.png'));
+
+// adaptive-icon.png — 1024x1024 (Android adaptive foreground)
+await sharp(Buffer.from(logoSvg))
+  .resize(1024, 1024)
+  .png()
+  .toFile(join(exampleAssets, 'adaptive-icon.png'));
+
+// favicon.png — 48x48 (web favicon)
+await sharp(Buffer.from(logoSvg))
+  .resize(48, 48)
+  .png()
+  .toFile(join(exampleAssets, 'favicon.png'));
+
+// splash-icon.png — 200x200 (splash screen logo)
+await sharp(Buffer.from(logoSvg))
+  .resize(200, 200)
+  .png()
+  .toFile(join(exampleAssets, 'splash-icon.png'));
+
+console.log('Generated example app icons (icon, adaptive-icon, favicon, splash-icon)');
