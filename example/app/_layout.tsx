@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { ThemeProvider, useTheme } from '../components/ThemeContext';
@@ -12,18 +11,6 @@ const GestureHandlerRootView =
 
 function ThemedRoot() {
   const { theme } = useTheme();
-
-  // Expo's web reset sets body { overflow: hidden } which blocks the browser's
-  // native pull-to-refresh on mobile. Override overflow-y to 'auto' — the app
-  // content is exactly 100% height so no scrollbar appears, but the body is now
-  // considered "scrollable" by the browser. This lets the overscroll gesture
-  // (pull-to-refresh) trigger when the user swipes down from the top.
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      document.body.style.overflowY = 'auto';
-    }
-  }, []);
-
   return (
     <GestureHandlerRootView
       style={[styles.container, { backgroundColor: theme.bg }]}
