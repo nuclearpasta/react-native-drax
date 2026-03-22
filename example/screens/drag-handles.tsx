@@ -28,6 +28,7 @@ export default function DragHandles() {
     data,
     keyExtractor: (item) => item.id,
     onReorder: ({ data: newData }) => setData(newData),
+    animationConfig: 'spring',
   });
 
   return (
@@ -62,6 +63,10 @@ export default function DragHandles() {
                   styles.item,
                   { backgroundColor: itemColor(item.color, isDark) },
                 ]}
+                hoverDraggingStyle={styles.hoverItem}
+                hoverDragReleasedStyle={styles.hoverItemReleased}
+                snapDelay={0}
+                snapDuration={200}
                 dragHandle
               >
                 <DraxHandle style={styles.handle}>
@@ -110,5 +115,17 @@ const styles = StyleSheet.create({
   },
   dragging: {
     opacity: 0,
+  },
+  hoverItem: {
+    transform: [{ scale: 1.03 }],
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  hoverItemReleased: {
+    opacity: 0.6,
+    transform: [{ scale: 0.97 }],
+    shadowOpacity: 0.05,
   },
 });

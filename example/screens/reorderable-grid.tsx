@@ -41,6 +41,7 @@ export default function ReorderableGrid() {
     data,
     numColumns: NUM_COLUMNS,
     keyExtractor: (item) => item.id,
+    animationConfig: 'spring',
     onReorder: ({ data: newData, fromIndex, fromItem, toIndex, toItem }) => {
       console.log(
         `Tile dragged from index ${fromIndex} (${fromItem.label}) to index ${toIndex} (${toItem.label})`
@@ -119,6 +120,10 @@ export default function ReorderableGrid() {
                     backgroundColor: itemColor(item.color, isDark),
                   },
                 ]}
+                hoverDraggingStyle={styles.hoverTile}
+                hoverDragReleasedStyle={styles.hoverTileReleased}
+                snapDelay={0}
+                snapDuration={180}
               >
                 <Text style={[styles.tileText, { color: isDark ? '#e0e0e0' : '#333' }]}>{item.label}</Text>
               </SortableItem>
@@ -153,5 +158,17 @@ const styles = StyleSheet.create({
   tileText: {
     fontSize: 24,
     fontWeight: 'bold',
+  },
+  hoverTile: {
+    transform: [{ scale: 1.08 }, { rotate: '-2deg' }],
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  hoverTileReleased: {
+    opacity: 0.6,
+    transform: [{ scale: 0.95 }],
+    shadowOpacity: 0.05,
   },
 });

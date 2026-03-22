@@ -57,7 +57,7 @@ const getItemStyleTweaks = (alphaItem: string) => {
 export default function ReorderableList() {
   const [alphaData, setAlphaData] = useState(alphabet);
   const [animPreset, setAnimPreset] =
-    useState<SortableAnimationPreset>('default');
+    useState<SortableAnimationPreset>('spring');
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
 
@@ -105,6 +105,20 @@ export default function ReorderableList() {
           keyExtractor={(item) => item}
           animationConfig={animPreset}
           inactiveItemStyle={{ opacity: 0.5 }}
+          hoverDraggingStyle={{
+            shadowColor: '#000',
+            shadowOpacity: 0.25,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 10 },
+            transform: [{ scale: 1.03 }],
+          }}
+          hoverDragReleasedStyle={{
+            opacity: 0.6,
+            transform: [{ scale: 0.97 }],
+            shadowOpacity: 0.08,
+          }}
+          snapDelay={0}
+          snapDuration={200}
           containerStyle={styles.container}
           style={styles.list}
           containerDraxViewProps={{

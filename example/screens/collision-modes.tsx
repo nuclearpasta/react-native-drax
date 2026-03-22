@@ -15,6 +15,9 @@ function DraggableBlock() {
       style={styles.draggable}
       draggingStyle={styles.dragging}
       hoverDraggingStyle={styles.hoverDragging}
+      hoverDraggingWithReceiverStyle={styles.hoverOverZone}
+      hoverDragReleasedStyle={styles.hoverReleased}
+      snapDuration={250}
       dragPayload="block"
     >
       <Text style={styles.draggableText}>Drag me</Text>
@@ -140,10 +143,23 @@ const styles = StyleSheet.create({
     opacity: 0.3,
   },
   hoverDragging: {
+    transform: [{ scale: 1.06 }],
     shadowColor: '#000',
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  hoverOverZone: {
+    transform: [{ scale: 1.1 }],
+    shadowColor: '#22c55e',
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  hoverReleased: {
+    opacity: 0.5,
+    transform: [{ scale: 0.95 }],
+    shadowOpacity: 0.05,
   },
   zonesRow: {
     flexDirection: 'row',

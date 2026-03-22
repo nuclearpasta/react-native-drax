@@ -29,6 +29,10 @@ export default function Scrolling() {
             dragPayload={1}
             longPressDelay={200}
             scrollHorizontal
+            hoverDraggingStyle={styles.hoverItem}
+            hoverDraggingWithReceiverStyle={styles.hoverItemOverBucket}
+            hoverDragReleasedStyle={styles.hoverItemReleased}
+            snapDuration={200}
             onDragStart={() => console.log('[scrolling:item1] dragStart')}
             onDragEnd={() => console.log('[scrolling:item1] dragEnd')}
           >
@@ -43,6 +47,10 @@ export default function Scrolling() {
             dragPayload={2}
             longPressDelay={200}
             scrollHorizontal
+            hoverDraggingStyle={styles.hoverItem}
+            hoverDraggingWithReceiverStyle={styles.hoverItemOverBucket}
+            hoverDragReleasedStyle={styles.hoverItemReleased}
+            snapDuration={200}
             onDragStart={() => console.log('[scrolling:item2] dragStart')}
             onDragEnd={() => console.log('[scrolling:item2] dragEnd')}
           >
@@ -57,6 +65,10 @@ export default function Scrolling() {
             dragPayload={3}
             longPressDelay={200}
             scrollHorizontal
+            hoverDraggingStyle={styles.hoverItem}
+            hoverDraggingWithReceiverStyle={styles.hoverItemOverBucket}
+            hoverDragReleasedStyle={styles.hoverItemReleased}
+            snapDuration={200}
             onDragStart={() => console.log('[scrolling:item3] dragStart')}
             onDragEnd={() => console.log('[scrolling:item3] dragEnd')}
           >
@@ -71,6 +83,10 @@ export default function Scrolling() {
             dragPayload={4}
             longPressDelay={200}
             scrollHorizontal
+            hoverDraggingStyle={styles.hoverItem}
+            hoverDraggingWithReceiverStyle={styles.hoverItemOverBucket}
+            hoverDragReleasedStyle={styles.hoverItemReleased}
+            snapDuration={200}
             onDragStart={() => console.log('[scrolling:item4] dragStart')}
             onDragEnd={() => console.log('[scrolling:item4] dragEnd')}
           >
@@ -178,7 +194,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bucketReceiving: {
-    backgroundColor: 'rgba(34,197,94,0.2)',
+    backgroundColor: 'rgba(34,197,94,0.15)',
     borderColor: '#22c55e',
+    shadowColor: '#22c55e',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  hoverItem: {
+    transform: [{ scale: 1.06 }],
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  hoverItemOverBucket: {
+    transform: [{ scale: 1.1 }],
+    shadowColor: '#22c55e',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  hoverItemReleased: {
+    opacity: 0.4,
+    transform: [{ scale: 0.9 }],
+    shadowOpacity: 0.05,
   },
 });

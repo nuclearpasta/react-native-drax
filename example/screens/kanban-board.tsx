@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useRef, useState } from 'react';
 import { StyleSheet, View, Text, FlatList, useWindowDimensions } from 'react-native';
 import type { ListRenderItemInfo } from 'react-native';
@@ -9,6 +10,7 @@ import {
   useSortableBoard,
   useSortableList,
 } from 'react-native-drax';
+import type { DropIndicatorProps } from 'react-native-drax';
 import Reanimated from 'react-native-reanimated';
 import { useTheme, itemColor } from '../components/ThemeContext';
 import { ExampleLinks } from '../components/ExampleLinks';
@@ -58,6 +60,14 @@ function KanbanCard({ card, width }: { card: Card; width: number }) {
   );
 }
 
+function DropIndicator({ horizontal }: DropIndicatorProps): ReactNode {
+  return (
+    <View
+      style={horizontal ? styles.dropIndicatorH : styles.dropIndicatorV}
+    />
+  );
+}
+
 // ── Horizontal Backlog Column ─────────────────────────────────────────
 
 function BacklogColumn({
@@ -82,6 +92,7 @@ function BacklogColumn({
     onReorder: ({ data }) => onReorder(data),
     horizontal: true,
     longPressDelay: 150,
+    animationConfig: 'snappy',
   });
 
   return (
@@ -94,6 +105,7 @@ function BacklogColumn({
         sortable={sortable}
         scrollRef={listRef}
         style={styles.backlogContent}
+        renderDropIndicator={DropIndicator}
         draxViewProps={{
           testID: 'kanban-column-backlog',
         }}
@@ -116,7 +128,11 @@ function BacklogColumn({
               sortable={sortable}
               index={info.index}
               testID={`kanban-card-${info.item.id}`}
+              hoverStyle={styles.hoverCardBase}
               hoverDraggingStyle={styles.hoverCard}
+              hoverDragReleasedStyle={styles.hoverCardReleased}
+              snapDelay={0}
+              snapDuration={200}
             >
               <KanbanCard card={info.item} width={cardWidth} />
             </SortableItem>
@@ -151,6 +167,7 @@ function VerticalColumn({
     keyExtractor: cardKeyExtractor,
     onReorder: ({ data }) => onReorder(data),
     longPressDelay: 150,
+    animationConfig: 'snappy',
   });
 
   return (
@@ -161,6 +178,7 @@ function VerticalColumn({
         sortable={sortable}
         scrollRef={listRef}
         style={styles.columnContent}
+        renderDropIndicator={DropIndicator}
         draxViewProps={{
           testID: `kanban-column-${columnId}`,
         }}
@@ -181,7 +199,11 @@ function VerticalColumn({
               sortable={sortable}
               index={info.index}
               testID={`kanban-card-${info.item.id}`}
+              hoverStyle={styles.hoverCardBase}
               hoverDraggingStyle={styles.hoverCard}
+              hoverDragReleasedStyle={styles.hoverCardReleased}
+              snapDelay={0}
+              snapDuration={200}
             >
               <KanbanCard card={info.item} width={cardWidth} />
             </SortableItem>
@@ -336,14 +358,41 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 1,
   },
-  hoverCard: {
-    shadowOpacity: 0.25,
+  hoverCardBase: {
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    transform: [{ rotate: '-3deg' }, { scale: 1.05 }],
+    shadowOffset: { width: 0, height: 4 },
+  },
+  hoverCard: {
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    transform: [{ rotate: '-2deg' }, { scale: 1.06 }],
+  },
+  hoverCardReleased: {
+    opacity: 0.7,
+    transform: [{ scale: 0.98 }],
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   cardTitle: {
     fontSize: 13,
     fontWeight: '500',
     color: '#1e293b', // card text stays dark since cards have light pastel backgrounds
+  },
+  dropIndicatorV: {
+    width: '80%',
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#3b82f6',
+    alignSelf: 'center',
+  },
+  dropIndicatorH: {
+    width: 3,
+    height: '80%',
+    borderRadius: 1.5,
+    backgroundColor: '#3b82f6',
+    alignSelf: 'center',
   },
 });
