@@ -12,6 +12,8 @@
     "@expo/log-box": "~55.0.7",
     "@expo/metro-runtime": "~55.0.6",
     "@expo/vector-icons": "^15.1.1",
+    "@legendapp/list": "^2.0.19",
+    "@shopify/flash-list": "^2.3.0",
     "expo": "~55.0.7",
     "expo-constants": "~55.0.8",
     "expo-font": "~55.0.4",

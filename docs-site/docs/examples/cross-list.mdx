@@ -1,0 +1,41 @@
+---
+title: "Example: Cross-List Reorder"
+description: Cross-container drag between FlashList, LegendList, and FlatList using useSortableBoard.
+keywords: [react-native, drax, example, cross-list, board, cross-container, flashlist, legendlist, flatlist]
+sidebar_position: 8
+---
+
+# Cross-List Reorder <span className="badge--experimental">Experimental</span>
+
+Demonstrates cross-container drag — moving items between **FlashList**, **LegendList**, and **FlatList** columns. This showcases Drax's list-agnostic API: the same `useSortableList` + `SortableContainer` + `SortableItem` composable pattern works with any list component.
+
+## Key Concepts
+
+- **`useSortableBoard`** — board-level coordinator
+- **`SortableBoardContainer`** — monitoring wrapper for the board
+- **List agnostic** — each column uses a different list component (FlashList, LegendList, FlatList)
+- **Phantom slots** — target column reserves space for incoming item
+- **Smooth transfers** — hover covers the transition between columns
+
+## Features Shown
+
+| Feature | How |
+|---|---|
+| `useSortableBoard` | Board-level coordinator with `onTransfer` |
+| `SortableBoardContainer` | Wraps all columns, detects cross-boundary drags |
+| Per-column `useSortableList` | Each column manages its own reorder state |
+| Cross-container transfer | Items move between columns on drop |
+| FlashList integration | Horizontal column powered by `@shopify/flash-list` |
+| LegendList integration | Vertical column powered by `@legendapp/list` |
+| FlatList integration | Vertical column using React Native's built-in FlatList |
+| Drop indicators | Blue accent line shows insertion point |
+
+## Source Code
+
+[▶️ Live demo](https://nuclearpasta.com/react-native-drax/example/cross-list) · [💻 Source](https://github.com/nuclearpasta/react-native-drax/blob/main/example/screens/cross-list.tsx)
+
+## Related
+
+- [Cross-Container Drag Guide](/guides/cross-container-drag) — Full tutorial
+- [API: useSortableBoard](/api/hooks/use-sortable-board) — Hook reference
+- [API: SortableBoardContainer](/api/components/sortable-board-container) — Container reference

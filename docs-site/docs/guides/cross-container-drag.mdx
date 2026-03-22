@@ -1,7 +1,7 @@
 ---
 title: Cross-Container Drag
-description: Move items between sortable lists for kanban boards and multi-column layouts.
-keywords: [react-native, cross-container, kanban, board, transfer, sortable]
+description: Move items between sortable lists for multi-column layouts and cross-list reorder.
+keywords: [react-native, cross-container, cross-list, board, transfer, sortable]
 sidebar_position: 14
 ---
 
@@ -13,7 +13,7 @@ import Admonition from '@theme/Admonition';
 Cross-container drag is experimental. The API may change in future versions.
 </Admonition>
 
-Move items between sortable lists — perfect for kanban boards, multi-column layouts, and categorization interfaces.
+Move items between sortable lists — perfect for multi-column layouts, cross-list reorder, and categorization interfaces.
 
 ## Architecture
 
@@ -39,7 +39,7 @@ import {
   SortableItem,
 } from 'react-native-drax';
 
-function KanbanBoard() {
+function CrossListBoard() {
   const [columns, setColumns] = useState(initialColumns);
 
   const board = useSortableBoard({
@@ -137,4 +137,4 @@ onTransfer: ({ item, fromContainerId, fromIndex, toContainerId, toIndex }) => {
 - **[Composable API](/guides/composable-api)** — Understanding the primitives
 - **[API: useSortableBoard](/api/hooks/use-sortable-board)** — Full hook reference
 - **[API: SortableBoardContainer](/api/components/sortable-board-container)** — Container reference
-- **[Example: Kanban Board](/examples/kanban-board)** — Full working example
+- **[Example: Cross-List Reorder](/examples/cross-list)** — Full working example

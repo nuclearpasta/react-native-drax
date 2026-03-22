@@ -3,7 +3,7 @@ import type { PropsWithChildren } from 'react';
 
 const TITLE = 'react-native-drax — Live Demo';
 const DESCRIPTION =
-  'Interactive drag-and-drop examples running in your browser — sortable lists, grids, kanban boards, and more.';
+  'Interactive drag-and-drop examples running in your browser — sortable lists, grids, cross-list reorder, and more.';
 const URL = 'https://nuclearpasta.com/react-native-drax/example/';
 const IMAGE = 'https://nuclearpasta.com/react-native-drax/example/social-card.png';
 

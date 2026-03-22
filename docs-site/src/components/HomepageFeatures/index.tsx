@@ -14,7 +14,7 @@ const features: Feature[] = [
   {
     title: 'Cross-Container Drag',
     description:
-      'Move items between lists for kanban boards. Phantom slots, auto-scroll, and smooth transfers.',
+      'Move items between lists — works with FlashList, LegendList, FlatList. Phantom slots, auto-scroll, and smooth transfers.',
   },
   {
     title: 'UI-Thread Performance',
