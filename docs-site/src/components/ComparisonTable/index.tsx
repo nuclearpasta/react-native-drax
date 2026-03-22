@@ -61,7 +61,7 @@ const rows: [string, string, string, string][] = [
   ['Sortable grid',                                    'Yes',                    'Yes',            'Yes'],
   ['Sortable flex layout',                             'No',                     'No',             'Yes'],
   ['Horizontal sorting',                               'Yes',                    'Yes',            'Yes'],
-  ['Cross-container / cross-list (kanban)',             'Experimental',           'No',             'No'],
+  ['Cross-container / cross-list reorder',              'Experimental',           'No',             'No'],
   ['List-agnostic (FlatList, FlashList, LegendList)',   'Yes',                    'No',             'No'],
 
   // Gesture & interaction

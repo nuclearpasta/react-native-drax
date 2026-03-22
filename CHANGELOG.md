@@ -24,7 +24,7 @@ Complete rewrite of the library. This is a major release with breaking changes f
 
 - **List-agnostic sortable API**: `useSortableList` hook + `SortableContainer` + `SortableItem` composable primitives — works with FlatList, FlashList, LegendList, or any list component
 - **`DraxList`** convenience wrapper: list-agnostic sortable list with `component` prop to swap list implementations
-- **Cross-container sortable** (experimental): `useSortableBoard` + `SortableBoardContainer` for kanban board patterns
+- **Cross-container sortable** (experimental): `useSortableBoard` + `SortableBoardContainer` for cross-list reorder patterns
 - **Drag handles**: `DraxHandle` component + `dragHandle` prop — only the handle area starts a drag
 - **Drag bounds**: `dragBoundsRef` prop constrains drags within a boundary view
 - **Collision algorithms**: `collisionAlgorithm` prop — `'center'` (default), `'intersect'`, `'contain'`

@@ -1,6 +1,11 @@
+import type { ReactNode, RefObject } from 'react';
 import { useRef, useState } from 'react';
 import { StyleSheet, View, Text, FlatList, useWindowDimensions } from 'react-native';
 import type { ListRenderItemInfo } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import type { FlashListRef } from '@shopify/flash-list';
+import { LegendList } from '@legendapp/list';
+import type { LegendListRef } from '@legendapp/list';
 import {
   DraxProvider,
   SortableBoardContainer,
@@ -9,6 +14,7 @@ import {
   useSortableBoard,
   useSortableList,
 } from 'react-native-drax';
+import type { DropIndicatorProps } from 'react-native-drax';
 import Reanimated from 'react-native-reanimated';
 import { useTheme, itemColor } from '../components/ThemeContext';
 import { ExampleLinks } from '../components/ExampleLinks';
@@ -19,37 +25,37 @@ interface Card {
   color: string;
 }
 
-type ColumnId = 'backlog' | 'todo' | 'done';
+type ColumnId = 'flashlist' | 'legendlist' | 'flatlist';
 
 function isColumnId(id: string): id is ColumnId {
-  return id === 'backlog' || id === 'todo' || id === 'done';
+  return id === 'flashlist' || id === 'legendlist' || id === 'flatlist';
 }
 
 interface Columns {
-  backlog: Card[];
-  todo: Card[];
-  done: Card[];
+  flashlist: Card[];
+  legendlist: Card[];
+  flatlist: Card[];
 }
 
 const INITIAL_COLUMNS: Columns = {
-  backlog: [
+  flashlist: [
     { id: '1', title: 'Design mockups', color: '#fecaca' },
     { id: '2', title: 'Write tests', color: '#fed7aa' },
     { id: '3', title: 'API integration', color: '#fef08a' },
     { id: '4', title: 'Fix login bug', color: '#bbf7d0' },
   ],
-  todo: [
+  legendlist: [
     { id: '5', title: 'User auth flow', color: '#bfdbfe' },
     { id: '6', title: 'Dashboard UI', color: '#c7d2fe' },
   ],
-  done: [
+  flatlist: [
     { id: '7', title: 'Setup project', color: '#d9f99d' },
   ],
 };
 
 const cardKeyExtractor = (card: Card) => card.id;
 
-function KanbanCard({ card, width }: { card: Card; width: number }) {
+function CardItem({ card, width }: { card: Card; width: number }) {
   const { isDark } = useTheme();
   return (
     <View style={[styles.card, { backgroundColor: itemColor(card.color, isDark), width }]}>
@@ -58,9 +64,29 @@ function KanbanCard({ card, width }: { card: Card; width: number }) {
   );
 }
 
-// ── Horizontal Backlog Column ─────────────────────────────────────────
+function DropIndicator({ horizontal }: DropIndicatorProps): ReactNode {
+  return (
+    <View
+      style={horizontal ? styles.dropIndicatorH : styles.dropIndicatorV}
+    />
+  );
+}
 
-function BacklogColumn({
+// Shared hover/snap props — defined as a function to avoid referencing
+// `styles` before its declaration (StyleSheet.create is at bottom of file).
+function sortableItemProps() {
+  return {
+    hoverStyle: styles.hoverCardBase,
+    hoverDraggingStyle: styles.hoverCard,
+    hoverDragReleasedStyle: styles.hoverCardReleased,
+    snapDelay: 0 as const,
+    snapDuration: 200 as const,
+  };
+}
+
+// ── FlashList Column (horizontal) ────────────────────────────────────
+
+function FlashListColumn({
   cards,
   onReorder,
   cardWidth,
@@ -69,36 +95,35 @@ function BacklogColumn({
   onReorder: (data: Card[]) => void;
   cardWidth: number;
 }) {
-  // Typed as FlatList (not Reanimated.FlatList) — Reanimated's generic types
-  // are incompatible with React's RefObject. The ref is only used for
-  // scrollToOffset/flashScrollIndicators which both types share.
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<FlashListRef<Card>>(null);
   const { theme } = useTheme();
 
   const sortable = useSortableList({
-    id: 'backlog',
+    id: 'flashlist',
     data: cards,
     keyExtractor: cardKeyExtractor,
     onReorder: ({ data }) => onReorder(data),
     horizontal: true,
     longPressDelay: 150,
+    animationConfig: 'snappy',
   });
 
   return (
-    <View style={[styles.backlogSection, { backgroundColor: theme.surface, borderColor: theme.lineStrong }]}>
-      <View style={styles.backlogHeader}>
-        <Text style={[styles.columnHeader, { color: theme.text }]}>Backlog</Text>
+    <View style={[styles.flashlistSection, { backgroundColor: theme.surface, borderColor: theme.lineStrong }]}>
+      <View style={styles.flashlistHeader}>
+        <Text style={[styles.columnHeader, { color: theme.text }]}>FlashList</Text>
         <Text style={[styles.columnCount, { color: theme.muted }]}>{cards.length}</Text>
       </View>
       <SortableContainer
         sortable={sortable}
         scrollRef={listRef}
-        style={styles.backlogContent}
+        style={styles.flashlistContent}
+        renderDropIndicator={DropIndicator}
         draxViewProps={{
-          testID: 'kanban-column-backlog',
+          testID: 'cross-list-column-flashlist',
         }}
       >
-        <Reanimated.FlatList
+        <FlashList
           ref={listRef}
           data={sortable.data}
           keyExtractor={sortable.stableKeyExtractor}
@@ -106,19 +131,15 @@ function BacklogColumn({
           onContentSizeChange={sortable.onContentSizeChange}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.backlogListContent}
-          initialNumToRender={cards.length}
-          windowSize={100}
-          maxToRenderPerBatch={cards.length}
-          removeClippedSubviews={false}
-          renderItem={(info: ListRenderItemInfo<Card>) => (
+          renderItem={({ item, index }: { item: Card; index: number }) => (
             <SortableItem
               sortable={sortable}
-              index={info.index}
-              testID={`kanban-card-${info.item.id}`}
-              hoverDraggingStyle={styles.hoverCard}
+              index={index}
+              testID={`cross-list-card-${item.id}`}
+              style={styles.flashlistItem}
+              {...sortableItemProps()}
             >
-              <KanbanCard card={info.item} width={cardWidth} />
+              <CardItem card={item} width={cardWidth} />
             </SortableItem>
           )}
         />
@@ -127,17 +148,75 @@ function BacklogColumn({
   );
 }
 
-// ── Vertical Column ───────────────────────────────────────────────────
+// ── LegendList Column (vertical) ─────────────────────────────────────
 
-function VerticalColumn({
-  columnId,
-  label,
+function LegendListColumn({
   cards,
   onReorder,
   cardWidth,
 }: {
-  columnId: ColumnId;
-  label: string;
+  cards: Card[];
+  onReorder: (data: Card[]) => void;
+  cardWidth: number;
+}) {
+  // LegendListRef has scrollToOffset + getScrollableNode which is all
+  // SortableContainer needs. The generic ref type is wider, so cast.
+  const listRef = useRef<LegendListRef>(null) as RefObject<any>;
+  const { theme } = useTheme();
+
+  const sortable = useSortableList({
+    id: 'legendlist',
+    data: cards,
+    keyExtractor: cardKeyExtractor,
+    onReorder: ({ data }) => onReorder(data),
+    longPressDelay: 150,
+    animationConfig: 'snappy',
+  });
+
+  return (
+    <View style={[styles.column, { backgroundColor: theme.surface, borderColor: theme.lineStrong }]}>
+      <Text style={[styles.columnHeader, { color: theme.text }]}>LegendList</Text>
+      <Text style={[styles.columnCount, { color: theme.muted }]}>{cards.length}</Text>
+      <SortableContainer
+        sortable={sortable}
+        scrollRef={listRef}
+        style={styles.columnContent}
+        renderDropIndicator={DropIndicator}
+        draxViewProps={{
+          testID: 'cross-list-column-legendlist',
+        }}
+      >
+        <LegendList
+          ref={listRef}
+          data={sortable.data}
+          keyExtractor={sortable.stableKeyExtractor}
+          onScroll={sortable.onScroll}
+          onContentSizeChange={sortable.onContentSizeChange}
+          showsVerticalScrollIndicator={false}
+          estimatedItemSize={52}
+          renderItem={({ item, index }: { item: Card; index: number }) => (
+            <SortableItem
+              sortable={sortable}
+              index={index}
+              testID={`cross-list-card-${item.id}`}
+              {...sortableItemProps()}
+            >
+              <CardItem card={item} width={cardWidth} />
+            </SortableItem>
+          )}
+        />
+      </SortableContainer>
+    </View>
+  );
+}
+
+// ── FlatList Column (vertical) ───────────────────────────────────────
+
+function FlatListColumn({
+  cards,
+  onReorder,
+  cardWidth,
+}: {
   cards: Card[];
   onReorder: (data: Card[]) => void;
   cardWidth: number;
@@ -146,23 +225,25 @@ function VerticalColumn({
   const { theme } = useTheme();
 
   const sortable = useSortableList({
-    id: columnId,
+    id: 'flatlist',
     data: cards,
     keyExtractor: cardKeyExtractor,
     onReorder: ({ data }) => onReorder(data),
     longPressDelay: 150,
+    animationConfig: 'snappy',
   });
 
   return (
     <View style={[styles.column, { backgroundColor: theme.surface, borderColor: theme.lineStrong }]}>
-      <Text style={[styles.columnHeader, { color: theme.text }]}>{label}</Text>
+      <Text style={[styles.columnHeader, { color: theme.text }]}>FlatList</Text>
       <Text style={[styles.columnCount, { color: theme.muted }]}>{cards.length}</Text>
       <SortableContainer
         sortable={sortable}
         scrollRef={listRef}
         style={styles.columnContent}
+        renderDropIndicator={DropIndicator}
         draxViewProps={{
-          testID: `kanban-column-${columnId}`,
+          testID: 'cross-list-column-flatlist',
         }}
       >
         <Reanimated.FlatList
@@ -180,10 +261,10 @@ function VerticalColumn({
             <SortableItem
               sortable={sortable}
               index={info.index}
-              testID={`kanban-card-${info.item.id}`}
-              hoverDraggingStyle={styles.hoverCard}
+              testID={`cross-list-card-${info.item.id}`}
+              {...sortableItemProps()}
             >
-              <KanbanCard card={info.item} width={cardWidth} />
+              <CardItem card={info.item} width={cardWidth} />
             </SortableItem>
           )}
         />
@@ -194,13 +275,12 @@ function VerticalColumn({
 
 // ── Board ─────────────────────────────────────────────────────────────
 
-export default function KanbanBoard() {
+export default function CrossListReorder() {
   const [columns, setColumns] = useState(INITIAL_COLUMNS);
   const { width: screenWidth } = useWindowDimensions();
   const { theme } = useTheme();
 
   // Consistent card width across all columns — prevents size jump on transfer.
-  // Matches the vertical column's inner width: (screen - board padding - column gap) / 2 - column padding.
   const cardWidth = (screenWidth - 16 - 8) / 2 - 16;
 
   const board = useSortableBoard<Card>({
@@ -223,40 +303,36 @@ export default function KanbanBoard() {
   return (
     <DraxProvider>
       <View
-        testID="kanban-board-screen"
+        testID="cross-list-screen"
         style={[styles.container, { backgroundColor: theme.bg }]}
       >
         <View style={styles.header}>
           <Text style={[styles.headerText, { color: theme.muted }]}>
-            Drag cards within and between columns. Backlog scrolls horizontally.
+            Cross-list drag between FlashList, LegendList, and FlatList.
           </Text>
         </View>
-        <ExampleLinks slug="kanban-board" />
+        <ExampleLinks slug="cross-list" />
         <SortableBoardContainer board={board} style={styles.board}>
-          <BacklogColumn
-            cards={columns.backlog}
+          <FlashListColumn
+            cards={columns.flashlist}
             cardWidth={cardWidth}
             onReorder={(data) =>
-              setColumns((prev) => ({ ...prev, backlog: data }))
+              setColumns((prev) => ({ ...prev, flashlist: data }))
             }
           />
           <View style={styles.verticalColumns}>
-            <VerticalColumn
-              columnId="todo"
-              label="To Do"
-              cards={columns.todo}
+            <LegendListColumn
+              cards={columns.legendlist}
               cardWidth={cardWidth}
               onReorder={(data) =>
-                setColumns((prev) => ({ ...prev, todo: data }))
+                setColumns((prev) => ({ ...prev, legendlist: data }))
               }
             />
-            <VerticalColumn
-              columnId="done"
-              label="Done"
-              cards={columns.done}
+            <FlatListColumn
+              cards={columns.flatlist}
               cardWidth={cardWidth}
               onReorder={(data) =>
-                setColumns((prev) => ({ ...prev, done: data }))
+                setColumns((prev) => ({ ...prev, flatlist: data }))
               }
             />
           </View>
@@ -283,24 +359,24 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 8,
   },
-  backlogSection: {
+  flashlistSection: {
     borderRadius: 12,
     borderWidth: 1,
     padding: 8,
     marginBottom: 8,
   },
-  backlogHeader: {
+  flashlistHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
     marginBottom: 6,
   },
-  backlogContent: {
+  flashlistContent: {
     minHeight: 60,
   },
-  backlogListContent: {
-    gap: 6,
+  flashlistItem: {
+    marginRight: 6,
   },
   verticalColumns: {
     flex: 1,
@@ -336,14 +412,41 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 1,
   },
-  hoverCard: {
-    shadowOpacity: 0.25,
+  hoverCardBase: {
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
     shadowRadius: 8,
-    transform: [{ rotate: '-3deg' }, { scale: 1.05 }],
+    shadowOffset: { width: 0, height: 4 },
+  },
+  hoverCard: {
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    transform: [{ rotate: '-2deg' }, { scale: 1.06 }],
+  },
+  hoverCardReleased: {
+    opacity: 0.7,
+    transform: [{ scale: 0.98 }],
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   cardTitle: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#1e293b', // card text stays dark since cards have light pastel backgrounds
+    color: '#1e293b',
+  },
+  dropIndicatorV: {
+    width: '80%',
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#3b82f6',
+    alignSelf: 'center',
+  },
+  dropIndicatorH: {
+    width: 3,
+    height: '80%',
+    borderRadius: 1.5,
+    backgroundColor: '#3b82f6',
+    alignSelf: 'center',
   },
 });

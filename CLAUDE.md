@@ -143,7 +143,7 @@ We compete with two libraries. Drax must match or exceed their DX while keeping 
 - Drop acceptance: capacity + dropDisabled only (no data-based acceptsDrag callback)
 - Item removal animation: grid only (isBeingRemoved on SortableGridItem)
 - ~12 callback types, onDragging fires every frame (throttled 50ms on sortables), no receiver-side continuous callbacks
-- Drax advantages: cross-container (kanban), monitoring views, UI-thread DnD collision, list-agnostic API, 5 named presets + custom fn(), built-in accessibility + reduced motion, 15 drag state style props, callback-based drop acceptance, 4 continuous drag callback types, 19-callback event system, web support, drop indicators, snap alignment with custom coordinates + snapAnimator
+- Drax advantages: cross-container (cross-list reorder), monitoring views, UI-thread DnD collision, list-agnostic API, 5 named presets + custom fn(), built-in accessibility + reduced motion, 15 drag state style props, callback-based drop acceptance, 4 continuous drag callback types, 19-callback event system, web support, drop indicators, snap alignment with custom coordinates + snapAnimator
 - Drax missing: item removal animation, DropProvider global callbacks + imperative methods
 
 ## Example App
@@ -175,7 +175,7 @@ All interactive elements have `testID` for identification via `ui_describe_all` 
 | Drag Handles | `handle-item-{id}`, `drag-handles-container` | `handle-item-item-0` |
 | Drag Bounds | `bounded-draggable`, `free-draggable`, `drag-bounds-area` | |
 | Collision Modes | `zone-center`, `zone-intersect`, `zone-contain`, `collision-draggable` | |
-| Kanban Board | `kanban-column-{id}`, `kanban-card-{id}` | `kanban-column-todo`, `kanban-card-1` |
+| Cross-List Reorder | `cross-list-column-{id}`, `cross-list-card-{id}` | `cross-list-column-legendlist`, `cross-list-card-1` |
 | Knight Moves | `chess-square-{notation}`, `chess-knight`, `chess-board` | `chess-square-e4`, `chess-knight` |
 | Scrolling | `scroll-item-{n}`, `sum-bucket` | `scroll-item-1`, `sum-bucket` |
 | Stress Test | `stress-item-{id}`, `stress-test-container` | `stress-item-stress-0` |

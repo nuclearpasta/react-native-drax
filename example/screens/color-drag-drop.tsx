@@ -69,9 +69,13 @@ const ColorBlock = ({ name, weights }: ColorBlockProps) => {
     ]}
     draggingStyle={styles.dragging}
     dragReleasedStyle={styles.dragging}
+    hoverStyle={styles.hoverBase}
     hoverDraggingStyle={styles.hoverDragging}
     hoverDraggingWithReceiverStyle={styles.hoverOverReceiver}
     hoverDraggingWithoutReceiverStyle={styles.hoverNoReceiver}
+    hoverDragReleasedStyle={styles.hoverReleased}
+    snapDelay={0}
+    snapDuration={300}
     dragPayload={{ weights, text: name[0] }}
   >
     <Text>{name}</Text>
@@ -102,6 +106,8 @@ export default function ColorDragDrop() {
           }
           accessibilityHint="Drop dragged colors here to collect them"
           animateSnap
+          snapDelay={0}
+          snapDuration={200}
           acceptsDrag={() => !receivingFull}
           style={[
             styles.centeredContent,
@@ -210,7 +216,11 @@ export default function ColorDragDrop() {
           style={styles.stagingLayout}
           receivingStyle={styles.receiving}
           hoverDraggingStyle={{
-            transform: [{ rotate: '10deg' }],
+            transform: [{ rotate: '5deg' }, { scale: 1.05 }],
+            shadowColor: '#000',
+            shadowOpacity: 0.25,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 8 },
           }}
           renderContent={({ viewState }) => {
             const receivingDrag = viewState?.receivingDrag;
@@ -343,7 +353,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   receiving: {
-    borderColor: 'red',
+    borderColor: '#22c55e',
+    borderWidth: 2,
+    shadowColor: '#22c55e',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
   },
   incomingText: {
     marginTop: 10,
@@ -388,22 +403,41 @@ const styles = StyleSheet.create({
   dragging: {
     opacity: 0.2,
   },
+  hoverBase: {
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+  },
   hoverDragging: {
-    borderColor: 'magenta',
+    borderColor: 'rgba(168,85,247,0.6)',
     borderWidth: 2,
+    transform: [{ scale: 1.08 }],
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
   },
   hoverOverReceiver: {
-    borderColor: '#00cc00',
+    borderColor: '#22c55e',
     borderWidth: 3,
-    shadowColor: '#00cc00',
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
+    transform: [{ scale: 1.12 }],
+    shadowColor: '#22c55e',
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 0 },
   },
   hoverNoReceiver: {
-    borderColor: '#999',
+    borderColor: 'rgba(150,150,150,0.4)',
     borderWidth: 2,
-    opacity: 0.8,
+    transform: [{ scale: 1.05 }],
+    opacity: 0.85,
+  },
+  hoverReleased: {
+    opacity: 0.6,
+    transform: [{ scale: 0.95 }],
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   stagingLayout: {
     flex: 3,

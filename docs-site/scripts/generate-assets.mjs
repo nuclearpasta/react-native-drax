@@ -142,7 +142,7 @@ const exampleSocialCardSvg = `
     <text x="266" y="28" font-family="monospace" font-size="16" fill="#afafa8" text-anchor="middle">Sortable Lists</text>
 
     <rect x="372" y="0" width="200" height="44" rx="22" fill="none" stroke="#f5f5f0" stroke-opacity="0.15" stroke-width="1.5"/>
-    <text x="472" y="28" font-family="monospace" font-size="16" fill="#afafa8" text-anchor="middle">Kanban Board</text>
+    <text x="472" y="28" font-family="monospace" font-size="16" fill="#afafa8" text-anchor="middle">Cross-List</text>
 
     <rect x="588" y="0" width="180" height="44" rx="22" fill="none" stroke="#f5f5f0" stroke-opacity="0.15" stroke-width="1.5"/>
     <text x="678" y="28" font-family="monospace" font-size="16" fill="#afafa8" text-anchor="middle">Knight Moves</text>

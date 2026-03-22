@@ -24,7 +24,8 @@ export const useDragGesture = (
   lockDragXPosition?: boolean,
   lockDragYPosition?: boolean,
   dragBoundsSV?: SharedValue<{ x: number; y: number; width: number; height: number } | null>,
-  dragActivationFailOffset?: number
+  dragActivationFailOffset?: number,
+  scrollHorizontal?: boolean
 ) => {
   const {
     draggedIdSV,
@@ -46,8 +47,11 @@ export const useDragGesture = (
   // On web, RNGH defaults touch-action to 'none' which blocks native scroll.
   // Allow the scroll direction so users can scroll before long-press activates.
   // SortableContainer freezes the scroll container when drag starts.
+  //
+  // Priority: lockDragYPosition (explicit axis lock → pan-x) > scrollHorizontal
+  // (hint from SortableItem for horizontal lists without axis lock) > default pan-y.
   const touchAction = Platform.OS === 'web'
-    ? (lockDragYPosition ? 'pan-x' : 'pan-y')
+    ? ((lockDragYPosition || scrollHorizontal) ? 'pan-x' : 'pan-y')
     : undefined;
 
   const failOffset = dragActivationFailOffset !== undefined

@@ -23,6 +23,7 @@ interface ScrollableListRef {
  */
 export function useWebScrollFreeze(scrollRef: RefObject<object | null>) {
   const frozenRef = useRef(false);
+  const savedOverflowRef = useRef('');
 
   const getScrollNode = (): WebScrollNode | null => {
     if (Platform.OS !== 'web') return null;
@@ -40,6 +41,7 @@ export function useWebScrollFreeze(scrollRef: RefObject<object | null>) {
     if (frozenRef.current) return;
     const node = getScrollNode();
     if (node?.style) {
+      savedOverflowRef.current = node.style.overflow;
       node.style.overflow = 'hidden';
       frozenRef.current = true;
     }
@@ -49,7 +51,7 @@ export function useWebScrollFreeze(scrollRef: RefObject<object | null>) {
     if (!frozenRef.current) return;
     const node = getScrollNode();
     if (node?.style) {
-      node.style.overflow = 'auto';
+      node.style.overflow = savedOverflowRef.current || 'auto';
       frozenRef.current = false;
     }
   };

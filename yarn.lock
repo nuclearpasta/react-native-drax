@@ -5694,6 +5694,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@legendapp/list@npm:^2.0.19":
+  version: 2.0.19
+  resolution: "@legendapp/list@npm:2.0.19"
+  dependencies:
+    use-sync-external-store: "npm:^1.5.0"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/8201cd3ebf59bb885b8289e0e65df3134a3d59f9b7fce9b30884a50fab8b268ed601dec742bfa48beeb4fec45fdba8d69af56bf1e16e5afbdce0e1db7a1c56d8
+  languageName: node
+  linkType: hard
+
 "@leichtgewicht/ip-codec@npm:^2.0.1":
   version: 2.0.5
   resolution: "@leichtgewicht/ip-codec@npm:2.0.5"
@@ -7313,6 +7325,17 @@ __metadata:
   version: 4.52.2
   resolution: "@rollup/rollup-win32-x64-msvc@npm:4.52.2"
   conditions: os=win32 & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@shopify/flash-list@npm:^2.3.0":
+  version: 2.3.0
+  resolution: "@shopify/flash-list@npm:2.3.0"
+  peerDependencies:
+    "@babel/runtime": "*"
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/549fbecd447f3b34a07e37387891105a6b087b673d008c04611b91693d8e37db802a40a1cf7029a8b28d9cf97cefd3676901deab90c38cbf3efa8debc2422cd6
   languageName: node
   linkType: hard
 
@@ -20979,6 +21002,8 @@ __metadata:
     "@expo/log-box": "npm:~55.0.7"
     "@expo/metro-runtime": "npm:~55.0.6"
     "@expo/vector-icons": "npm:^15.1.1"
+    "@legendapp/list": "npm:^2.0.19"
+    "@shopify/flash-list": "npm:^2.3.0"
     expo: "npm:~55.0.7"
     expo-constants: "npm:~55.0.8"
     expo-font: "npm:~55.0.4"

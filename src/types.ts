@@ -307,6 +307,13 @@ export interface DraxViewProps
    *  Can be a number (symmetric) or [min, max] tuple per axis. */
   dragActivationFailOffset?: number;
 
+  /** Hint that this view is inside a horizontal scroll container.
+   *  On mobile web, sets `touch-action: pan-x` so the browser allows
+   *  native horizontal scrolling before the long-press activates drag.
+   *  Without this, items in horizontal lists default to `pan-y` which
+   *  blocks horizontal scrolling on touch devices. */
+  scrollHorizontal?: boolean;
+
   // ─── Callback props (formerly in DraxProtocol) ─────────────────────
 
   /** A function that can be used to conditionally enable or disable receiving */

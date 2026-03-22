@@ -15,7 +15,7 @@
 
 ## 📖 Overview
 
-Drax is a declarative drag-and-drop framework for React Native, written in TypeScript. It supports free-form drag-and-drop, sortable lists and grids, cross-container drag (kanban boards), drag handles, collision algorithms, and more.
+Drax is a declarative drag-and-drop framework for React Native, written in TypeScript. It supports free-form drag-and-drop, sortable lists and grids, cross-list reorder, drag handles, collision algorithms, and more.
 
 Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and [Gesture Handler 3](https://docs.swmansion.com/react-native-gesture-handler/) with a UI-thread-first architecture for smooth 60fps interactions.
 
@@ -24,7 +24,7 @@ Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and
 ### ✨ Highlights
 
 - 📋 **List-agnostic sortable** — works with FlatList, FlashList, LegendList, or any list component
-- 🔀 **Cross-container drag** — move items between lists (kanban boards)
+- 🔀 **Cross-container drag** — move items between lists (cross-list reorder)
 - ⚡ **UI-thread hit-testing** — spatial index worklet for fast receiver detection
 - ✊ **Drag handles** — only the handle starts a drag, the rest scrolls
 - 💥 **Collision algorithms** — center, intersect, or contain
@@ -43,7 +43,7 @@ Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and
 |---|:---:|:---:|:---:|
 | Free-form drag & drop | ✅ | ✅ | ➖ |
 | Sortable list / grid | ✅ | ✅ | ✅ |
-| Cross-container / cross-list /kanban | ⚠️ Experimental | ➖ | ➖ |
+| Cross-container / cross-list reorder | ⚠️ Experimental | ➖ | ➖ |
 | List-agnostic (FlatList, FlashList, LegendList) | ✅ | ➖ | ➖ |
 | Drag handles | ✅ | ✅ | ✅ |
 | Drag state styling | 15 props + inactive | onStateChange | 5 props + hook |
@@ -304,7 +304,7 @@ Device reduced motion settings are respected automatically.
 
 ### 🔀 Cross-Container Sortable (Experimental)
 
-Move items between lists (kanban board pattern):
+Move items between lists (cross-list reorder):
 
 ```tsx
 import {
@@ -378,7 +378,7 @@ The `example/` directory contains an Expo Router app with 10 screens demonstrati
 | Drag Handles | Only the grip icon starts a drag |
 | Drag Bounds | Constrain drag within a view |
 | Collision Modes | Center vs Intersect vs Contain |
-| Kanban Board | Cross-container drag between columns (experimental) |
+| Cross-List Reorder | FlashList + LegendList + FlatList cross-container drag (experimental) |
 | Knight Moves | Chess knight drag puzzle |
 | Scrolling | Drag from scroll view to drop zone |
 | Stress Test | 100 items in a sortable list |

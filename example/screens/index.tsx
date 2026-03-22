@@ -59,11 +59,11 @@ const EXAMPLES: Example[] = [
     sourceFile: 'collision-modes.tsx',
   },
   {
-    route: '/kanban-board',
-    title: 'Kanban Board',
-    subtitle: 'Drag cards between columns',
+    route: '/cross-list',
+    title: 'Cross-List Reorder',
+    subtitle: 'FlashList + LegendList + FlatList cross-container drag',
     icon: 'view-column',
-    sourceFile: 'kanban-board.tsx',
+    sourceFile: 'cross-list.tsx',
   },
   {
     route: '/knight-moves',

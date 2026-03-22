@@ -46,7 +46,7 @@ const sidebars: SidebarsConfig = {
         'examples/drag-handles',
         'examples/drag-bounds',
         'examples/collision-modes',
-        'examples/kanban-board',
+        'examples/cross-list',
         'examples/knight-moves',
         'examples/scrolling',
         'examples/stress-test',

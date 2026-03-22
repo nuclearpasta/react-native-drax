@@ -87,7 +87,9 @@ const DRAX_PROP_KEYS: ReadonlySet<string> = new Set([
   'otherDraggingWithReceiverStyle',
   'otherDraggingWithoutReceiverStyle',
   'dragHandle',
+  'dragActivationFailOffset',
   'collisionAlgorithm',
+  'scrollHorizontal',
 ]);
 
 /** Extract only ViewProps-compatible props by filtering out Drax-specific keys */
@@ -143,6 +145,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     longPressDelay = defaultLongPressDelay,
     lockDragXPosition,
     lockDragYPosition,
+    scrollHorizontal,
     dragHandle,
     dragBoundsRef,
     children,
@@ -322,7 +325,8 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     lockDragXPosition,
     lockDragYPosition,
     dragBoundsSV,
-    props.dragActivationFailOffset
+    props.dragActivationFailOffset,
+    scrollHorizontal
   );
 
   // ── Animated styles ────────────────────────────────────────────────

@@ -352,6 +352,13 @@ export const SortableContainer = ({
       return undefined;
     }
 
+    // External drag (item from another container) with no reorder — snap back
+    // to original position. Without this, getMeasurementByOriginalIndex would
+    // look up the wrong item in this container's data by the source index.
+    if (externalDrag) {
+      return undefined;
+    }
+
     // No receiver — snap back to the dragged item's current position
     const containerMeasurements = containerMeasurementsRef.current;
     const fromMeas = getMeasurementByOriginalIndex(fromOriginalIndex);
@@ -371,6 +378,9 @@ export const SortableContainer = ({
     jitterExceededRef.current = false;
     lastMoveReceiverRef.current = undefined;
     lastMoveDirectionRef.current = 0;
+    // Clear any stale freeze from a previous drag that failed to unfreeze
+    // (e.g., fast cross-container gesture where onMonitorDragExit was skipped).
+    unfreezeScroll();
     freezeScroll();
 
     const { dragged } = eventData;
@@ -532,6 +542,7 @@ export const SortableContainer = ({
 
   const onMonitorDragEnd = (eventData: DraxMonitorEndEventData) => {
     if (boardContext?.boardInternal.transferState.current?.targetId) {
+      unfreezeScroll();
       draxViewProps?.onMonitorDragEnd?.(eventData);
       return undefined;
     }
@@ -544,6 +555,7 @@ export const SortableContainer = ({
 
   const onMonitorDragDrop = (eventData: DraxMonitorDragDropEventData) => {
     if (boardContext?.boardInternal.transferState.current?.targetId) {
+      unfreezeScroll();
       draxViewProps?.onMonitorDragDrop?.(eventData);
       return undefined;
     }
