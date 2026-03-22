@@ -20,8 +20,10 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
     maxPointers: config.maxPointers,
     shouldCancelWhenOutside: config.shouldCancelWhenOutside,
     touchAction: config.touchAction,
-    failOffsetX: config.failOffsetX,
-    failOffsetY: config.failOffsetY,
+    // Only include failOffset props when defined — RNGH v3 warns on
+    // undefined keys that survive transformOffsetProp without deletion.
+    ...(config.failOffsetX !== undefined && { failOffsetX: config.failOffsetX }),
+    ...(config.failOffsetY !== undefined && { failOffsetY: config.failOffsetY }),
     onActivate: config.onActivate,
     onUpdate: config.onUpdate,
     onDeactivate: config.onDeactivate,
