@@ -3,7 +3,8 @@ import { useRouter } from 'expo-router';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../components/ThemeContext';
 
-const DOCS_BASE = 'https://nuclearpasta.com/react-native-drax';
+const DOCS_EXAMPLES_BASE =
+  'https://nuclearpasta.com/react-native-drax/examples';
 const GITHUB_BASE =
   'https://github.com/nuclearpasta/react-native-drax/blob/main/example/screens';
 
@@ -13,6 +14,7 @@ interface Example {
   subtitle: string;
   icon: React.ComponentProps<typeof Icon>['name'];
   sourceFile: string;
+  docsSlug: string;
 }
 
 const EXAMPLES: Example[] = [
@@ -22,6 +24,7 @@ const EXAMPLES: Example[] = [
     subtitle: 'Drop acceptance, hover styles, snap alignment',
     icon: 'water',
     sourceFile: 'color-drag-drop.tsx',
+    docsSlug: 'color-drag-drop',
   },
   {
     route: '/reorderable-list',
@@ -29,6 +32,7 @@ const EXAMPLES: Example[] = [
     subtitle: 'Animation presets, auto-scroll, drop indicator',
     icon: 'format-list-bulleted',
     sourceFile: 'reorderable-list.tsx',
+    docsSlug: 'reorderable-list',
   },
   {
     route: '/reorderable-grid',
@@ -36,6 +40,7 @@ const EXAMPLES: Example[] = [
     subtitle: 'Sortable grid with multi-column layout',
     icon: 'view-grid',
     sourceFile: 'reorderable-grid.tsx',
+    docsSlug: 'reorderable-grid',
   },
   {
     route: '/drag-handles',
@@ -43,6 +48,7 @@ const EXAMPLES: Example[] = [
     subtitle: 'Only the grip icon starts a drag',
     icon: 'drag',
     sourceFile: 'drag-handles.tsx',
+    docsSlug: 'drag-handles',
   },
   {
     route: '/bounded-drag',
@@ -50,6 +56,7 @@ const EXAMPLES: Example[] = [
     subtitle: 'Constrain drag within a view',
     icon: 'selection',
     sourceFile: 'bounded-drag.tsx',
+    docsSlug: 'drag-bounds',
   },
   {
     route: '/collision-modes',
@@ -57,6 +64,7 @@ const EXAMPLES: Example[] = [
     subtitle: 'Center vs Intersect vs Contain',
     icon: 'vector-intersection',
     sourceFile: 'collision-modes.tsx',
+    docsSlug: 'collision-modes',
   },
   {
     route: '/cross-list',
@@ -64,6 +72,7 @@ const EXAMPLES: Example[] = [
     subtitle: 'FlashList + LegendList + FlatList cross-container drag',
     icon: 'view-column',
     sourceFile: 'cross-list.tsx',
+    docsSlug: 'cross-list',
   },
   {
     route: '/knight-moves',
@@ -71,6 +80,7 @@ const EXAMPLES: Example[] = [
     subtitle: 'Chess knight drag puzzle',
     icon: 'chess-knight',
     sourceFile: 'knight-moves.tsx',
+    docsSlug: 'knight-moves',
   },
   {
     route: '/scrolling',
@@ -78,6 +88,7 @@ const EXAMPLES: Example[] = [
     subtitle: 'Drag from scroll view to drop zone',
     icon: 'arrow-left-right',
     sourceFile: 'scrolling.tsx',
+    docsSlug: 'scrolling',
   },
   {
     route: '/stress-test',
@@ -85,6 +96,7 @@ const EXAMPLES: Example[] = [
     subtitle: '100 items in a sortable list',
     icon: 'speedometer',
     sourceFile: 'stress-test.tsx',
+    docsSlug: 'stress-test',
   },
 ];
 
@@ -134,7 +146,9 @@ function ExampleCard({ example }: { example: Example }) {
           </Pressable>
           <Pressable
             style={styles.linkButton}
-            onPress={() => Linking.openURL(DOCS_BASE)}
+            onPress={() =>
+              Linking.openURL(`${DOCS_EXAMPLES_BASE}/${example.docsSlug}`)
+            }
             hitSlop={4}
           >
             <Icon name="book-open-variant" size={13} color={theme.muted} />

@@ -62,7 +62,7 @@ function HeroSection() {
         Works with <strong>FlatList</strong> · <strong>FlashList</strong> · <strong>LegendList</strong> · or any list component
       </p>
       <div className="install-command">
-        <code>npm install react-native-drax</code>
+        npm install react-native-drax
       </div>
       <div className="cta-buttons">
         <Link className="button button--primary" to="/getting-started">
@@ -70,6 +70,9 @@ function HeroSection() {
         </Link>
         <Link className="button button--secondary" to="/quick-start">
           Quick Start
+        </Link>
+        <Link className="button button--outline" to="/examples">
+          Live Examples
         </Link>
         <Link
           className="button button--outline"
@@ -162,27 +165,29 @@ function App() {
 
 function CodeExamples() {
   return (
-    <section className="container tabs-container">
-      <Heading as="h2">
+    <section>
+      <Heading as="h2" className="code-examples-heading">
         Three lines to drag. Five to sort.
       </Heading>
-      <Tabs>
-        <TabItem value="basic" label="Basic Drag & Drop" default>
-          <CodeBlock language="tsx" title="App.tsx">
-            {basicExample}
-          </CodeBlock>
-        </TabItem>
-        <TabItem value="sortable" label="Sortable List">
-          <CodeBlock language="tsx" title="App.tsx">
-            {sortableExample}
-          </CodeBlock>
-        </TabItem>
-        <TabItem value="composable" label="Composable API">
-          <CodeBlock language="tsx" title="App.tsx">
-            {composableExample}
-          </CodeBlock>
-        </TabItem>
-      </Tabs>
+      <div className="container tabs-container">
+        <Tabs>
+          <TabItem value="basic" label="Basic Drag & Drop" default>
+            <CodeBlock language="tsx" title="App.tsx">
+              {basicExample}
+            </CodeBlock>
+          </TabItem>
+          <TabItem value="sortable" label="Sortable List">
+            <CodeBlock language="tsx" title="App.tsx">
+              {sortableExample}
+            </CodeBlock>
+          </TabItem>
+          <TabItem value="composable" label="Composable API">
+            <CodeBlock language="tsx" title="App.tsx">
+              {composableExample}
+            </CodeBlock>
+          </TabItem>
+        </Tabs>
+      </div>
     </section>
   );
 }

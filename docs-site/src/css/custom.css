@@ -774,7 +774,7 @@ table td code {
   transition: background 180ms ease, border-color 180ms ease;
 }
 
-.tabs-container h2 {
+.code-examples-heading {
   margin-bottom: 20px;
 }
 
