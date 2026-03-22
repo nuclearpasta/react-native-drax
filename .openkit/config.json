@@ -1,7 +1,7 @@
 {
   "startCommand": "yarn dev",
   "installCommand": "yarn install",
-  "baseBranch": "reanimated-v4",
+  "baseBranch": "origin/main",
   "projectDir": "",
   "autoInstall": true,
   "localIssuePrefix": "LOCAL",
@@ -13,5 +13,7 @@
   "ports": {
     "discovered": [],
     "offsetStep": 1
-  }
+  },
+  "framework": "react-native",
+  "openProjectTarget": "cursor"
 }
