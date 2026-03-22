@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { ThemeProvider, useTheme } from '../components/ThemeContext';
@@ -11,6 +12,17 @@ const GestureHandlerRootView =
 
 function ThemedRoot() {
   const { theme } = useTheme();
+
+  // Expo's web reset sets body { overflow: hidden } which blocks the browser's
+  // native pull-to-refresh on mobile. Switch to overflow: clip — same visual
+  // containment but doesn't create a scroll container, so the viewport's
+  // overscroll behavior (pull-to-refresh) still works.
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      document.body.style.overflow = 'clip';
+    }
+  }, []);
+
   return (
     <GestureHandlerRootView
       style={[styles.container, { backgroundColor: theme.bg }]}

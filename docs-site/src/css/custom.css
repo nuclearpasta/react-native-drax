@@ -169,10 +169,14 @@ code {
 .navbar-icon-link {
   display: flex;
   align-items: center;
+  gap: 6px;
   color: var(--np-muted);
   transition: color 180ms ease, transform 180ms ease;
   padding: 4px;
   border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
 }
 
 .navbar-icon-link:hover {

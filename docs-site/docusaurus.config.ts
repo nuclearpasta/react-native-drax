@@ -192,12 +192,12 @@ const config: Config = {
         {
           type: 'html',
           position: 'right',
-          value: '<a href="https://www.npmjs.com/package/react-native-drax" target="_blank" rel="noopener noreferrer" class="navbar-icon-link" aria-label="npm" title="npm"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M3 3h18v18H12.6V6.6h-4.2V21H3V3Z"/></svg></a>',
+          value: '<a href="https://www.npmjs.com/package/react-native-drax" target="_blank" rel="noopener noreferrer" class="navbar-icon-link" aria-label="npm" title="npm"><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M3 3h18v18H12.6V6.6h-4.2V21H3V3Z"/></svg><span>npm</span></a>',
         },
         {
           type: 'html',
           position: 'right',
-          value: '<a href="https://github.com/nuclearpasta/react-native-drax" target="_blank" rel="noopener noreferrer" class="navbar-icon-link" aria-label="GitHub" title="GitHub"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.22.72-.5v-1.76c-2.95.64-3.57-1.25-3.57-1.25-.48-1.2-1.16-1.52-1.16-1.52-.95-.64.07-.63.07-.63 1.05.08 1.6 1.07 1.6 1.07.94 1.6 2.47 1.13 3.07.86.1-.67.36-1.13.66-1.4-2.35-.26-4.82-1.16-4.82-5.2 0-1.15.42-2.09 1.08-2.83-.1-.27-.47-1.36.11-2.82 0 0 .89-.28 2.92 1.08a10.26 10.26 0 0 1 5.32 0c2.03-1.36 2.92-1.08 2.92-1.08.58 1.46.21 2.55.11 2.82.67.74 1.08 1.68 1.08 2.83 0 4.05-2.48 4.93-4.84 5.19.37.32.71.94.71 1.91v2.83c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5Z"/></svg></a>',
+          value: '<a href="https://github.com/nuclearpasta/react-native-drax" target="_blank" rel="noopener noreferrer" class="navbar-icon-link" aria-label="GitHub" title="GitHub"><svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 1.5a10.5 10.5 0 0 0-3.32 20.47c.53.1.72-.22.72-.5v-1.76c-2.95.64-3.57-1.25-3.57-1.25-.48-1.2-1.16-1.52-1.16-1.52-.95-.64.07-.63.07-.63 1.05.08 1.6 1.07 1.6 1.07.94 1.6 2.47 1.13 3.07.86.1-.67.36-1.13.66-1.4-2.35-.26-4.82-1.16-4.82-5.2 0-1.15.42-2.09 1.08-2.83-.1-.27-.47-1.36.11-2.82 0 0 .89-.28 2.92 1.08a10.26 10.26 0 0 1 5.32 0c2.03-1.36 2.92-1.08 2.92-1.08.58 1.46.21 2.55.11 2.82.67.74 1.08 1.68 1.08 2.83 0 4.05-2.48 4.93-4.84 5.19.37.32.71.94.71 1.91v2.83c0 .28.19.61.73.5A10.5 10.5 0 0 0 12 1.5Z"/></svg><span>GitHub</span></a>',
         },
       ],
     },
