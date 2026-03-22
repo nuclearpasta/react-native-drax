@@ -40,7 +40,11 @@ export interface ViewDimensions {
 }
 
 /** Measurements of a Drax view for bounds checking purposes */
-export interface DraxViewMeasurements extends Position, ViewDimensions {}
+export interface DraxViewMeasurements extends Position, ViewDimensions {
+  /** 1 when DraxView auto-detected transform-based positioning
+   *  (e.g., LegendList) and used visual measurement instead of Yoga layout. 0 otherwise. */
+  _transformDetected: number;
+}
 
 // ─── Drag Phase & Status Types ─────────────────────────────────────────────
 
@@ -290,10 +294,6 @@ export interface DraxViewProps
   noHover?: boolean;
   /** For external registration of this view, to access internal methods */
   registration?: (registration: DraxViewRegistration | undefined) => void;
-  /** When true, use visual (post-transform) measurement on native instead of
-   *  Yoga layout measurement. Required for list components that position items
-   *  via CSS transforms (e.g., LegendList's translateY on Fabric). */
-  useTransformAwareMeasurement?: boolean;
   /** For receiving view measurements externally */
   onMeasure?: DraxViewMeasurementHandler;
   /** Unique Drax view id, auto-generated if omitted */

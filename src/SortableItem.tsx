@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { memo, useEffect, useMemo, useRef } from 'react';
 import type { ViewStyle } from 'react-native';
+import { Platform } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import Reanimated, {
@@ -156,7 +157,7 @@ const SortableItemInner = ({
   >(null);
 
   // Resolve animation config and check reduced motion preference
-  const resolvedAnimConfig = resolveAnimationConfig(animationConfig);
+  const resolvedAnimConfig = useMemo(() => resolveAnimationConfig(animationConfig), [animationConfig]);
   const reducedMotion = useReducedMotion();
 
   // Delegated to isolated hook so worklet closure has no refs from this scope.
@@ -187,6 +188,12 @@ const SortableItemInner = ({
   const defaultA11yLabel = `Item ${index + 1} of ${totalItems}`;
   const defaultA11yHint = 'Long press to drag and reorder';
 
+  const mergedPayload = useMemo(() => ({
+    ...(typeof draxViewProps.payload === 'object' && draxViewProps.payload !== null
+      ? draxViewProps.payload : {}),
+    index, originalIndex, item,
+  }), [draxViewProps.payload, index, originalIndex, item]);
+
   return (
     <SortableItemContext value={itemContextValue}>
     <Reanimated.View style={itemStyle} entering={itemEntering} exiting={itemExiting}>
@@ -196,20 +203,11 @@ const SortableItemInner = ({
         lockDragYPosition={lockToMainAxis && horizontal}
         scrollHorizontal={horizontal || undefined}
         draggable={!fixed}
-        useTransformAwareMeasurement
         accessibilityLabel={defaultA11yLabel}
         accessibilityHint={defaultA11yHint}
         accessibilityRole="adjustable"
         {...draxViewProps}
-        payload={{
-          ...(typeof draxViewProps.payload === 'object' &&
-          draxViewProps.payload !== null
-            ? draxViewProps.payload
-            : {}),
-          index,
-          originalIndex,
-          item,
-        }}
+        payload={mergedPayload}
         registration={(reg) => {
           measureFnRef.current = reg?.measure ?? null;
           // Capture the DraxView's registered ID so useAnimatedStyle can match
@@ -229,18 +227,19 @@ const SortableItemInner = ({
         onMeasure={(measurements) => {
           draxViewProps.onMeasure?.(measurements);
           if (itemKey && measurements) {
-            // Measurements are content-relative on all platforms (DraxView
-            // handles the scroll compensation). They include CSS transforms
-            // (useTransformAwareMeasurement), which covers both the Drax shift
-            // transform and any list-component positioning transforms (e.g.,
-            // LegendList's translateY on Fabric). Subtract the Drax shift to
-            // recover the natural content position.
+            // Subtract Drax shift transforms when they're included in the
+            // measurement. On web: measureLayout always includes transforms.
+            // On native: measureLayout ignores transforms, UNLESS DraxView
+            // auto-detected transform-based positioning (LegendList) and
+            // switched to measure() — flagged via _transformDetected.
             let adjX = measurements.x;
             let adjY = measurements.y;
-            const currentShift = shiftsRef.value[itemKey];
-            if (currentShift) {
-              adjX -= currentShift.x;
-              adjY -= currentShift.y;
+            if (Platform.OS === 'web' || measurements._transformDetected) {
+              const currentShift = shiftsRef.value[itemKey];
+              if (currentShift) {
+                adjX -= currentShift.x;
+                adjY -= currentShift.y;
+              }
             }
             const entry: SortableItemMeasurement = {
               x: adjX,

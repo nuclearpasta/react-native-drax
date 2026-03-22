@@ -90,7 +90,6 @@ const DRAX_PROP_KEYS: ReadonlySet<string> = new Set([
   'dragActivationFailOffset',
   'collisionAlgorithm',
   'scrollHorizontal',
-  'useTransformAwareMeasurement',
 ]);
 
 /** Extract only ViewProps-compatible props by filtering out Drax-specific keys */
@@ -149,7 +148,6 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     scrollHorizontal,
     dragHandle,
     dragBoundsRef,
-    useTransformAwareMeasurement,
     children,
     style,
     id: idProp,
@@ -184,10 +182,13 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
 
   // ── Measurement ────────────────────────────────────────────────────
 
-  /** Finalize measurements and notify consumers. */
+  /** Finalize measurements and notify consumers.
+   *  `transformDetected` = 1 when auto-detection found transform-based positioning
+   *  (visual measurement used instead of Yoga layout). Consumers can check
+   *  `measurements._transformDetected` to know whether shift subtraction is needed. */
   const finalizeMeasurement = useCallback(
-    (x: number, y: number, width: number, height: number, handler?: DraxViewMeasurementHandler) => {
-      const measurements: DraxViewMeasurements = { height, x, y, width };
+    (x: number, y: number, width: number, height: number, handler?: DraxViewMeasurementHandler, transformDetected = 0) => {
+      const measurements: DraxViewMeasurements = { height, x, y, width, _transformDetected: transformDetected };
       measurementsRef.current = measurements;
       updateMeasurementsCtx(id, measurements);
       onMeasure?.(measurements);
@@ -200,49 +201,57 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     const view = viewRef.current;
     if (!view || !parentViewRef.current) return;
 
-    if (useTransformAwareMeasurement && Platform.OS !== 'web') {
-      // Use measure() on both views to get post-transform visual positions.
-      // Needed for list components that position items via CSS transforms
-      // (e.g., LegendList uses translateY on Fabric). measureLayout ignores
-      // transforms on Fabric, so all items would report y=0.
-      // Add parent scroll to convert from visual-relative to content-relative.
-      view.measure((_vx: number, _vy: number, width: number, height: number, pageX: number, pageY: number) => {
-        const parentView = parentViewRef.current;
-        if (!parentView) return;
-        parentView.measure((_px: number, _py: number, _pw: number, _ph: number, parentPageX: number, parentPageY: number) => {
+    view.measureLayout(
+      parentViewRef.current,
+      (x, y, width, height) => {
+        if (Platform.OS === 'web') {
+          // On web, measureLayout returns visual positions — add scroll to
+          // convert to content-relative.
           const parentData = parentId ? getViewEntry(parentId) : undefined;
           const parentScroll = parentData?.scrollPosition?.value ?? { x: 0, y: 0 };
-          finalizeMeasurement(
-            pageX - parentPageX + parentScroll.x,
-            pageY - parentPageY + parentScroll.y,
-            width, height, handler,
-          );
-        });
-      });
-    } else {
-      view.measureLayout(
-        parentViewRef.current,
-        (x, y, width, height) => {
-          // On Fabric (new arch), measureLayout returns content-relative positions
-          // (includeTransform=false in native C++ layer — scroll offset excluded).
-          // No scroll adjustment needed on native.
-          // On web, measureLayout returns visual positions — add scroll to convert
-          // to content-relative. computeAbsolutePositionWorklet subtracts scroll
-          // at hit-test time to get visual positions back.
-          let scrollAdjustX = 0;
-          let scrollAdjustY = 0;
-          if (Platform.OS === 'web') {
+          finalizeMeasurement(x! + parentScroll.x, y! + parentScroll.y, width!, height!, handler);
+          return;
+        }
+
+        // On Fabric, measureLayout uses includeTransform=false → returns Yoga
+        // layout positions. This is correct for FlatList/FlashList, but wrong
+        // for LegendList (which positions items via translateY, so all report y=0).
+        //
+        // Auto-detect: when measureLayout returns position=0 (the hallmark of
+        // transform-positioned items: position:absolute, top:0), also call
+        // measure() to get the visual position. If it differs, the item is
+        // transform-positioned. Only check when layoutPosition=0 to avoid
+        // false positives on shifted items (whose measureLayout is non-zero).
+        const layoutX = x!;
+        const layoutY = y!;
+        if (layoutX !== 0 && layoutY !== 0) {
+          // Non-zero layout position → normal Yoga layout, trust measureLayout.
+          finalizeMeasurement(layoutX, layoutY, width!, height!, handler);
+          return;
+        }
+        const parentView = parentViewRef.current;
+        if (!parentView) {
+          finalizeMeasurement(layoutX, layoutY, width!, height!, handler);
+          return;
+        }
+        view.measure((_vx: number, _vy: number, _vw: number, _vh: number, pageX: number, pageY: number) => {
+          parentView.measure((_px: number, _py: number, _pw: number, _ph: number, parentPageX: number, parentPageY: number) => {
             const parentData = parentId ? getViewEntry(parentId) : undefined;
             const parentScroll = parentData?.scrollPosition?.value ?? { x: 0, y: 0 };
-            scrollAdjustX = parentScroll.x;
-            scrollAdjustY = parentScroll.y;
-          }
-          finalizeMeasurement(x! + scrollAdjustX, y! + scrollAdjustY, width!, height!, handler);
-        },
-        () => {}
-      );
-    }
-  }, [id, parentId, viewRef, parentViewRef, getViewEntry, finalizeMeasurement, useTransformAwareMeasurement]);
+            const visualX = pageX - parentPageX + parentScroll.x;
+            const visualY = pageY - parentPageY + parentScroll.y;
+            // If visual position differs from layout, the view is transform-positioned.
+            if (Math.abs(visualX - layoutX) > 1 || Math.abs(visualY - layoutY) > 1) {
+              finalizeMeasurement(visualX, visualY, width!, height!, handler, 1);
+            } else {
+              finalizeMeasurement(layoutX, layoutY, width!, height!, handler);
+            }
+          });
+        });
+      },
+      () => {}
+    );
+  }, [id, parentId, viewRef, parentViewRef, getViewEntry, finalizeMeasurement]);
 
   // ── Register/unregister with context ────────────────────────────────
   // Keep a ref to the latest props so registry always has current callbacks
@@ -395,7 +404,8 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
   }
 
   // ── Extract view-safe props ─────────────────────────────────────
-  const viewProps = extractViewProps(props);
+  // DraxView is memo()'d so props identity is stable between renders.
+  const viewProps = useMemo(() => extractViewProps(props), [props]);
 
   // ── Render ─────────────────────────────────────────────────────────
   const viewElement = (
