@@ -378,6 +378,9 @@ export const SortableContainer = ({
     jitterExceededRef.current = false;
     lastMoveReceiverRef.current = undefined;
     lastMoveDirectionRef.current = 0;
+    // Clear any stale freeze from a previous drag that failed to unfreeze
+    // (e.g., fast cross-container gesture where onMonitorDragExit was skipped).
+    unfreezeScroll();
     freezeScroll();
 
     const { dragged } = eventData;
@@ -539,6 +542,7 @@ export const SortableContainer = ({
 
   const onMonitorDragEnd = (eventData: DraxMonitorEndEventData) => {
     if (boardContext?.boardInternal.transferState.current?.targetId) {
+      unfreezeScroll();
       draxViewProps?.onMonitorDragEnd?.(eventData);
       return undefined;
     }
@@ -551,6 +555,7 @@ export const SortableContainer = ({
 
   const onMonitorDragDrop = (eventData: DraxMonitorDragDropEventData) => {
     if (boardContext?.boardInternal.transferState.current?.targetId) {
+      unfreezeScroll();
       draxViewProps?.onMonitorDragDrop?.(eventData);
       return undefined;
     }

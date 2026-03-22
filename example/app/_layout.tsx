@@ -14,12 +14,13 @@ function ThemedRoot() {
   const { theme } = useTheme();
 
   // Expo's web reset sets body { overflow: hidden } which blocks the browser's
-  // native pull-to-refresh on mobile. Switch to overflow: clip — same visual
-  // containment but doesn't create a scroll container, so the viewport's
-  // overscroll behavior (pull-to-refresh) still works.
+  // native pull-to-refresh on mobile. Override overflow-y to 'auto' — the app
+  // content is exactly 100% height so no scrollbar appears, but the body is now
+  // considered "scrollable" by the browser. This lets the overscroll gesture
+  // (pull-to-refresh) trigger when the user swipes down from the top.
   useEffect(() => {
     if (Platform.OS === 'web') {
-      document.body.style.overflow = 'clip';
+      document.body.style.overflowY = 'auto';
     }
   }, []);
 
