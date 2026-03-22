@@ -42,6 +42,7 @@ jobs:
   publish:
     needs: [lint, test]
     runs-on: ubuntu-latest
+    environment: publish
     permissions:
       contents: write
       id-token: write
