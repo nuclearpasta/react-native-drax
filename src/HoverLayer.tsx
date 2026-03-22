@@ -142,7 +142,7 @@ export const HoverLayer = memo(
         style={[styles.container, positionStyle]}
         pointerEvents="none"
       >
-        <Reanimated.View style={[dimensionStyle, visualStyle]}>
+        <Reanimated.View style={[styles.content, dimensionStyle, visualStyle]}>
           {hoverContentRef.current}
         </Reanimated.View>
       </Reanimated.View>
@@ -157,5 +157,11 @@ const styles = StyleSheet.create({
     // Prevents a one-frame flash on first mount before the animated style evaluates.
     opacity: 0,
     transformOrigin: 'top left',
+  },
+  content: {
+    // Shrink-wrap to content width — without this the inner view stretches
+    // to fill the full-screen absolute parent, causing hover styles (border,
+    // shadow) to render at screen width instead of content width.
+    alignSelf: 'flex-start',
   },
 });
