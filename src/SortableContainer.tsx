@@ -352,6 +352,13 @@ export const SortableContainer = ({
       return undefined;
     }
 
+    // External drag (item from another container) with no reorder — snap back
+    // to original position. Without this, getMeasurementByOriginalIndex would
+    // look up the wrong item in this container's data by the source index.
+    if (externalDrag) {
+      return undefined;
+    }
+
     // No receiver — snap back to the dragged item's current position
     const containerMeasurements = containerMeasurementsRef.current;
     const fromMeas = getMeasurementByOriginalIndex(fromOriginalIndex);
