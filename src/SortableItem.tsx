@@ -157,7 +157,7 @@ const SortableItemInner = ({
   >(null);
 
   // Resolve animation config and check reduced motion preference
-  const resolvedAnimConfig = resolveAnimationConfig(animationConfig);
+  const resolvedAnimConfig = useMemo(() => resolveAnimationConfig(animationConfig), [animationConfig]);
   const reducedMotion = useReducedMotion();
 
   // Delegated to isolated hook so worklet closure has no refs from this scope.
@@ -188,6 +188,12 @@ const SortableItemInner = ({
   const defaultA11yLabel = `Item ${index + 1} of ${totalItems}`;
   const defaultA11yHint = 'Long press to drag and reorder';
 
+  const mergedPayload = useMemo(() => ({
+    ...(typeof draxViewProps.payload === 'object' && draxViewProps.payload !== null
+      ? draxViewProps.payload : {}),
+    index, originalIndex, item,
+  }), [draxViewProps.payload, index, originalIndex, item]);
+
   return (
     <SortableItemContext value={itemContextValue}>
     <Reanimated.View style={itemStyle} entering={itemEntering} exiting={itemExiting}>
@@ -201,15 +207,7 @@ const SortableItemInner = ({
         accessibilityHint={defaultA11yHint}
         accessibilityRole="adjustable"
         {...draxViewProps}
-        payload={{
-          ...(typeof draxViewProps.payload === 'object' &&
-          draxViewProps.payload !== null
-            ? draxViewProps.payload
-            : {}),
-          index,
-          originalIndex,
-          item,
-        }}
+        payload={mergedPayload}
         registration={(reg) => {
           measureFnRef.current = reg?.measure ?? null;
           // Capture the DraxView's registered ID so useAnimatedStyle can match
@@ -229,13 +227,14 @@ const SortableItemInner = ({
         onMeasure={(measurements) => {
           draxViewProps.onMeasure?.(measurements);
           if (itemKey && measurements) {
-            // On web, measureLayout returns visual positions (includes CSS
-            // transforms). Subtract the current shift to recover the original
-            // FlatList layout position — otherwise subsequent reorders compute
-            // wrong deltas from already-shifted positions.
+            // Subtract Drax shift transforms when they're included in the
+            // measurement. On web: measureLayout always includes transforms.
+            // On native: measureLayout ignores transforms, UNLESS DraxView
+            // auto-detected transform-based positioning (LegendList) and
+            // switched to measure() — flagged via _transformDetected.
             let adjX = measurements.x;
             let adjY = measurements.y;
-            if (Platform.OS === 'web') {
+            if (Platform.OS === 'web' || measurements._transformDetected) {
               const currentShift = shiftsRef.value[itemKey];
               if (currentShift) {
                 adjX -= currentShift.x;

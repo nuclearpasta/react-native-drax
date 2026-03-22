@@ -19,6 +19,7 @@ import type {
   DraxProviderDragEvent,
   DraxSnapbackTarget,
   DraxSnapEndEventData,
+  DraxViewMeasurements,
   Position,
   SpatialEntry,
   ViewRegistryEntry,
@@ -147,10 +148,11 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     const entries = spatialIndexSV.value;
     const offsets = scrollOffsetsSV.value;
     const absPos = computeAbsolutePositionWorklet(idx, entries, offsets);
-    const absMeasurements = {
+    const absMeasurements: DraxViewMeasurements = {
       ...absPos,
       width: entry.measurements.width,
       height: entry.measurements.height,
+      _transformDetected: 0,
     };
 
     const { relativePosition, relativePositionRatio } = getRelativePosition(
@@ -265,6 +267,25 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     monitorIds?: string[]
   ) => {
     const draggedId = draggedIdSV.value;
+
+    // Fast path: receiver unchanged, no monitors (now AND previously),
+    // and no continuous callbacks → skip event data construction entirely.
+    const newMonitorIds = monitorIds ?? [];
+    const prevMonitorIds = currentMonitorIdsRef.current;
+    if (
+      oldReceiverId === newReceiverId &&
+      newMonitorIds.length === 0 &&
+      prevMonitorIds.length === 0
+    ) {
+      const draggedEntry = getViewEntry(draggedId);
+      if (!draggedEntry) return;
+      const hasOnDragOver = newReceiverId && draggedEntry.props.onDragOver;
+      const receiverEntry = newReceiverId ? getViewEntry(newReceiverId) : undefined;
+      const hasOnReceiveDragOver = newReceiverId && receiverEntry?.props.onReceiveDragOver;
+      const hasOnDrag = !newReceiverId && (draggedEntry.props.onDrag || onProviderDrag);
+      if (!hasOnDragOver && !hasOnReceiveDragOver && !hasOnDrag) return;
+    }
+
     const dragged = buildDraggedViewData(draggedId, absolutePosition);
     if (!dragged) return;
 
@@ -399,8 +420,6 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     }
 
     // ── Dispatch monitor events ──────────────────────────────────────
-    const newMonitorIds = monitorIds ?? [];
-    const prevMonitorIds = currentMonitorIdsRef.current;
     const prevWasEmpty = prevMonitorIds.length === 0;
 
     // Build receiver data for monitor event payload (use accepted receiver, not raw hit-test)

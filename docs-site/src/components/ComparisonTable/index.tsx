@@ -8,8 +8,18 @@ function cellClass(val: string, allVals: [string, string, string]): string {
 
   // All three equal → all green
   if (allEqual) return 'check';
-  // Some are "No" → those who have it get green
-  if (hasNo) return 'check';
+
+  if (hasNo) {
+    const nonNo = allVals.filter(v => v !== 'No' && v !== 'Experimental' && v !== 'Partial');
+    // All non-No values equal → all green
+    if (nonNo.every(v => v === nonNo[0])) return 'check';
+    // Non-No values differ → only the winner gets green
+    // "Yes" (full support) beats descriptive values; otherwise longest wins
+    if (nonNo.includes('Yes')) return val === 'Yes' ? 'check' : '';
+    const longest = nonNo.reduce((a, b) => (a.length >= b.length ? a : b), '');
+    return val === longest ? 'check' : '';
+  }
+
   // All have it but values differ → only "Yes" stands out as green
   return val === 'Yes' ? 'check' : '';
 }
@@ -61,8 +71,8 @@ const rows: [string, string, string, string][] = [
   ['Sortable grid',                                    'Yes',                    'Yes',            'Yes'],
   ['Sortable flex layout',                             'No',                     'No',             'Yes'],
   ['Horizontal sorting',                               'Yes',                    'Yes',            'Yes'],
-  ['Cross-container / cross-list reorder',              'Experimental',           'No',             'No'],
   ['List-agnostic (FlatList, FlashList, LegendList)',   'Yes',                    'No',             'No'],
+  ['Cross-container / cross-list reorder',              'Experimental',           'No',             'No'],
 
   // Gesture & interaction
   ['Fixed-order items',                                'Yes',                    'No',             '3 modes'],

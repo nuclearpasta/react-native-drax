@@ -8,16 +8,18 @@ const GITHUB_SCREENS_URL =
 
 interface ExampleLinksProps {
   slug: string;
+  sourceFile?: string;
 }
 
-export function ExampleLinks({ slug }: ExampleLinksProps) {
+export function ExampleLinks({ slug, sourceFile }: ExampleLinksProps) {
   const { theme } = useTheme();
+  const file = sourceFile ?? `${slug}.tsx`;
 
   return (
     <View style={styles.container}>
       <Pressable
         style={styles.link}
-        onPress={() => Linking.openURL(`${GITHUB_SCREENS_URL}/${slug}.tsx`)}
+        onPress={() => Linking.openURL(`${GITHUB_SCREENS_URL}/${file}`)}
         hitSlop={4}
       >
         <Icon name="code-tags" size={14} color={theme.muted} />
@@ -26,7 +28,7 @@ export function ExampleLinks({ slug }: ExampleLinksProps) {
       <Text style={[styles.separator, { color: theme.line }]}>|</Text>
       <Pressable
         style={styles.link}
-        onPress={() => Linking.openURL(`${EXAMPLES_DOCS_URL}#${slug}`)}
+        onPress={() => Linking.openURL(`${EXAMPLES_DOCS_URL}/${slug}`)}
         hitSlop={4}
       >
         <Icon name="book-open-variant" size={14} color={theme.muted} />

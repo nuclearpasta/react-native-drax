@@ -37,26 +37,33 @@ export interface ResolvedAnimationConfig {
   springMass: number;
 }
 
+// Frozen preset singletons — avoids object allocation on every call.
+const PRESET_DEFAULT: ResolvedAnimationConfig = Object.freeze({
+  useSpring: false, shiftDuration: 200, springDamping: 15, springStiffness: 150, springMass: 1,
+});
+const PRESET_SPRING: ResolvedAnimationConfig = Object.freeze({
+  useSpring: true, shiftDuration: 200, springDamping: 15, springStiffness: 150, springMass: 1,
+});
+const PRESET_GENTLE: ResolvedAnimationConfig = Object.freeze({
+  useSpring: true, shiftDuration: 200, springDamping: 20, springStiffness: 100, springMass: 1.2,
+});
+const PRESET_SNAPPY: ResolvedAnimationConfig = Object.freeze({
+  useSpring: true, shiftDuration: 200, springDamping: 20, springStiffness: 300, springMass: 0.8,
+});
+const PRESET_NONE: ResolvedAnimationConfig = Object.freeze({
+  useSpring: false, shiftDuration: 0, springDamping: 15, springStiffness: 150, springMass: 1,
+});
+
 /** Resolve a SortableAnimationConfig (preset or custom) to concrete values */
 export function resolveAnimationConfig(
   config: import('./types').SortableAnimationConfig | undefined
 ): ResolvedAnimationConfig {
-  if (!config || config === 'default') {
-    return { useSpring: false, shiftDuration: 200, springDamping: 15, springStiffness: 150, springMass: 1 };
-  }
-  if (config === 'spring') {
-    return { useSpring: true, shiftDuration: 200, springDamping: 15, springStiffness: 150, springMass: 1 };
-  }
-  if (config === 'gentle') {
-    return { useSpring: true, shiftDuration: 200, springDamping: 20, springStiffness: 100, springMass: 1.2 };
-  }
-  if (config === 'snappy') {
-    return { useSpring: true, shiftDuration: 200, springDamping: 20, springStiffness: 300, springMass: 0.8 };
-  }
-  if (config === 'none') {
-    return { useSpring: false, shiftDuration: 0, springDamping: 15, springStiffness: 150, springMass: 1 };
-  }
-  // Custom config
+  if (!config || config === 'default') return PRESET_DEFAULT;
+  if (config === 'spring') return PRESET_SPRING;
+  if (config === 'gentle') return PRESET_GENTLE;
+  if (config === 'snappy') return PRESET_SNAPPY;
+  if (config === 'none') return PRESET_NONE;
+  // Custom config — only case that allocates
   return {
     useSpring: config.useSpring ?? false,
     shiftDuration: config.shiftDuration ?? 200,

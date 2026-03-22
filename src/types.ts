@@ -40,7 +40,11 @@ export interface ViewDimensions {
 }
 
 /** Measurements of a Drax view for bounds checking purposes */
-export interface DraxViewMeasurements extends Position, ViewDimensions {}
+export interface DraxViewMeasurements extends Position, ViewDimensions {
+  /** 1 when DraxView auto-detected transform-based positioning
+   *  (e.g., LegendList) and used visual measurement instead of Yoga layout. 0 otherwise. */
+  _transformDetected: number;
+}
 
 // ─── Drag Phase & Status Types ─────────────────────────────────────────────
 

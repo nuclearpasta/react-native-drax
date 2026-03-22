@@ -14,19 +14,23 @@ const rngh = require('react-native-gesture-handler');
  * Zero overhead, UI-thread-driven reconfiguration.
  */
 function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
-  return rngh.usePanGesture({
+  // Build config without undefined failOffset keys — RNGH v3 warns on
+  // undefined keys that survive transformOffsetProp without deletion.
+  // Spread is not allowed here (Reanimated workletizes hook arguments).
+  const panConfig: Record<string, unknown> = {
     enabled: config.enabledSV,
     activateAfterLongPress: config.longPressDelaySV,
     maxPointers: config.maxPointers,
     shouldCancelWhenOutside: config.shouldCancelWhenOutside,
     touchAction: config.touchAction,
-    failOffsetX: config.failOffsetX,
-    failOffsetY: config.failOffsetY,
     onActivate: config.onActivate,
     onUpdate: config.onUpdate,
     onDeactivate: config.onDeactivate,
     onFinalize: config.onFinalize,
-  });
+  };
+  if (config.failOffsetX !== undefined) panConfig.failOffsetX = config.failOffsetX;
+  if (config.failOffsetY !== undefined) panConfig.failOffsetY = config.failOffsetY;
+  return rngh.usePanGesture(panConfig);
 }
 
 /**

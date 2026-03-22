@@ -539,30 +539,28 @@ table td code {
   }
 }
 
-/* ── Install Command (pill) ──────────────────────────────────────────── */
+/* ── Install Command (inline code, distinct from buttons) ────────────── */
 
-.install-command {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 42px;
-  padding: 0 16px;
-  border: 1px solid var(--np-line-strong);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--np-surface-strong) 84%, transparent);
-  font-family: var(--np-font-mono);
-  font-size: 0.88rem;
-  color: var(--np-text);
+code.install-command {
+  display: inline-block;
+  padding: 8px 18px;
+  font-size: 0.92rem;
   margin-bottom: 20px;
-  max-width: 100%;
-  overflow-x: auto;
 }
 
 @media (max-width: 480px) {
-  .install-command {
+  code.install-command {
     font-size: 0.78rem;
-    padding: 0 12px;
+    padding: 6px 12px;
   }
+}
+
+/* ── CTA Button Icons ───────────────────────────────────────────────── */
+
+.cta-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 /* ── CTA Buttons (pill) ──────────────────────────────────────────────── */
@@ -774,7 +772,7 @@ table td code {
   transition: background 180ms ease, border-color 180ms ease;
 }
 
-.tabs-container h2 {
+.code-examples-heading {
   margin-bottom: 20px;
 }
 

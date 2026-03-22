@@ -28,7 +28,7 @@ export default function BoundedDrag() {
           The blue square stays within the dashed boundary.
           The red square can go anywhere.
         </Text>
-        <ExampleLinks slug="bounded-drag" />
+        <ExampleLinks slug="drag-bounds" sourceFile="bounded-drag.tsx" />
 
         <View
           ref={boundsRef}
