@@ -404,6 +404,7 @@ const styles = StyleSheet.create({
     opacity: 0.2,
   },
   hoverBase: {
+    borderRadius: 10,
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 10,
