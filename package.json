@@ -63,7 +63,7 @@
   "bugs": {
     "url": "https://github.com/nuclearpasta/react-native-drax/issues"
   },
-  "homepage": "https://github.com/nuclearpasta/react-native-drax#readme",
+  "homepage": "https://nuclearpasta.com/react-native-drax",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
