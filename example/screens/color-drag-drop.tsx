@@ -408,7 +408,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
   },
   hoverDragging: {
     borderColor: 'rgba(168,85,247,0.6)',
