@@ -90,6 +90,7 @@ const DRAX_PROP_KEYS: ReadonlySet<string> = new Set([
   'dragActivationFailOffset',
   'collisionAlgorithm',
   'scrollHorizontal',
+  'useTransformAwareMeasurement',
 ]);
 
 /** Extract only ViewProps-compatible props by filtering out Drax-specific keys */
@@ -148,6 +149,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     scrollHorizontal,
     dragHandle,
     dragBoundsRef,
+    useTransformAwareMeasurement,
     children,
     style,
     id: idProp,
@@ -181,9 +183,43 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
   const measurementsRef = useRef<DraxViewMeasurements | undefined>(undefined);
 
   // ── Measurement ────────────────────────────────────────────────────
+
+  /** Finalize measurements and notify consumers. */
+  const finalizeMeasurement = useCallback(
+    (x: number, y: number, width: number, height: number, handler?: DraxViewMeasurementHandler) => {
+      const measurements: DraxViewMeasurements = { height, x, y, width };
+      measurementsRef.current = measurements;
+      updateMeasurementsCtx(id, measurements);
+      onMeasure?.(measurements);
+      handler?.(measurements);
+    },
+    [id, updateMeasurementsCtx, onMeasure],
+  );
+
   const measureWithHandler = useCallback((handler?: DraxViewMeasurementHandler) => {
     const view = viewRef.current;
-    if (view && parentViewRef.current) {
+    if (!view || !parentViewRef.current) return;
+
+    if (useTransformAwareMeasurement && Platform.OS !== 'web') {
+      // Use measure() on both views to get post-transform visual positions.
+      // Needed for list components that position items via CSS transforms
+      // (e.g., LegendList uses translateY on Fabric). measureLayout ignores
+      // transforms on Fabric, so all items would report y=0.
+      // Add parent scroll to convert from visual-relative to content-relative.
+      view.measure((_vx: number, _vy: number, width: number, height: number, pageX: number, pageY: number) => {
+        const parentView = parentViewRef.current;
+        if (!parentView) return;
+        parentView.measure((_px: number, _py: number, _pw: number, _ph: number, parentPageX: number, parentPageY: number) => {
+          const parentData = parentId ? getViewEntry(parentId) : undefined;
+          const parentScroll = parentData?.scrollPosition?.value ?? { x: 0, y: 0 };
+          finalizeMeasurement(
+            pageX - parentPageX + parentScroll.x,
+            pageY - parentPageY + parentScroll.y,
+            width, height, handler,
+          );
+        });
+      });
+    } else {
       view.measureLayout(
         parentViewRef.current,
         (x, y, width, height) => {
@@ -201,28 +237,12 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
             scrollAdjustX = parentScroll.x;
             scrollAdjustY = parentScroll.y;
           }
-
-          const measurements: DraxViewMeasurements | undefined =
-            height === undefined
-              ? undefined
-              : {
-                  height,
-                  x: x! + scrollAdjustX,
-                  y: y! + scrollAdjustY,
-                  width: width!,
-                };
-
-          measurementsRef.current = measurements;
-          if (measurements) {
-            updateMeasurementsCtx(id, measurements);
-          }
-          onMeasure?.(measurements);
-          handler?.(measurements);
+          finalizeMeasurement(x! + scrollAdjustX, y! + scrollAdjustY, width!, height!, handler);
         },
         () => {}
       );
     }
-  }, [id, parentId, viewRef, parentViewRef, getViewEntry, updateMeasurementsCtx, onMeasure]);
+  }, [id, parentId, viewRef, parentViewRef, getViewEntry, finalizeMeasurement, useTransformAwareMeasurement]);
 
   // ── Register/unregister with context ────────────────────────────────
   // Keep a ref to the latest props so registry always has current callbacks

@@ -290,6 +290,10 @@ export interface DraxViewProps
   noHover?: boolean;
   /** For external registration of this view, to access internal methods */
   registration?: (registration: DraxViewRegistration | undefined) => void;
+  /** When true, use visual (post-transform) measurement on native instead of
+   *  Yoga layout measurement. Required for list components that position items
+   *  via CSS transforms (e.g., LegendList's translateY on Fabric). */
+  useTransformAwareMeasurement?: boolean;
   /** For receiving view measurements externally */
   onMeasure?: DraxViewMeasurementHandler;
   /** Unique Drax view id, auto-generated if omitted */

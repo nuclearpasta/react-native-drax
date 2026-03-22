@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { memo, useEffect, useMemo, useRef } from 'react';
 import type { ViewStyle } from 'react-native';
-import { Platform } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import Reanimated, {
@@ -197,6 +196,7 @@ const SortableItemInner = ({
         lockDragYPosition={lockToMainAxis && horizontal}
         scrollHorizontal={horizontal || undefined}
         draggable={!fixed}
+        useTransformAwareMeasurement
         accessibilityLabel={defaultA11yLabel}
         accessibilityHint={defaultA11yHint}
         accessibilityRole="adjustable"
@@ -229,18 +229,18 @@ const SortableItemInner = ({
         onMeasure={(measurements) => {
           draxViewProps.onMeasure?.(measurements);
           if (itemKey && measurements) {
-            // On web, measureLayout returns visual positions (includes CSS
-            // transforms). Subtract the current shift to recover the original
-            // FlatList layout position — otherwise subsequent reorders compute
-            // wrong deltas from already-shifted positions.
+            // Measurements are content-relative on all platforms (DraxView
+            // handles the scroll compensation). They include CSS transforms
+            // (useTransformAwareMeasurement), which covers both the Drax shift
+            // transform and any list-component positioning transforms (e.g.,
+            // LegendList's translateY on Fabric). Subtract the Drax shift to
+            // recover the natural content position.
             let adjX = measurements.x;
             let adjY = measurements.y;
-            if (Platform.OS === 'web') {
-              const currentShift = shiftsRef.value[itemKey];
-              if (currentShift) {
-                adjX -= currentShift.x;
-                adjY -= currentShift.y;
-              }
+            const currentShift = shiftsRef.value[itemKey];
+            if (currentShift) {
+              adjX -= currentShift.x;
+              adjY -= currentShift.y;
             }
             const entry: SortableItemMeasurement = {
               x: adjX,
