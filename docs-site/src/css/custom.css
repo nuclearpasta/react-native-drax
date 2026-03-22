@@ -472,6 +472,73 @@ table td code {
   margin-bottom: 24px;
 }
 
+/* ── Platform Chips ────────────────────────────────────────────────── */
+
+.platform-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.platform-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.45rem 0.82rem;
+  border: 1px solid var(--np-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--np-surface-strong) 68%, transparent);
+  color: var(--np-muted);
+  font-family: var(--np-font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.platform-chip-icon {
+  width: 0.82rem;
+  height: 0.82rem;
+  flex: 0 0 auto;
+}
+
+.works-with {
+  font-family: var(--np-font-mono);
+  font-size: 0.82rem;
+  color: var(--np-muted);
+  letter-spacing: 0.02em;
+  margin-bottom: 20px;
+}
+
+.works-with strong {
+  color: var(--np-text);
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .platform-chips {
+    gap: 6px;
+  }
+
+  .platform-chips li {
+    gap: 0.34rem;
+    padding: 0.36rem 0.66rem;
+    font-size: 0.7rem;
+  }
+
+  .platform-chip-icon {
+    width: 0.74rem;
+    height: 0.74rem;
+  }
+
+  .works-with {
+    font-size: 0.74rem;
+  }
+}
+
 /* ── Install Command (pill) ──────────────────────────────────────────── */
 
 .install-command {

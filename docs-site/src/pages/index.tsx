@@ -8,6 +8,39 @@ import TabItem from '@theme/TabItem';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import ComparisonTable from '@site/src/components/ComparisonTable';
 
+function PlatformIcon({ platform }: { platform: string }) {
+  switch (platform) {
+    case 'iOS':
+      return (
+        <svg aria-hidden="true" className="platform-chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="7" y="3.5" width="10" height="17" rx="2.4" />
+          <path d="M10.5 6.5h3" />
+          <path d="M11.5 17.5h1" />
+        </svg>
+      );
+    case 'Android':
+      return (
+        <svg aria-hidden="true" className="platform-chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7.5 9.5h9a2 2 0 0 1 2 2v4.5a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2V11.5a2 2 0 0 1 2-2Z" />
+          <path d="M9 9.5 7.7 7.4" />
+          <path d="M15 9.5 16.3 7.4" />
+          <path d="M9.5 13h.01" />
+          <path d="M14.5 13h.01" />
+        </svg>
+      );
+    case 'Web':
+      return (
+        <svg aria-hidden="true" className="platform-chip-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+          <path d="M3.5 8.5h17" />
+          <path d="M8.5 19.5h7" />
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 function HeroSection() {
   return (
     <section className="hero-section">
@@ -19,6 +52,14 @@ function HeroSection() {
         Sortable lists, grids, cross-container drag, drag handles, collision
         algorithms, and more. Built on Reanimated&nbsp;4 with a UI-thread-first
         architecture for smooth 60fps interactions on iOS, Android, and Web.
+      </p>
+      <ul className="platform-chips" aria-label="Supported platforms">
+        {(['iOS', 'Android', 'Web'] as const).map((p) => (
+          <li key={p}><PlatformIcon platform={p} /><span>{p}</span></li>
+        ))}
+      </ul>
+      <p className="works-with">
+        Works with <strong>FlatList</strong> · <strong>FlashList</strong> · <strong>LegendList</strong> · or any list component
       </p>
       <div className="install-command">
         <code>npm install react-native-drax</code>

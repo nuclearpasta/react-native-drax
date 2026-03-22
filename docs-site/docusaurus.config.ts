@@ -162,7 +162,12 @@ const config: Config = {
       { property: 'og:site_name', content: 'react-native-drax' },
       { property: 'og:type', content: 'website' },
       { property: 'og:locale', content: 'en_US' },
+      { property: 'og:url', content: 'https://nuclearpasta.com/react-native-drax/' },
+      { property: 'og:image', content: 'https://nuclearpasta.com/react-native-drax/img/social-card.png' },
+      { property: 'og:image:width', content: '1200' },
+      { property: 'og:image:height', content: '630' },
       { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:image', content: 'https://nuclearpasta.com/react-native-drax/img/social-card.png' },
     ],
     navbar: {
       title: 'react-native-drax',
