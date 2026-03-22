@@ -68,17 +68,30 @@ export const HoverLayer = memo(
     const flatHoverDraggingWithoutReceiverStyle = hs?.hoverDraggingWithoutReceiverStyle ?? null;
     const flatHoverDragReleasedStyle = hs?.hoverDragReleasedStyle ?? null;
 
-    const animatedStyle = useAnimatedStyle(() => {
+    // Position style: applied to the outer full-screen container.
+    // Only handles positioning (translate) and visibility (opacity).
+    const positionStyle = useAnimatedStyle(() => {
       const phase = dragPhaseSV.value;
       if (phase === 'idle') {
         return { opacity: 0 };
       }
+      return {
+        opacity: 1,
+        transform: [
+          { translateX: hoverPositionSV.value.x },
+          { translateY: hoverPositionSV.value.y },
+        ] as const,
+      };
+    });
 
-      // Positioning transform — must always be first so the hover follows the finger.
-      const positionTransform = [
-        { translateX: hoverPositionSV.value.x },
-        { translateY: hoverPositionSV.value.y },
-      ] as const;
+    // Visual style: applied to the inner content wrapper.
+    // Handles user hover styles (border, shadow, scale, rotate, etc.)
+    // so they apply to the content bounds, not the full-screen container.
+    const visualStyle = useAnimatedStyle(() => {
+      const phase = dragPhaseSV.value;
+      if (phase === 'idle') {
+        return {};
+      }
 
       let hoverStyles: ViewStyle;
       if (phase === 'dragging') {
@@ -98,16 +111,12 @@ export const HoverLayer = memo(
         };
       }
 
-      // Merge transforms: positioning first, then any user-provided transforms (rotate, scale, etc.)
+      // User transforms (rotate, scale, etc.) stay on the content wrapper.
       const { transform: userTransform, ...restStyles } = hoverStyles;
-      const mergedTransform = userTransform
-        ? [...positionTransform, ...(userTransform as { [key: string]: number }[])]
-        : positionTransform;
 
       return {
-        opacity: 1,
         ...restStyles,
-        transform: mergedTransform,
+        ...(userTransform ? { transform: userTransform as { [key: string]: number }[] } : {}),
       };
     });
 
@@ -130,10 +139,10 @@ export const HoverLayer = memo(
     // flash (the view renders at default position before useAnimatedStyle kicks in).
     return (
       <Reanimated.View
-        style={[styles.container, animatedStyle]}
+        style={[styles.container, positionStyle]}
         pointerEvents="none"
       >
-        <Reanimated.View style={dimensionStyle}>
+        <Reanimated.View style={[dimensionStyle, visualStyle]}>
           {hoverContentRef.current}
         </Reanimated.View>
       </Reanimated.View>
