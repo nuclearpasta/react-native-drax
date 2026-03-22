@@ -61,9 +61,7 @@ function HeroSection() {
       <p className="works-with">
         Works with <strong>FlatList</strong> · <strong>FlashList</strong> · <strong>LegendList</strong> · or any list component
       </p>
-      <div className="install-command">
-        npm install react-native-drax
-      </div>
+      <code className="install-command">npm install react-native-drax</code>
       <div className="cta-buttons">
         <Link className="button button--primary" to="/getting-started">
           Get Started
