@@ -39,7 +39,7 @@
     "typecheck": "tsc && tsc --project example/tsconfig.json",
     "lint": "eslint .",
     "test": "jest --passWithNoTests",
-    "release": "release-it --only-version"
+    "release": "release-it"
   },
   "keywords": [
     "react-native",
