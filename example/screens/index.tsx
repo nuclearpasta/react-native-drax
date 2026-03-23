@@ -51,6 +51,14 @@ const EXAMPLES: Example[] = [
     docsSlug: 'mixed-grid',
   },
   {
+    route: '/cross-list',
+    title: 'Cross-List Reorder',
+    subtitle: 'FlashList + LegendList + FlatList cross-container drag',
+    icon: 'view-column',
+    sourceFile: 'cross-list.tsx',
+    docsSlug: 'cross-list',
+  },
+  {
     route: '/drag-handles',
     title: 'Drag Handles',
     subtitle: 'Only the grip icon starts a drag',
@@ -73,14 +81,6 @@ const EXAMPLES: Example[] = [
     icon: 'vector-intersection',
     sourceFile: 'collision-modes.tsx',
     docsSlug: 'collision-modes',
-  },
-  {
-    route: '/cross-list',
-    title: 'Cross-List Reorder',
-    subtitle: 'FlashList + LegendList + FlatList cross-container drag',
-    icon: 'view-column',
-    sourceFile: 'cross-list.tsx',
-    docsSlug: 'cross-list',
   },
   {
     route: '/knight-moves',
