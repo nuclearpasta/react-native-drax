@@ -388,15 +388,19 @@ table td code {
   text-decoration: none;
 }
 
-/* Footer icon links (GitHub, npm, NuclearPasta) */
-.footer-icon-link {
-  display: inline-flex;
+/* Footer icon links (GitHub, npm, NuclearPasta) — needs .footer__link-item
+   prefix to beat Docusaurus's .footer .footer__link-item specificity */
+.footer__link-item.footer-icon-link {
+  display: flex;
   align-items: center;
   gap: 8px;
+  line-height: 1;
+  padding: 4px 0;
 }
 
-.footer-icon-link svg {
+.footer__link-item.footer-icon-link svg {
   flex-shrink: 0;
+  display: block;
 }
 
 .footer__copyright {
@@ -773,6 +777,7 @@ code.install-command {
 }
 
 .code-examples-heading {
+  padding-top: 24px;
   margin-bottom: 20px;
 }
 
