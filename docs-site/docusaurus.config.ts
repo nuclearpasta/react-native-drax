@@ -240,7 +240,7 @@ const config: Config = {
               html: '<a href="https://www.npmjs.com/package/react-native-drax" target="_blank" rel="noopener noreferrer" class="footer__link-item footer-icon-link" aria-label="npm"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M3 3h18v18H12.6V6.6h-4.2V21H3V3Z"/></svg><span>npm</span></a>',
             },
             {
-              html: '<a href="https://nuclearpasta.com" target="_blank" rel="noopener noreferrer" class="footer__link-item footer-icon-link" aria-label="NuclearPasta"><svg viewBox="0 0 200 200" width="18" height="18"><rect x="8" y="8" width="184" height="184" rx="44" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="8"/><circle cx="100" cy="60" r="15" fill="#f2b15a"/><circle cx="60" cy="100" r="15" fill="#e67e3d"/><circle cx="100" cy="100" r="15" fill="#cf5f34"/><circle cx="140" cy="100" r="15" fill="#e67e3d"/><circle cx="100" cy="140" r="15" fill="#f2b15a"/></svg><span>NuclearPasta</span></a>',
+              html: '<a href="https://nuclearpasta.com" target="_blank" rel="noopener noreferrer" class="footer__link-item footer-icon-link" aria-label="NuclearPasta"><svg viewBox="0 0 200 200" width="18" height="18"><rect width="200" height="200" rx="40" fill="currentColor" opacity="0.15" stroke="currentColor" stroke-width="3"/><circle cx="100" cy="60" r="15" fill="#f2b15a"/><circle cx="60" cy="100" r="15" fill="#e67e3d"/><circle cx="100" cy="100" r="15" fill="#cf5f34"/><circle cx="140" cy="100" r="15" fill="#e67e3d"/><circle cx="100" cy="140" r="15" fill="#f2b15a"/></svg><span>NuclearPasta</span></a>',
             },
           ],
         },
