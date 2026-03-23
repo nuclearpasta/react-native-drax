@@ -15,8 +15,6 @@
 
 🎮 [**See the live example**](https://nuclearpasta.com/react-native-drax/example)
 
-
-
 ## 📖 Overview
 
 Drax is a declarative drag-and-drop framework for React Native, written in TypeScript. It supports free-form drag-and-drop, sortable lists and grids, cross-list reorder, drag handles, collision algorithms, and more.
@@ -57,7 +55,8 @@ Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and
 | Event callbacks | 19 types | ~12 types | ~10 types |
 | Accessibility + reduced motion | ✅ | Manual | Manual |
 | Web support | ✅ | ➖ | Partial |
-| Reanimated | 4 | ≥ 4.2 | ≥ 3 |
+| Reanimated | ≥ 4 | ≥ 4.2 | ≥ 3 |
+| Gesture Handler | ≥ 2 | ≥ 2.28 | ≥ 2 |
 
 [See full comparison →](https://nuclearpasta.com/react-native-drax#comparison)
 
