@@ -43,6 +43,14 @@ const EXAMPLES: Example[] = [
     docsSlug: 'reorderable-grid',
   },
   {
+    route: '/mixed-grid',
+    title: 'Mixed-Size Grid',
+    subtitle: 'Items with different spans (1×1, 2×2, etc.)',
+    icon: 'view-dashboard',
+    sourceFile: 'mixed-grid.tsx',
+    docsSlug: 'mixed-grid',
+  },
+  {
     route: '/drag-handles',
     title: 'Drag Handles',
     subtitle: 'Only the grip icon starts a drag',

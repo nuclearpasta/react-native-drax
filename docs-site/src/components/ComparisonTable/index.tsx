@@ -69,8 +69,8 @@ const rows: [string, string, string, string][] = [
   ['Free-form drag & drop',                            'Yes',                    'Yes',            'No'],
   ['Sortable list',                                    'Yes',                    'Yes',            'Yes'],
   ['Sortable grid',                                    'Yes',                    'Yes',            'Yes'],
+  ['Mixed-size grid (non-uniform spans)',              'Yes',                    'No',             'No'],
   ['Sortable flex layout',                             'No',                     'No',             'Yes'],
-  ['Horizontal sorting',                               'Yes',                    'Yes',            'Yes'],
   ['List-agnostic (FlatList, FlashList, LegendList)',   'Yes',                    'No',             'No'],
   ['Cross-container / cross-list reorder',              'Experimental',           'No',             'No'],
 

@@ -250,8 +250,16 @@ export const SortableContainer = ({
       }
     }
 
-    if (offset !== undefined && scrollRef.current.scrollToOffset) {
-      scrollRef.current.scrollToOffset({ offset });
+    if (offset !== undefined) {
+      if (scrollRef.current.scrollToOffset) {
+        // FlatList / FlashList / LegendList
+        scrollRef.current.scrollToOffset({ offset });
+      } else if (scrollRef.current.scrollTo) {
+        // ScrollView
+        scrollRef.current.scrollTo(
+          horizontal ? { x: offset } : { y: offset },
+        );
+      }
       if (scrollRef.current.flashScrollIndicators) {
         scrollRef.current.flashScrollIndicators();
       }

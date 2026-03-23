@@ -25,8 +25,8 @@ export { useSortableList } from './hooks/useSortableList';
 export { useSortableBoard } from './hooks/useSortableBoard';
 
 // ── Public Utilities ─────────────────────────────────────────────────
-export { snapToAlignment } from './math';
-export type { SnapAlignment } from './math';
+export { snapToAlignment, packGrid } from './math';
+export type { SnapAlignment, GridPackResult } from './math';
 
 // ── Public Types ─────────────────────────────────────────────────────
 export type {
@@ -75,6 +75,7 @@ export type {
   // Sortable types
   UseSortableListOptions,
   SortableListHandle,
+  GridItemSpan,
 } from './types';
 export type { SortableItemContextValue } from './SortableItemContext';
 export type {

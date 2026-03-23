@@ -9,9 +9,11 @@ import {
   defaultAutoScrollJumpRatio,
   defaultListItemLongPressDelay,
 } from '../params';
+import { packGrid } from '../math';
 import type {
   DraxSnapbackTarget,
   DraxViewMeasurements,
+  GridItemSpan,
   Position,
   SortableItemMeasurement,
   SortableListHandle,
@@ -51,6 +53,7 @@ export const useSortableList = <T,>(
     autoScrollBackThreshold = defaultAutoScrollBackThreshold,
     autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
     animationConfig = 'default',
+    getItemSpan,
     inactiveItemStyle,
     itemEntering,
     itemExiting,
@@ -215,6 +218,108 @@ export const useSortableList = <T,>(
   // Alias for internal use
   const getMeasForOrigIdx = getMeasurementByOriginalIndex;
 
+  /** Get the span for an item at the given original data index */
+  const getSpanForOrigIdx = (origIdx: number): GridItemSpan => {
+    if (!getItemSpan) return { colSpan: 1, rowSpan: 1 };
+    const item = stableData[origIdx];
+    if (item === undefined) return { colSpan: 1, rowSpan: 1 };
+    return getItemSpan(item, origIdx);
+  };
+
+  /**
+   * Derive grid geometry (cell size + gaps) from current measurements.
+   * Only used when getItemSpan is provided and numColumns > 1.
+   */
+  const deriveGridGeometry = (): {
+    cellWidth: number;
+    cellHeight: number;
+    colGap: number;
+    rowGap: number;
+    startX: number;
+    startY: number;
+  } | undefined => {
+    if (!getItemSpan || originalIndexes.length === 0) return undefined;
+
+    const firstOrigIdx = originalIndexes[0];
+    const startMeas = firstOrigIdx !== undefined ? getMeasForOrigIdx(firstOrigIdx) : undefined;
+    if (!startMeas) return undefined;
+
+    // Pack original order to know grid positions for gap derivation
+    const origPacking = packGrid(
+      originalIndexes.length,
+      numColumns,
+      (displayIdx) => getSpanForOrigIdx(originalIndexes[displayIdx]!),
+    );
+
+    // Find cell dimensions from measurements of items with span 1
+    let cellWidth: number | undefined;
+    let cellHeight: number | undefined;
+
+    for (let i = 0; i < originalIndexes.length; i++) {
+      const origIdx = originalIndexes[i]!;
+      const span = getSpanForOrigIdx(origIdx);
+      const meas = getMeasForOrigIdx(origIdx);
+      if (!meas) continue;
+      if (span.colSpan === 1 && cellWidth === undefined) cellWidth = meas.width;
+      if (span.rowSpan === 1 && cellHeight === undefined) cellHeight = meas.height;
+      if (cellWidth !== undefined && cellHeight !== undefined) break;
+    }
+
+    // Fallback: derive from first item divided by its span
+    if (cellWidth === undefined || cellHeight === undefined) {
+      const firstSpan = getSpanForOrigIdx(firstOrigIdx!);
+      if (cellWidth === undefined) cellWidth = startMeas.width / firstSpan.colSpan;
+      if (cellHeight === undefined) cellHeight = startMeas.height / firstSpan.rowSpan;
+    }
+
+    // Derive column gap from two items at different grid columns
+    let colGap = 0;
+    for (let i = 0; i < origPacking.positions.length && colGap === 0; i++) {
+      for (let j = i + 1; j < origPacking.positions.length; j++) {
+        const pi = origPacking.positions[i]!;
+        const pj = origPacking.positions[j]!;
+        if (pi.col !== pj.col) {
+          const mi = getMeasForOrigIdx(originalIndexes[i]!);
+          const mj = getMeasForOrigIdx(originalIndexes[j]!);
+          if (mi && mj) {
+            const colDiff = Math.abs(pj.col - pi.col);
+            const xDiff = Math.abs(mj.x - mi.x);
+            colGap = xDiff / colDiff - cellWidth;
+            break;
+          }
+        }
+      }
+    }
+
+    // Derive row gap from two items at different grid rows
+    let rowGap = 0;
+    for (let i = 0; i < origPacking.positions.length && rowGap === 0; i++) {
+      for (let j = i + 1; j < origPacking.positions.length; j++) {
+        const pi = origPacking.positions[i]!;
+        const pj = origPacking.positions[j]!;
+        if (pi.row !== pj.row) {
+          const mi = getMeasForOrigIdx(originalIndexes[i]!);
+          const mj = getMeasForOrigIdx(originalIndexes[j]!);
+          if (mi && mj) {
+            const rowDiff = Math.abs(pj.row - pi.row);
+            const yDiff = Math.abs(mj.y - mi.y);
+            rowGap = yDiff / rowDiff - cellHeight;
+            break;
+          }
+        }
+      }
+    }
+
+    return {
+      cellWidth,
+      cellHeight,
+      colGap: Math.max(colGap, 0),
+      rowGap: Math.max(rowGap, 0),
+      startX: startMeas.x,
+      startY: startMeas.y,
+    };
+  };
+
   // ── Shift application (merges ghost shifts for cross-container) ──
 
   const applyShifts = (shifts: Record<string, Position> | undefined) => {
@@ -309,7 +414,26 @@ export const useSortableList = <T,>(
         }
         displaySlot++;
       }
+    } else if (getItemSpan) {
+      // ── Mixed-size grid: bin-pack items into a 2D occupancy grid ──
+      const geo = deriveGridGeometry();
+      if (!geo) return undefined;
+
+      const packing = packGrid(
+        order.length,
+        numColumns,
+        (displayIdx) => getSpanForOrigIdx(order[displayIdx]!),
+      );
+
+      for (let i = 0; i < order.length; i++) {
+        const gp = packing.positions[i]!;
+        targetPositions.set(i, {
+          x: geo.startX + gp.col * (geo.cellWidth + geo.colGap),
+          y: geo.startY + gp.row * (geo.cellHeight + geo.rowGap),
+        });
+      }
     } else {
+      // ── Uniform grid: col = i % numColumns ──
       let cursorY = startMeas.y;
       const colXPositions: number[] = [];
       for (let c = 0; c < numColumns && c < originalIndexes.length; c++) {
@@ -652,8 +776,60 @@ export const useSortableList = <T,>(
         cursor += size + gap;
       }
       return itemCount - 1;
+    } else if (getItemSpan) {
+      // ── Mixed-size grid: map finger to cell, then to display index ──
+      const geo = deriveGridGeometry();
+      if (!geo) return draggedDisplayIndexRef.current ?? 0;
+
+      // Pack original order (stable positions during drag)
+      const origPacking = packGrid(
+        itemCount,
+        numColumns,
+        (displayIdx) => getSpanForOrigIdx(originalIndexes[displayIdx]!),
+      );
+
+      // Find which grid cell the finger is in
+      const cellCol = Math.max(0, Math.min(
+        Math.floor((contentPos.x - geo.startX + geo.colGap / 2) / (geo.cellWidth + geo.colGap)),
+        numColumns - 1,
+      ));
+      const cellRow = Math.max(0, Math.floor(
+        (contentPos.y - geo.startY + geo.rowGap / 2) / (geo.cellHeight + geo.rowGap),
+      ));
+
+      // Build cell → display index map (all cells each item occupies)
+      const cellOwner = new Map<string, number>();
+      for (let i = 0; i < origPacking.positions.length && i < itemCount; i++) {
+        const pos = origPacking.positions[i]!;
+        const span = getSpanForOrigIdx(originalIndexes[i]!);
+        for (let r = 0; r < span.rowSpan; r++) {
+          for (let c = 0; c < span.colSpan; c++) {
+            cellOwner.set(`${pos.row + r},${pos.col + c}`, i);
+          }
+        }
+      }
+
+      // Direct cell hit
+      const owner = cellOwner.get(`${cellRow},${cellCol}`);
+      if (owner !== undefined) return Math.min(owner, pending.length - 1);
+
+      // Empty cell — find nearest item by center distance
+      let minDist = Infinity;
+      let nearest = 0;
+      for (let i = 0; i < origPacking.positions.length && i < itemCount; i++) {
+        const meas = measurements[i];
+        if (!meas) continue;
+        const cx = meas.x + meas.width / 2;
+        const cy = meas.y + meas.height / 2;
+        const dist = Math.abs(contentPos.x - cx) + Math.abs(contentPos.y - cy);
+        if (dist < minDist) {
+          minDist = dist;
+          nearest = i;
+        }
+      }
+      return Math.min(nearest, pending.length - 1);
     } else {
-      // Multi-column grid — find row then column
+      // ── Uniform grid — find row then column ──
       const firstMeas = measurements[0];
       if (!firstMeas) return 0;
       let cursorY = firstMeas.y;
@@ -750,8 +926,26 @@ export const useSortableList = <T,>(
       targetPos = horizontal
         ? { x: cursor, y: snapStartMeas.y }
         : { x: snapStartMeas.x, y: cursor };
+    } else if (getItemSpan) {
+      // Mixed-size grid — pack items and find target position
+      const geo = deriveGridGeometry();
+      if (!geo) return DraxSnapbackTargetPreset.Default;
+
+      const packing = packGrid(
+        pending.length,
+        numColumns,
+        (di) => getSpanForOrigIdx(pending[di]!),
+      );
+
+      const gp = packing.positions[displayIdx];
+      if (!gp) return DraxSnapbackTargetPreset.Default;
+
+      targetPos = {
+        x: geo.startX + gp.col * (geo.cellWidth + geo.colGap),
+        y: geo.startY + gp.row * (geo.cellHeight + geo.rowGap),
+      };
     } else {
-      // Multi-column grid
+      // Uniform grid
       let cursorY = snapStartMeas.y;
       const targetRow = Math.floor(displayIdx / numColumns);
       const targetCol = displayIdx % numColumns;
@@ -801,6 +995,7 @@ export const useSortableList = <T,>(
     longPressDelay,
     lockToMainAxis,
     animationConfig,
+    getItemSpan,
     inactiveItemStyle,
     itemEntering,
     itemExiting,
