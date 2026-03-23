@@ -11,7 +11,7 @@
 [![npm version](https://img.shields.io/npm/v/react-native-drax?style=flat-square)](https://www.npmjs.com/package/react-native-drax)
 
 
-[Docs](https://nuclearpasta.com/react-native-drax) | [Live Example](https://nuclearpasta.com/react-native-drax/example)
+📚 [**Visit the official documentation**](https://nuclearpasta.com/react-native-drax) &nbsp;&nbsp;·&nbsp;&nbsp; 🎮 [**See the live example**](https://nuclearpasta.com/react-native-drax/example)
 
 ## 📖 Overview
 
@@ -43,6 +43,7 @@ Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and
 |---|:---:|:---:|:---:|
 | Free-form drag & drop | ✅ | ✅ | ➖ |
 | Sortable list / grid | ✅ | ✅ | ✅ |
+| Mixed-size grid (non-uniform spans) | ✅ | ➖ | ➖ |
 | Cross-container / cross-list reorder | ⚠️ Experimental | ➖ | ➖ |
 | List-agnostic (FlatList, FlashList, LegendList) | ✅ | ➖ | ➖ |
 | Drag handles | ✅ | ✅ | ✅ |
@@ -368,13 +369,14 @@ import { Drax } from 'react-native-drax';
 
 ## 💡 Examples
 
-The `example/` directory contains an Expo Router app with 10 screens demonstrating all features:
+The `example/` directory contains an Expo Router app with 11 screens demonstrating all features:
 
 | Screen | Features shown |
 |---|---|
 | Color Drag & Drop | Drop acceptance, hover styles, snap alignment |
 | Reorderable List | DraxList, animation presets, auto-scroll |
 | Reorderable Grid | Sortable grid with multi-column layout |
+| Mixed-Size Grid | Items with different spans (1×1, 2×2, etc.) using `getItemSpan` and `packGrid` |
 | Drag Handles | Only the grip icon starts a drag |
 | Drag Bounds | Constrain drag within a view |
 | Collision Modes | Center vs Intersect vs Contain |
