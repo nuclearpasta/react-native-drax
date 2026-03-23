@@ -2,6 +2,14 @@
   "buildCommand": "yarn build",
   "outputDirectory": "build",
   "installCommand": "cd .. && yarn install",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ]
+    }
+  ],
   "redirects": [
     { "source": "/", "destination": "/react-native-drax/" }
   ],
