@@ -9,6 +9,7 @@ const config: Config = {
 
   url: 'https://nuclearpasta.com',
   baseUrl: '/react-native-drax/',
+  trailingSlash: false,
 
   organizationName: 'nuclearpasta',
   projectName: 'react-native-drax',
