@@ -11,7 +11,11 @@
 
 
 
-📚 [**Visit the official documentation**](https://nuclearpasta.com/react-native-drax) &nbsp;&nbsp;·&nbsp;&nbsp; 🎮 [**See the live example**](https://nuclearpasta.com/react-native-drax/example)
+📚 [**Visit the official documentation**](https://nuclearpasta.com/react-native-drax)
+
+🎮 [**See the live example**](https://nuclearpasta.com/react-native-drax/example)
+
+
 
 ## 📖 Overview
 
