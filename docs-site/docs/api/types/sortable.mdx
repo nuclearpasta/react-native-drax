@@ -85,6 +85,17 @@ interface SortableAnimationCustomConfig {
 }
 ```
 
+## GridItemSpan
+
+Grid span for a sortable item — how many columns and rows it occupies. Used with `getItemSpan` on `useSortableList` to enable mixed-size grid layouts.
+
+```tsx
+interface GridItemSpan {
+  colSpan: number;  // Number of columns this item spans
+  rowSpan: number;  // Number of rows this item spans
+}
+```
+
 ## DropIndicatorProps
 
 Props for `renderDropIndicator` on `SortableContainer`.

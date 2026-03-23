@@ -42,6 +42,7 @@ const sortable = useSortableList({
 | `autoScrollBackThreshold` | `number` | `0.1` | Back auto-scroll threshold |
 | `autoScrollForwardThreshold` | `number` | `0.9` | Forward auto-scroll threshold |
 | `animationConfig` | `SortableAnimationConfig` | `'default'` | Animation preset or custom config |
+| `getItemSpan` | `(item: T, index: number) => GridItemSpan` | — | Grid span per item (enables mixed-size grid). Only used when `numColumns > 1`. |
 | `inactiveItemStyle` | `ViewStyle` | — | Style applied to all non-dragged items during drag |
 | `itemEntering` | `EntryOrExitLayoutType` | — | Reanimated layout animation for items entering the list |
 | `itemExiting` | `EntryOrExitLayoutType` | — | Reanimated layout animation for items exiting the list |
@@ -83,5 +84,7 @@ const sortable = useSortableList({ data, keyExtractor, onReorder });
 ## Related
 
 - [Composable API Guide](/guides/composable-api)
+- [Sortable Grid Guide](/guides/sortable-grid) — Uniform and mixed-size grids
+- [packGrid Utility](/api/utilities/pack-grid) — Grid bin-packing for mixed-size items
 - [SortableContainer](/api/components/sortable-container)
 - [SortableItem](/api/components/sortable-item)

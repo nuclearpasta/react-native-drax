@@ -33,7 +33,9 @@ import {
 import { isDraggable } from './useSpatialIndex';
 
 /** Style override to strip margins — hover is positioned via translateX/Y */
-const noMargin = {
+/** Styles to strip from the hover content — margins and absolute positioning
+ *  are not needed since hover is positioned via translateX/Y. */
+const hoverResetStyle = {
   margin: 0,
   marginHorizontal: 0,
   marginVertical: 0,
@@ -41,6 +43,11 @@ const noMargin = {
   marginBottom: 0,
   marginLeft: 0,
   marginRight: 0,
+  position: 'relative',
+  left: 0,
+  top: 0,
+  right: undefined,
+  bottom: undefined,
 } as const;
 
 interface CallbackDispatchDeps {
@@ -238,7 +245,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
           <View style={[
             viewStyle,
             dims && { width: dims.width, height: dims.height },
-            noMargin,
+            hoverResetStyle,
           ]}>
             {draggedEntry.props.children}
           </View>

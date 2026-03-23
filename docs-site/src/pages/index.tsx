@@ -171,25 +171,23 @@ function CodeExamples() {
       <Heading as="h2" className="code-examples-heading">
         Three lines to drag. Five to sort.
       </Heading>
-      <div className="container tabs-container">
-        <Tabs>
-          <TabItem value="basic" label="Basic Drag & Drop" default>
-            <CodeBlock language="tsx" title="App.tsx">
-              {basicExample}
-            </CodeBlock>
-          </TabItem>
-          <TabItem value="sortable" label="Sortable List">
-            <CodeBlock language="tsx" title="App.tsx">
-              {sortableExample}
-            </CodeBlock>
-          </TabItem>
-          <TabItem value="composable" label="Composable API">
-            <CodeBlock language="tsx" title="App.tsx">
-              {composableExample}
-            </CodeBlock>
-          </TabItem>
-        </Tabs>
-      </div>
+      <Tabs>
+        <TabItem value="basic" label="Basic Drag & Drop" default>
+          <CodeBlock language="tsx" title="App.tsx">
+            {basicExample}
+          </CodeBlock>
+        </TabItem>
+        <TabItem value="sortable" label="Sortable List">
+          <CodeBlock language="tsx" title="App.tsx">
+            {sortableExample}
+          </CodeBlock>
+        </TabItem>
+        <TabItem value="composable" label="Composable API">
+          <CodeBlock language="tsx" title="App.tsx">
+            {composableExample}
+          </CodeBlock>
+        </TabItem>
+      </Tabs>
     </section>
   );
 }

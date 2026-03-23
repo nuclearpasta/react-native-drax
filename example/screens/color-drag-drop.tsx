@@ -172,12 +172,11 @@ export default function ColorDragDrop() {
               blue: receivedWeights.blue + payload.weights.blue,
             });
 
-            // Snap the hover to top-left of the receiver with 8px padding
+            // Snap the hover to the center of the receiver
             return snapToAlignment(
               event.receiver.measurements!,
               event.dragged.measurements,
-              'top-left',
-              { x: 8, y: 8 },
+              'center',
             );
           }}
         />

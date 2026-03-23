@@ -44,6 +44,18 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - `DraxList` is a convenience wrapper that accepts a `component` prop (defaults to FlatList)
 - For FlashList/LegendList: pass as `component` prop to `DraxList`, or use the composable API directly
 
+### Mixed-Size Grid (Non-Uniform Spans)
+
+- `getItemSpan` prop on `useSortableList` — returns `{ colSpan, rowSpan }` per item
+- `packGrid` utility — bin-packing algorithm placing items left-to-right, top-to-bottom into a 2D occupancy grid
+- Grid geometry (cell size + gaps) derived automatically from item measurements
+- `computeShiftsForOrder` uses `packGrid` to compute target positions for non-uniform items
+- `getSlotFromPosition` maps finger position to grid cell, then to display index via cell→owner map
+- `getSnapbackTarget` packs the pending order to find the dragged item's target position
+- Rendering: user provides absolute positioning (ScrollView + absolute items); shifts handle reorder
+- `packGrid` exported for users to compute grid positions in their render function
+- Example: `example/screens/mixed-grid.tsx` — 4-column grid with 1×1, 2×1, 1×2, and 2×2 items
+
 ## Cross-Container Sortable (Board)
 
 - `useSortableBoard` hook — board-level coordinator for cross-container transfers
@@ -86,6 +98,7 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - Applied in `HoverLayer.useAnimatedStyle` — reacts to `dragPhaseSV` and `receiverIdSV`
 - Set once per drag in `handleDragStart` via `hoverStylesRef`, captured by worklet on HoverLayer re-render
 - Supports `AnimatedViewStylePropWithoutLayout` (no layout props — hover is positioned via translateX/Y)
+- Default hover content strips positioning styles (`position`, `left`, `top`, `right`, `bottom`) and margins via `hoverResetStyle` in `handleDragStart` — prevents double-displacement when items use `position: 'absolute'` with offsets
 
 ## Drag Bounds
 
@@ -148,7 +161,7 @@ We compete with two libraries. Drax must match or exceed their DX while keeping 
 
 ## Example App
 
-Expo Router with 10 screens in `example/`. Stack navigation with home screen listing all examples.
+Expo Router with 11 screens in `example/`. Stack navigation with home screen listing all examples.
 
 ### Running
 
@@ -172,6 +185,7 @@ All interactive elements have `testID` for identification via `ui_describe_all` 
 | Color Drag/Drop | `color-block-{color}`, `receiving-zone`, `staging-zone`, `*-clear-button` | `color-block-red`, `receiving-zone-clear-button` |
 | Reorderable List | `sortable-item-{letter}`, `sortable-list-container` | `sortable-item-A`, `sortable-item-Z` |
 | Reorderable Grid | `grid-tile-{number}`, `sortable-grid-container` | `grid-tile-1`, `grid-tile-30` |
+| Mixed-Size Grid | `mixed-tile-{id}`, `mixed-grid-container` | `mixed-tile-weather`, `mixed-tile-mail` |
 | Drag Handles | `handle-item-{id}`, `drag-handles-container` | `handle-item-item-0` |
 | Drag Bounds | `bounded-draggable`, `free-draggable`, `drag-bounds-area` | |
 | Collision Modes | `zone-center`, `zone-intersect`, `zone-contain`, `collision-draggable` | |

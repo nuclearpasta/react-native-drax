@@ -39,6 +39,14 @@ export interface ViewDimensions {
   height: number;
 }
 
+/** Grid span for a sortable item (columns and rows it occupies) */
+export interface GridItemSpan {
+  /** Number of columns this item spans. @default 1 */
+  colSpan: number;
+  /** Number of rows this item spans. @default 1 */
+  rowSpan: number;
+}
+
 /** Measurements of a Drax view for bounds checking purposes */
 export interface DraxViewMeasurements extends Position, ViewDimensions {
   /** 1 when DraxView auto-detected transform-based positioning
@@ -724,6 +732,10 @@ export interface UseSortableListOptions<T> {
   autoScrollForwardThreshold?: number;
   /** Animation config for item shift animations. @default 'default' */
   animationConfig?: SortableAnimationConfig;
+  /** Returns the grid span for an item. Enables non-uniform grid layout
+   *  where items can span multiple columns and/or rows.
+   *  Only used when numColumns > 1. */
+  getItemSpan?: (item: T, index: number) => GridItemSpan;
   /** Style applied to all non-dragged items while a drag is active.
    *  Use for dimming/scaling inactive items (e.g., `{ opacity: 0.5 }`). */
   inactiveItemStyle?: ViewStyle;
@@ -762,6 +774,8 @@ export interface SortableListInternal<T> {
   longPressDelay: number;
   lockToMainAxis: boolean;
   animationConfig: SortableAnimationConfig;
+  /** Returns the grid span for an item (non-uniform grid layout) */
+  getItemSpan?: (item: T, index: number) => GridItemSpan;
   inactiveItemStyle?: ViewStyle;
   itemEntering?: EntryOrExitLayoutType;
   itemExiting?: EntryOrExitLayoutType;

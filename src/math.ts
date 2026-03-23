@@ -1,5 +1,6 @@
 import type {
   DraxViewMeasurements,
+  GridItemSpan,
   HitTestResult,
   Position,
   SpatialEntry,
@@ -249,3 +250,84 @@ export const snapToAlignment = (
 
   return { x: x + offset.x, y: y + offset.y };
 };
+
+// ─── Grid Packing ───────────────────────────────────────────────────────
+
+/** Result of packing items into a grid */
+export interface GridPackResult {
+  /** Grid position (row, col) for each item, in input order */
+  positions: { row: number; col: number }[];
+  /** Total number of rows in the packed grid */
+  totalRows: number;
+}
+
+/**
+ * Pack items into a grid with the given number of columns.
+ * Items are placed left-to-right, top-to-bottom, filling the first
+ * available position where the item's span fits.
+ *
+ * This is the same algorithm used by mobile home screens: scan cells
+ * in reading order and place each item at the first slot that can
+ * accommodate its colSpan × rowSpan.
+ *
+ * @param count Number of items to pack
+ * @param numColumns Number of columns in the grid
+ * @param getSpan Returns the span for the item at the given index
+ */
+export function packGrid(
+  count: number,
+  numColumns: number,
+  getSpan: (index: number) => GridItemSpan,
+): GridPackResult {
+  // Dynamic 2D occupancy grid — rows are added as needed
+  const occupied: boolean[][] = [];
+  const positions: { row: number; col: number }[] = [];
+  let maxRow = 0;
+
+  function ensureRow(row: number) {
+    while (occupied.length <= row) {
+      occupied.push(new Array<boolean>(numColumns).fill(false));
+    }
+  }
+
+  function isAvailable(row: number, col: number, cs: number, rs: number): boolean {
+    if (col + cs > numColumns) return false;
+    for (let r = row; r < row + rs; r++) {
+      ensureRow(r);
+      for (let c = col; c < col + cs; c++) {
+        if (occupied[r]![c]) return false;
+      }
+    }
+    return true;
+  }
+
+  function markOccupied(row: number, col: number, cs: number, rs: number) {
+    for (let r = row; r < row + rs; r++) {
+      ensureRow(r);
+      for (let c = col; c < col + cs; c++) {
+        occupied[r]![c] = true;
+      }
+    }
+    maxRow = Math.max(maxRow, row + rs - 1);
+  }
+
+  for (let i = 0; i < count; i++) {
+    const span = getSpan(i);
+    const cs = Math.max(1, Math.min(span.colSpan, numColumns));
+    const rs = Math.max(1, span.rowSpan);
+    let placed = false;
+    for (let r = 0; !placed; r++) {
+      ensureRow(r);
+      for (let c = 0; c <= numColumns - cs; c++) {
+        if (isAvailable(r, c, cs, rs)) {
+          markOccupied(r, c, cs, rs);
+          positions.push({ row: r, col: c });
+          placed = true;
+          break;
+        }
+      }
+    }
+  }
+
+  return { positions, totalRows: count > 0 ? maxRow + 1 : 0 };
+}
