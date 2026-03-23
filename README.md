@@ -1,7 +1,5 @@
 # react-native-drax
 
-📚 [**Visit the official documentation**](https://nuclearpasta.com/react-native-drax) &nbsp;&nbsp;·&nbsp;&nbsp; 🎮 [**See the live example**](https://nuclearpasta.com/react-native-drax/example)
-
 
 [![React Native CLI](https://img.shields.io/badge/-React%20Native%20CLI-282C34?style=flat-square&logo=react&logoColor=61DAFB)](https://reactnative.dev/)
 [![Expo CLI](https://img.shields.io/badge/-Expo%20CLI-282C34?style=flat-square&logo=expo&logoColor=white)](https://expo.dev/)
@@ -12,6 +10,8 @@
 [![npm version](https://img.shields.io/npm/v/react-native-drax?style=flat-square)](https://www.npmjs.com/package/react-native-drax)
 
 
+
+📚 [**Visit the official documentation**](https://nuclearpasta.com/react-native-drax) &nbsp;&nbsp;·&nbsp;&nbsp; 🎮 [**See the live example**](https://nuclearpasta.com/react-native-drax/example)
 
 ## 📖 Overview
 
