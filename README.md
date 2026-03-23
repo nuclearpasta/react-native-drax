@@ -1,17 +1,16 @@
 # react-native-drax
 
+📚 **[Visit the official documentation](https://nuclearpasta.com/react-native-drax)**   ·   🎮 **[See the live example](https://nuclearpasta.com/react-native-drax/example)**
+
 **A drag-and-drop framework for React Native**
 
-[![React Native CLI](https://img.shields.io/badge/-React%20Native%20CLI-282C34?style=flat-square&logo=react&logoColor=61DAFB)](https://reactnative.dev/)
-[![Expo CLI](https://img.shields.io/badge/-Expo%20CLI-282C34?style=flat-square&logo=expo&logoColor=white)](https://expo.dev/)
-[![platforms](https://img.shields.io/badge/platforms-Android%20%7C%20iOS%20%7C%20Web-brightgreen.svg?style=flat-square&colorB=191A17)](https://necolas.github.io/react-native-web/)
-[![GitHub top language](https://img.shields.io/github/languages/top/nuclearpasta/react-native-drax?style=flat-square)](https://github.com/nuclearpasta/react-native-drax/search?l=typescript)
-[![CI](https://github.com/nuclearpasta/react-native-drax/actions/workflows/ci.yml/badge.svg)](https://github.com/nuclearpasta/react-native-drax/actions/workflows/ci.yml)
-[![GitHub license](https://img.shields.io/github/license/nuclearpasta/react-native-drax?style=flat-square)](https://github.com/nuclearpasta/react-native-drax/blob/main/LICENSE.md)
-[![npm version](https://img.shields.io/npm/v/react-native-drax?style=flat-square)](https://www.npmjs.com/package/react-native-drax)
-
-
-📚 [**Visit the official documentation**](https://nuclearpasta.com/react-native-drax) &nbsp;&nbsp;·&nbsp;&nbsp; 🎮 [**See the live example**](https://nuclearpasta.com/react-native-drax/example)
+[React Native CLI](https://reactnative.dev/)
+[Expo CLI](https://expo.dev/)
+[platforms](https://necolas.github.io/react-native-web/)
+[GitHub top language](https://github.com/nuclearpasta/react-native-drax/search?l=typescript)
+[CI](https://github.com/nuclearpasta/react-native-drax/actions/workflows/ci.yml)
+[GitHub license](https://github.com/nuclearpasta/react-native-drax/blob/main/LICENSE.md)
+[npm version](https://www.npmjs.com/package/react-native-drax)
 
 ## 📖 Overview
 
@@ -39,21 +38,23 @@ Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and
 
 ### 🤔 Why Drax?
 
-| Feature | Drax | reanimated-dnd | sortables |
-|---|:---:|:---:|:---:|
-| Free-form drag & drop | ✅ | ✅ | ➖ |
-| Sortable list / grid | ✅ | ✅ | ✅ |
-| Mixed-size grid (non-uniform spans) | ✅ | ➖ | ➖ |
-| Cross-container / cross-list reorder | ⚠️ Experimental | ➖ | ➖ |
-| List-agnostic (FlatList, FlashList, LegendList) | ✅ | ➖ | ➖ |
-| Drag handles | ✅ | ✅ | ✅ |
-| Drag state styling | 15 props + inactive | onStateChange | 5 props + hook |
-| Drop indicator | ✅ | ➖ | Grid only |
-| UI-thread DnD collision | ✅ | ➖ | ➖ |
-| Event callbacks | 19 types | ~12 types | ~10 types |
-| Accessibility + reduced motion | ✅ | Manual | Manual |
-| Web support | ✅ | ➖ | Partial |
-| Reanimated | 4 | ≥ 4.2 | ≥ 3 |
+
+| Feature                                         | Drax                | reanimated-dnd | sortables      |
+| ----------------------------------------------- | ------------------- | -------------- | -------------- |
+| Free-form drag & drop                           | ✅                   | ✅              | ➖              |
+| Sortable list / grid                            | ✅                   | ✅              | ✅              |
+| Mixed-size grid (non-uniform spans)             | ✅                   | ➖              | ➖              |
+| Cross-container / cross-list reorder            | ⚠️ Experimental     | ➖              | ➖              |
+| List-agnostic (FlatList, FlashList, LegendList) | ✅                   | ➖              | ➖              |
+| Drag handles                                    | ✅                   | ✅              | ✅              |
+| Drag state styling                              | 15 props + inactive | onStateChange  | 5 props + hook |
+| Drop indicator                                  | ✅                   | ➖              | Grid only      |
+| UI-thread DnD collision                         | ✅                   | ➖              | ➖              |
+| Event callbacks                                 | 19 types            | ~12 types      | ~10 types      |
+| Accessibility + reduced motion                  | ✅                   | Manual         | Manual         |
+| Web support                                     | ✅                   | ➖              | Partial        |
+| Reanimated                                      | 4                   | ≥ 4.2          | ≥ 3            |
+
 
 [See full comparison →](https://nuclearpasta.com/react-native-drax#comparison)
 
@@ -71,12 +72,14 @@ yarn add react-native-drax
 npm install react-native-reanimated react-native-gesture-handler
 ```
 
-| Peer Dependency | Version |
-|---|---|
-| `react` | >= 18 |
-| `react-native` | >= 0.68 |
-| `react-native-reanimated` | ^4.0.0 |
+
+| Peer Dependency                | Version                   |
+| ------------------------------ | ------------------------- |
+| `react`                        | >= 18                     |
+| `react-native`                 | >= 0.68                   |
+| `react-native-reanimated`      | ^4.0.0                    |
 | `react-native-gesture-handler` | >= 2.0.0 (v3 recommended) |
+
 
 ## 🚀 Quick Start
 
@@ -347,43 +350,49 @@ import { Drax } from 'react-native-drax';
 
 ## 🧩 Components
 
-| Component | Description |
-|---|---|
-| `DraxProvider` | Context provider — wrap your app's drag-and-drop area |
-| `DraxView` | Draggable and/or receptive view with 19 callback events |
-| `DraxList` | List-agnostic sortable list (convenience wrapper) |
-| `DraxHandle` | Drag handle — only this area starts a drag |
-| `DraxScrollView` | Scrollable container with auto-scroll during drag |
-| `SortableContainer` | Monitoring wrapper for composable sortable API |
-| `SortableItem` | Per-item wrapper with shift animation |
-| `SortableBoardContainer` | Cross-container board coordinator (experimental) |
+
+| Component                | Description                                             |
+| ------------------------ | ------------------------------------------------------- |
+| `DraxProvider`           | Context provider — wrap your app's drag-and-drop area   |
+| `DraxView`               | Draggable and/or receptive view with 19 callback events |
+| `DraxList`               | List-agnostic sortable list (convenience wrapper)       |
+| `DraxHandle`             | Drag handle — only this area starts a drag              |
+| `DraxScrollView`         | Scrollable container with auto-scroll during drag       |
+| `SortableContainer`      | Monitoring wrapper for composable sortable API          |
+| `SortableItem`           | Per-item wrapper with shift animation                   |
+| `SortableBoardContainer` | Cross-container board coordinator (experimental)        |
+
 
 ## 🪝 Hooks
 
-| Hook | Description |
-|---|---|
-| `useSortableList` | List-agnostic reorder state management |
+
+| Hook               | Description                                      |
+| ------------------ | ------------------------------------------------ |
+| `useSortableList`  | List-agnostic reorder state management           |
 | `useSortableBoard` | Cross-container board coordinator (experimental) |
-| `useDraxContext` | Access the Drax context |
-| `useDraxId` | Generate a unique Drax view ID |
+| `useDraxContext`   | Access the Drax context                          |
+| `useDraxId`        | Generate a unique Drax view ID                   |
+
 
 ## 💡 Examples
 
 The `example/` directory contains an Expo Router app with 11 screens demonstrating all features:
 
-| Screen | Features shown |
-|---|---|
-| Color Drag & Drop | Drop acceptance, hover styles, snap alignment |
-| Reorderable List | DraxList, animation presets, auto-scroll |
-| Reorderable Grid | Sortable grid with multi-column layout |
-| Mixed-Size Grid | Items with different spans (1×1, 2×2, etc.) using `getItemSpan` and `packGrid` |
-| Drag Handles | Only the grip icon starts a drag |
-| Drag Bounds | Constrain drag within a view |
-| Collision Modes | Center vs Intersect vs Contain |
-| Cross-List Reorder | FlashList + LegendList + FlatList cross-container drag (experimental) |
-| Knight Moves | Chess knight drag puzzle |
-| Scrolling | Drag from scroll view to drop zone |
-| Stress Test | 100 items in a sortable list |
+
+| Screen             | Features shown                                                                 |
+| ------------------ | ------------------------------------------------------------------------------ |
+| Color Drag & Drop  | Drop acceptance, hover styles, snap alignment                                  |
+| Reorderable List   | DraxList, animation presets, auto-scroll                                       |
+| Reorderable Grid   | Sortable grid with multi-column layout                                         |
+| Mixed-Size Grid    | Items with different spans (1×1, 2×2, etc.) using `getItemSpan` and `packGrid` |
+| Drag Handles       | Only the grip icon starts a drag                                               |
+| Drag Bounds        | Constrain drag within a view                                                   |
+| Collision Modes    | Center vs Intersect vs Contain                                                 |
+| Cross-List Reorder | FlashList + LegendList + FlatList cross-container drag (experimental)          |
+| Knight Moves       | Chess knight drag puzzle                                                       |
+| Scrolling          | Drag from scroll view to drop zone                                             |
+| Stress Test        | 100 items in a sortable list                                                   |
+
 
 To run the example app:
 
@@ -395,7 +404,7 @@ cd example && yarn start
 
 v1.0.0 is a complete rewrite. Key changes:
 
-- **`DraxList` is new** — list-agnostic convenience wrapper using the new sortable architecture. The old `DraxList` / `DraxListItem` API from v0.10.x and v0.11.0-alpha is removed.
+- `**DraxList` is new** — list-agnostic convenience wrapper using the new sortable architecture. The old `DraxList` / `DraxListItem` API from v0.10.x and v0.11.0-alpha is removed.
 - **New sortable architecture** — `useSortableList` + `SortableContainer` + `SortableItem` composable API replaces the old array-indexed approach.
 - **Reanimated 4 + Gesture Handler 3** — required peer dependencies (Gesture Handler v2 supported via compat layer with reduced performance).
 - **New Architecture (Fabric)** compatible.
@@ -418,29 +427,18 @@ Originally created by [Joe Lafiosca](https://github.com/lafiosca). v1.0.0 rewrit
 
 Thanks to all contributors who have helped make Drax better:
 
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<table>
-  <tbody>
-    <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/lafiosca"><img src="https://avatars.githubusercontent.com/u/9442662?v=4" width="100px;" alt="Joe Lafiosca"/><br /><sub><b>Joe Lafiosca</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=lafiosca" title="Code">💻</a> <a href="https://github.com/nuclearpasta/react-native-drax/commits?author=lafiosca" title="Documentation">📖</a> <a href="#example-lafiosca" title="Examples">💡</a> <a href="#maintenance-lafiosca" title="Maintenance">🚧</a> <a href="#infra-lafiosca" title="Infrastructure">🚇</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/LunatiqueCoder"><img src="https://avatars.githubusercontent.com/u/55203625?v=4" width="100px;" alt="Ovidiu Cristescu"/><br /><sub><b>Ovidiu Cristescu</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=LunatiqueCoder" title="Code">💻</a> <a href="https://github.com/nuclearpasta/react-native-drax/commits?author=LunatiqueCoder" title="Documentation">📖</a> <a href="#example-LunatiqueCoder" title="Examples">💡</a> <a href="#maintenance-LunatiqueCoder" title="Maintenance">🚧</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Auticiel"><img src="https://avatars.githubusercontent.com/u/8429221?v=4" width="100px;" alt="François Dupayrat"/><br /><sub><b>François Dupayrat</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=Auticiel" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/jmarnold"><img src="https://avatars.githubusercontent.com/u/181667?v=4" width="100px;" alt="Josh Arnold"/><br /><sub><b>Josh Arnold</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=jmarnold" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/rnz269"><img src="https://avatars.githubusercontent.com/u/20953181?v=4" width="100px;" alt="Rahul Nallappa"/><br /><sub><b>Rahul Nallappa</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=rnz269" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/negue"><img src="https://avatars.githubusercontent.com/u/842273?v=4" width="100px;" alt="negue"/><br /><sub><b>negue</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=negue" title="Documentation">📖</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/chrisdrackett"><img src="https://avatars.githubusercontent.com/u/4378?v=4" width="100px;" alt="Chris Drackett"/><br /><sub><b>Chris Drackett</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=chrisdrackett" title="Code">💻</a></td>
-    </tr>
-    <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/sturdynut"><img src="https://avatars.githubusercontent.com/u/8547391?v=4" width="100px;" alt="Matti Salokangas"/><br /><sub><b>Matti Salokangas</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=sturdynut" title="Code">💻</a></td>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/afgarcia86"><img src="https://avatars.githubusercontent.com/u/3606053?v=4" width="100px;" alt="Andres Garcia"/><br /><sub><b>Andres Garcia</b></sub></a><br /><a href="https://github.com/nuclearpasta/react-native-drax/commits?author=afgarcia86" title="Code">💻</a></td>
-    </tr>
-  </tbody>
-</table>
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+
+
+
+
+
+
+|                                                                                                                                                                                                                                                                                           |                                                                                                                                                                                                                                                                                                       |                                                                                                                                      |                                                                                                                                |                                                                                                                               |                                                                                                                    |                                                                                                                                             |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **[Joe Lafiosca](https://github.com/lafiosca)** [💻](https://github.com/nuclearpasta/react-native-drax/commits?author=lafiosca) [📖](https://github.com/nuclearpasta/react-native-drax/commits?author=lafiosca) [💡](#example-lafiosca) [🚧](#maintenance-lafiosca) [🚇](#infra-lafiosca) | **[Ovidiu Cristescu](https://github.com/LunatiqueCoder)** [💻](https://github.com/nuclearpasta/react-native-drax/commits?author=LunatiqueCoder) [📖](https://github.com/nuclearpasta/react-native-drax/commits?author=LunatiqueCoder) [💡](#example-LunatiqueCoder) [🚧](#maintenance-LunatiqueCoder) | **[François Dupayrat](https://github.com/Auticiel)** [💻](https://github.com/nuclearpasta/react-native-drax/commits?author=Auticiel) | **[Josh Arnold](https://github.com/jmarnold)** [💻](https://github.com/nuclearpasta/react-native-drax/commits?author=jmarnold) | **[Rahul Nallappa](https://github.com/rnz269)** [💻](https://github.com/nuclearpasta/react-native-drax/commits?author=rnz269) | **[negue](https://github.com/negue)** [📖](https://github.com/nuclearpasta/react-native-drax/commits?author=negue) | **[Chris Drackett](https://github.com/chrisdrackett)** [💻](https://github.com/nuclearpasta/react-native-drax/commits?author=chrisdrackett) |
+| **[Matti Salokangas](https://github.com/sturdynut)** [💻](https://github.com/nuclearpasta/react-native-drax/commits?author=sturdynut)                                                                                                                                                     | **[Andres Garcia](https://github.com/afgarcia86)** [💻](https://github.com/nuclearpasta/react-native-drax/commits?author=afgarcia86)                                                                                                                                                                  |                                                                                                                                      |                                                                                                                                |                                                                                                                               |                                                                                                                    |                                                                                                                                             |
+
 
 ## 📃 License
 
