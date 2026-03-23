@@ -390,7 +390,7 @@ table td code {
 
 /* Footer icon links (GitHub, npm, NuclearPasta) */
 .footer-icon-link {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
 }
@@ -773,6 +773,7 @@ code.install-command {
 }
 
 .code-examples-heading {
+  margin-top: 20px;
   margin-bottom: 20px;
 }
 
