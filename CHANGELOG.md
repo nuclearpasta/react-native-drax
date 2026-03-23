@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
 
+## [1.1.0] - 2026-03-23
+
+### Added
+
+- **Mixed-size grid support**: `getItemSpan` prop on `useSortableList` / `DraxList` — return `{ colSpan, rowSpan }` per item for variable-width/height sortable grids
+- **`packGrid` utility**: bin-packing algorithm that places items left-to-right, top-to-bottom into a 2D occupancy grid — exported from `react-native-drax` for computing grid positions in render functions
+- **ScrollView auto-scroll**: `SortableContainer` now supports `ScrollView` in addition to `FlatList` / `FlashList` / `LegendList` for auto-scrolling during drag
+- **Hover position reset**: hover content now strips positioning styles (`position`, `left`, `top`, `right`, `bottom`) and margins — prevents double-displacement when items use `position: 'absolute'` with offsets
+
+### Fixed
+
+- npm homepage now correctly points to the documentation site
+- Color drag-drop example: centered snap alignment on drop
+
+### Changed
+
+- Updated branding to NuclearPasta across docs site and example app (logos, favicons, social cards)
+- Example app now includes 11 screens (added mixed-size grid example)
+- Corrected Reanimated and Gesture Handler version numbers in documentation comparison tables
+
+
 ## [1.0.0] - 2026-03-20
 
 Complete rewrite of the library. This is a major release with breaking changes from all prior versions.
