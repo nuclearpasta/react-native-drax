@@ -1,6 +1,6 @@
 {
   "name": "react-native-drax",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A drag and drop system for React Native",
   "main": "./lib/module/index.js",
   "types": "./lib/typescript/src/index.d.ts",
@@ -148,7 +148,7 @@
       "tagName": "v${version}"
     },
     "npm": {
-      "publish": true
+      "publish": false
     },
     "github": {
       "release": true
