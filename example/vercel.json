@@ -4,14 +4,6 @@
   "installCommand": "cd .. && yarn install",
   "framework": null,
   "cleanUrls": true,
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
-      ]
-    }
-  ],
   "redirects": [
     { "source": "/", "destination": "/react-native-drax/example/" }
   ],

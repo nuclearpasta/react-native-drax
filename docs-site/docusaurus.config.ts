@@ -120,6 +120,23 @@ const config: Config = {
         runtimePlatform: 'React Native',
         license: 'https://opensource.org/licenses/MIT',
         operatingSystem: ['iOS', 'Android', 'Web'],
+        version: '1.1.0',
+        datePublished: '2025-01-01',
+        dateModified: '2026-03-23',
+        keywords: [
+          'react-native',
+          'drag-and-drop',
+          'sortable',
+          'reorderable',
+          'reanimated',
+          'gesture-handler',
+        ],
+        author: {
+          '@type': 'Organization',
+          name: 'NuclearPasta',
+          url: 'https://nuclearpasta.com',
+        },
+        url: 'https://www.npmjs.com/package/react-native-drax',
       }),
     },
   ],
@@ -139,9 +156,32 @@ const config: Config = {
           customCss: './src/css/custom.css',
         },
         sitemap: {
+          lastmod: 'date',
           changefreq: 'weekly' as const,
           priority: 0.5,
           filename: 'sitemap.xml',
+          async createSitemapItems({ defaultCreateSitemapItems, ...params }) {
+            const items = await defaultCreateSitemapItems(params);
+            return items.map((item) => {
+              const path = new URL(item.url).pathname;
+              if (path === '/react-native-drax/' || path === '/react-native-drax') {
+                return { ...item, priority: 1.0, changefreq: 'weekly' as const };
+              }
+              if (path.includes('/getting-started') || path.includes('/quick-start')) {
+                return { ...item, priority: 0.9, changefreq: 'weekly' as const };
+              }
+              if (path.includes('/core-concepts') || path.includes('/guides/')) {
+                return { ...item, priority: 0.7, changefreq: 'weekly' as const };
+              }
+              if (path.includes('/examples')) {
+                return { ...item, priority: 0.6, changefreq: 'monthly' as const };
+              }
+              if (path.includes('/api/')) {
+                return { ...item, priority: 0.5, changefreq: 'monthly' as const };
+              }
+              return item;
+            });
+          },
         },
       } satisfies Preset.Options,
     ],
@@ -169,6 +209,7 @@ const config: Config = {
       { property: 'og:image:height', content: '630' },
       { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:image', content: 'https://nuclearpasta.com/react-native-drax/img/social-card.png' },
+      { property: 'og:image:alt', content: 'react-native-drax — drag-and-drop framework for React Native' },
     ],
     navbar: {
       title: 'react-native-drax',
