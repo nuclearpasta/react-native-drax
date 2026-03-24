@@ -2,10 +2,25 @@
   "buildCommand": "yarn build",
   "outputDirectory": "build",
   "installCommand": "cd .. && yarn install",
+  "cleanUrls": true,
   "redirects": [
     { "source": "/", "destination": "/react-native-drax/" }
   ],
   "rewrites": [
     { "source": "/react-native-drax/(.*)", "destination": "/$1" }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/img/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
+      ]
+    }
   ]
 }
