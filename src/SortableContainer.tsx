@@ -12,6 +12,7 @@ import { defaultAutoScrollIntervalLength, ITEM_SHIFT_ANIMATION_DURATION } from '
 import { useSortableBoardContext } from './SortableBoardContext';
 import type {
   DropIndicatorProps,
+  GapPositionResult,
   Position,
   DraxDragEventData,
   DraxMonitorDragDropEventData,
@@ -82,6 +83,7 @@ export const SortableContainer = ({
     onReorder,
     getMeasurementByOriginalIndex,
     dropTargetPositionSV,
+    dropTargetDimsSV,
     dropTargetVisibleSV,
     draggedDisplayIndexRef,
     dragStartIndexRef,
@@ -95,6 +97,7 @@ export const SortableContainer = ({
     instantClearSV,
     shiftsValidSV,
     getSlotFromPosition,
+    computeGapPosition,
   } = sortable._internal;
 
   // Access hover SharedValues from DraxContext for deferred clearing.
@@ -130,6 +133,31 @@ export const SortableContainer = ({
 
 
   const { freeze: freezeScroll, unfreeze: unfreezeScroll } = useWebScrollFreeze(scrollRef);
+
+  // ── Drop indicator helper ───────────────────────────────────────────
+
+  const gapInfoRef = useRef<GapPositionResult | undefined>(undefined);
+
+  const updateIndicator = () => {
+    if (!renderDropIndicator) return;
+    const gap = computeGapPosition();
+    if (gap) {
+      gapInfoRef.current = gap;
+      dropTargetPositionSV.value = { x: gap.x, y: gap.y };
+      dropTargetDimsSV.value = { x: gap.width, y: gap.height };
+      dropTargetVisibleSV.value = true;
+    }
+  };
+
+  // Register so SortableBoardContainer can trigger indicator updates.
+  // No cleanup — the useEffect that unregisters the column from the board
+  // on unmount prevents stale calls. Cleanup would clear the callback on
+  // re-render while the board still references the old internal object.
+  useLayoutEffect(() => {
+    sortable._internal.updateDropIndicator = renderDropIndicator
+      ? updateIndicator
+      : undefined;
+  });
 
   // ── Finalize drag (called after snap animation completes) ──────────
 
@@ -294,7 +322,11 @@ export const SortableContainer = ({
     scrollStateRef.current = AutoScrollDirection.None;
     stopScroll();
     unfreezeScroll();
-    dropTargetVisibleSV.value = false;
+    // Only hide indicator on final drag end. Non-final exits
+    // (totalDragEnd=false) happen when the finger briefly leaves bounds.
+    if (totalDragEnd) {
+      dropTargetVisibleSV.value = false;
+    }
 
     const { dragged, receiver } = eventData;
     const draggedPayload = isSortableItemPayload(dragged.payload)
@@ -419,6 +451,8 @@ export const SortableContainer = ({
       }
       draggedDisplayIndexRef.current = displayIndex;
       dragStartIndexRef.current = displayIndex;
+      // Show drop indicator at the dragged item's position immediately
+      updateIndicator();
       // Item visibility is controlled by hoverReadySV from DraxContext.
       onDragStartCallback?.({
         index: displayIndex,
@@ -474,33 +508,6 @@ export const SortableContainer = ({
         previousIndex: draggedToIndex.current,
       });
       draggedToIndex.current = targetSlot;
-
-      // Update drop indicator
-      if (renderDropIndicator) {
-        const pending = pendingOrderRef.current;
-        const slotOrigIdx = pending.length > targetSlot ? pending[targetSlot] : undefined;
-        const toMeas = slotOrigIdx !== undefined
-          ? getMeasurementByOriginalIndex(slotOrigIdx)
-          : undefined;
-        if (toMeas) {
-          const currentDragIdx = draggedDisplayIndexRef.current ?? fromIndex;
-          const isForward = currentDragIdx < targetSlot;
-          if (horizontal) {
-            dropTargetPositionSV.value = {
-              x: isForward ? toMeas.x + toMeas.width : toMeas.x,
-              y: toMeas.y,
-            };
-          } else {
-            dropTargetPositionSV.value = {
-              x: toMeas.x,
-              y: isForward ? toMeas.y + toMeas.height : toMeas.y,
-            };
-          }
-          dropTargetVisibleSV.value = true;
-        }
-      } else {
-        dropTargetVisibleSV.value = false;
-      }
     }
 
     // Reorder via position-based slot (not receiver-based).
@@ -519,7 +526,10 @@ export const SortableContainer = ({
           lastMoveReceiverRef.current = targetSlot;
           lastMoveDirectionRef.current = direction;
         }
-        moveDraggedItem(targetSlot);
+        if (moveDraggedItem(targetSlot)) {
+          // Update indicator after reorder — gap moved to new position
+          updateIndicator();
+        }
       }
     }
 
@@ -551,6 +561,7 @@ export const SortableContainer = ({
   const onMonitorDragEnd = (eventData: DraxMonitorEndEventData) => {
     if (boardContext?.boardInternal.transferState.current?.targetId) {
       unfreezeScroll();
+      dropTargetVisibleSV.value = false;
       draxViewProps?.onMonitorDragEnd?.(eventData);
       return undefined;
     }
@@ -564,6 +575,7 @@ export const SortableContainer = ({
   const onMonitorDragDrop = (eventData: DraxMonitorDragDropEventData) => {
     if (boardContext?.boardInternal.transferState.current?.targetId) {
       unfreezeScroll();
+      dropTargetVisibleSV.value = false;
       draxViewProps?.onMonitorDragDrop?.(eventData);
       return undefined;
     }
@@ -598,8 +610,11 @@ export const SortableContainer = ({
       {renderDropIndicator && (
         <DropIndicatorOverlay
           dropTargetPositionSV={dropTargetPositionSV}
+          dropTargetDimsSV={dropTargetDimsSV}
           dropTargetVisibleSV={dropTargetVisibleSV}
           horizontal={horizontal}
+          itemCount={itemCount}
+          gapInfoRef={gapInfoRef}
           renderDropIndicator={renderDropIndicator}
         />
       )}
@@ -610,33 +625,53 @@ export const SortableContainer = ({
 /** Extracted so useAnimatedStyle is always called when the component mounts. */
 const DropIndicatorOverlay = ({
   dropTargetPositionSV,
+  dropTargetDimsSV,
   dropTargetVisibleSV,
   horizontal,
+  itemCount,
+  gapInfoRef,
   renderDropIndicator,
 }: {
   dropTargetPositionSV: SharedValue<Position>;
+  dropTargetDimsSV: SharedValue<Position>;
   dropTargetVisibleSV: SharedValue<boolean>;
   horizontal: boolean;
+  itemCount: number;
+  gapInfoRef: { current: GapPositionResult | undefined };
   renderDropIndicator: (props: DropIndicatorProps) => ReactNode;
 }) => {
   const indicatorStyle = useAnimatedStyle(() => {
     const pos = dropTargetPositionSV.value;
+    const dims = dropTargetDimsSV.value;
     const visible = dropTargetVisibleSV.value;
+    const duration = ITEM_SHIFT_ANIMATION_DURATION;
     return {
-      opacity: visible ? 1 : 0,
+      opacity: withTiming(visible ? 1 : 0, { duration: duration / 2 }),
+      width: withTiming(dims.x, { duration }),
+      height: withTiming(dims.y, { duration }),
       transform: [
-        { translateX: withTiming(pos.x, { duration: ITEM_SHIFT_ANIMATION_DURATION }) },
-        { translateY: withTiming(pos.y, { duration: ITEM_SHIFT_ANIMATION_DURATION }) },
+        { translateX: withTiming(pos.x, { duration }) },
+        { translateY: withTiming(pos.y, { duration }) },
       ] as const,
     };
   });
+
+  const gap = gapInfoRef.current;
 
   return (
     <Reanimated.View
       style={[dropIndicatorStyles.container, indicatorStyle]}
       pointerEvents="none"
     >
-      {renderDropIndicator({ visible: true, horizontal })}
+      {renderDropIndicator({
+        visible: true,
+        horizontal,
+        width: gap?.width ?? 0,
+        height: gap?.height ?? 0,
+        index: gap?.index ?? 0,
+        itemCount,
+        isPhantom: gap?.isPhantom ?? false,
+      })}
     </Reanimated.View>
   );
 };
@@ -644,7 +679,5 @@ const DropIndicatorOverlay = ({
 const dropIndicatorStyles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 0,
-    left: 0,
   },
 });

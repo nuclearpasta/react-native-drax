@@ -269,6 +269,7 @@ export const SortableBoardContainer = <TItem,>({
         // First time crossing — eject from source, set phantom in target
         const sourceCol = columns.get(source.colId);
         sourceCol?.ejectDraggedItem();
+        if (sourceCol) sourceCol.dropTargetVisibleSV.value = false;
 
         transferStateRef.current = {
           sourceId: source.colId,
@@ -281,18 +282,22 @@ export const SortableBoardContainer = <TItem,>({
         };
 
         targetCol.setPhantomSlot(insertIdx, source.dimensions.width, source.dimensions.height);
+        targetCol.updateDropIndicator?.();
       } else if (transfer.targetId !== targetColId) {
         // Crossed to a DIFFERENT target column — clear old target, set new
         if (transfer.targetId) {
           const prevTarget = columns.get(transfer.targetId);
           prevTarget?.clearPhantomSlot();
+          if (prevTarget) prevTarget.dropTargetVisibleSV.value = false;
         }
         transferStateRef.current = { ...transfer, targetId: targetColId, targetSlot: insertIdx };
         targetCol.setPhantomSlot(insertIdx, source.dimensions.width, source.dimensions.height);
+        targetCol.updateDropIndicator?.();
       } else if (transfer.targetSlot !== insertIdx) {
         // Same target column — update phantom position only if slot changed
         transferStateRef.current = { ...transfer, targetSlot: insertIdx };
         targetCol.setPhantomSlot(insertIdx, source.dimensions.width, source.dimensions.height);
+        targetCol.updateDropIndicator?.();
       }
     } else if (targetColId === source.colId && transfer) {
       // ── Drag returned to source column ─────────────────────────
@@ -300,6 +305,7 @@ export const SortableBoardContainer = <TItem,>({
       if (transfer.targetId) {
         const prevTarget = columns.get(transfer.targetId);
         prevTarget?.clearPhantomSlot();
+        if (prevTarget) prevTarget.dropTargetVisibleSV.value = false;
       }
 
       // Reinject item into source
@@ -310,6 +316,7 @@ export const SortableBoardContainer = <TItem,>({
           ? sourceCol.getSlotFromPosition(contentPos)
           : source.dragStartIndex;
         sourceCol.reinjectDraggedItem(insertIdx, source.originalIndex);
+        sourceCol.updateDropIndicator?.();
       }
 
       // Clear transfer state — source column's monitor handles from here
@@ -319,11 +326,13 @@ export const SortableBoardContainer = <TItem,>({
       if (transfer.targetId) {
         const prevTarget = columns.get(transfer.targetId);
         prevTarget?.clearPhantomSlot();
+        if (prevTarget) prevTarget.dropTargetVisibleSV.value = false;
       }
 
       // Reinject into source at original position
       const sourceCol = columns.get(source.colId);
       sourceCol?.reinjectDraggedItem(source.dragStartIndex, source.originalIndex);
+      sourceCol?.updateDropIndicator?.();
 
       transferStateRef.current = undefined;
     }

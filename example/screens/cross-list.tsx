@@ -64,12 +64,10 @@ function CardItem({ card, width }: { card: Card; width: number }) {
   );
 }
 
-function DropIndicator({ horizontal }: DropIndicatorProps): ReactNode {
-  return (
-    <View
-      style={horizontal ? styles.dropIndicatorH : styles.dropIndicatorV}
-    />
-  );
+function DropIndicator(_props: DropIndicatorProps): ReactNode {
+  // Container is sized to the target column's item measurement.
+  // Ghost fills 100% — the SortableItem wrapper's margin creates natural gaps.
+  return <View style={styles.ghostItem} />;
 }
 
 // Shared hover/snap props — defined as a function to avoid referencing
@@ -435,18 +433,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#1e293b',
   },
-  dropIndicatorV: {
-    width: '80%',
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: '#3b82f6',
-    alignSelf: 'center',
-  },
-  dropIndicatorH: {
-    width: 3,
-    height: '80%',
-    borderRadius: 1.5,
-    backgroundColor: '#3b82f6',
-    alignSelf: 'center',
+  ghostItem: {
+    flex: 1,
+    marginBottom: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderStyle: 'dashed',
   },
 });

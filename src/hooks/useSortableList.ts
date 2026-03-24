@@ -13,6 +13,7 @@ import { packGrid } from '../math';
 import type {
   DraxSnapbackTarget,
   DraxViewMeasurements,
+  GapPositionResult,
   GridItemSpan,
   Position,
   SortableItemMeasurement,
@@ -70,6 +71,7 @@ export const useSortableList = <T,>(
   // ── SharedValues (UI-thread state) ────────────────────────────────
   const draggedItem = useSharedValue<number | undefined>(undefined);
   const dropTargetPositionSV = useSharedValue<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dropTargetDimsSV = useSharedValue<{ x: number; y: number }>({ x: 0, y: 0 });
   const dropTargetVisibleSV = useSharedValue(false);
 
   /**
@@ -376,6 +378,7 @@ export const useSortableList = <T,>(
     order: number[],
     skipIndex?: number,
     phantom?: SortablePhantomSlot,
+    outTargetPositions?: Map<number, Position>,
   ): Record<string, Position> | undefined => {
     if (order.length === 0) return undefined;
 
@@ -401,6 +404,11 @@ export const useSortableList = <T,>(
       for (let i = 0; i < order.length; i++) {
         // Reserve space for phantom before laying out this item
         if (phantom && displaySlot === phantom.atDisplayIndex) {
+          // Store phantom's target position with a negative key (-1)
+          const phantomPos = horizontal
+            ? { x: cursor, y: startMeas.y }
+            : { x: startMeas.x, y: cursor };
+          outTargetPositions?.set(-1, phantomPos);
           cursor += (horizontal ? phantom.width : phantom.height) + gap;
           displaySlot++;
         }
@@ -413,6 +421,13 @@ export const useSortableList = <T,>(
           cursor += meas.height + gap;
         }
         displaySlot++;
+      }
+      // Phantom at end (after all items)
+      if (phantom && displaySlot === phantom.atDisplayIndex) {
+        const phantomPos = horizontal
+          ? { x: cursor, y: startMeas.y }
+          : { x: startMeas.x, y: cursor };
+        outTargetPositions?.set(-1, phantomPos);
       }
     } else if (getItemSpan) {
       // ── Mixed-size grid: bin-pack items into a 2D occupancy grid ──
@@ -471,6 +486,12 @@ export const useSortableList = <T,>(
         newShifts[key] = { x: dx, y: dy };
       }
     }
+    // Copy item target positions to output map if requested
+    if (outTargetPositions) {
+      for (const [idx, pos] of targetPositions) {
+        outTargetPositions.set(idx, pos);
+      }
+    }
     return newShifts;
   };
 
@@ -486,19 +507,24 @@ export const useSortableList = <T,>(
 
   // ── Reorder during drag (ref-only, no state) ─────────────────────
 
-  const moveDraggedItem = (toDisplayIndex: number) => {
+  const moveDraggedItem = (toDisplayIndex: number): boolean => {
     const fromIdx = draggedDisplayIndexRef.current;
-    if (fromIdx === undefined || fromIdx === toDisplayIndex) return;
+    if (fromIdx === undefined || fromIdx === toDisplayIndex) return false;
+
+    const prev = pendingOrderRef.current;
+    if (prev.length === 0) return false;
+    // Clamp to valid range — getSlotFromPosition may return itemCount
+    // for "insert after last". Splice handles end-of-array correctly.
+    const clamped = Math.min(toDisplayIndex, prev.length - 1);
+    if (fromIdx === clamped) return false;
 
     // Don't move to a fixed item's position
-    const prev = pendingOrderRef.current;
-    if (prev.length === 0) return;
-    const targetOrigIdx = prev[toDisplayIndex];
+    const targetOrigIdx = prev[clamped];
     if (targetOrigIdx !== undefined) {
       const targetItem = stableData[targetOrigIdx];
       if (targetItem !== undefined) {
         const targetKey = keyExtractor(targetItem, targetOrigIdx);
-        if (fixedKeys.current.has(targetKey)) return;
+        if (fixedKeys.current.has(targetKey)) return false;
       }
     }
 
@@ -506,21 +532,22 @@ export const useSortableList = <T,>(
     if (reorderStrategy === 'swap') {
       newOrder = [...prev];
       const temp = newOrder[fromIdx];
-      newOrder[fromIdx] = newOrder[toDisplayIndex]!;
-      newOrder[toDisplayIndex] = temp!;
+      newOrder[fromIdx] = newOrder[clamped]!;
+      newOrder[clamped] = temp!;
     } else {
       newOrder = [...prev];
       const [removed] = newOrder.splice(fromIdx, 1);
       if (removed !== undefined) {
-        newOrder.splice(toDisplayIndex, 0, removed);
+        newOrder.splice(clamped, 0, removed);
       }
     }
 
     pendingOrderRef.current = newOrder;
-    draggedDisplayIndexRef.current = toDisplayIndex;
+    draggedDisplayIndexRef.current = clamped;
 
     // Update visual shifts
     computeShifts();
+    return true;
   };
 
   // ── Commit visual order (permanent shifts, no FlatList data change) ──
@@ -728,6 +755,76 @@ export const useSortableList = <T,>(
   };
 
   /**
+   * Compute the view-relative position of the visual gap (where the
+   * dragged/phantom item would be). Used by the drop indicator overlay.
+   *
+   * Derives position directly from computeShiftsForOrder's target positions
+   * to guarantee exact alignment with the shift system (single source of truth).
+   */
+  const computeGapPosition = (): GapPositionResult | undefined => {
+    const pending = pendingOrderRef.current;
+    const phantom = phantomRef.current;
+    const isPhantom = !!phantom;
+    const gapIndex = phantom
+      ? phantom.atDisplayIndex
+      : draggedDisplayIndexRef.current;
+    if (gapIndex === undefined) return undefined;
+
+    // Empty list with phantom — position at container origin
+    if (pending.length === 0 && phantom) {
+      return {
+        x: -scrollPosition.value.x,
+        y: -scrollPosition.value.y,
+        width: phantom.width,
+        height: phantom.height,
+        index: gapIndex,
+        isPhantom: true,
+      };
+    }
+    if (pending.length === 0) return undefined;
+
+    // Use computeShiftsForOrder to get target positions (single source of truth).
+    const positions = new Map<number, Position>();
+    computeShiftsForOrder(pending, undefined, phantom, positions);
+
+    // For phantom: position stored at key -1
+    // For internal drag: position stored at gapIndex (the dragged item's slot)
+    const gapKey = isPhantom ? -1 : gapIndex;
+    const targetPos = positions.get(gapKey);
+    if (!targetPos) return undefined;
+
+    // Use the target column's item measurement for dimensions.
+    // For internal drags: the dragged item's own measurement.
+    // For phantoms: the first item in the target column (so ghost matches
+    // the target's visual style, not the source's).
+    // The SortableItem wrapper's margin creates the natural gap.
+    let dimWidth: number;
+    let dimHeight: number;
+    if (!isPhantom && gapIndex < pending.length) {
+      const m = getMeasForOrigIdx(pending[gapIndex]!);
+      dimWidth = m?.width ?? 0;
+      dimHeight = m?.height ?? 0;
+    } else if (pending.length > 0) {
+      // Phantom or fallback: use first item in target column
+      const m = getMeasForOrigIdx(pending[0]!);
+      dimWidth = m?.width ?? (phantom?.width ?? 0);
+      dimHeight = m?.height ?? (phantom?.height ?? 0);
+    } else {
+      dimWidth = phantom?.width ?? 0;
+      dimHeight = phantom?.height ?? 0;
+    }
+
+    return {
+      x: targetPos.x - scrollPosition.value.x,
+      y: targetPos.y - scrollPosition.value.y,
+      width: dimWidth,
+      height: dimHeight,
+      index: gapIndex,
+      isPhantom,
+    };
+  };
+
+  /**
    * Compute the display slot (index) from a container-local content position.
    * Used when dragging over empty space (no receiver hit) to determine
    * which slot the dragged item should occupy.
@@ -775,7 +872,10 @@ export const useSortableList = <T,>(
         if (pos < boundary) return i;
         cursor += size + gap;
       }
-      return itemCount - 1;
+      // Past all items — return itemCount to allow inserting after the last item.
+      // moveDraggedItem clamps this for within-column reorder; setPhantomSlot
+      // handles it natively for cross-container phantom placement.
+      return itemCount;
     } else if (getItemSpan) {
       // ── Mixed-size grid: map finger to cell, then to display index ──
       const geo = deriveGridGeometry();
@@ -1022,6 +1122,7 @@ export const useSortableList = <T,>(
     onReorder,
     getMeasurementByOriginalIndex,
     dropTargetPositionSV,
+    dropTargetDimsSV,
     dropTargetVisibleSV,
     onItemSnapEnd: undefined as (() => void) | undefined,
     draggedDisplayIndexRef,
@@ -1037,6 +1138,8 @@ export const useSortableList = <T,>(
     pendingOrderRef,
     cancelDrag,
     getSlotFromPosition,
+    computeGapPosition,
+    updateDropIndicator: undefined as (() => void) | undefined,
     phantomRef,
     setPhantomSlot,
     clearPhantomSlot,

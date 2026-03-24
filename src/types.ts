@@ -705,6 +705,32 @@ export interface DropIndicatorProps {
   visible: boolean;
   /** Whether the list is horizontal */
   horizontal: boolean;
+  /** Width of the gap slot */
+  width: number;
+  /** Height of the gap slot */
+  height: number;
+  /** Display index where the gap is (dragged item's current slot) */
+  index: number;
+  /** Total number of items in the list (including the dragged item) */
+  itemCount: number;
+  /** Whether this is a cross-container phantom (item coming from another list) */
+  isPhantom: boolean;
+}
+
+/** Return type of computeGapPosition — position + dimensions of the visual gap */
+export interface GapPositionResult {
+  /** View-relative X position of the gap */
+  x: number;
+  /** View-relative Y position of the gap */
+  y: number;
+  /** Width of the gap slot */
+  width: number;
+  /** Height of the gap slot */
+  height: number;
+  /** Display index of the gap */
+  index: number;
+  /** Whether the gap is a phantom (cross-container) */
+  isPhantom: boolean;
 }
 
 /** Options for useSortableList hook */
@@ -787,8 +813,9 @@ export interface SortableListInternal<T> {
   keyExtractor: (item: T, index: number) => string;
   data: T[];
   rawData: T[];
-  /** Move the dragged item to a new display index (live reorder during drag) */
-  moveDraggedItem: (toDisplayIndex: number) => void;
+  /** Move the dragged item to a new display index (live reorder during drag).
+   *  Returns true if the move was performed, false if skipped (no-op). */
+  moveDraggedItem: (toDisplayIndex: number) => boolean;
   /** Get the snapback target for the dragged item's current position */
   getSnapbackTarget: () => DraxSnapbackTarget;
   setDraggedItem: (index: number) => void;
@@ -807,6 +834,8 @@ export interface SortableListInternal<T> {
   getMeasurementByOriginalIndex: (originalIndex: number) => SortableItemMeasurement | undefined;
   /** Position of the drop indicator (animated) */
   dropTargetPositionSV: SharedValue<Position>;
+  /** Dimensions of the drop indicator gap (animated, {x: width, y: height}) */
+  dropTargetDimsSV: SharedValue<Position>;
   /** Whether the drop indicator is visible (animated) */
   dropTargetVisibleSV: SharedValue<boolean>;
   /** Called by SortableItem's onSnapEnd to finalize the drag.
@@ -847,6 +876,10 @@ export interface SortableListInternal<T> {
   cancelDrag: () => void;
   /** Compute target display index from a container-local content position */
   getSlotFromPosition: (contentPos: Position) => number;
+  /** Compute view-relative position and dimensions of the visual gap (for drop indicator) */
+  computeGapPosition: () => GapPositionResult | undefined;
+  /** Update the drop indicator position (set by SortableContainer) */
+  updateDropIndicator?: () => void;
   /** Current phantom slot (cross-container drag) */
   phantomRef: RefObject<SortablePhantomSlot | undefined>;
   /** Reserve space for an incoming item at the given display index */

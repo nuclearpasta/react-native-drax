@@ -89,6 +89,7 @@ export type {
   SortableAnimationCustomConfig,
   SortableItemMeasurement,
   DropIndicatorProps,
+  GapPositionResult,
 
   // Board types (cross-container sortable)
   UseSortableBoardOptions,
