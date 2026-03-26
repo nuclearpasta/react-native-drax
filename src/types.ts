@@ -421,6 +421,8 @@ export interface DraxViewProps
   lockDragYPosition?: boolean;
   /** When true, drag is only activated via a descendant DraxHandle component */
   dragHandle?: boolean;
+  /** Internal: worklet config for UI-thread slot detection (set by DraxList) */
+  sortableWorklet?: unknown;
   /** Collision algorithm for receiving drags: 'center' (default), 'intersect', or 'contain' */
   collisionAlgorithm?: CollisionAlgorithm;
   /** Ref to a View that constrains the drag area. The dragged view will be clamped within these bounds. */
@@ -481,6 +483,8 @@ export interface DraxContextValue {
   /** Animated hover content dimensions for cross-container transfer.
    *  x = width, y = height. {0,0} = no constraint (natural size). */
   hoverDimsSV: SharedValue<Position>;
+  /** Drag lock — false during snap animation. Blocks new gesture activation on UI thread. */
+  isDragAllowedSV: SharedValue<boolean>;
 
   // ── Registry methods (JS thread) ───────────────────────────────────
   registerView: (payload: RegisterViewPayload) => void;
@@ -500,6 +504,8 @@ export interface DraxContextValue {
     oldReceiverId: string,
     newReceiverId: string,
     absolutePosition: Position,
+    draggedId: string,
+    startPosition: Position,
     monitorIds?: string[]
   ) => void;
   handleDragEnd: (

@@ -48,6 +48,10 @@ const hoverResetStyle = {
   top: 0,
   right: undefined,
   bottom: undefined,
+  flex: undefined,
+  flexGrow: undefined,
+  flexShrink: undefined,
+  flexBasis: undefined,
 } as const;
 
 interface CallbackDispatchDeps {
@@ -59,11 +63,13 @@ interface CallbackDispatchDeps {
   rejectedReceiverIdSV: SharedValue<string>;
   dragPhaseSV: SharedValue<DragPhase>;
   hoverPositionSV: SharedValue<Position>;
+  hoverDimsSV: SharedValue<Position>;
   grabOffsetSV: SharedValue<Position>;
   startPositionSV: SharedValue<Position>;
   setHoverContent: (content: ReactNode | null) => void;
   hoverReadySV: SharedValue<boolean>;
   hoverClearDeferredRef: { current: boolean };
+  isDragAllowedSV: SharedValue<boolean>;
   hoverStylesRef: RefObject<FlattenedHoverStyles | null>;
   // Provider-level callbacks
   onProviderDragStart?: (event: DraxProviderDragEvent) => void;
@@ -86,10 +92,12 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     draggedIdSV,
     dragPhaseSV,
     hoverPositionSV,
+    hoverDimsSV,
     grabOffsetSV,
     startPositionSV,
     setHoverContent,
     hoverReadySV,
+    isDragAllowedSV,
     onProviderDragStart,
     onProviderDrag,
     onProviderDragEnd,
@@ -202,6 +210,11 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       dragged,
     });
 
+    // Reset hover dimensions — let HoverLayer auto-size to card content.
+    // Must happen BEFORE setHoverContent so HoverLayer's onLayout can write
+    // actual content dimensions AFTER rendering. Board reads these for cross-orientation gaps.
+    hoverDimsSV.value = { x: 0, y: 0 };
+
     // Setup hover styles — set BEFORE setHoverContent so HoverLayer
     // captures them when it re-renders on hoverVersion change.
     deps.hoverStylesRef.current = {
@@ -271,9 +284,10 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     oldReceiverId: string,
     newReceiverId: string,
     absolutePosition: Position,
+    draggedId: string,
+    startPosition: Position,
     monitorIds?: string[]
   ) => {
-    const draggedId = draggedIdSV.value;
 
     // Fast path: receiver unchanged, no monitors (now AND previously),
     // and no continuous callbacks → skip event data construction entirely.
@@ -299,10 +313,10 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     const draggedEntry = getViewEntry(draggedId);
     const draggedPayload = draggedEntry?.props.dragPayload ?? draggedEntry?.props.payload;
 
-    const startPos = startPositionSV.value;
+    // startPosition passed as arg from worklet — avoids cross-thread SV read per frame
     const dragTranslation = {
-      x: absolutePosition.x - startPos.x,
-      y: absolutePosition.y - startPos.y,
+      x: absolutePosition.x - startPosition.x,
+      y: absolutePosition.y - startPosition.y,
     };
     const baseEventData = {
       dragAbsolutePosition: absolutePosition,
@@ -505,6 +519,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
 
     const draggedEntry = getViewEntry(draggedId);
     if (!draggedEntry) {
+
       // Reset drag state atomically on UI thread to avoid one-frame flash
       runOnUI((
         _hoverReadySV: typeof hoverReadySV,
@@ -653,9 +668,6 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     }
 
     // Resolve Default snap target to root-relative visual position.
-    // Default triggers when monitors are empty or all callbacks return undefined.
-    // draggedEntry.measurements are content-relative (from measureLayout), so we
-    // use the spatial index to compute root-relative visual position instead.
     if (snapTarget === DraxSnapbackTargetPreset.Default) {
       const absPos = computeAbsolutePositionWorklet(
         draggedEntry.spatialIndex,
@@ -675,7 +687,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       draggedIdSV,
       hoverReadySV,
       setHoverContent,
-      deps.hoverClearDeferredRef
+      deps.hoverClearDeferredRef,
+      isDragAllowedSV,
     );
 
     // Fire provider-level onDragEnd (use last known hover position)
@@ -709,7 +722,8 @@ function performSnapback(
   draggedIdSV: SharedValue<string>,
   hoverReadySV: SharedValue<boolean>,
   setHoverContent: (content: ReactNode | null) => void,
-  hoverClearDeferredRef: { current: boolean }
+  hoverClearDeferredRef: { current: boolean },
+  isDragAllowedSV: SharedValue<boolean>,
 ) {
   const animateSnap = draggedEntry.props.animateSnap ?? true;
   const snapDelay = draggedEntry.props.snapDelay ?? defaultSnapbackDelay;
@@ -745,18 +759,51 @@ function performSnapback(
    *   Then hover clears on next UI frame. Items at visual positions. No blink.
    */
   const onSnapComplete = () => {
+    console.log(`[snap] onSnapComplete @${Date.now() % 100000} — draggedEntry=${draggedEntry.id} currentDraggedId=${draggedIdSV.value}`);
 
-    // Reset the deferred flag before firing callbacks.
-    // finalizeDrag (called via onSnapEnd) may set it to true for reorder.
-    hoverClearDeferredRef.current = false;
+    try {
+      // Reset the deferred flag before firing callbacks.
+      // finalizeDrag (called via onSnapEnd) may set it to true for reorder.
+      hoverClearDeferredRef.current = false;
 
-    // Step 1: Fire callbacks → finalizeDrag runs synchronously.
-    draggedEntry.props.onSnapEnd?.(snapEventData);
-    receiverEntry?.props.onReceiveSnapEnd?.(snapEventData);
+      // Step 1: Fire callbacks → finalizeDrag runs synchronously.
+      draggedEntry.props.onSnapEnd?.(snapEventData);
+      receiverEntry?.props.onReceiveSnapEnd?.(snapEventData);
 
+      // Step 2: Skip hover cleanup if a new drag started during our snap animation.
+      if (draggedIdSV.value !== '' && draggedIdSV.value !== draggedEntry.id) {
+        return;
+      }
 
-    // Step 2: Clear hover if NOT deferred by a sortable reorder.
-    if (!hoverClearDeferredRef.current) {
+      // Step 3: Clear hover if NOT deferred by a sortable reorder.
+      if (!hoverClearDeferredRef.current) {
+        runOnUI((
+          _hoverReadySV: typeof hoverReadySV,
+          _dragPhaseSV: typeof dragPhaseSV,
+          _draggedIdSV: typeof draggedIdSV,
+          _hoverPositionSV: typeof hoverPositionSV,
+          _isDragAllowedSV: typeof isDragAllowedSV,
+        ) => {
+          'worklet';
+          _hoverReadySV.value = false;
+          _dragPhaseSV.value = 'idle';
+          _draggedIdSV.value = '';
+          _hoverPositionSV.value = { x: 0, y: 0 };
+          _isDragAllowedSV.value = true; // Unlock — allow new drags
+        })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV, isDragAllowedSV);
+        setHoverContent(null);
+      } else {
+        // Do NOT call setHoverContent(null) here — the hover must remain visible
+        // until the FlatList re-renders. The deferred cleanup in useLayoutEffect
+        // will clear SharedValues, and setHoverContent(null) is called there too.
+      }
+    } catch (e) {
+      // If ANYTHING throws, ensure the lock is released and hover is cleaned up.
+      // Without this, a crash leaves isDragAllowedSV=false (locked forever) and
+      // hover stuck on screen.
+      console.error('[snap] onSnapComplete crashed — emergency cleanup', e);
+      isDragAllowedSV.value = true;
+      hoverClearDeferredRef.current = false;
       runOnUI((
         _hoverReadySV: typeof hoverReadySV,
         _dragPhaseSV: typeof dragPhaseSV,
@@ -770,15 +817,12 @@ function performSnapback(
         _hoverPositionSV.value = { x: 0, y: 0 };
       })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
-    } else {
-      // Do NOT call setHoverContent(null) here — the hover must remain visible
-      // until the FlatList re-renders. The deferred cleanup in useLayoutEffect
-      // will clear SharedValues, and setHoverContent(null) is called there too.
     }
   };
 
   if (target === DraxSnapbackTargetPreset.None || !animateSnap) {
     // No snap animation — run cleanup immediately
+    console.log(`[snap] NO animation (None or disabled) — immediate complete`);
     onSnapComplete();
     return;
   }
@@ -793,6 +837,8 @@ function performSnapback(
       ? { x: draggedEntry.measurements.x, y: draggedEntry.measurements.y }
       : { x: 0, y: 0 };
   }
+
+  console.log(`[snap] starting — to=(${Math.round(toValue.x)},${Math.round(toValue.y)}) delay=${snapDelay} duration=${snapDuration} custom=${!!snapAnimator}`);
 
   if (snapAnimator) {
     // Custom snap animation

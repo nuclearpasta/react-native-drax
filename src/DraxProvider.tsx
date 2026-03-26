@@ -52,6 +52,7 @@ export const DraxProvider = ({
   // Animated dimensions for hover content during cross-container transfer.
   // x = width, y = height. {0,0} = no constraint (natural size).
   const hoverDimsSV = useSharedValue<Position>({ x: 0, y: 0 });
+  const isDragAllowedSV = useSharedValue(true);
 
   // ── Dropped items tracking ─────────────────────────────────────────
   const droppedItemsRef = useRef<Map<string, Set<string>>>(new Map());
@@ -93,6 +94,8 @@ export const DraxProvider = ({
       rejectedReceiverIdSV,
       dragPhaseSV,
       hoverPositionSV,
+      hoverDimsSV,
+      isDragAllowedSV,
       grabOffsetSV,
       startPositionSV,
       setHoverContent,
@@ -140,6 +143,7 @@ export const DraxProvider = ({
       hoverReadySV,
       hoverClearDeferredRef,
       hoverDimsSV,
+      isDragAllowedSV,
 
       // Registry methods
       registerView,
@@ -178,6 +182,7 @@ export const DraxProvider = ({
       hoverReadySV,
       hoverClearDeferredRef,
       hoverDimsSV,
+      isDragAllowedSV,
       registerView,
       unregisterView,
       updateMeasurements,

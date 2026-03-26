@@ -19,17 +19,9 @@ interface Example {
 
 const EXAMPLES: Example[] = [
   {
-    route: '/color-drag-drop',
-    title: 'Color Drag & Drop',
-    subtitle: 'Drop acceptance, hover styles, snap alignment',
-    icon: 'water',
-    sourceFile: 'color-drag-drop.tsx',
-    docsSlug: 'color-drag-drop',
-  },
-  {
     route: '/reorderable-list',
     title: 'Reorderable List',
-    subtitle: 'Animation presets, auto-scroll, drop indicator',
+    subtitle: 'DraxList with drag-and-drop reorder',
     icon: 'format-list-bulleted',
     sourceFile: 'reorderable-list.tsx',
     docsSlug: 'reorderable-list',
@@ -37,7 +29,7 @@ const EXAMPLES: Example[] = [
   {
     route: '/reorderable-grid',
     title: 'Reorderable Grid',
-    subtitle: 'Sortable grid with multi-column layout',
+    subtitle: '3-column grid with drag-and-drop',
     icon: 'view-grid',
     sourceFile: 'reorderable-grid.tsx',
     docsSlug: 'reorderable-grid',
@@ -51,20 +43,36 @@ const EXAMPLES: Example[] = [
     docsSlug: 'mixed-grid',
   },
   {
-    route: '/cross-list',
-    title: 'Cross-List Reorder',
-    subtitle: 'FlashList + LegendList + FlatList cross-container drag',
-    icon: 'view-column',
-    sourceFile: 'cross-list.tsx',
-    docsSlug: 'cross-list',
-  },
-  {
     route: '/drag-handles',
     title: 'Drag Handles',
     subtitle: 'Only the grip icon starts a drag',
     icon: 'drag',
     sourceFile: 'drag-handles.tsx',
     docsSlug: 'drag-handles',
+  },
+  {
+    route: '/cross-list',
+    title: 'Cross-List Reorder',
+    subtitle: 'Drag items between two columns',
+    icon: 'view-column',
+    sourceFile: 'cross-list.tsx',
+    docsSlug: 'cross-list',
+  },
+  {
+    route: '/stress-test',
+    title: 'Stress Test (5000)',
+    subtitle: '5000 items with cell recycling + reorder',
+    icon: 'speedometer',
+    sourceFile: 'stress-test.tsx',
+    docsSlug: 'stress-test',
+  },
+  {
+    route: '/color-drag-drop',
+    title: 'Color Drag & Drop',
+    subtitle: 'Drop acceptance, hover styles, snap alignment',
+    icon: 'water',
+    sourceFile: 'color-drag-drop.tsx',
+    docsSlug: 'color-drag-drop',
   },
   {
     route: '/bounded-drag',
@@ -97,14 +105,6 @@ const EXAMPLES: Example[] = [
     icon: 'arrow-left-right',
     sourceFile: 'scrolling.tsx',
     docsSlug: 'scrolling',
-  },
-  {
-    route: '/stress-test',
-    title: 'Stress Test',
-    subtitle: '100 items in a sortable list',
-    icon: 'speedometer',
-    sourceFile: 'stress-test.tsx',
-    docsSlug: 'stress-test',
   },
 ];
 

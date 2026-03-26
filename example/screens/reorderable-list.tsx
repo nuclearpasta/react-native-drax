@@ -1,172 +1,89 @@
 import { useState } from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraxProvider, DraxList } from 'react-native-drax';
-import type { SortableAnimationPreset } from 'react-native-drax';
 import { useTheme, itemColor } from '../components/ThemeContext';
-import { ExampleLinks } from '../components/ExampleLinks';
 
-const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-
-const PRESETS: { key: SortableAnimationPreset; label: string }[] = [
-  { key: 'default', label: 'Default' },
-  { key: 'spring', label: 'Spring' },
-  { key: 'gentle', label: 'Gentle' },
-  { key: 'snappy', label: 'Snappy' },
-  { key: 'none', label: 'None' },
+const COLORS = [
+  '#ff6b6b', '#ffa06b', '#ffd96b', '#a8e06b', '#6be0a8',
+  '#6bd4e0', '#6b9fe0', '#8b6be0', '#d46be0', '#e06ba8',
 ];
 
-const getBackgroundColor = (alphaIndex: number) => {
-  switch (alphaIndex % 6) {
-    case 0:
-      return '#ffaaaa';
-    case 1:
-      return '#aaffaa';
-    case 2:
-      return '#aaaaff';
-    case 3:
-      return '#ffffaa';
-    case 4:
-      return '#ffaaff';
-    case 5:
-      return '#aaffff';
-    default:
-      return '#aaaaaa';
-  }
+const getHeight = (i: number) => {
+  const base = 48;
+  if (i % 3 === 0) return base + 24;
+  if (i % 2 === 0) return base + 12;
+  return base;
 };
 
-const getHeight = (alphaIndex: number) => {
-  let height = 50;
-  if (alphaIndex % 2 === 0) {
-    height += 10;
-  }
-  if (alphaIndex % 3 === 0) {
-    height += 20;
-  }
-  return height;
-};
+const makeData = (count: number) =>
+  Array.from({ length: count }, (_, i) => ({
+    id: `item-${i}`,
+    label: `Item ${i + 1}`,
+    color: COLORS[i % COLORS.length]!,
+    height: getHeight(i),
+  }));
 
-const getItemStyleTweaks = (alphaItem: string) => {
-  const alphaIndex = alphabet.indexOf(alphaItem);
-  return {
-    backgroundColor: getBackgroundColor(alphaIndex),
-    height: getHeight(alphaIndex),
-  };
-};
+type Item = ReturnType<typeof makeData>[number];
 
 export default function ReorderableList() {
-  const [alphaData, setAlphaData] = useState(alphabet);
-  const [animPreset, setAnimPreset] =
-    useState<SortableAnimationPreset>('spring');
-  const insets = useSafeAreaInsets();
+  const [data, setData] = useState(() => makeData(30));
   const { theme, isDark } = useTheme();
+  let nextId = data.length;
 
   return (
     <DraxProvider>
-      <View
-        testID="reorderable-list-screen"
-        style={[
-          styles.container,
-          {
-            paddingLeft: insets.left,
-            paddingRight: insets.right,
-            backgroundColor: theme.bg,
-          },
-        ]}
-      >
-        <View style={[styles.presetBar, { backgroundColor: theme.surface, borderBottomColor: theme.line }]}>
-          <Text style={[styles.presetLabel, { color: theme.muted }]}>Animation:</Text>
-          {PRESETS.map((p) => (
+      <View style={[styles.container, { backgroundColor: theme.bg }]}>
+        <View style={styles.header}>
+          <Text style={[styles.headerText, { color: theme.muted }]}>
+            DraxList — {data.length} items
+          </Text>
+          <View style={styles.buttons}>
             <Pressable
-              key={p.key}
-              testID={`preset-${p.key}`}
-              onPress={() => setAnimPreset(p.key)}
-              style={[
-                styles.presetButton,
-                { backgroundColor: theme.lineStrong },
-                animPreset === p.key && styles.presetButtonActive,
-              ]}
+              onPress={() => {
+                const id = `item-${Date.now()}-${nextId++}`;
+                const h = getHeight(Math.floor(Math.random() * 6));
+                setData(prev => [
+                  { id, label: `New ${prev.length + 1}`, color: COLORS[prev.length % COLORS.length]!, height: h },
+                  ...prev,
+                ]);
+              }}
+              style={styles.btn}
             >
-              <Text
-                style={[
-                  styles.presetButtonText,
-                  { color: theme.muted },
-                  animPreset === p.key && styles.presetButtonTextActive,
-                ]}
-              >
-                {p.label}
-              </Text>
+              <Text style={styles.btnText}>+ Add Top</Text>
             </Pressable>
-          ))}
-        </View>
-        <ExampleLinks slug="reorderable-list" />
-        <DraxList
-          data={alphaData}
-          keyExtractor={(item) => item}
-          animationConfig={animPreset}
-          inactiveItemStyle={{ opacity: 0.5 }}
-          hoverDraggingStyle={{
-            shadowColor: '#000',
-            shadowOpacity: 0.25,
-            shadowRadius: 16,
-            shadowOffset: { width: 0, height: 10 },
-            transform: [{ scale: 1.03 }],
-          }}
-          hoverDragReleasedStyle={{
-            opacity: 0.6,
-            transform: [{ scale: 0.97 }],
-            shadowOpacity: 0.08,
-          }}
-          snapDelay={0}
-          snapDuration={200}
-          containerStyle={styles.container}
-          style={styles.list}
-          containerDraxViewProps={{
-            testID: 'sortable-list-container',
-            accessibilityLabel: 'Reorderable list of letters A through Z',
-          }}
-          scrollEventThrottle={16}
-          onReorder={({ data, fromIndex, fromItem, toIndex, toItem }) => {
-            console.log(
-              `[reorderableList:onReorder] from=${fromIndex} (${fromItem}) to=${toIndex} (${toItem})`
-            );
-            setAlphaData(data);
-          }}
-          onDragStart={({ index, item }) => {
-            console.log(
-              `[reorderableList:onDragStart] index=${index} item=${item}`
-            );
-          }}
-          onDragPositionChange={({
-            index,
-            item,
-            toIndex,
-            previousIndex,
-          }) => {
-            console.log(
-              `[reorderableList:onDragPositionChange] index=${index} item=${item} toIndex=${toIndex} previousIndex=${previousIndex}`
-            );
-          }}
-          onDragEnd={({ index, item, toIndex, cancelled }) => {
-            console.log(
-              `[reorderableList:onDragEnd] index=${index} item=${item} toIndex=${toIndex} cancelled=${cancelled}`
-            );
-          }}
-          renderItem={({ item }) => {
-            const tweaks = getItemStyleTweaks(item);
-            return (
-            <View
-              testID={`sortable-item-${item}`}
-              style={[
-                styles.alphaItem,
-                tweaks,
-                { backgroundColor: itemColor(tweaks.backgroundColor, isDark) },
-              ]}
+            <Pressable
+              onPress={() => data.length > 0 && setData(prev => prev.slice(1))}
+              style={styles.btn}
             >
-              <Text style={[styles.alphaText, { color: isDark ? '#e0e0e0' : '#333' }]}>{item}</Text>
-            </View>
+              <Text style={styles.btnText}>- Remove Top</Text>
+            </Pressable>
+          </View>
+        </View>
+        <DraxList<Item>
+          data={data}
+          keyExtractor={(item) => item.id}
+          estimatedItemSize={60}
+          drawDistance={300}
+          animationConfig="spring"
+          longPressDelay={200}
+          onReorder={({ data: newData }) => setData(newData)}
+          renderItem={({ item, index }) => {
+            if (index < 3) console.log(`[renderItem] ${item.label} height=${item.height} type=${typeof item.height}`);
+            return (
+              <View style={[styles.item, {
+                height: item.height,
+                backgroundColor: itemColor(item.color, isDark),
+              }]}>
+                <Text style={[styles.itemText, { color: isDark ? '#e0e0e0' : '#333' }]}>
+                  {item.label}
+                </Text>
+                <Text style={[styles.indexText, { color: isDark ? '#999' : '#666' }]}>
+                  #{index} · {item.height}px
+                </Text>
+              </View>
             );
           }}
+          style={styles.list}
         />
       </View>
     </DraxProvider>
@@ -174,49 +91,22 @@ export default function ReorderableList() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  list: {
-    flex: 1,
-  },
-  presetBar: {
+  container: { flex: 1 },
+  header: { padding: 12, alignItems: 'center' },
+  headerText: { fontSize: 14, fontStyle: 'italic' },
+  buttons: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  btn: { backgroundColor: '#4a90d9', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 6 },
+  btnText: { color: '#fff', fontWeight: '600' },
+  list: { flex: 1 },
+  item: {
+    marginVertical: 2,
+    marginHorizontal: 8,
+    borderRadius: 8,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'space-between',
   },
-  presetLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginRight: 6,
-  },
-  presetButton: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    marginHorizontal: 3,
-  },
-  presetButtonActive: {
-    backgroundColor: '#3b82f6',
-  },
-  presetButtonText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  presetButtonTextActive: {
-    color: '#fff',
-  },
-  alphaItem: {
-    backgroundColor: '#aaaaff',
-    borderRadius: 8,
-    margin: 4,
-    padding: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  alphaText: {
-    fontSize: 28,
-  },
+  itemText: { fontSize: 16, fontWeight: '600' },
+  indexText: { fontSize: 12 },
 });

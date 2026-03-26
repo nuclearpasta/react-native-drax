@@ -1,44 +1,53 @@
-import { useCallback, useRef } from 'react';
-import type {
-  SortableBoardHandle,
-  SortableBoardInternal,
-  SortableBoardTransferState,
-  SortableListInternal,
-  UseSortableBoardOptions,
-} from '../types';
-
 /**
- * Board-level coordinator for cross-container sortable drag.
- *
- * Maintains a registry of columns (each with their own useSortableList)
- * and tracks cross-container transfer state. The actual monitor callbacks
- * are handled by SortableBoardContainer.
+ * useSortableBoard — Coordinator for cross-container drag-and-drop.
+ * Zero React state. Column registry via refs.
  */
-export const useSortableBoard = <TItem,>(
-  options: UseSortableBoardOptions<TItem>
-): SortableBoardHandle<TItem> => {
-  const { keyExtractor, onTransfer } = options;
+import { useCallback, useRef } from 'react';
+import type { SortableListInternal } from './useSortableList';
 
-  const columnsRef = useRef<Map<string, SortableListInternal<unknown>>>(new Map());
-  const transferStateRef = useRef<SortableBoardTransferState | undefined>(undefined);
+export interface SortableBoardTransferEvent<T = unknown> {
+  item: T;
+  fromContainerId: string;
+  fromIndex: number;
+  toContainerId: string;
+  toIndex: number;
+}
+
+export interface UseSortableBoardOptions<T = unknown> {
+  onTransfer: (event: SortableBoardTransferEvent<T>) => void;
+}
+
+export interface SortableBoardHandle<T = unknown> {
+  _internal: SortableBoardInternal<T>;
+}
+
+export interface SortableBoardInternal<T = unknown> {
+  columns: Map<string, SortableListInternal<unknown>>;
+  registerColumn: (id: string, internal: SortableListInternal<unknown>) => void;
+  unregisterColumn: (id: string) => void;
+  onTransfer: (event: SortableBoardTransferEvent<T>) => void;
+}
+
+export const useSortableBoard = <T = unknown,>(
+  options: UseSortableBoardOptions<T>,
+): SortableBoardHandle<T> => {
+  const { onTransfer } = options;
+  const columns = useRef<Map<string, SortableListInternal<unknown>>>(new Map()).current;
 
   const registerColumn = useCallback((id: string, internal: SortableListInternal<unknown>) => {
-    columnsRef.current.set(id, internal);
-  }, []);
+    columns.set(id, internal);
+  }, [columns]);
 
   const unregisterColumn = useCallback((id: string) => {
-    columnsRef.current.delete(id);
-  }, []);
+    columns.delete(id);
+  }, [columns]);
 
-  const internal: SortableBoardInternal<TItem> = {
-    keyExtractor,
-    onTransfer,
-    columns: columnsRef.current,
-    registerColumn,
-    unregisterColumn,
-    transferState: transferStateRef,
-    // finalizeTransfer is set by SortableBoardContainer (needs DraxContext access)
+  return {
+    _internal: {
+      columns,
+      registerColumn,
+      unregisterColumn,
+      onTransfer,
+    },
   };
-
-  return { _internal: internal };
 };

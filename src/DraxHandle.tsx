@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { use } from 'react';
+import { use, useRef } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Reanimated from 'react-native-reanimated';
@@ -11,30 +11,11 @@ export interface DraxHandleProps {
   style?: StyleProp<ViewStyle>;
 }
 
-/**
- * Drag handle component — only touches on this area will start a drag.
- *
- * Must be a descendant of a `DraxView` that has `dragHandle={true}`.
- * The parent DraxView provides its gesture via context; this component
- * attaches it to the handle's touch area via GestureDetector.
- *
- * @example
- * ```tsx
- * <DraxView dragHandle style={styles.row}>
- *   <DraxHandle style={styles.grip}>
- *     <GripIcon />
- *   </DraxHandle>
- *   <Text>Item content</Text>
- * </DraxView>
- * ```
- */
 export function DraxHandle({ children, style }: DraxHandleProps) {
   const ctx = use(DraxHandleContext);
+  const handleRef = useRef<any>(null);
 
   if (!ctx) {
-    // No context = either misconfigured, or rendering inside hover overlay
-    // (which clones children outside the DraxHandleContext tree).
-    // Render as a plain view — the gesture isn't needed in hover.
     return (
       <Reanimated.View style={style}>
         {children}
@@ -42,9 +23,22 @@ export function DraxHandle({ children, style }: DraxHandleProps) {
     );
   }
 
+  const measureOffset = () => {
+    const handle = handleRef.current;
+    const parent = ctx.parentViewRef.current;
+    if (!handle || !parent) return;
+    try {
+      handle.measureLayout(parent, (x: number, y: number) => {
+        ctx.handleOffsetSV.value = { x, y };
+      });
+    } catch {
+      // measureLayout can fail if views aren't mounted yet
+    }
+  };
+
   return (
     <GestureDetector gesture={ctx.gesture}>
-      <Reanimated.View style={style}>
+      <Reanimated.View ref={handleRef} style={style} onLayout={measureOffset}>
         {children}
       </Reanimated.View>
     </GestureDetector>

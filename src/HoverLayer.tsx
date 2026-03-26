@@ -49,7 +49,9 @@ export const HoverLayer = memo(
     //   2. SortableItem hides only AFTER hover is visible (reads hoverReadySV)
     // Both writes happen in the same runOnUI call → same UI frame → no blink.
     useLayoutEffect(() => {
-      if (hoverContentRef.current != null) {
+      const hasContent = hoverContentRef.current != null;
+      console.log(`[hover] useLayoutEffect — hasContent=${hasContent} version=${hoverVersion}`);
+      if (hasContent) {
         runOnUI((_dragPhaseSV: SharedValue<DragPhase>, _hoverReadySV: SharedValue<boolean>) => {
           'worklet';
           _dragPhaseSV.value = 'dragging';
@@ -68,21 +70,22 @@ export const HoverLayer = memo(
     const flatHoverDraggingWithoutReceiverStyle = hs?.hoverDraggingWithoutReceiverStyle ?? null;
     const flatHoverDragReleasedStyle = hs?.hoverDragReleasedStyle ?? null;
 
-    // Position style: applied to the outer full-screen container.
-    // Only handles positioning (translate) and visibility (opacity).
-    const positionStyle = useAnimatedStyle(() => {
-      const phase = dragPhaseSV.value;
-      if (phase === 'idle') {
-        return { opacity: 0 };
-      }
-      return {
-        opacity: 1,
-        transform: [
-          { translateX: hoverPositionSV.value.x },
-          { translateY: hoverPositionSV.value.y },
-        ] as const,
-      };
-    });
+    // Opacity: invisible when idle OR while new hover content is rendering.
+    // hoverReadySV is false between handleDragStart (sets new content) and
+    // HoverLayer's useLayoutEffect (content committed to DOM). This prevents
+    // a 1-frame flash of the previous drag's hover content on fast re-drag.
+    const opacityStyle = useAnimatedStyle(() => ({
+      opacity: dragPhaseSV.value === 'idle' || !hoverReadySV.value ? 0 : 1,
+    }));
+
+    // Transform: re-evaluates at 60fps during drag (hoverPositionSV changes every frame).
+    // Separated from opacity so the opacity worklet doesn't run every frame.
+    const transformStyle = useAnimatedStyle(() => ({
+      transform: [
+        { translateX: hoverPositionSV.value.x },
+        { translateY: hoverPositionSV.value.y },
+      ] as const,
+    }));
 
     // Visual style: applied to the inner content wrapper.
     // Handles user hover styles (border, shadow, scale, rotate, etc.)
@@ -139,7 +142,7 @@ export const HoverLayer = memo(
     // flash (the view renders at default position before useAnimatedStyle kicks in).
     return (
       <Reanimated.View
-        style={[styles.container, positionStyle]}
+        style={[styles.container, opacityStyle, transformStyle]}
         pointerEvents="none"
       >
         <Reanimated.View style={[styles.content, dimensionStyle, visualStyle]}>

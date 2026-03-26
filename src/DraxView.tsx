@@ -258,24 +258,29 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
   const propsRef = useRef(props);
   propsRef.current = props;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     registerView({
       id,
       parentId,
       scrollPosition,
       props: propsRef.current,
     });
-    // Re-measure after registration. onLayout may have fired before
-    // registerView (useEffect runs after paint), causing updateMeasurements
-    // to silently drop data (entry didn't exist yet in registry).
     measureWithHandler();
     return () => unregisterView(id);
   }, [id, parentId, scrollPosition, registerView, unregisterView, measureWithHandler]);
 
-  // ── Update registry when props change ────────────────────────────────
-  useEffect(() => {
-    updateViewProps(id, propsRef.current);
-  }, [id, updateViewProps, draggable, props.receptive, props.monitoring, props.collisionAlgorithm]);
+  // ── Update registry when payload or children change.
+  // Only writes when something meaningful changed — avoids 30+ registry writes per render pass.
+  const lastPayloadRef = useRef<unknown>(undefined);
+  const lastChildrenRef = useRef<ReactNode>(undefined);
+  useLayoutEffect(() => {
+    const p = propsRef.current;
+    if (p.payload !== lastPayloadRef.current || p.children !== lastChildrenRef.current) {
+      lastPayloadRef.current = p.payload;
+      lastChildrenRef.current = p.children;
+      updateViewProps(id, p);
+    }
+  });
 
   const onLayout = () => {
     measureWithHandler();
@@ -346,6 +351,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     }
   }, [dragBoundsRef, rootViewRef, dragBoundsSV]);
 
+  const handleOffsetSV = useSharedValue<Position>({ x: 0, y: 0 });
   const gesture = useDragGesture(
     id,
     spatialIndexSV,
@@ -355,7 +361,9 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     lockDragYPosition,
     dragBoundsSV,
     props.dragActivationFailOffset,
-    scrollHorizontal
+    scrollHorizontal,
+    dragHandle ? handleOffsetSV : undefined,
+    props.sortableWorklet as import('./hooks/useDragGesture').SortableWorkletConfig | undefined,
   );
 
   // ── Animated styles ────────────────────────────────────────────────
@@ -394,10 +402,11 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     );
   }
 
-  // When dragHandle is true, provide the gesture via context so DraxHandle can attach it
+  // Handle offset SharedValue is always created (hooks can't be conditional)
+  // but only used when dragHandle is true.
   if (dragHandle) {
     renderedContent = (
-      <DraxHandleContext.Provider value={{ gesture }}>
+      <DraxHandleContext.Provider value={{ gesture, handleOffsetSV, parentViewRef: viewRef }}>
         {renderedContent}
       </DraxHandleContext.Provider>
     );

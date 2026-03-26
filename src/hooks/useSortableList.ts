@@ -1,992 +1,790 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+/**
+ * useSortableList — Core hook for DraxList's layout engine and reorder state.
+ *
+ * ZERO React state internally. All data in refs + SharedValues.
+ * The only re-render trigger is the forceRender dispatch from DraxList
+ * when cell bindings change.
+ *
+ * Position model:
+ *   Visual position = basePosition (absolute left/top, React render)
+ *                   + shiftOffset (SharedValue, Reanimated animation)
+ *
+ * During drag: base positions frozen, shifts animate items to reordered positions.
+ * On commit: base positions update to match visual, shifts clear to 0.
+ */
+import type { ReactNode } from 'react';
+import { useCallback, useRef } from 'react';
+import type { SharedValue } from 'react-native-reanimated';
 import { useSharedValue } from 'react-native-reanimated';
-import { runOnUI } from 'react-native-worklets';
 
-import {
-  defaultAutoScrollBackThreshold,
-  defaultAutoScrollForwardThreshold,
-  defaultAutoScrollJumpRatio,
-  defaultListItemLongPressDelay,
-} from '../params';
-import { packGrid } from '../math';
 import type {
-  DraxSnapbackTarget,
-  DraxViewMeasurements,
   GridItemSpan,
   Position,
-  SortableItemMeasurement,
-  SortableListHandle,
-  SortableListInternal,
-  SortablePhantomSlot,
-  UseSortableListOptions,
+  SortableAnimationConfig,
+  SortableReorderStrategy,
 } from '../types';
-import { DraxSnapbackTargetPreset } from '../types';
+import { packGrid } from '../math';
 import { useDraxId } from './useDraxId';
 
-/** Stable identity — avoids FlatList cell unmounting on data reorder. */
-function useStableKeyExtractor<T>() {
-  return useCallback((_item: T, index: number) => `__drax_${index}`, []);
+// ─── Public Types ─────────────────────────────────────────────────────
+
+export interface SortableReorderEvent<T> {
+  data: T[];
+  fromIndex: number;
+  toIndex: number;
+  fromItem: T;
+  toItem: T;
 }
 
-/**
- * Core hook for list-agnostic sortable reordering.
- *
- * During drag, order changes are tracked in a ref (no React re-render)
- * and items are visually repositioned via shift transforms (SharedValues).
- * The data reorder is committed to state only on drop, while the hover
- * view covers any layout transition.
- */
+export interface UseSortableListOptions<T> {
+  id?: string;
+  data: T[];
+  keyExtractor: (item: T, index: number) => string;
+  onReorder: (event: SortableReorderEvent<T>) => void;
+  estimatedItemSize: number;
+  horizontal?: boolean;
+  numColumns?: number;
+  reorderStrategy?: SortableReorderStrategy;
+  longPressDelay?: number;
+  lockToMainAxis?: boolean;
+  animationConfig?: SortableAnimationConfig;
+  drawDistance?: number;
+  /** Returns grid span for each item. Enables mixed-size grid with packGrid. */
+  getItemSpan?: (item: T, index: number) => GridItemSpan;
+  /** Gap between grid cells in pixels. @default 0 */
+  gridGap?: number;
+}
+
+export interface SortableListHandle<T> {
+  _internal: SortableListInternal<T>;
+}
+
+/** Slot boundary entry captured at drag start */
+interface SlotBoundary {
+  key: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Internal state — consumed by DraxList and RecycledCell */
+export interface SortableListInternal<T> {
+  id: string;
+  horizontal: boolean;
+  numColumns: number;
+  reorderStrategy: SortableReorderStrategy;
+  longPressDelay: number;
+  lockToMainAxis: boolean;
+  animationConfig: SortableAnimationConfig;
+  estimatedItemSize: number;
+  drawDistance: number;
+
+  // ── Refs (no re-renders) ──
+  orderedKeysRef: React.RefObject<string[]>;
+  /** Base positions (React props left/top — Yoga knows position for touch) */
+  basePositionsRef: React.RefObject<Map<string, Position>>;
+  itemHeightsRef: React.RefObject<Map<string, number>>;
+  /** Cross-axis measurements (width for vertical items, height for horizontal items) */
+  itemCrossAxisRef: React.RefObject<Map<string, number>>;
+  totalContentSizeRef: React.RefObject<number>;
+  containerMeasRef: React.RefObject<{ x: number; y: number; width: number; height: number } | undefined>;
+  containerWidthRef: React.RefObject<number>;
+  dataRef: React.RefObject<T[]>;
+  keyExtractorRef: React.RefObject<(item: unknown, index: number) => string>;
+  keyToIndexRef: React.RefObject<Map<string, number>>;
+  renderItemRef: React.RefObject<((info: any) => ReactNode) | undefined>;
+  /** Per-item dimensions (for mixed-size grids) */
+  itemDimensionsRef: React.RefObject<Map<string, { width: number; height: number }>>;
+  getItemSpanRef: React.RefObject<((item: unknown, index: number) => GridItemSpan) | undefined>;
+
+  // ── SharedValues (UI thread animation) ──
+  shiftsSV: ReturnType<typeof useSharedValue<Record<string, Position>>>;
+  draggedKeySV: ReturnType<typeof useSharedValue<string>>;
+  scrollOffsetSV: ReturnType<typeof useSharedValue<number>>;
+  /** When true, cells snap shifts instantly (no spring/timing). Set during cross-container reset. */
+  skipShiftAnimationSV: ReturnType<typeof useSharedValue<boolean>>;
+
+  // ── Per-cell shift SharedValues (UI-thread perf: only moved cells re-evaluate) ──
+  registerCellShift: (key: string, sv: SharedValue<Position>) => void;
+  unregisterCellShift: (key: string) => void;
+
+  // ── Worklet-accessible SharedValues (for UI-thread slot detection) ──
+  frozenBoundariesSV: SharedValue<{ key: string; x: number; y: number; width: number; height: number }[]>;
+  orderedKeysSV: SharedValue<string[]>;
+  basePositionsSV: SharedValue<Record<string, Position>>;
+  itemHeightsSV: SharedValue<Record<string, number>>;
+  currentSlotSV: SharedValue<number>;
+  isDraggingSV: SharedValue<boolean>;
+  containerMeasSV: SharedValue<{ x: number; y: number; width: number; height: number } | null>;
+  cellShiftRecordSV: SharedValue<Record<string, SharedValue<Position>>>;
+  syncRefsToWorklet: () => void;
+  syncWorkletToRefs: () => void;
+  getSlotFromPositionWorklet: (
+    contentX: number, contentY: number,
+    boundaries: { key: string; x: number; y: number; width: number; height: number }[],
+    cols: number, horiz: boolean,
+  ) => number;
+  recomputeShiftsWorklet: (
+    dragKey: string, targetSlot: number,
+    keys: string[], basePosRecord: Record<string, Position>,
+    heightsRecord: Record<string, number>,
+    cellShiftRecord: Record<string, SharedValue<Position>>,
+    estItemSize: number, horiz: boolean, strategy: string,
+  ) => string[] | null;
+
+  // ── Drop indicator ──
+  dropIndicatorPositionSV: ReturnType<typeof useSharedValue<Position>>;
+  dropIndicatorVisibleSV: ReturnType<typeof useSharedValue<boolean>>;
+  /** Incremented on each drag start. Overlay snaps position on gen change, springs between slots. */
+  dropIndicatorGenSV: ReturnType<typeof useSharedValue<number>>;
+  dropIndicatorInfoRef: React.RefObject<{
+    item: unknown; index: number; width: number; height: number;
+    isCrossContainer: boolean; isSource: boolean; horizontal: boolean;
+    hoverWidth: number; hoverHeight: number;
+    sourceListId: string; targetListId: string; fromIndex: number;
+  } | undefined>;
+  /** Set by DraxList so board can trigger re-render on any column */
+  forceRenderRef: React.RefObject<(() => void) | undefined>;
+
+  // ── Drag state (refs) ──
+  isDraggingRef: React.RefObject<boolean>;
+  dragStartIndexRef: React.RefObject<number>;
+  currentSlotRef: React.RefObject<number>;
+  frozenBoundariesRef: React.RefObject<SlotBoundary[]>;
+  /** Set during render when cross-container adds new keys. DraxList clears shifts in useLayoutEffect. */
+  pendingShiftClearRef: React.RefObject<boolean>;
+
+  // ── Layout engine ──
+  computeGridPositions: (keys: string[]) => { positions: Map<string, Position>; dimensions: Map<string, { width: number; height: number }>; totalHeight: number };
+  recomputeBasePositions: () => void;
+  recomputeBasePositionsAndClearShifts: () => void;
+  freezeSlotBoundaries: () => void;
+  getSlotFromPosition: (contentX: number, contentY: number) => number;
+  recomputeShiftsForReorder: (dragKey: string, targetSlot: number) => { positions: Map<string, Position>; dimensions: Map<string, { width: number; height: number }>; totalHeight: number } | null;
+  commitReorder: () => void;
+
+  // ── Board integration ──
+  removeKey: (key: string) => void;
+  insertKey: (key: string, atIndex: number, height: number) => void;
+  recomputeAllShifts: () => void;
+
+  // ── Callback ──
+  onReorder: (event: SortableReorderEvent<T>) => void;
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────
+
 export const useSortableList = <T,>(
-  options: UseSortableListOptions<T>
+  options: UseSortableListOptions<T>,
 ): SortableListHandle<T> => {
   const {
-    data: rawData,
+    data: externalData,
     keyExtractor,
     onReorder,
+    estimatedItemSize,
     horizontal = false,
     numColumns = 1,
     reorderStrategy = 'insert',
-    longPressDelay = defaultListItemLongPressDelay,
+    longPressDelay = 250,
     lockToMainAxis = false,
-    autoScrollJumpRatio = defaultAutoScrollJumpRatio,
-    autoScrollBackThreshold = defaultAutoScrollBackThreshold,
-    autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
     animationConfig = 'default',
+    drawDistance = 250,
     getItemSpan,
-    inactiveItemStyle,
-    itemEntering,
-    itemExiting,
-    onDragStart,
-    onDragPositionChange,
-    onDragEnd,
+    gridGap = 0,
   } = options;
 
   const id = useDraxId(options.id);
 
-  // ── Fixed items tracking ────────────────────────────────────────────
-  const fixedKeys = useRef<Set<string>>(new Set());
-
-  // ── SharedValues (UI-thread state) ────────────────────────────────
-  const draggedItem = useSharedValue<number | undefined>(undefined);
-  const dropTargetPositionSV = useSharedValue<{ x: number; y: number }>({ x: 0, y: 0 });
-  const dropTargetVisibleSV = useSharedValue(false);
-
-  /**
-   * Per-item shift transforms keyed by item key.
-   * Written from JS thread during drag, read on UI thread via useAnimatedStyle.
-   */
-  const shiftsRef = useSharedValue<Record<string, Position>>({});
-
-  /**
-   * When true, SortableItem applies shifts with duration 0 (instant).
-   * Set during reorder commit so items don't animate from old shift→0
-   * while the FlatList re-renders (which would cause a double-offset flash).
-   * Reset at the start of the next drag session.
-   */
-  const instantClearSV = useSharedValue(false);
-
-  /**
-   * When false, SortableItem ignores all shifts (treats them as 0).
-   * Written SYNCHRONOUSLY from useLayoutEffect (direct JSI write) when
-   * rawData changes, so the animated style picks it up in the same UI
-   * frame as the Fabric commit. This prevents the 1-frame blink where
-   * cells show new content but the animated style still has stale shifts.
-   */
-  const shiftsValidSV = useSharedValue(true);
-
-  // ── JS-thread state ───────────────────────────────────────────────
-  const [originalIndexes, setOriginalIndexes] = useState<number[]>([]);
-
-  /**
-   * Buffered FlatList data. Only updated on external data changes, NOT on
-   * accepted reorders. This ensures FlatList never re-renders on reorder
-   * commit, eliminating the Fabric-vs-Reanimated race that caused the blink.
-   */
-  const [stableData, setStableData] = useState(rawData);
-
-  // Always-current rawData for deferred flushVisualOrder
-  const rawDataRef = useRef(rawData);
-  rawDataRef.current = rawData;
-
-  const itemMeasurements = useRef<Map<string, SortableItemMeasurement>>(
-    new Map()
+  // ── Refs (all internal state, no re-renders) ──
+  // Initialize from externalData so first render has correct positions
+  const orderedKeysRef = useRef<string[]>(externalData.map((item, i) => keyExtractor(item, i)));
+  const basePositionsRef = useRef<Map<string, Position>>(new Map());
+  const itemHeightsRef = useRef<Map<string, number>>(new Map());
+  const itemCrossAxisRef = useRef<Map<string, number>>(new Map());
+  const totalContentSizeRef = useRef(0);
+  const containerMeasRef = useRef<{ x: number; y: number; width: number; height: number } | undefined>(undefined);
+  const containerWidthRef = useRef(0);
+  const dataRef = useRef<T[]>(externalData);
+  const keyToIndexRef = useRef<Map<string, number>>(new Map());
+  const renderItemRef = useRef<((info: any) => ReactNode) | undefined>(undefined);
+  const keyExtractorRef = useRef<(item: unknown, index: number) => string>(keyExtractor as (item: unknown, index: number) => string);
+  const itemDimensionsRef = useRef<Map<string, { width: number; height: number }>>(new Map());
+  const getItemSpanRef = useRef<((item: unknown, index: number) => GridItemSpan) | undefined>(
+    getItemSpan as ((item: unknown, index: number) => GridItemSpan) | undefined
   );
-  const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(
-    undefined
-  );
-  const contentSizeRef = useRef<Position | undefined>(undefined);
-  const scrollPosition = useSharedValue<Position>({ x: 0, y: 0 });
+  keyExtractorRef.current = keyExtractor as (item: unknown, index: number) => string;
+  getItemSpanRef.current = getItemSpan as ((item: unknown, index: number) => GridItemSpan) | undefined;
 
-  // ── Drag tracking (refs, no re-render) ────────────────────────────
-  const draggedDisplayIndexRef = useRef<number | undefined>(undefined);
-  const dragStartIndexRef = useRef<number | undefined>(undefined);
-  /**
-   * Pending reorder during drag. Tracks the desired display order
-   * as indices into rawData. Updated by moveDraggedItem (ref, not state).
-   */
-  const pendingOrderRef = useRef<number[]>([]);
+  // ── SharedValues ──
+  const shiftsSV = useSharedValue<Record<string, Position>>({});
+  const draggedKeySV = useSharedValue('');
+  const scrollOffsetSV = useSharedValue(0);
+  const skipShiftAnimationSV = useSharedValue(false);
 
-  /**
-   * Committed visual order — the pending order from the last completed drag.
-   * FlatList data is NOT changed on reorder; items are positioned entirely
-   * via shifts. This ref allows the next drag to start from the visual state.
-   * Empty means FlatList data matches the visual order (identity).
-   */
-  const committedOrderRef = useRef<number[]>([]);
-  /** Shifts corresponding to the committed visual order (for cancel revert). */
-  const committedShiftsRef = useRef<Record<string, Position>>({});
-  /** Item keys in committed visual order — detects when parent data matches. */
-  const committedKeyOrderRef = useRef<string[]>([]);
-  /** Cross-container: phantom slot for incoming items */
-  const phantomRef = useRef<SortablePhantomSlot | undefined>(undefined);
-  /** Cross-container: off-screen shifts for transferred items */
-  const ghostShiftsRef = useRef<Record<string, Position>>({});
-  /** When true, the next useLayoutEffect RESET skips the sync shiftsValidSV=false
-   *  write. Set by board-path finalizeDrag which keeps the hover visible to cover
-   *  the transition — the sync write would prematurely zero shifts on other items. */
-  const skipShiftsInvalidationRef = useRef(false);
+  // ── Worklet-accessible SharedValues (for UI-thread slot detection) ──
+  const frozenBoundariesSV = useSharedValue<{ key: string; x: number; y: number; width: number; height: number }[]>([]);
+  const orderedKeysSV = useSharedValue<string[]>([]);
+  const basePositionsSV = useSharedValue<Record<string, Position>>({});
+  const itemHeightsSV = useSharedValue<Record<string, number>>({});
+  const currentSlotSV = useSharedValue(0);
+  const isDraggingSV = useSharedValue(false);
+  const containerMeasSV = useSharedValue<{ x: number; y: number; width: number; height: number } | null>(null);
 
-  // ── Handle data changes ──────────────────────────────────────────────
-  // With permanent shifts, FlatList data is NOT changed on reorder.
-  // When rawData changes (parent updated state after onReorder, or external
-  // data change), check if it matches the committed visual order. If so,
-  // clear shifts (items now at correct FlatList positions). Otherwise reset.
-  useLayoutEffect(() => {
-    // Always keep originalIndexes as identity — permanent shifts handle visual order.
-    setOriginalIndexes((prev) => {
-      const isIdentity = prev.length === rawData.length && prev.every((v, i) => v === i);
-      if (isIdentity) return prev;
-      return rawData.length > 0 ? [...Array(rawData.length).keys()] : [];
+  // ── Drop indicator ──
+  const dropIndicatorPositionSV = useSharedValue<Position>({ x: 0, y: 0 });
+  const dropIndicatorVisibleSV = useSharedValue(false);
+  const dropIndicatorGenSV = useSharedValue(0);
+  const dropIndicatorInfoRef = useRef<{
+    item: unknown; index: number; width: number; height: number;
+    isCrossContainer: boolean; isSource: boolean; horizontal: boolean;
+    hoverWidth: number; hoverHeight: number;
+    sourceListId: string; targetListId: string; fromIndex: number;
+  } | undefined>(undefined);
+  const forceRenderRef = useRef<(() => void) | undefined>(undefined);
+
+  // ── Per-cell shift SharedValues (UI-thread perf: only moved cells re-evaluate) ──
+  const cellShiftRegistryRef = useRef(new Map<string, SharedValue<Position>>());
+  const registerCellShift = useCallback((key: string, sv: SharedValue<Position>) => {
+    cellShiftRegistryRef.current.set(key, sv);
+
+    // During drag, keep worklet record in sync and set correct initial shift
+    // for recycled cells. Without this, cellShiftRecordSV is a stale snapshot
+    // from drag start — worklet writes to wrong SVs / skips new cells.
+    if (isDraggingRef.current) {
+      // Compute correct shift for single-column (worklet path).
+      // Grid path recomputes all shifts via JS on next dragOver.
+      if (numColumns === 1) {
+        const orderedKeys = orderedKeysSV.value;
+        const basePos = basePositionsRef.current.get(key);
+        if (basePos && orderedKeys.includes(key)) {
+          let cursor = 0;
+          for (const k of orderedKeys) {
+            if (k === key) break;
+            cursor += itemHeightsRef.current.get(k) ?? estimatedItemSize;
+          }
+          sv.value = horizontal
+            ? { x: cursor - basePos.x, y: 0 }
+            : { x: 0, y: cursor - basePos.y };
+        }
+      }
+
+      // Rebuild worklet Record from current registry
+      const cs: Record<string, SharedValue<Position>> = {};
+      for (const [k, v] of cellShiftRegistryRef.current) cs[k] = v;
+      cellShiftRecordSV.value = cs;
+    }
+  }, []);
+  const unregisterCellShift = useCallback((key: string) => {
+    cellShiftRegistryRef.current.delete(key);
+
+    // Remove stale key from worklet record so it stops writing to
+    // this SV (which will be re-registered under a different item key).
+    if (isDraggingRef.current) {
+      const cs: Record<string, SharedValue<Position>> = {};
+      for (const [k, v] of cellShiftRegistryRef.current) cs[k] = v;
+      cellShiftRecordSV.value = cs;
+    }
+  }, []);
+
+  /** Sync JS refs → SharedValues for worklet slot detection. Called at drag start. */
+  function syncRefsToWorklet() {
+    orderedKeysSV.value = [...orderedKeysRef.current];
+    currentSlotSV.value = currentSlotRef.current;
+    isDraggingSV.value = isDraggingRef.current;
+    containerMeasSV.value = containerMeasRef.current ?? null;
+    // Base positions: Map → Record
+    const bp: Record<string, Position> = {};
+    for (const [k, v] of basePositionsRef.current) bp[k] = v;
+    basePositionsSV.value = bp;
+    // Item heights: Map → Record
+    const ih: Record<string, number> = {};
+    for (const [k, v] of itemHeightsRef.current) ih[k] = v;
+    itemHeightsSV.value = ih;
+    // Cell shift registry: Map → Record (for worklet access)
+    const cs: Record<string, SharedValue<Position>> = {};
+    for (const [k, v] of cellShiftRegistryRef.current) cs[k] = v;
+    cellShiftRecordSV.value = cs;
+  }
+
+  /** Sync SharedValues → JS refs after drag ends. */
+  function syncWorkletToRefs() {
+    const workletKeys = [...orderedKeysSV.value];
+    orderedKeysRef.current = workletKeys;
+    currentSlotRef.current = currentSlotSV.value;
+    // Sync shiftsSV from per-cell SVs (worklet wrote per-cell, not shiftsSV)
+    const shifts: Record<string, Position> = {};
+    for (const [k, sv] of cellShiftRegistryRef.current) {
+      shifts[k] = sv.value;
+    }
+    shiftsSV.value = shifts;
+  }
+
+  // Cell shift record SV — worklet needs Record access (not Map)
+  const cellShiftRecordSV = useSharedValue<Record<string, SharedValue<Position>>>({});
+
+  // Initialize keyToIndexRef AND base positions on first render
+  if (keyToIndexRef.current.size === 0 && externalData.length > 0) {
+    const map = new Map<string, number>();
+    for (let i = 0; i < externalData.length; i++) {
+      const item = externalData[i];
+      if (item !== undefined) map.set(keyExtractor(item, i), i);
+    }
+    keyToIndexRef.current = map;
+    // Compute initial base positions from estimatedItemSize
+    recomputeBasePositions();
+  }
+
+
+  // ── Drag state refs ──
+  const isDraggingRef = useRef(false);
+  const dragStartIndexRef = useRef(0);
+  const currentSlotRef = useRef(0);
+  const frozenBoundariesRef = useRef<SlotBoundary[]>([]);
+  /** Set during render when cross-container adds new keys. Cleared in useLayoutEffect. */
+  const pendingShiftClearRef = useRef(false);
+
+  // ── Layout helpers ──
+
+  /** Compute pixel positions from keys using packGrid (mixed-size) or modulo (uniform). */
+  function computeGridPositions(keys: string[]) {
+    const cw = containerWidthRef.current;
+    const cellSize = cw > 0
+      ? (cw - gridGap * (numColumns - 1)) / numColumns
+      : estimatedItemSize;
+    const gap = gridGap;
+    const positions = new Map<string, Position>();
+    const dimensions = new Map<string, { width: number; height: number }>();
+
+    const spanFn = getItemSpanRef.current;
+    if (spanFn && numColumns > 1) {
+      // Mixed-size grid: use packGrid for bin-packing
+      const data = dataRef.current;
+      const keyMap = keyToIndexRef.current;
+      const packing = packGrid(keys.length, numColumns, (i) => {
+        const key = keys[i]!;
+        const idx = keyMap.get(key);
+        if (idx !== undefined && data[idx] !== undefined) {
+          return spanFn(data[idx]!, idx);
+        }
+        return { colSpan: 1, rowSpan: 1 };
+      });
+
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]!;
+        const gp = packing.positions[i]!;
+        const idx = keyMap.get(key);
+        const span = idx !== undefined && data[idx] !== undefined
+          ? spanFn(data[idx]!, idx)
+          : { colSpan: 1, rowSpan: 1 };
+
+        const x = gp.col * (cellSize + gap);
+        const y = gp.row * (cellSize + gap);
+        const w = span.colSpan * cellSize + (span.colSpan - 1) * gap;
+        const h = span.rowSpan * cellSize + (span.rowSpan - 1) * gap;
+
+        positions.set(key, { x, y });
+        dimensions.set(key, { width: w, height: h });
+      }
+
+      const totalH = packing.totalRows * (cellSize + gap) - gap;
+      return { positions, dimensions, totalHeight: totalH };
+    }
+
+    if (numColumns > 1 && cw > 0) {
+      // Uniform grid
+      const heights = itemHeightsRef.current;
+      let cursorY = 0;
+      let maxRowHeight = 0;
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]!;
+        const col = i % numColumns;
+        if (col === 0 && i > 0) { cursorY += maxRowHeight; maxRowHeight = 0; }
+        const h = heights.get(key) ?? estimatedItemSize;
+        positions.set(key, { x: col * cellSize, y: cursorY });
+        dimensions.set(key, { width: cellSize, height: h });
+        maxRowHeight = Math.max(maxRowHeight, h);
+      }
+      return { positions, dimensions, totalHeight: cursorY + maxRowHeight };
+    }
+
+    // Linear list — alignment handled by inner wrapper's alignSelf (from contentContainerStyle.alignItems)
+    const heights = itemHeightsRef.current;
+    let cursor = 0;
+    for (const key of keys) {
+      const h = heights.get(key) ?? estimatedItemSize;
+      if (horizontal) {
+        positions.set(key, { x: cursor, y: 0 });
+        dimensions.set(key, { width: h, height: cw || 0 });
+      } else {
+        positions.set(key, { x: 0, y: cursor });
+        dimensions.set(key, { width: cw || 0, height: h });
+      }
+      cursor += h;
+    }
+    return { positions, dimensions, totalHeight: cursor };
+  }
+
+  // ── Layout engine ──
+  /** Recompute base positions. Does NOT clear shifts (caller decides). */
+  function recomputeBasePositions() {
+    const keys = orderedKeysRef.current;
+    const result = computeGridPositions(keys);
+    basePositionsRef.current = result.positions;
+    itemDimensionsRef.current = result.dimensions;
+    totalContentSizeRef.current = result.totalHeight;
+  }
+
+  /** Recompute base positions AND clear shifts (used after layout changes, not during drag). */
+  function recomputeBasePositionsAndClearShifts() {
+    // Set skipShift HERE (not just in caller) to ensure it's in the same Reanimated
+    // SV write batch as the cell clears. Writing from the caller and reading .value
+    // back can return the old value (JSI getter reads UI-thread state, not pending JS write).
+    skipShiftAnimationSV.value = true;
+    console.log(`[${id}] recomputeBasePositionsAndClearShifts — keys=${orderedKeysRef.current.length}`);
+    recomputeBasePositions();
+    shiftsSV.value = {};
+    // Clear per-cell SVs
+    for (const sv of cellShiftRegistryRef.current.values()) {
+      sv.value = { x: 0, y: 0 };
+    }
+  }
+
+  // ── Sync external data EAGERLY during render (not in useLayoutEffect) ──
+  // This ensures basePositionsRef is updated BEFORE cells render with new top values.
+  // Combined with shiftsValidSV gating, both top and shifts update in same Fabric commit.
+  const prevExternalDataRef = useRef(externalData);
+  if (externalData !== prevExternalDataRef.current) {
+    prevExternalDataRef.current = externalData;
+    dataRef.current = externalData;
+
+    // Single loop: build both key→index map and ordered keys array
+    const map = new Map<string, number>();
+    const keys: string[] = new Array(externalData.length);
+    for (let i = 0; i < externalData.length; i++) {
+      const item = externalData[i];
+      if (item !== undefined) {
+        const k = keyExtractor(item, i);
+        keys[i] = k;
+        map.set(k, i);
+      }
+    }
+    keyToIndexRef.current = map;
+
+    if (!isDraggingRef.current) {
+      orderedKeysRef.current = keys;
+
+      // ALWAYS reset base positions + clear shifts after data change.
+      // "Permanent shifts" kept Yoga touch at OLD base positions → wrong item grabbed.
+      // useLayoutEffect handles: skipShiftAnimation → recomputeBasePositionsAndClearShifts → forceRender.
+      // No visual change: newBase + 0 = oldBase + oldShift. But Yoga touch now correct.
+      pendingShiftClearRef.current = true;
+    }
+  }
+
+  // No flush needed. Base positions (top) stay frozen. Shifts are permanent.
+  // Visual is always correct: top + shift = correct position.
+  // Touch is correct because keyToIndexRef is synced eagerly.
+  // Next drag starts from committed shifts (via orderedKeysRef + frozen boundaries).
+
+  // ── (recomputeBasePositions defined above as function, before sync block) ──
+
+  // ── Slot detection (frozen boundaries) ──
+
+  const frozenKeysRef = useRef<string[]>([]);
+  const freezeSlotBoundaries = useCallback(() => {
+    const keys = orderedKeysRef.current;
+    // Skip if keys haven't changed since last freeze (avoids redundant computeGridPositions)
+    if (keys === frozenKeysRef.current && frozenBoundariesRef.current.length > 0) return;
+    frozenKeysRef.current = keys;
+
+    const result = computeGridPositions(keys);
+    const boundaries = keys.map(key => {
+      const pos = result.positions.get(key) ?? { x: 0, y: 0 };
+      const dim = result.dimensions.get(key) ?? { width: 0, height: estimatedItemSize };
+      return { key, x: pos.x, y: pos.y, width: dim.width, height: dim.height };
     });
+    frozenBoundariesRef.current = boundaries;
+    frozenBoundariesSV.value = boundaries; // Sync to UI thread for worklet slot detection
+  }, [estimatedItemSize, horizontal]);
 
-    const committedKeys = committedKeyOrderRef.current;
-    if (committedKeys.length > 0 && committedKeys.length === rawData.length) {
-      // Check if new data order matches committed visual order by keys.
-      let matches = true;
-      for (let i = 0; i < rawData.length; i++) {
-        const item = rawData[i];
-        if (item === undefined || keyExtractor(item, i) !== committedKeys[i]) {
-          matches = false;
-          break;
-        }
-      }
-      if (matches) {
-        // Parent accepted our reorder — stableData stays unchanged.
-        // FlatList keeps rendering the original data order; permanent shifts
-        // handle the visual reorder. No Fabric commit → no race → no blink.
-        return;
-      }
-    }
-
-    // External data change or initial mount — update stableData and reset.
-    setStableData(rawData);
-    committedOrderRef.current = [];
-    committedKeyOrderRef.current = [];
-    committedShiftsRef.current = {};
-    ghostShiftsRef.current = {};
-    if (skipShiftsInvalidationRef.current) {
-      // Board-path reorder: hover covers the transition.
-      skipShiftsInvalidationRef.current = false;
-      instantClearSV.value = true;
-      shiftsRef.value = {};
-    } else {
-      // External data change: invalidate shifts immediately so the animated
-      // style reads zero shifts in the same frame as the Fabric commit.
-      shiftsValidSV.value = false;
-      runOnUI(() => {
-        'worklet';
-        instantClearSV.value = true;
-        shiftsRef.value = {};
-        shiftsValidSV.value = true;
-      })();
-    }
-  }, [rawData, keyExtractor, shiftsRef, instantClearSV, shiftsValidSV]);
-
-
-  // ── Helpers ─────────────────────────────────────────────────────────
-
-  const getMeasurementByOriginalIndex = (
-    originalIndex: number
-  ): SortableItemMeasurement | undefined => {
-    const item = stableData[originalIndex];
-    if (item === undefined) return undefined;
-    const key = keyExtractor(item, originalIndex);
-    return itemMeasurements.current.get(key);
-  };
-
-  // Alias for internal use
-  const getMeasForOrigIdx = getMeasurementByOriginalIndex;
-
-  /** Get the span for an item at the given original data index */
-  const getSpanForOrigIdx = (origIdx: number): GridItemSpan => {
-    if (!getItemSpan) return { colSpan: 1, rowSpan: 1 };
-    const item = stableData[origIdx];
-    if (item === undefined) return { colSpan: 1, rowSpan: 1 };
-    return getItemSpan(item, origIdx);
-  };
-
-  /**
-   * Derive grid geometry (cell size + gaps) from current measurements.
-   * Only used when getItemSpan is provided and numColumns > 1.
-   */
-  const deriveGridGeometry = (): {
-    cellWidth: number;
-    cellHeight: number;
-    colGap: number;
-    rowGap: number;
-    startX: number;
-    startY: number;
-  } | undefined => {
-    if (!getItemSpan || originalIndexes.length === 0) return undefined;
-
-    const firstOrigIdx = originalIndexes[0];
-    const startMeas = firstOrigIdx !== undefined ? getMeasForOrigIdx(firstOrigIdx) : undefined;
-    if (!startMeas) return undefined;
-
-    // Pack original order to know grid positions for gap derivation
-    const origPacking = packGrid(
-      originalIndexes.length,
-      numColumns,
-      (displayIdx) => getSpanForOrigIdx(originalIndexes[displayIdx]!),
-    );
-
-    // Find cell dimensions from measurements of items with span 1
-    let cellWidth: number | undefined;
-    let cellHeight: number | undefined;
-
-    for (let i = 0; i < originalIndexes.length; i++) {
-      const origIdx = originalIndexes[i]!;
-      const span = getSpanForOrigIdx(origIdx);
-      const meas = getMeasForOrigIdx(origIdx);
-      if (!meas) continue;
-      if (span.colSpan === 1 && cellWidth === undefined) cellWidth = meas.width;
-      if (span.rowSpan === 1 && cellHeight === undefined) cellHeight = meas.height;
-      if (cellWidth !== undefined && cellHeight !== undefined) break;
-    }
-
-    // Fallback: derive from first item divided by its span
-    if (cellWidth === undefined || cellHeight === undefined) {
-      const firstSpan = getSpanForOrigIdx(firstOrigIdx!);
-      if (cellWidth === undefined) cellWidth = startMeas.width / firstSpan.colSpan;
-      if (cellHeight === undefined) cellHeight = startMeas.height / firstSpan.rowSpan;
-    }
-
-    // Derive column gap from two items at different grid columns
-    let colGap = 0;
-    for (let i = 0; i < origPacking.positions.length && colGap === 0; i++) {
-      for (let j = i + 1; j < origPacking.positions.length; j++) {
-        const pi = origPacking.positions[i]!;
-        const pj = origPacking.positions[j]!;
-        if (pi.col !== pj.col) {
-          const mi = getMeasForOrigIdx(originalIndexes[i]!);
-          const mj = getMeasForOrigIdx(originalIndexes[j]!);
-          if (mi && mj) {
-            const colDiff = Math.abs(pj.col - pi.col);
-            const xDiff = Math.abs(mj.x - mi.x);
-            colGap = xDiff / colDiff - cellWidth;
-            break;
-          }
-        }
-      }
-    }
-
-    // Derive row gap from two items at different grid rows
-    let rowGap = 0;
-    for (let i = 0; i < origPacking.positions.length && rowGap === 0; i++) {
-      for (let j = i + 1; j < origPacking.positions.length; j++) {
-        const pi = origPacking.positions[i]!;
-        const pj = origPacking.positions[j]!;
-        if (pi.row !== pj.row) {
-          const mi = getMeasForOrigIdx(originalIndexes[i]!);
-          const mj = getMeasForOrigIdx(originalIndexes[j]!);
-          if (mi && mj) {
-            const rowDiff = Math.abs(pj.row - pi.row);
-            const yDiff = Math.abs(mj.y - mi.y);
-            rowGap = yDiff / rowDiff - cellHeight;
-            break;
-          }
-        }
-      }
-    }
-
-    return {
-      cellWidth,
-      cellHeight,
-      colGap: Math.max(colGap, 0),
-      rowGap: Math.max(rowGap, 0),
-      startX: startMeas.x,
-      startY: startMeas.y,
-    };
-  };
-
-  // ── Shift application (merges ghost shifts for cross-container) ──
-
-  const applyShifts = (shifts: Record<string, Position> | undefined) => {
-    if (!shifts) return;
-    const ghosts = ghostShiftsRef.current;
-    if (Object.keys(ghosts).length > 0) {
-      shiftsRef.value = { ...shifts, ...ghosts };
-    } else {
-      shiftsRef.value = shifts;
-    }
-  };
-
-  // ── Shift computation ─────────────────────────────────────────────
-
-  /**
-   * Compute the gap between items from current FlatList measurements.
-   * Uses the first two items in originalIndexes to detect separator/padding.
-   */
-  const computeItemGap = (): number => {
-    if (originalIndexes.length < 2) return 0;
-    const meas0 = getMeasForOrigIdx(originalIndexes[0]!);
-    const meas1 = getMeasForOrigIdx(originalIndexes[1]!);
-    if (!meas0 || !meas1) return 0;
-
-    if (numColumns > 1) {
-      // Grid: gap between rows (check items in different rows)
-      const firstRowEnd = Math.min(numColumns, originalIndexes.length);
-      if (originalIndexes.length > firstRowEnd) {
-        const lastInRow0 = getMeasForOrigIdx(originalIndexes[firstRowEnd - 1]!);
-        const firstInRow1 = getMeasForOrigIdx(originalIndexes[firstRowEnd]!);
-        if (lastInRow0 && firstInRow1) {
-          return horizontal
-            ? firstInRow1.x - (lastInRow0.x + lastInRow0.width)
-            : firstInRow1.y - (lastInRow0.y + lastInRow0.height);
-        }
-      }
+  const getSlotFromPosition = useCallback((contentX: number, contentY: number): number => {
+    const boundaries = frozenBoundariesRef.current;
+    if (boundaries.length === 0) {
       return 0;
     }
 
-    // List: gap = nextItem.y - (thisItem.y + thisItem.height)
-    return horizontal
-      ? meas1.x - (meas0.x + meas0.width)
-      : meas1.y - (meas0.y + meas0.height);
-  };
-
-  /**
-   * Compute shifts for items in the given order. Returns a map of
-   * item key → {x, y} shift, or undefined if measurements are missing.
-   *
-   * @param order Array of original data indices in desired display order
-   * @param skipIndex Optional display index to skip (dragged item during drag)
-   */
-  const computeShiftsForOrder = (
-    order: number[],
-    skipIndex?: number,
-    phantom?: SortablePhantomSlot,
-  ): Record<string, Position> | undefined => {
-    if (order.length === 0) return undefined;
-
-    const measurements = order.map((origIdx) => getMeasForOrigIdx(origIdx));
-    const missingShiftIdx = measurements.findIndex((m) => !m);
-    if (missingShiftIdx >= 0) {
-      return undefined;
+    if (numColumns > 1) {
+      // 2D grid: find nearest slot by distance to center
+      let bestIdx = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < boundaries.length; i++) {
+        const b = boundaries[i]!;
+        const cx = b.x + b.width / 2;
+        const cy = b.y + b.height / 2;
+        const dist = Math.abs(contentX - cx) + Math.abs(contentY - cy);
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestIdx = i;
+        }
+      }
+      return bestIdx;
     }
 
-    const gap = computeItemGap();
-
-    const firstOrigIdx = originalIndexes[0];
-    const startMeas = firstOrigIdx !== undefined ? getMeasForOrigIdx(firstOrigIdx) : undefined;
-    if (!startMeas) {
-      return undefined;
+    // 1D list: gap midpoint boundary (symmetric sensitivity)
+    for (let i = 0; i < boundaries.length - 1; i++) {
+      const current = boundaries[i]!;
+      const next = boundaries[i + 1]!;
+      if (horizontal) {
+        const currentEnd = current.x + current.width;
+        const gap = next.x - currentEnd;
+        const boundary = currentEnd + gap / 2;
+        if (contentX < boundary) return i;
+      } else {
+        const currentEnd = current.y + current.height;
+        const gap = next.y - currentEnd;
+        const boundary = currentEnd + gap / 2;
+        if (contentY < boundary) return i;
+      }
     }
+    return boundaries.length - 1;
+  }, [numColumns, horizontal]);
 
-    const targetPositions = new Map<number, Position>();
+  // ── Worklet: slot detection (runs on UI thread) ──
 
-    if (numColumns <= 1) {
-      let cursor = horizontal ? startMeas.x : startMeas.y;
-      let displaySlot = 0;
-      for (let i = 0; i < order.length; i++) {
-        // Reserve space for phantom before laying out this item
-        if (phantom && displaySlot === phantom.atDisplayIndex) {
-          cursor += (horizontal ? phantom.width : phantom.height) + gap;
-          displaySlot++;
-        }
-        const meas = measurements[i]!;
-        if (horizontal) {
-          targetPositions.set(i, { x: cursor, y: startMeas.y });
-          cursor += meas.width + gap;
-        } else {
-          targetPositions.set(i, { x: startMeas.x, y: cursor });
-          cursor += meas.height + gap;
-        }
-        displaySlot++;
+  /** Pure geometry — same as getSlotFromPosition but runs in worklet. */
+  function getSlotFromPositionWorklet(
+    contentX: number,
+    contentY: number,
+    boundaries: { key: string; x: number; y: number; width: number; height: number }[],
+    cols: number,
+    horiz: boolean,
+  ): number {
+    'worklet';
+    if (boundaries.length === 0) return 0;
+    if (cols > 1) {
+      let bestIdx = 0;
+      let bestDist = Infinity;
+      for (let i = 0; i < boundaries.length; i++) {
+        const b = boundaries[i]!;
+        const dist = Math.abs(contentX - (b.x + b.width / 2)) + Math.abs(contentY - (b.y + b.height / 2));
+        if (dist < bestDist) { bestDist = dist; bestIdx = i; }
       }
-    } else if (getItemSpan) {
-      // ── Mixed-size grid: bin-pack items into a 2D occupancy grid ──
-      const geo = deriveGridGeometry();
-      if (!geo) return undefined;
-
-      const packing = packGrid(
-        order.length,
-        numColumns,
-        (displayIdx) => getSpanForOrigIdx(order[displayIdx]!),
-      );
-
-      for (let i = 0; i < order.length; i++) {
-        const gp = packing.positions[i]!;
-        targetPositions.set(i, {
-          x: geo.startX + gp.col * (geo.cellWidth + geo.colGap),
-          y: geo.startY + gp.row * (geo.cellHeight + geo.rowGap),
-        });
+      return bestIdx;
+    }
+    for (let i = 0; i < boundaries.length - 1; i++) {
+      const current = boundaries[i]!;
+      const next = boundaries[i + 1]!;
+      if (horiz) {
+        const boundary = current.x + current.width + (next.x - (current.x + current.width)) / 2;
+        if (contentX < boundary) return i;
+      } else {
+        const boundary = current.y + current.height + (next.y - (current.y + current.height)) / 2;
+        if (contentY < boundary) return i;
       }
+    }
+    return boundaries.length - 1;
+  }
+
+  /** Worklet: recompute shifts for a reorder. Writes per-cell SVs on UI thread.
+   *  Returns new ordered keys array, or null if no change. */
+  function recomputeShiftsWorklet(
+    dragKey: string,
+    targetSlot: number,
+    keys: string[],
+    basePosRecord: Record<string, Position>,
+    heightsRecord: Record<string, number>,
+    cellShiftRecord: Record<string, SharedValue<Position>>,
+    estItemSize: number,
+    horiz: boolean,
+    strategy: string,
+  ): string[] | null {
+    'worklet';
+    const currentIdx = keys.indexOf(dragKey);
+    if (currentIdx < 0 || currentIdx === targetSlot) return null;
+
+    // Splice ordered keys
+    const newKeys = [...keys];
+    if (strategy === 'swap') {
+      const temp = newKeys[currentIdx]!;
+      newKeys[currentIdx] = newKeys[targetSlot]!;
+      newKeys[targetSlot] = temp;
     } else {
-      // ── Uniform grid: col = i % numColumns ──
-      let cursorY = startMeas.y;
-      const colXPositions: number[] = [];
-      for (let c = 0; c < numColumns && c < originalIndexes.length; c++) {
-        const colMeas = getMeasForOrigIdx(originalIndexes[c]!);
-        colXPositions.push(colMeas ? colMeas.x : 0);
-      }
-      for (let i = 0; i < order.length; i++) {
-        const col = i % numColumns;
-        targetPositions.set(i, { x: colXPositions[col] ?? 0, y: cursorY });
-        if (col === numColumns - 1 || i === order.length - 1) {
-          const rowStart = i - col;
-          let rowHeight = 0;
-          for (let j = rowStart; j <= i; j++) {
-            rowHeight = Math.max(rowHeight, measurements[j]!.height);
+      newKeys.splice(currentIdx, 1);
+      newKeys.splice(targetSlot, 0, dragKey);
+    }
+
+    // Compute cumulative positions + shifts (linear list only)
+    let cursor = 0;
+    for (const key of newKeys) {
+      const h = heightsRecord[key] ?? estItemSize;
+      const basePos = basePosRecord[key];
+      const targetX = horiz ? cursor : 0;
+      const targetY = horiz ? 0 : cursor;
+      if (basePos) {
+        const shift = { x: targetX - basePos.x, y: targetY - basePos.y };
+        const cellSV = cellShiftRecord[key];
+        if (cellSV) {
+          const cur = cellSV.value;
+          if (cur.x !== shift.x || cur.y !== shift.y) {
+            cellSV.value = shift;
           }
-          cursorY += rowHeight + gap;
         }
       }
+      cursor += h;
     }
+    return newKeys;
+  }
 
-    const newShifts: Record<string, Position> = {};
-    for (let i = 0; i < order.length; i++) {
-      if (skipIndex !== undefined && i === skipIndex) continue;
-      const origIdx = order[i]!;
-      const item = stableData[origIdx];
-      if (item === undefined) continue;
-      const key = keyExtractor(item, origIdx);
-      const currentMeas = getMeasForOrigIdx(origIdx);
-      if (!currentMeas) continue;
-      const target = targetPositions.get(i);
-      if (!target) continue;
-      const dx = target.x - currentMeas.x;
-      const dy = target.y - currentMeas.y;
-      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-        newShifts[key] = { x: dx, y: dy };
-      }
-    }
-    return newShifts;
-  };
+  // ── Shift computation during drag ──
 
-  /** Compute and apply shifts during drag (skips the invisible dragged item). */
-  const computeShifts = () => {
-    const shifts = computeShiftsForOrder(
-      pendingOrderRef.current,
-      draggedDisplayIndexRef.current,
-      phantomRef.current ?? undefined,
-    );
-    applyShifts(shifts);
-  };
+  /** Returns the computeGridPositions result so callers can reuse it (e.g., for drop indicator). */
+  const recomputeShiftsForReorder = useCallback((dragKey: string, targetSlot: number) => {
+    const keys = [...orderedKeysRef.current];
+    const currentIdx = keys.indexOf(dragKey);
+    if (currentIdx < 0 || currentIdx === targetSlot) return null;
 
-  // ── Reorder during drag (ref-only, no state) ─────────────────────
-
-  const moveDraggedItem = (toDisplayIndex: number) => {
-    const fromIdx = draggedDisplayIndexRef.current;
-    if (fromIdx === undefined || fromIdx === toDisplayIndex) return;
-
-    // Don't move to a fixed item's position
-    const prev = pendingOrderRef.current;
-    if (prev.length === 0) return;
-    const targetOrigIdx = prev[toDisplayIndex];
-    if (targetOrigIdx !== undefined) {
-      const targetItem = stableData[targetOrigIdx];
-      if (targetItem !== undefined) {
-        const targetKey = keyExtractor(targetItem, targetOrigIdx);
-        if (fixedKeys.current.has(targetKey)) return;
-      }
-    }
-
-    let newOrder: number[];
     if (reorderStrategy === 'swap') {
-      newOrder = [...prev];
-      const temp = newOrder[fromIdx];
-      newOrder[fromIdx] = newOrder[toDisplayIndex]!;
-      newOrder[toDisplayIndex] = temp!;
+      const temp = keys[currentIdx]!;
+      keys[currentIdx] = keys[targetSlot]!;
+      keys[targetSlot] = temp;
     } else {
-      newOrder = [...prev];
-      const [removed] = newOrder.splice(fromIdx, 1);
-      if (removed !== undefined) {
-        newOrder.splice(toDisplayIndex, 0, removed);
+      keys.splice(currentIdx, 1);
+      keys.splice(targetSlot, 0, dragKey);
+    }
+    orderedKeysRef.current = keys;
+
+    const result = computeGridPositions(keys);
+    const newShifts: Record<string, Position> = {};
+    const registry = cellShiftRegistryRef.current;
+    let writtenCount = 0;
+    let skippedCount = 0;
+    for (const key of keys) {
+      const target = result.positions.get(key);
+      const basePos = basePositionsRef.current.get(key);
+      let shift: Position;
+      if (target && basePos) {
+        shift = { x: target.x - basePos.x, y: target.y - basePos.y };
+      } else if (target) {
+        shift = { x: target.x, y: target.y };
+      } else {
+        shift = { x: 0, y: 0 };
       }
-    }
-
-    pendingOrderRef.current = newOrder;
-    draggedDisplayIndexRef.current = toDisplayIndex;
-
-    // Update visual shifts
-    computeShifts();
-  };
-
-  // ── Commit visual order (permanent shifts, no FlatList data change) ──
-
-  /**
-   * Store the current pending order as the committed visual order.
-   * Called after drag ends — FlatList data is NOT changed. Items stay
-   * at their FlatList positions and shifts provide the visual reorder.
-   */
-  const commitVisualOrder = () => {
-    const pending = pendingOrderRef.current;
-    if (pending.length === 0) return;
-
-    committedOrderRef.current = [...pending];
-    committedKeyOrderRef.current = pending.map((origIdx) => {
-      const item = stableData[origIdx];
-      return item !== undefined ? keyExtractor(item, origIdx) : '';
-    });
-    // Store final shifts (all items including formerly-dragged) for cancel revert.
-    const finalShifts = computeShiftsForOrder(pending);
-    committedShiftsRef.current = finalShifts ?? {};
-  };
-
-  /**
-   * Flush permanent shifts: update stableData to match rawData and clear
-   * shifts. Called after a delay so both the Fabric commit and the shift
-   * clearing are processed on the same UI frame — no visual blink because
-   * items are already at the correct visual positions via permanent shifts.
-   * Restores touch hit testing (FlatList cells at correct Yoga positions).
-   */
-  /** Flag: next stableData change should clear shifts via runOnUI */
-  const pendingShiftFlushRef = useRef(false);
-
-  const flushVisualOrder = () => {
-    const currentRawData = rawDataRef.current;
-    committedOrderRef.current = [];
-    committedKeyOrderRef.current = [];
-    committedShiftsRef.current = {};
-    pendingShiftFlushRef.current = true;
-    setStableData(currentRawData);
-    // Shift clearing happens in the useLayoutEffect below — NOT here.
-    // This ensures it's queued during the same React commit as the
-    // Fabric update, so both land on the same UI frame.
-  };
-
-  // When flushVisualOrder updates stableData, clear shifts during the
-  // same commit phase. The runOnUI worklet and the Fabric commit are
-  // both queued from this useLayoutEffect — processed on the same
-  // UI frame, so items transition from permanent-shift positions to
-  // new FlatList positions atomically. No blink.
-  useLayoutEffect(() => {
-    if (pendingShiftFlushRef.current) {
-      pendingShiftFlushRef.current = false;
-      runOnUI(() => {
-        'worklet';
-        instantClearSV.value = true;
-        shiftsRef.value = {};
-      })();
-    }
-  }, [stableData, instantClearSV, shiftsRef]);
-
-  // ── Drag state methods ─────────────────────────────────────────────
-
-  const setDraggedItem = (index: number) => {
-    draggedItem.value = index;
-  };
-
-  const resetDraggedItem = () => {
-    draggedItem.value = -1;
-    draggedDisplayIndexRef.current = undefined;
-    dragStartIndexRef.current = undefined;
-    pendingOrderRef.current = [];
-  };
-
-  /**
-   * Initialize pending order from current originalIndexes at drag start.
-   */
-  const initPendingOrder = () => {
-    // Start from the committed visual order (what the user sees),
-    // NOT originalIndexes (always identity with permanent shifts).
-    const committed = committedOrderRef.current;
-    pendingOrderRef.current = committed.length > 0
-      ? [...committed]
-      : [...originalIndexes];
-    instantClearSV.value = false;
-  };
-
-  /**
-   * Cancel drag without reorder — clears shifts instantly and makes item visible.
-   * Used when the drag ends but no reorder happened (item snaps back to origin).
-   */
-  const cancelDrag = () => {
-    instantClearSV.value = true;
-    // Revert to committed shifts from the previous drag (if any).
-    // If no previous drag, clears to empty (identity positions).
-    shiftsRef.value = committedShiftsRef.current;
-  };
-
-  // ── Cross-container phantom slot methods ────────────────────────────
-
-  const setPhantomSlot = (atDisplayIndex: number, width: number, height: number) => {
-    if (pendingOrderRef.current.length === 0) {
-      const committed = committedOrderRef.current;
-      pendingOrderRef.current = committed.length > 0
-        ? [...committed]
-        : [...originalIndexes];
-    }
-    instantClearSV.value = false;
-    phantomRef.current = { atDisplayIndex, width, height };
-    const shifts = computeShiftsForOrder(
-      pendingOrderRef.current,
-      undefined,
-      phantomRef.current,
-    );
-    applyShifts(shifts);
-  };
-
-  const clearPhantomSlot = () => {
-    phantomRef.current = undefined;
-    instantClearSV.value = false;
-    const shifts = computeShiftsForOrder(pendingOrderRef.current);
-    if (shifts !== undefined) {
-      applyShifts(shifts);
-    } else {
-      shiftsRef.value = committedShiftsRef.current;
-    }
-    pendingOrderRef.current = [];
-  };
-
-  const ejectDraggedItem = () => {
-    const dragIdx = draggedDisplayIndexRef.current;
-    if (dragIdx === undefined) return;
-    const pending = pendingOrderRef.current;
-    if (pending.length === 0 || dragIdx >= pending.length) return;
-    const newOrder = [...pending];
-    newOrder.splice(dragIdx, 1);
-    pendingOrderRef.current = newOrder;
-    instantClearSV.value = false;
-    applyShifts(computeShiftsForOrder(newOrder));
-    draggedDisplayIndexRef.current = undefined;
-  };
-
-  const reinjectDraggedItem = (displayIndex: number, originalIndex: number) => {
-    const pending = pendingOrderRef.current;
-    if (pending.length === 0) {
-      const committed = committedOrderRef.current;
-      pendingOrderRef.current = committed.length > 0
-        ? [...committed]
-        : [...originalIndexes];
-    }
-    const newOrder = [...pendingOrderRef.current];
-    newOrder.splice(displayIndex, 0, originalIndex);
-    pendingOrderRef.current = newOrder;
-    draggedDisplayIndexRef.current = displayIndex;
-    instantClearSV.value = false;
-    computeShifts();
-  };
-
-  const getPhantomSnapTarget = (): DraxSnapbackTarget => {
-    const containerMeasurements = containerMeasurementsRef.current;
-    if (!containerMeasurements) return DraxSnapbackTargetPreset.Default;
-    const phantom = phantomRef.current;
-    if (!phantom) return DraxSnapbackTargetPreset.Default;
-    const pending = pendingOrderRef.current;
-
-    if (pending.length === 0) {
-      return {
-        x: containerMeasurements.x - scrollPosition.value.x,
-        y: containerMeasurements.y - scrollPosition.value.y,
-      };
-    }
-
-    const gap = computeItemGap();
-    const firstOrigIdx = originalIndexes[0];
-    const startMeas = firstOrigIdx !== undefined ? getMeasForOrigIdx(firstOrigIdx) : undefined;
-    if (!startMeas) return DraxSnapbackTargetPreset.Default;
-
-    let cursor = horizontal ? startMeas.x : startMeas.y;
-    let displaySlot = 0;
-
-    for (let i = 0; i < pending.length; i++) {
-      if (displaySlot === phantom.atDisplayIndex) {
-        const phantomPos = horizontal
-          ? { x: cursor, y: startMeas.y }
-          : { x: startMeas.x, y: cursor };
-        return {
-          x: containerMeasurements.x + phantomPos.x - scrollPosition.value.x,
-          y: containerMeasurements.y + phantomPos.y - scrollPosition.value.y,
-        };
-      }
-      const meas = getMeasForOrigIdx(pending[i]!);
-      if (!meas) return DraxSnapbackTargetPreset.Default;
-      cursor += (horizontal ? meas.width : meas.height) + gap;
-      displaySlot++;
-    }
-
-    // Phantom at end
-    const phantomPos = horizontal
-      ? { x: cursor, y: startMeas.y }
-      : { x: startMeas.x, y: cursor };
-    return {
-      x: containerMeasurements.x + phantomPos.x - scrollPosition.value.x,
-      y: containerMeasurements.y + phantomPos.y - scrollPosition.value.y,
-    };
-  };
-
-  /**
-   * Compute the display slot (index) from a container-local content position.
-   * Used when dragging over empty space (no receiver hit) to determine
-   * which slot the dragged item should occupy.
-   */
-  const getSlotFromPosition = (contentPos: Position): number => {
-    const pending = pendingOrderRef.current;
-    if (pending.length === 0) return 0;
-
-    // Use ORIGINAL layout positions for stable slot boundaries.
-    // Key insight: slot boundaries must NOT shift when items are reordered
-    // during drag. Using pending-order measurements causes oscillation:
-    // move changes boundaries → same position maps to new slot → another
-    // move → boundaries shift again → gap keeps running from the finger.
-    // Original layout positions are fixed throughout the drag.
-    const measurements = originalIndexes.map((origIdx) => getMeasForOrigIdx(origIdx));
-    const missingIdx = measurements.findIndex((m) => !m);
-    if (missingIdx >= 0) {
-      return draggedDisplayIndexRef.current ?? 0;
-    }
-
-    const gap = computeItemGap();
-
-    // Use the shorter of measurements and pending to avoid out-of-bounds access.
-    const itemCount = Math.min(measurements.length, pending.length);
-    if (itemCount === 0) return 0;
-
-    if (numColumns <= 1) {
-      // Single-column list — find which slot the position falls in.
-      // Boundary is at the gap midpoint between adjacent items, making
-      // forward and backward equally responsive (distance = size/2 + gap/2).
-      // Using item centers (50%) would be asymmetric: the hover center
-      // starts AT the forward boundary but a full item-height from the
-      // backward boundary, making forward too sensitive and backward too sluggish.
-      const firstMeas = measurements[0];
-      if (!firstMeas) return 0;
-      let cursor = horizontal ? firstMeas.x : firstMeas.y;
-
-      for (let i = 0; i < itemCount; i++) {
-        const meas = measurements[i];
-        if (!meas) continue;
-        const size = horizontal ? meas.width : meas.height;
-        const boundary = cursor + size + gap / 2; // midpoint of gap after item
-        const pos = horizontal ? contentPos.x : contentPos.y;
-
-        if (pos < boundary) return i;
-        cursor += size + gap;
-      }
-      return itemCount - 1;
-    } else if (getItemSpan) {
-      // ── Mixed-size grid: map finger to cell, then to display index ──
-      const geo = deriveGridGeometry();
-      if (!geo) return draggedDisplayIndexRef.current ?? 0;
-
-      // Pack original order (stable positions during drag)
-      const origPacking = packGrid(
-        itemCount,
-        numColumns,
-        (displayIdx) => getSpanForOrigIdx(originalIndexes[displayIdx]!),
-      );
-
-      // Find which grid cell the finger is in
-      const cellCol = Math.max(0, Math.min(
-        Math.floor((contentPos.x - geo.startX + geo.colGap / 2) / (geo.cellWidth + geo.colGap)),
-        numColumns - 1,
-      ));
-      const cellRow = Math.max(0, Math.floor(
-        (contentPos.y - geo.startY + geo.rowGap / 2) / (geo.cellHeight + geo.rowGap),
-      ));
-
-      // Build cell → display index map (all cells each item occupies)
-      const cellOwner = new Map<string, number>();
-      for (let i = 0; i < origPacking.positions.length && i < itemCount; i++) {
-        const pos = origPacking.positions[i]!;
-        const span = getSpanForOrigIdx(originalIndexes[i]!);
-        for (let r = 0; r < span.rowSpan; r++) {
-          for (let c = 0; c < span.colSpan; c++) {
-            cellOwner.set(`${pos.row + r},${pos.col + c}`, i);
-          }
+      newShifts[key] = shift;
+      // Write to per-cell SV only if changed (avoids restarting springs on unmoved cells)
+      const cellSV = registry.get(key);
+      if (cellSV) {
+        const cur = cellSV.value;
+        if (cur.x !== shift.x || cur.y !== shift.y) {
+          cellSV.value = shift;
+          writtenCount++;
+        } else {
+          skippedCount++;
         }
       }
-
-      // Direct cell hit
-      const owner = cellOwner.get(`${cellRow},${cellCol}`);
-      if (owner !== undefined) return Math.min(owner, pending.length - 1);
-
-      // Empty cell — find nearest item by center distance
-      let minDist = Infinity;
-      let nearest = 0;
-      for (let i = 0; i < origPacking.positions.length && i < itemCount; i++) {
-        const meas = measurements[i];
-        if (!meas) continue;
-        const cx = meas.x + meas.width / 2;
-        const cy = meas.y + meas.height / 2;
-        const dist = Math.abs(contentPos.x - cx) + Math.abs(contentPos.y - cy);
-        if (dist < minDist) {
-          minDist = dist;
-          nearest = i;
-        }
-      }
-      return Math.min(nearest, pending.length - 1);
-    } else {
-      // ── Uniform grid — find row then column ──
-      const firstMeas = measurements[0];
-      if (!firstMeas) return 0;
-      let cursorY = firstMeas.y;
-
-      // Find row — use full row boundary (not center) so the bottom
-      // half of a row doesn't spill into the next row.
-      let targetRow = 0;
-      const totalRows = Math.ceil(itemCount / numColumns);
-      for (let row = 0; row < totalRows; row++) {
-        const rowStart = row * numColumns;
-        const rowEnd = Math.min(rowStart + numColumns, itemCount);
-        let rowHeight = 0;
-        for (let col = rowStart; col < rowEnd; col++) {
-          const colMeas = measurements[col];
-          if (colMeas) rowHeight = Math.max(rowHeight, colMeas.height);
-        }
-        if (contentPos.y < cursorY + rowHeight + gap / 2) {
-          targetRow = row;
-          break;
-        }
-        cursorY += rowHeight + gap;
-        targetRow = row;
-      }
-
-      // Find column within row — use gap midpoint for symmetric sensitivity
-      const colXPositions: number[] = [];
-      for (let c = 0; c < numColumns && c < originalIndexes.length; c++) {
-        const origIdx = originalIndexes[c];
-        const colMeas = origIdx !== undefined ? getMeasForOrigIdx(origIdx) : undefined;
-        colXPositions.push(colMeas ? colMeas.x : 0);
-      }
-      const firstMeasWidth = firstMeas.width;
-      const colGap = numColumns >= 2 && colXPositions.length >= 2
-        ? (colXPositions[1] ?? 0) - ((colXPositions[0] ?? 0) + firstMeasWidth)
-        : 0;
-
-      let targetCol = 0;
-      for (let c = 0; c < numColumns; c++) {
-        const colX = colXPositions[c] ?? 0;
-        const colMeas = measurements[Math.min(c, measurements.length - 1)];
-        if (!colMeas) break;
-        const colBoundary = colX + colMeas.width + colGap / 2;
-        if (contentPos.x < colBoundary) {
-          targetCol = c;
-          break;
-        }
-        targetCol = c;
-      }
-
-      return Math.min(targetRow * numColumns + targetCol, pending.length - 1);
     }
-  };
+    console.log(`[${id}] recomputeShiftsForReorder — total=${keys.length} written=${writtenCount} skipped=${skippedCount}`);
+    shiftsSV.value = newShifts; // Keep for JS-thread reads (visibility, snap)
+    return result;
+  }, [reorderStrategy, shiftsSV]);
 
-  // ── Snapback target ─────────────────────────────────────────────────
+  // ── Board integration: remove/insert keys for cross-container ──
 
-  const getSnapbackTarget = (): DraxSnapbackTarget => {
-    const containerMeasurements = containerMeasurementsRef.current;
-    if (!containerMeasurements) return DraxSnapbackTargetPreset.Default;
-
-    const displayIdx = draggedDisplayIndexRef.current;
-    if (displayIdx === undefined) return DraxSnapbackTargetPreset.Default;
-
-    const pending = pendingOrderRef.current;
-    if (pending.length === 0) return DraxSnapbackTargetPreset.Default;
-
-    // Compute the target position for the dragged item by laying out
-    // items in the pending order and accumulating dimensions.
-    // This is the same logic as computeShifts but we only need the
-    // position at displayIdx.
-    const measurements = pending.map((origIdx) => getMeasForOrigIdx(origIdx));
-    if (measurements.some((m) => !m)) return DraxSnapbackTargetPreset.Default;
-
-    let targetPos: Position;
-
-    const gap = computeItemGap();
-
-    // Use FlatList's actual starting position, not pending[0] which
-    // may be the dragged item at the wrong FlatList slot.
-    const snapFirstOrigIdx = originalIndexes[0];
-    const snapStartMeas = snapFirstOrigIdx !== undefined
-      ? getMeasForOrigIdx(snapFirstOrigIdx)
-      : undefined;
-    if (!snapStartMeas) return DraxSnapbackTargetPreset.Default;
-
-    if (numColumns <= 1) {
-      // Single-column list
-      let cursor = horizontal ? snapStartMeas.x : snapStartMeas.y;
-
-      for (let i = 0; i < displayIdx; i++) {
-        const meas = measurements[i]!;
-        cursor += (horizontal ? meas.width : meas.height) + gap;
+  /** Remove a key from orderedKeys and recompute shifts. Used by board when item leaves. */
+  /** Recompute shifts for all items in orderedKeysRef using computeGridPositions. */
+  function recomputeAllShifts() {
+    const keys = orderedKeysRef.current;
+    const result = computeGridPositions(keys);
+    totalContentSizeRef.current = result.totalHeight;
+    const newShifts: Record<string, Position> = {};
+    const registry = cellShiftRegistryRef.current;
+    for (const key of keys) {
+      const target = result.positions.get(key);
+      const basePos = basePositionsRef.current.get(key);
+      let shift: Position;
+      if (target && basePos) {
+        shift = { x: target.x - basePos.x, y: target.y - basePos.y };
+      } else if (target) {
+        shift = { x: target.x, y: target.y };
+      } else {
+        shift = { x: 0, y: 0 };
       }
-
-      targetPos = horizontal
-        ? { x: cursor, y: snapStartMeas.y }
-        : { x: snapStartMeas.x, y: cursor };
-    } else if (getItemSpan) {
-      // Mixed-size grid — pack items and find target position
-      const geo = deriveGridGeometry();
-      if (!geo) return DraxSnapbackTargetPreset.Default;
-
-      const packing = packGrid(
-        pending.length,
-        numColumns,
-        (di) => getSpanForOrigIdx(pending[di]!),
-      );
-
-      const gp = packing.positions[displayIdx];
-      if (!gp) return DraxSnapbackTargetPreset.Default;
-
-      targetPos = {
-        x: geo.startX + gp.col * (geo.cellWidth + geo.colGap),
-        y: geo.startY + gp.row * (geo.cellHeight + geo.rowGap),
-      };
-    } else {
-      // Uniform grid
-      let cursorY = snapStartMeas.y;
-      const targetRow = Math.floor(displayIdx / numColumns);
-      const targetCol = displayIdx % numColumns;
-
-      for (let row = 0; row < targetRow; row++) {
-        const rowStart = row * numColumns;
-        const rowEnd = Math.min(rowStart + numColumns, pending.length);
-        let rowHeight = 0;
-        for (let col = rowStart; col < rowEnd; col++) {
-          rowHeight = Math.max(rowHeight, measurements[col]!.height);
+      newShifts[key] = shift;
+      const cellSV = registry.get(key);
+      if (cellSV) {
+        const cur = cellSV.value;
+        if (cur.x !== shift.x || cur.y !== shift.y) {
+          cellSV.value = shift;
         }
-        cursorY += rowHeight + gap;
       }
+    }
+    shiftsSV.value = newShifts;
+  }
 
-      const colMeas = getMeasForOrigIdx(originalIndexes[targetCol]!);
-      targetPos = { x: colMeas ? colMeas.x : 0, y: cursorY };
+  const removeKey = useCallback((key: string) => {
+    orderedKeysRef.current = orderedKeysRef.current.filter(k => k !== key);
+    recomputeAllShifts();
+  }, []);
+
+  const insertKey = useCallback((key: string, atIndex: number, height: number) => {
+    const keys = [...orderedKeysRef.current];
+    if (!keys.includes(key)) {
+      keys.splice(atIndex, 0, key);
+    }
+    orderedKeysRef.current = keys;
+    itemHeightsRef.current.set(key, height);
+    recomputeAllShifts();
+  }, []);
+
+  // ── Commit (called from onSnapEnd) ──
+
+  const commitReorder = useCallback(() => {
+    const fromIndex = dragStartIndexRef.current;
+    const toIndex = currentSlotRef.current;
+    console.log(`[${id}] commitReorder — from=${fromIndex} to=${toIndex} isDragging=${isDraggingRef.current}`);
+
+    // No-op: item returned to original position
+    if (fromIndex === toIndex) {
+      console.log(`[${id}]   no-op (same index)`);
+      isDraggingRef.current = false;
+      draggedKeySV.value = '';
+      return;
     }
 
-    return {
-      x: containerMeasurements.x + targetPos.x - scrollPosition.value.x,
-      y: containerMeasurements.y + targetPos.y - scrollPosition.value.y,
-    };
-  };
+    const keys = orderedKeysRef.current;
+    const currentData = dataRef.current;
+    const keyMap = keyToIndexRef.current;
 
-  // ── Scroll event handlers ─────────────────────────────────────────
+    const reorderedData: T[] = [];
+    for (const key of keys) {
+      const idx = keyMap.get(key);
+      if (idx !== undefined && currentData[idx] !== undefined) {
+        reorderedData.push(currentData[idx]);
+      }
+    }
 
-  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    runOnUI((_event: NativeScrollEvent) => {
-      'worklet';
-      scrollPosition.value = {
-        x: _event.contentOffset.x,
-        y: _event.contentOffset.y,
-      };
-    })(event.nativeEvent);
-  };
+    const fromItem = currentData[fromIndex];
+    const toItem = currentData[toIndex];
 
-  const onContentSizeChange = (width: number, height: number) => {
-    contentSizeRef.current = { x: width, y: height };
-  };
 
-  // ── Build the internal object ─────────────────────────────────────
+    // Clear drag state
+    isDraggingRef.current = false;
+    draggedKeySV.value = '';
+
+    // Fire notification — parent stores data, visual already correct
+    if (fromItem !== undefined && toItem !== undefined) {
+      onReorder({
+        data: reorderedData,
+        fromIndex,
+        toIndex,
+        fromItem,
+        toItem,
+      });
+    }
+  }, [onReorder, shiftsSV, draggedKeySV]);
+
+  // ── Build internal ──
+
   const internal: SortableListInternal<T> = {
     id,
     horizontal,
@@ -995,69 +793,61 @@ export const useSortableList = <T,>(
     longPressDelay,
     lockToMainAxis,
     animationConfig,
-    getItemSpan,
-    inactiveItemStyle,
-    itemEntering,
-    itemExiting,
-    fixedKeys,
-    draggedItem,
-    itemMeasurements,
-    originalIndexes,
-    keyExtractor,
-    data: stableData,
-    rawData: stableData,
-    moveDraggedItem,
-    getSnapbackTarget,
-    setDraggedItem,
-    resetDraggedItem,
-    scrollPosition,
-    containerMeasurementsRef,
-    contentSizeRef,
-    autoScrollJumpRatio,
-    autoScrollBackThreshold,
-    autoScrollForwardThreshold,
-    onDragStart,
-    onDragPositionChange,
-    onDragEnd,
-    onReorder,
-    getMeasurementByOriginalIndex,
-    dropTargetPositionSV,
-    dropTargetVisibleSV,
-    onItemSnapEnd: undefined as (() => void) | undefined,
-    draggedDisplayIndexRef,
+    estimatedItemSize,
+    drawDistance,
+    orderedKeysRef,
+    basePositionsRef,
+    itemHeightsRef,
+    itemCrossAxisRef,
+    totalContentSizeRef,
+    containerMeasRef,
+    containerWidthRef,
+    dataRef,
+    keyExtractorRef,
+    keyToIndexRef,
+    renderItemRef,
+    itemDimensionsRef,
+    getItemSpanRef,
+    shiftsSV,
+    draggedKeySV,
+    scrollOffsetSV,
+    skipShiftAnimationSV,
+    registerCellShift,
+    unregisterCellShift,
+    frozenBoundariesSV,
+    orderedKeysSV,
+    basePositionsSV,
+    itemHeightsSV,
+    currentSlotSV,
+    isDraggingSV,
+    containerMeasSV,
+    cellShiftRecordSV,
+    syncRefsToWorklet,
+    syncWorkletToRefs,
+    getSlotFromPositionWorklet,
+    recomputeShiftsWorklet,
+    dropIndicatorPositionSV,
+    dropIndicatorVisibleSV,
+    dropIndicatorGenSV,
+    dropIndicatorInfoRef,
+    forceRenderRef,
+    isDraggingRef,
     dragStartIndexRef,
-    shiftsRef,
-    instantClearSV,
-    shiftsValidSV,
-    initPendingOrder,
-    commitVisualOrder,
-    flushVisualOrder,
-    computeShiftsForOrder,
-    committedOrderRef,
-    pendingOrderRef,
-    cancelDrag,
+    currentSlotRef,
+    frozenBoundariesRef,
+    pendingShiftClearRef,
+    computeGridPositions,
+    recomputeBasePositions,
+    recomputeBasePositionsAndClearShifts,
+    freezeSlotBoundaries,
     getSlotFromPosition,
-    phantomRef,
-    setPhantomSlot,
-    clearPhantomSlot,
-    ejectDraggedItem,
-    reinjectDraggedItem,
-    getPhantomSnapTarget,
-    ghostShiftsRef,
-    committedShiftsRef,
-    skipShiftsInvalidationRef,
+    recomputeShiftsForReorder,
+    commitReorder,
+    removeKey,
+    insertKey,
+    recomputeAllShifts,
+    onReorder,
   };
 
-  // Stable index-based keyExtractor prevents FlatList from unmounting cells
-  // when data reorders. Cells stay at their FlatList index and React updates
-  // content in place (no unmount/remount), eliminating the multi-frame blink.
-  const stableKeyExtractor = useStableKeyExtractor<T>();
-
-  return {
-    data: stableData,
-    onScroll,
-    onContentSizeChange,
-    stableKeyExtractor,
-    _internal: internal,
-  };
+  return { _internal: internal };
 };

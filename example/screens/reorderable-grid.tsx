@@ -1,14 +1,7 @@
-import { useRef, useState } from 'react';
-import { StyleSheet, View, Text, FlatList, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  DraxProvider,
-  SortableContainer,
-  SortableItem,
-  useSortableList,
-} from 'react-native-drax';
+import { useState } from 'react';
+import { StyleSheet, View, Text, useWindowDimensions } from 'react-native';
+import { DraxProvider, DraxList } from 'react-native-drax';
 import { useTheme, itemColor } from '../components/ThemeContext';
-import { ExampleLinks } from '../components/ExampleLinks';
 
 const COLORS = [
   '#ff6b6b', '#ffa06b', '#ffd96b', '#a8e06b', '#6be0a8',
@@ -27,148 +20,59 @@ const initialData = Array.from({ length: 30 }, (_, i) => ({
   color: COLORS[i % COLORS.length]!,
 }));
 
-type TileItem = (typeof initialData)[number];
+type Tile = (typeof initialData)[number];
 
 export default function ReorderableGrid() {
   const [data, setData] = useState(initialData);
-  const listRef = useRef<FlatList<TileItem>>(null);
-  const insets = useSafeAreaInsets();
-  const { width: screenWidth } = useWindowDimensions();
   const { theme, isDark } = useTheme();
-  const tileSize = (screenWidth - insets.left - insets.right - 8 * 2) / NUM_COLUMNS - 8;
-
-  const sortable = useSortableList({
-    data,
-    numColumns: NUM_COLUMNS,
-    keyExtractor: (item) => item.id,
-    animationConfig: 'spring',
-    onReorder: ({ data: newData, fromIndex, fromItem, toIndex, toItem }) => {
-      console.log(
-        `Tile dragged from index ${fromIndex} (${fromItem.label}) to index ${toIndex} (${toItem.label})`
-      );
-      setData(newData);
-    },
-    onDragStart: ({ index, item }) => {
-      console.log(`Tile #${index} (${item.label}) drag start`);
-    },
-    onDragEnd: ({ index, item, toIndex }) => {
-      console.log(
-        `Tile #${index} (${item.label}) drag ended at index ${toIndex}`
-      );
-    },
-  });
+  const { width: screenWidth } = useWindowDimensions();
+  const tileSize = (screenWidth - 16 * 2) / NUM_COLUMNS - 8;
 
   return (
     <DraxProvider>
-      <View
-        testID="reorderable-grid-screen"
-        style={[
-          styles.container,
-          {
-            paddingLeft: insets.left + 8,
-            paddingRight: insets.right + 8,
-            backgroundColor: theme.bg,
-          },
-        ]}
-      >
-        <ExampleLinks slug="reorderable-grid" />
-        <SortableContainer
-          sortable={sortable}
-          scrollRef={listRef}
-          style={styles.container}
-          draxViewProps={{
-            testID: 'sortable-grid-container',
-            accessibilityLabel: 'Reorderable grid of 30 numbered tiles',
-          }}
-        >
-          <FlatList
-            ref={listRef}
-            data={sortable.data}
-            numColumns={NUM_COLUMNS}
-            keyExtractor={sortable.stableKeyExtractor}
-            onScroll={sortable.onScroll}
-            onContentSizeChange={sortable.onContentSizeChange}
-            scrollEventThrottle={16}
-            initialNumToRender={data.length}
-            windowSize={100}
-            maxToRenderPerBatch={data.length}
-            removeClippedSubviews={false}
-            ListHeaderComponent={
-              <View testID="grid-header" style={styles.header}>
-                <Text style={[styles.headerText, { color: theme.muted }]}>
-                  Long-press any tile to drag it to a new position in the grid.
-                </Text>
-              </View>
-            }
-            renderItem={({ item, index }) => {
-              if (index < 3) {
-                console.log(`[renderItem] index=${index} label=${item.label} color=${item.color.slice(0,4)}`);
-              }
-              return (
-              <SortableItem
-                sortable={sortable}
-                index={index}
-                testID={`grid-tile-${item.label}`}
-                accessibilityLabel={`Tile ${item.label}, position ${index + 1}`}
-                accessibilityHint="Long press and drag to reorder"
-                accessibilityRole="button"
-                style={[
-                  styles.tile,
-                  {
-                    width: tileSize,
-                    height: tileSize,
-                    backgroundColor: itemColor(item.color, isDark),
-                  },
-                ]}
-                hoverDraggingStyle={styles.hoverTile}
-                hoverDragReleasedStyle={styles.hoverTileReleased}
-                snapDelay={0}
-                snapDuration={180}
-              >
-                <Text style={[styles.tileText, { color: isDark ? '#e0e0e0' : '#333' }]}>{item.label}</Text>
-              </SortableItem>
-              );
-            }}
-          />
-        </SortableContainer>
+      <View style={[styles.container, { backgroundColor: theme.bg }]}>
+        <View style={styles.header}>
+          <Text style={[styles.headerText, { color: theme.muted }]}>
+            Grid — {NUM_COLUMNS} columns, {data.length} tiles
+          </Text>
+        </View>
+        <DraxList<Tile>
+          data={data}
+          keyExtractor={(item) => item.id}
+          estimatedItemSize={tileSize + 8}
+          numColumns={NUM_COLUMNS}
+          drawDistance={300}
+          animationConfig="spring"
+          longPressDelay={200}
+          onReorder={({ data: newData }) => setData(newData)}
+          renderItem={({ item }) => (
+            <View style={[styles.tile, {
+              height: tileSize,
+              backgroundColor: itemColor(item.color, isDark),
+            }]}>
+              <Text style={[styles.tileText, { color: isDark ? '#e0e0e0' : '#333' }]}>
+                {item.label}
+              </Text>
+            </View>
+          )}
+          style={styles.list}
+          contentContainerStyle={{ paddingHorizontal: 16 }}
+        />
       </View>
     </DraxProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    padding: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerText: {
-    fontSize: 16,
-    fontStyle: 'italic',
-  },
+  container: { flex: 1 },
+  header: { padding: 12, alignItems: 'center' },
+  headerText: { fontSize: 14, fontStyle: 'italic' },
+  list: { flex: 1 },
   tile: {
     margin: 4,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  tileText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  hoverTile: {
-    transform: [{ scale: 1.08 }, { rotate: '-2deg' }],
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
-  },
-  hoverTileReleased: {
-    opacity: 0.6,
-    transform: [{ scale: 0.95 }],
-    shadowOpacity: 0.05,
-  },
+  tileText: { fontSize: 20, fontWeight: '700' },
 });

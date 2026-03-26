@@ -8,11 +8,7 @@ export { DraxProvider } from './DraxProvider';
 export { DraxScrollView } from './DraxScrollView';
 export { DraxView } from './DraxView';
 
-// Sortable (list-agnostic)
-export { SortableContainer } from './SortableContainer';
-export { SortableItem } from './SortableItem';
-
-// Cross-container sortable (board)
+// ── Public Components (Board) ────────────────────────────────────────
 export { SortableBoardContainer } from './SortableBoardContainer';
 export type { SortableBoardContainerProps } from './SortableBoardContainer';
 
@@ -20,7 +16,6 @@ export type { SortableBoardContainerProps } from './SortableBoardContainer';
 export { useDraxContext } from './hooks/useDraxContext';
 export { useDraxId } from './hooks/useDraxId';
 export { useDraxMethods } from './hooks/useDraxMethods';
-export { useItemContext } from './SortableItemContext';
 export { useSortableList } from './hooks/useSortableList';
 export { useSortableBoard } from './hooks/useSortableBoard';
 
@@ -30,12 +25,9 @@ export type { SnapAlignment, GridPackResult } from './math';
 
 // ── Public Types ─────────────────────────────────────────────────────
 export type {
-  // Geometry
   Position,
   ViewDimensions,
   DraxViewMeasurements,
-
-  // Drag events
   DraxDragEventData,
   DraxDragEndEventData,
   DraxDragWithReceiverEventData,
@@ -46,8 +38,6 @@ export type {
   DraxEventViewData,
   DraxEventDraggedViewData,
   DraxEventReceiverViewData,
-
-  // View state & rendering
   DraxViewState,
   DraxTrackingStatus,
   DraxRenderContentProps,
@@ -56,56 +46,36 @@ export type {
   DraxViewStyleProps,
   DraxViewRenderContent,
   DraxViewRenderHoverContent,
-
-  // Snap
   DraxSnapbackTarget,
   DraxSnapData,
   DraxSnapEndEventData,
-
-  // Collision
   CollisionAlgorithm,
-
-  // Props
   DraxViewProps,
   DraxProviderProps,
   DraxProviderDragEvent,
   DraxScrollViewProps,
   DraxAutoScrollProps,
-
-  // Sortable types
-  UseSortableListOptions,
-  SortableListHandle,
-  GridItemSpan,
-} from './types';
-export type { SortableItemContextValue } from './SortableItemContext';
-export type {
-  SortableReorderEvent,
-  SortableDragStartEvent,
-  SortableDragPositionChangeEvent,
-  SortableDragEndEvent,
-  SortableReorderStrategy,
   SortableAnimationConfig,
   SortableAnimationPreset,
   SortableAnimationCustomConfig,
-  SortableItemMeasurement,
-  DropIndicatorProps,
-
-  // Board types (cross-container sortable)
-  UseSortableBoardOptions,
-  SortableBoardHandle,
-  SortableBoardTransferEvent,
+  SortableReorderStrategy,
+  GridItemSpan,
 } from './types';
 
-export type { DraxListProps } from './DraxList';
+export type {
+  SortableReorderEvent,
+  SortableListHandle,
+  UseSortableListOptions,
+} from './hooks/useSortableList';
+
+export type { DraxListProps, DropIndicatorInfo } from './DraxList';
+export type { SortableBoardHandle, SortableBoardTransferEvent, UseSortableBoardOptions } from './hooks/useSortableBoard';
 export type { DraxHandleProps } from './DraxHandle';
 
 export {
-  // Enums
   DraxViewDragStatus,
   DraxViewReceiveStatus,
   DraxSnapbackTargetPreset,
   AutoScrollDirection,
-
-  // Type guards
   isPosition,
 } from './types';

@@ -16,6 +16,27 @@ import { useDraxContext } from './useDraxContext';
  * reconfigure the native gesture handler on the UI thread — zero JS bridge.
  * On RNGH v2, they are mirrored to plain values with gesture recreation on change.
  */
+/** Worklet-accessible sortable config for UI-thread slot detection */
+export interface SortableWorkletConfig {
+  frozenBoundariesSV: SharedValue<{ key: string; x: number; y: number; width: number; height: number }[]>;
+  orderedKeysSV: SharedValue<string[]>;
+  basePositionsSV: SharedValue<Record<string, Position>>;
+  itemHeightsSV: SharedValue<Record<string, number>>;
+  currentSlotSV: SharedValue<number>;
+  isDraggingSV: SharedValue<boolean>;
+  containerMeasSV: SharedValue<{ x: number; y: number; width: number; height: number } | null>;
+  cellShiftRecordSV: SharedValue<Record<string, SharedValue<Position>>>;
+  draggedKeySV: SharedValue<string>;
+  dropIndicatorPositionSV: SharedValue<Position>;
+  scrollOffsetSV: SharedValue<number>;
+  numColumns: number;
+  horizontal: boolean;
+  estimatedItemSize: number;
+  reorderStrategy: string;
+  getSlotFromPositionWorklet: (contentX: number, contentY: number, boundaries: any[], cols: number, horiz: boolean) => number;
+  recomputeShiftsWorklet: (dragKey: string, targetSlot: number, keys: string[], basePosRecord: Record<string, Position>, heightsRecord: Record<string, number>, cellShiftRecord: Record<string, SharedValue<Position>>, estItemSize: number, horiz: boolean, strategy: string) => string[] | null;
+}
+
 export const useDragGesture = (
   id: string,
   viewSpatialIndexSV: SharedValue<number>,
@@ -25,7 +46,9 @@ export const useDragGesture = (
   lockDragYPosition?: boolean,
   dragBoundsSV?: SharedValue<{ x: number; y: number; width: number; height: number } | null>,
   dragActivationFailOffset?: number,
-  scrollHorizontal?: boolean
+  scrollHorizontal?: boolean,
+  handleOffsetSV?: SharedValue<Position>,
+  sortableWorklet?: SortableWorkletConfig,
 ) => {
   const {
     draggedIdSV,
@@ -42,6 +65,7 @@ export const useDragGesture = (
     handleDragStart,
     handleReceiverChange,
     handleDragEnd,
+    isDragAllowedSV,
   } = useDraxContext();
 
   // On web, RNGH defaults touch-action to 'none' which blocks native scroll.
@@ -69,30 +93,37 @@ export const useDragGesture = (
     onActivate: (event) => {
       'worklet';
 
+      // Block new drags until previous snap completes
+      if (!isDragAllowedSV.value) return;
+      isDragAllowedSV.value = false; // Lock — released in onSnapComplete
+
       // Convert screen-absolute touch to root-view-relative
       const rootOffset = rootOffsetSV.value;
       const rootRelX = event.absoluteX - rootOffset.x;
       const rootRelY = event.absoluteY - rootOffset.y;
 
       // Derive the view's visual position from the gesture event.
-      // event.x/y = touch relative to the view's bounds (accounts for transforms).
-      // This is more accurate than the spatial index for sortable items where
-      // permanent shifts move views via CSS transform without updating layout.
+      // event.x/y = touch relative to the gesture view's bounds (includes transforms).
+      // This is correct for both normal views and shifted items with permanent transforms.
       const viewAbsPos: Position = {
         x: rootRelX - event.x,
         y: rootRelY - event.y,
       };
 
-      // Grab offset = touch position within the view
+      // Grab offset = touch position within the view.
+      // For drag handles: event.x/y is relative to the handle, not the parent DraxView.
+      // Add handleOffsetSV (handle's position within parent) to correct.
+      const ho = handleOffsetSV?.value ?? { x: 0, y: 0 };
       const grabOffset: Position = {
-        x: event.x,
-        y: event.y,
+        x: event.x + ho.x,
+        y: event.y + ho.y,
       };
 
       // Store shared state (all positions in root-relative space).
-      // DO NOT set dragPhaseSV here — it's set by HoverLayer's useLayoutEffect
-      // AFTER hover content is committed to the DOM. This prevents the grab blink
-      // (item going invisible before hover is visible).
+      // Kill stale hover from previous drag (content still in DOM, phase='releasing' → opacity 1).
+      // Must happen on UI thread (worklet) for SAME-FRAME effect — JS writes have a 1-frame delay.
+      // Cell blink is safe: hoverReadySV is false → cell opacity stays 1 until HoverLayer is ready.
+      dragPhaseSV.value = 'idle';
       draggedIdSV.value = id;
       grabOffsetSV.value = grabOffset;
       startPositionSV.value = { x: rootRelX, y: rootRelY };
@@ -202,10 +233,42 @@ export const useDragGesture = (
       if (receiverChanged) {
         receiverIdSV.value = candidateReceiverId;
       }
+      // ── UI-thread slot detection (zero JS bounce for intra-list reorder) ──
+      if (sortableWorklet && sortableWorklet.isDraggingSV.value && sortableWorklet.numColumns === 1) {
+        const sw = sortableWorklet;
+        const cm = sw.containerMeasSV.value;
+        // Only run if finger is over THIS list's bounds (prevents ghost reorder in source when finger is over target)
+        const overThisList = cm &&
+          hitTestPos.x >= cm.x && hitTestPos.x <= cm.x + cm.width &&
+          hitTestPos.y >= cm.y && hitTestPos.y <= cm.y + cm.height;
+        if (cm && overThisList) {
+          const scrollOff = sw.scrollOffsetSV.value;
+          const cX = hitTestPos.x - cm.x + (sw.horizontal ? scrollOff : 0);
+          const cY = hitTestPos.y - cm.y + (sw.horizontal ? 0 : scrollOff);
+          const slot = sw.getSlotFromPositionWorklet(cX, cY, sw.frozenBoundariesSV.value, sw.numColumns, sw.horizontal);
+          if (slot !== sw.currentSlotSV.value) {
+            sw.currentSlotSV.value = slot;
+            const dragKey = sw.draggedKeySV.value;
+            if (dragKey) {
+              const newKeys = sw.recomputeShiftsWorklet(
+                dragKey, slot, sw.orderedKeysSV.value, sw.basePositionsSV.value,
+                sw.itemHeightsSV.value, sw.cellShiftRecordSV.value,
+                sw.estimatedItemSize, sw.horizontal, sw.reorderStrategy,
+              );
+              if (newKeys) sw.orderedKeysSV.value = newKeys;
+            }
+          }
+        }
+      }
+
+      // Pass static SVs as args to avoid cross-thread reads on JS thread.
+      // draggedIdSV and startPositionSV are set once in onActivate and never change during drag.
       runOnJS(handleReceiverChange)(
         oldReceiver,
         candidateReceiverId,
         hitTestPos,
+        draggedIdSV.value,
+        startPositionSV.value,
         result.monitorIds
       );
     },
@@ -213,6 +276,7 @@ export const useDragGesture = (
       'worklet';
 
       const currentDraggedId = draggedIdSV.value;
+      if (!currentDraggedId) return; // Gesture was rejected (lock) — skip
       const currentReceiverId = receiverIdSV.value;
 
       // Run final hit-test to capture current monitors.
