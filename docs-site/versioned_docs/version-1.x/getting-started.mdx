@@ -1,0 +1,124 @@
+---
+title: Getting Started
+description: Install react-native-drax and build your first drag-and-drop interaction in minutes.
+keywords: [react-native, drag-and-drop, install, setup, getting-started]
+sidebar_position: 1
+---
+
+# Getting Started
+
+Drax is a declarative drag-and-drop framework for React Native, written in TypeScript. It supports free-form drag-and-drop, sortable lists and grids, cross-list reorder, drag handles, collision algorithms, and more.
+
+Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and [Gesture Handler 3](https://docs.swmansion.com/react-native-gesture-handler/) with a UI-thread-first architecture for smooth 60fps interactions.
+
+**Platforms:** iOS, Android, Web
+
+## Installation
+
+```bash
+npm install react-native-drax
+```
+
+Or with yarn:
+
+```bash
+yarn add react-native-drax
+```
+
+### Peer Dependencies
+
+Drax requires Reanimated and Gesture Handler as peer dependencies:
+
+```bash
+npm install react-native-reanimated react-native-gesture-handler
+```
+
+| Peer Dependency | Version |
+|---|---|
+| `react` | >= 18 |
+| `react-native` | >= 0.68 |
+| `react-native-reanimated` | ^4.0.0 |
+| `react-native-gesture-handler` | >= 2.0.0 (v3 recommended) |
+
+:::tip
+Drax works best with Gesture Handler v3 (beta). v2 is supported via a compatibility layer with reduced performance.
+:::
+
+### Setup Reanimated
+
+If you haven't already, follow the [Reanimated installation guide](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started) to add the Babel plugin and any platform-specific setup.
+
+### Setup Gesture Handler
+
+Follow the [Gesture Handler installation guide](https://docs.swmansion.com/react-native-gesture-handler/docs/fundamentals/installation). Make sure to wrap your app root with `GestureHandlerRootView`.
+
+## Hello World
+
+Here's a minimal drag-and-drop example:
+
+```tsx
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { DraxProvider, DraxView } from 'react-native-drax';
+import { StyleSheet, Text } from 'react-native';
+
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <DraxProvider>
+        <DraxView
+          style={styles.draggable}
+          onDragStart={() => console.log('Started dragging!')}
+          payload="hello"
+        >
+          <Text>Drag me</Text>
+        </DraxView>
+        <DraxView
+          style={styles.receiver}
+          onReceiveDragDrop={({ dragged }) => {
+            console.log(`Received: ${dragged.payload}`);
+          }}
+        >
+          <Text>Drop here</Text>
+        </DraxView>
+      </DraxProvider>
+    </GestureHandlerRootView>
+  );
+}
+
+const styles = StyleSheet.create({
+  draggable: {
+    width: 100,
+    height: 100,
+    backgroundColor: '#cf5f34',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    margin: 20,
+  },
+  receiver: {
+    width: 150,
+    height: 150,
+    backgroundColor: '#2a9d8f',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    margin: 20,
+  },
+});
+```
+
+That's it! The `DraxView` is both draggable and receptive by default. Wrap everything in a `DraxProvider` and you're ready to go.
+
+## Key Concepts
+
+- **`DraxProvider`** — Context provider that manages the drag state. Wrap your drag-and-drop area.
+- **`DraxView`** — The core building block. Any `DraxView` can be dragged, receive drops, or monitor drags.
+- **Payload** — Arbitrary data attached to a drag. The receiver gets it on drop.
+- **Hover Layer** — A floating copy of the dragged view that follows your finger.
+
+## What's Next?
+
+- **[Quick Start](/quick-start)** — Three progressive examples from basic to composable
+- **[Core Concepts](/core-concepts)** — Deep dive into the architecture
+- **[Guides](/guides/drag-and-drop)** — Feature-specific tutorials
+- **[API Reference](/api/components/drax-provider)** — Complete prop and type documentation

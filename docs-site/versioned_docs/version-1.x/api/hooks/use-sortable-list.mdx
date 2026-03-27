@@ -1,0 +1,90 @@
+---
+title: useSortableList
+description: API reference for useSortableList — list-agnostic reorder state management hook.
+keywords: [react-native, sortable, hook, reorder, useSortableList, api]
+sidebar_position: 1
+---
+
+# useSortableList
+
+List-agnostic reorder state management hook. Returns a `SortableListHandle` that you wire to `SortableContainer`, `SortableItem`, and your list component.
+
+## Import
+
+```tsx
+import { useSortableList } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+const sortable = useSortableList({
+  data: items,
+  keyExtractor: (item) => item.id,
+  onReorder: ({ data }) => setItems(data),
+});
+```
+
+## Options
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `id` | `string` | auto-generated | DraxView id for the container |
+| `data` | `T[]` | **required** | Array of items |
+| `keyExtractor` | `(item: T, index: number) => string` | **required** | Unique key per item |
+| `onReorder` | `(event: SortableReorderEvent<T>) => void` | **required** | Called after reorder |
+| `horizontal` | `boolean` | `false` | Horizontal list layout |
+| `numColumns` | `number` | `1` | Number of columns (grid) |
+| `reorderStrategy` | `SortableReorderStrategy` | `'insert'` | `'insert'` or `'swap'` |
+| `longPressDelay` | `number` | `250` | ms before drag activates |
+| `lockToMainAxis` | `boolean` | `false` | Lock drag to list's main axis |
+| `autoScrollJumpRatio` | `number` | `0.2` | Auto-scroll jump as fraction of container |
+| `autoScrollBackThreshold` | `number` | `0.1` | Back auto-scroll threshold |
+| `autoScrollForwardThreshold` | `number` | `0.9` | Forward auto-scroll threshold |
+| `animationConfig` | `SortableAnimationConfig` | `'default'` | Animation preset or custom config |
+| `getItemSpan` | `(item: T, index: number) => GridItemSpan` | — | Grid span per item (enables mixed-size grid). Only used when `numColumns > 1`. |
+| `inactiveItemStyle` | `ViewStyle` | — | Style applied to all non-dragged items during drag |
+| `itemEntering` | `EntryOrExitLayoutType` | — | Reanimated layout animation for items entering the list |
+| `itemExiting` | `EntryOrExitLayoutType` | — | Reanimated layout animation for items exiting the list |
+| `onDragStart` | `(event: SortableDragStartEvent<T>) => void` | — | Drag started |
+| `onDragPositionChange` | `(event: SortableDragPositionChangeEvent<T>) => void` | — | Position changed |
+| `onDragEnd` | `(event: SortableDragEndEvent<T>) => void` | — | Drag ended |
+
+## Return Value: `SortableListHandle<T>`
+
+| Property | Type | Wire To |
+|---|---|---|
+| `data` | `T[]` | List `data` prop |
+| `onScroll` | scroll handler | List `onScroll` prop |
+| `onContentSizeChange` | size handler | List `onContentSizeChange` prop |
+| `stableKeyExtractor` | `(item: T, index: number) => string` | List `keyExtractor` prop |
+| `_internal` | `SortableListInternal<T>` | Used by SortableContainer and SortableItem |
+
+## Wiring Example
+
+```tsx
+const sortable = useSortableList({ data, keyExtractor, onReorder });
+
+<SortableContainer sortable={sortable} scrollRef={listRef}>
+  <FlatList
+    ref={listRef}
+    data={sortable.data}
+    keyExtractor={sortable.stableKeyExtractor}
+    onScroll={sortable.onScroll}
+    onContentSizeChange={sortable.onContentSizeChange}
+    renderItem={({ item, index }) => (
+      <SortableItem sortable={sortable} index={index}>
+        <ItemCard item={item} />
+      </SortableItem>
+    )}
+  />
+</SortableContainer>
+```
+
+## Related
+
+- [Composable API Guide](/guides/composable-api)
+- [Sortable Grid Guide](/guides/sortable-grid) — Uniform and mixed-size grids
+- [packGrid Utility](/api/utilities/pack-grid) — Grid bin-packing for mixed-size items
+- [SortableContainer](/api/components/sortable-container)
+- [SortableItem](/api/components/sortable-item)

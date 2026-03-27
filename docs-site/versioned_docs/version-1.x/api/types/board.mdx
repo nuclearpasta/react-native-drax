@@ -1,0 +1,57 @@
+---
+title: Board Types
+description: TypeScript types for cross-container sortable board operations.
+keywords: [react-native, drax, types, board, cross-list, cross-container, api]
+sidebar_position: 5
+---
+
+# Board Types
+
+Types for the cross-container sortable board API.
+
+## SortableBoardTransferEvent&lt;TItem&gt;
+
+Fired when an item is transferred between containers.
+
+```tsx
+interface SortableBoardTransferEvent<TItem> {
+  item: TItem;              // The transferred item
+  fromContainerId: string;  // Source column id
+  fromIndex: number;        // Original index in source
+  toContainerId: string;    // Target column id
+  toIndex: number;          // Insertion index in target
+}
+```
+
+## UseSortableBoardOptions&lt;TItem&gt;
+
+Options for `useSortableBoard`.
+
+```tsx
+interface UseSortableBoardOptions<TItem> {
+  keyExtractor: (item: TItem) => string;
+  onTransfer: (event: SortableBoardTransferEvent<TItem>) => void;
+}
+```
+
+## SortableBoardHandle&lt;TItem&gt;
+
+Handle returned by `useSortableBoard`. Pass to `SortableBoardContainer`.
+
+```tsx
+interface SortableBoardHandle<TItem> {
+  _internal: SortableBoardInternal<TItem>;
+}
+```
+
+## SortablePhantomSlot
+
+Virtual space reserved in a target column during cross-container drag.
+
+```tsx
+interface SortablePhantomSlot {
+  atDisplayIndex: number;
+  width: number;
+  height: number;
+}
+```

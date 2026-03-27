@@ -1,0 +1,49 @@
+---
+title: SortableBoardContainer
+description: API reference for SortableBoardContainer — cross-container board coordinator.
+keywords: [react-native, sortable, board, cross-list, cross-container, api]
+sidebar_position: 8
+---
+
+# SortableBoardContainer <span className="badge--experimental">Experimental</span>
+
+Monitoring wrapper that coordinates cross-container item transfers. Detects when a drag crosses column boundaries and manages phantom slots, ejection, and transfer finalization.
+
+## Import
+
+```tsx
+import { SortableBoardContainer } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+<SortableBoardContainer board={board} style={styles.board}>
+  {columns.map((col) => (
+    <Column key={col.id} id={col.id} items={col.items} />
+  ))}
+</SortableBoardContainer>
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `board` | `SortableBoardHandle<TItem>` | **required** | Handle from `useSortableBoard` |
+| `style` | `StyleProp<ViewStyle>` | — | Container style |
+| `children` | `ReactNode` | **required** | Column components |
+| `draxViewProps` | `Partial<DraxViewProps>` | — | Extra DraxView props |
+
+## How It Works
+
+1. Wraps a `DraxView` with `monitoring` — listens to all drags inside the board
+2. Provides `SortableBoardContext` — columns auto-register via `useEffect`
+3. On `onMonitorDragOver`, checks if hover position crosses column boundaries
+4. **Source→Target transfer**: ejects item from source, creates phantom slot in target
+5. **Drop/End**: fires `onTransfer`, clears state, hover covers the transition
+
+## Related
+
+- [Cross-Container Drag Guide](/guides/cross-container-drag)
+- [useSortableBoard](/api/hooks/use-sortable-board) — Board-level hook
+- [SortableContainer](/api/components/sortable-container) — Column-level container

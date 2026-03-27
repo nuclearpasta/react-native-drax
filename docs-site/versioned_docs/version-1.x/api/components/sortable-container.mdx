@@ -1,0 +1,69 @@
+---
+title: SortableContainer
+description: API reference for SortableContainer — monitoring wrapper for the composable sortable API.
+keywords: [react-native, sortable, container, monitoring, composable, api]
+sidebar_position: 6
+---
+
+# SortableContainer
+
+Monitoring wrapper that handles drag detection, item reordering, and auto-scroll for a sortable list. Used with `useSortableList` and `SortableItem`.
+
+## Import
+
+```tsx
+import { SortableContainer } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+<SortableContainer sortable={sortable} scrollRef={listRef}>
+  <FlatList ref={listRef} ... />
+</SortableContainer>
+```
+
+## Props
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `sortable` | `SortableListHandle<any>` | **required** | Handle from `useSortableList` |
+| `scrollRef` | `RefObject<any>` | **required** | Ref to the scrollable list component |
+| `style` | `StyleProp<ViewStyle>` | — | Container style |
+| `children` | `ReactNode` | **required** | List content |
+| `draxViewProps` | `Partial<DraxViewProps>` | — | Extra props for the container's DraxView |
+| `renderDropIndicator` | `(props: DropIndicatorProps) => ReactNode` | — | Render a drop indicator at insertion point |
+
+## Drop Indicator
+
+```tsx
+<SortableContainer
+  sortable={sortable}
+  scrollRef={listRef}
+  renderDropIndicator={({ visible, horizontal }) => (
+    <View
+      style={{
+        width: horizontal ? 2 : '100%',
+        height: horizontal ? '100%' : 2,
+        backgroundColor: '#cf5f34',
+      }}
+    />
+  )}
+>
+```
+
+The indicator is positioned automatically using animated `translateX`/`translateY`.
+
+## How It Works
+
+- Wraps a `DraxView` with `isParent` and `monitoring`
+- Listens to `onMonitorDragStart`, `onMonitorDragOver`, `onMonitorDragEnd`, `onMonitorDragDrop`
+- Uses position-based slot detection (not receiver-based) for stable reorder behavior
+- Manages auto-scroll when dragging near container edges
+- Finalizes reorder after snap animation completes
+
+## Related
+
+- [Composable API Guide](/guides/composable-api)
+- [SortableItem](/api/components/sortable-item)
+- [useSortableList](/api/hooks/use-sortable-list)

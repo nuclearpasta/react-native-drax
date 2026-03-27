@@ -1,0 +1,143 @@
+---
+title: "Example: Stress Test"
+description: 100 items in a sortable list — performance benchmark.
+keywords: [react-native, drax, example, stress-test, performance]
+sidebar_position: 11
+---
+
+# Stress Test
+
+100 items in a sortable list. Tests performance with a large number of items.
+
+## Key Concepts
+
+- **Large lists** — 100 items with smooth reorder
+- **UI-thread hit-testing** — spatial index stays fast at scale
+- **Stable keys** — prevents FlatList cell unmounting
+
+## Features Shown
+
+| Feature | How |
+|---|---|
+| 100 items | Large data set for performance testing |
+| `DraxList` | Convenience wrapper handles everything |
+| Smooth drag | UI-thread architecture maintains 60fps |
+
+## Source Code
+
+[▶️ Live demo](https://nuclearpasta.com/react-native-drax/example/stress-test) · [💻 Source](https://github.com/nuclearpasta/react-native-drax/blob/main/example/screens/stress-test.tsx)
+
+```tsx title="example/screens/stress-test.tsx"
+import { useRef, useState } from 'react';
+import { StyleSheet, View, Text, FlatList } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  DraxProvider,
+  SortableContainer,
+  SortableItem,
+  useSortableList,
+} from 'react-native-drax';
+
+const ITEM_COUNT = 100;
+const COLORS = [
+  '#fecaca', '#fed7aa', '#fef08a', '#bbf7d0', '#a7f3d0',
+  '#bfdbfe', '#c7d2fe', '#ddd6fe', '#fbcfe8', '#fce7f3',
+];
+
+const INITIAL_DATA = Array.from({ length: ITEM_COUNT }, (_, i) => ({
+  id: `stress-${i}`,
+  label: `Item ${i + 1}`,
+  color: COLORS[i % COLORS.length]!,
+}));
+
+export default function StressTest() {
+  const [data, setData] = useState(INITIAL_DATA);
+  const listRef = useRef<FlatList<(typeof INITIAL_DATA)[0]>>(null);
+  const insets = useSafeAreaInsets();
+
+  const sortable = useSortableList({
+    data,
+    keyExtractor: (item) => item.id,
+    onReorder: ({ data: newData }) => setData(newData),
+  });
+
+  return (
+    <DraxProvider>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <Text style={styles.headerText}>
+            {ITEM_COUNT} items — test scrolling and reorder performance
+          </Text>
+        </View>
+        <SortableContainer
+          sortable={sortable}
+          scrollRef={listRef}
+          style={styles.container}
+          draxViewProps={{ testID: 'stress-test-container' }}
+        >
+          <FlatList
+            ref={listRef}
+            data={sortable.data}
+            keyExtractor={sortable.stableKeyExtractor}
+            onScroll={sortable.onScroll}
+            onContentSizeChange={sortable.onContentSizeChange}
+            scrollEventThrottle={16}
+            getItemLayout={(_, index) => ({
+              length: 52,
+              offset: 52 * index,
+              index,
+            })}
+            renderItem={({ item, index }) => (
+              <SortableItem
+                sortable={sortable}
+                index={index}
+                testID={`stress-item-${item.id}`}
+                style={[
+                  styles.item,
+                  { backgroundColor: item.color },
+                ]}
+              >
+                <Text style={styles.itemText}>{item.label}</Text>
+              </SortableItem>
+            )}
+          />
+        </SortableContainer>
+      </View>
+    </DraxProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    padding: 12,
+    alignItems: 'center',
+  },
+  headerText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    color: '#666',
+  },
+  item: {
+    height: 48,
+    marginHorizontal: 8,
+    marginVertical: 2,
+    borderRadius: 8,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  itemText: {
+    fontSize: 15,
+  },
+  dragging: {
+    opacity: 0,
+  },
+});
+```
+
+## Related
+
+- [Performance Guide](/guides/performance) — Optimization tips
+- [API: DraxList](/api/components/drax-list) — Props reference

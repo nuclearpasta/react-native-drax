@@ -1,0 +1,113 @@
+---
+title: SortableItem
+description: API reference for SortableItem — per-item wrapper with shift animation for sortable lists.
+keywords: [react-native, sortable, item, animation, shift, composable, api]
+sidebar_position: 7
+---
+
+# SortableItem
+
+Per-item wrapper that handles shift animations, visibility during drag, and measurement tracking. Used with `useSortableList` and `SortableContainer`.
+
+## Import
+
+```tsx
+import { SortableItem } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+<SortableItem sortable={sortable} index={index}>
+  <View style={styles.item}>
+    <Text>{item.label}</Text>
+  </View>
+</SortableItem>
+```
+
+## Props
+
+Extends all `DraxViewProps` plus:
+
+| Prop | Type | Default | Description |
+|---|---|---|---|
+| `sortable` | `SortableListHandle<any>` | **required** | Handle from `useSortableList` |
+| `index` | `number` | **required** | Current index in the list |
+| `fixed` | `boolean` | `false` | Pin this item in place — cannot be dragged, other items skip over it |
+| `children` | `ReactNode` | **required** | Item content |
+
+All `DraxViewProps` are supported — they're spread onto the inner `DraxView`:
+
+```tsx
+<SortableItem
+  sortable={sortable}
+  index={index}
+  dragHandle              {/* Enable drag handle */}
+  hoverStyle={{ opacity: 0.8 }}
+  longPressDelay={500}
+>
+  ...
+</SortableItem>
+```
+
+## Accessibility
+
+Auto-generated attributes (overridable via props):
+
+| Attribute | Default Value |
+|---|---|
+| `accessibilityLabel` | `"Item {N} of {M}"` |
+| `accessibilityHint` | `"Long press to drag and reorder"` |
+| `accessibilityRole` | `"adjustable"` |
+
+## Fixed Items
+
+Pin items in place so they can't be dragged and other items skip over them:
+
+```tsx
+<SortableItem sortable={sortable} index={0} fixed>
+  <Text>Pinned header — can't be moved</Text>
+</SortableItem>
+```
+
+## useItemContext
+
+Access per-item drag state from within children using the `useItemContext` hook:
+
+```tsx
+import { useItemContext } from 'react-native-drax';
+import { useAnimatedStyle } from 'react-native-reanimated';
+
+function ItemContent({ label }) {
+  const { isActive } = useItemContext();
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: isActive.value ? 1.1 : 1 }],
+    shadowOpacity: isActive.value ? 0.3 : 0,
+  }));
+
+  return (
+    <Reanimated.View style={style}>
+      <Text>{label}</Text>
+    </Reanimated.View>
+  );
+}
+```
+
+Returns: `itemKey`, `index`, `isActive` (SharedValue), `activeItemId` (SharedValue).
+
+## How It Works
+
+- Wraps content in `Reanimated.View` with animated shift transform
+- Shift values come from `shiftsRef` SharedValue (keyed by item key)
+- Visibility controlled by `hoverReadySV` + `draggedIdSV` — hidden when being dragged
+- Measures itself on layout and stores in `itemMeasurements` Map
+- Calls `onItemSnapEnd` when snap-back completes (triggers reorder finalization)
+- Respects reduced motion via `useReducedMotion()`
+
+## Related
+
+- [Composable API Guide](/guides/composable-api)
+- [SortableContainer](/api/components/sortable-container)
+- [useSortableList](/api/hooks/use-sortable-list)
+- [Accessibility Guide](/guides/accessibility)

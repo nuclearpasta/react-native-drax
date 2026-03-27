@@ -150,6 +150,16 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           editUrl:
             'https://github.com/nuclearpasta/react-native-drax/tree/main/docs-site/',
+          lastVersion: 'current',
+          versions: {
+            current: {
+              label: 'v2.x',
+            },
+            '1.x': {
+              label: 'v1.x',
+              banner: 'unmaintained',
+            },
+          },
         },
         blog: false,
         theme: {
@@ -235,6 +245,10 @@ const config: Config = {
           href: 'https://nuclearpasta.com/react-native-drax/example/',
           label: 'Live Demo',
           position: 'left',
+        },
+        {
+          type: 'docsVersionDropdown',
+          position: 'right',
         },
         {
           type: 'html',

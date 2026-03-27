@@ -1,0 +1,56 @@
+---
+title: Drag Handles
+description: Use DraxHandle to restrict drag initiation to a specific touch area.
+keywords: [react-native, drag-handle, grip, sortable, drax-handle]
+sidebar_position: 5
+---
+
+# Drag Handles
+
+By default, touching anywhere on a `DraxView` starts a drag. With drag handles, only the handle area initiates a drag — the rest of the view can scroll or receive taps normally.
+
+## Basic Usage
+
+```tsx
+import { DraxView, DraxHandle } from 'react-native-drax';
+
+<DraxView dragHandle style={styles.row}>
+  <Text style={styles.content}>Item content — taps and scrolls work here</Text>
+  <DraxHandle style={styles.grip}>
+    <Text>☰</Text>
+  </DraxHandle>
+</DraxView>
+```
+
+Two things are needed:
+1. Set `dragHandle` on the `DraxView` — this tells it NOT to attach the gesture directly
+2. Place a `<DraxHandle>` inside — this is where the gesture is attached
+
+## With Sortable Items
+
+```tsx
+<SortableItem sortable={sortable} index={index} dragHandle>
+  <View style={styles.row}>
+    <DraxHandle style={styles.grip}>
+      <GripIcon />
+    </DraxHandle>
+    <Text style={styles.label}>{item.title}</Text>
+  </View>
+</SortableItem>
+```
+
+## How It Works
+
+1. When `dragHandle` is `true`, the `DraxView` skips wrapping its children in a `GestureDetector`
+2. Instead, it provides the gesture via `DraxHandleContext`
+3. `DraxHandle` consumes that context and wraps its own children with `GestureDetector`
+4. Only touches starting on the `DraxHandle` area activate the drag gesture
+
+:::tip
+In the hover layer (floating copy), `DraxHandle` renders as a plain view since the gesture isn't needed there.
+:::
+
+## Next Steps
+
+- **[Composable API](/guides/composable-api)** — Using handles with SortableItem
+- **[API: DraxHandle](/api/components/drax-handle)** — Full component reference

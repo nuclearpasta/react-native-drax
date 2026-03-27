@@ -1,0 +1,25 @@
+---
+title: Roadmap
+description: Planned features for react-native-drax including haptic feedback, sortable flex layout, collapsible items, and more.
+keywords: [react-native-drax, roadmap, planned-features, drag-and-drop, haptic-feedback, sortable-flex]
+sidebar_position: 99
+---
+
+# Roadmap
+
+Features planned for future releases of Drax.
+
+## Planned
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **Haptic feedback** | `hapticsEnabled` prop — vibrate on drag start and reorder events | Deferred (web compatibility) |
+| **Snap-to-finger** | `snapToFinger` prop — center dragged item on finger instead of preserving grab offset | Deferred (snap architecture review needed) |
+| **Container dimension animation** | Animate container height/width when items are added, removed, or reordered | Planned |
+| **Animated style transitions** | Smooth interpolation between drag style states (e.g., `dragInactiveStyle` to `draggingStyle`) instead of instant swaps | Needs design work |
+| **Custom ordering strategies** | Pluggable `customStrategy` function beyond insert/swap | Planned |
+| **Sortable flex layout** | Full flexbox-based sorting with flex-wrap, direction, gap, alignment | Large effort |
+| **Collapsible items** | Items animate their size during drag | Large effort |
+| **Sortable.Touchable** | Gesture-safe tap/long-press inside sortable items | DraxHandle partially covers this |
+| **Dynamic item heights API** | Explicit `itemHeight` prop (number/array/function) for optimization | Already measures per-item |
+| **AI agent skills** | MCP server or similar integration for AI-assisted drag-and-drop interactions | Planned |

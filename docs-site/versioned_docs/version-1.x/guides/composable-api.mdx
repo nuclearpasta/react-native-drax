@@ -1,0 +1,172 @@
+---
+title: Composable API
+description: Use useSortableList + SortableContainer + SortableItem for full control over sortable layouts.
+keywords: [react-native, sortable, composable, useSortableList, SortableContainer, SortableItem]
+sidebar_position: 4
+---
+
+# Composable API
+
+For full control over your sortable layout, use the three composable primitives directly. This pattern works with **any** list component.
+
+## The Three Primitives
+
+| Primitive | Role |
+|---|---|
+| `useSortableList` | Hook that manages reorder state — returns wired-up props |
+| `SortableContainer` | Monitoring wrapper — handles drag detection and auto-scroll |
+| `SortableItem` | Per-item wrapper — handles shift animations and visibility |
+
+## Basic Pattern
+
+```tsx
+import { useState, useRef } from 'react';
+import { FlatList, Text, View } from 'react-native';
+import {
+  DraxProvider,
+  useSortableList,
+  SortableContainer,
+  SortableItem,
+} from 'react-native-drax';
+
+function SortableListScreen() {
+  const [items, setItems] = useState(['A', 'B', 'C', 'D', 'E']);
+  const listRef = useRef<FlatList>(null);
+
+  const sortable = useSortableList({
+    data: items,
+    keyExtractor: (item) => item,
+    onReorder: ({ data }) => setItems(data),
+  });
+
+  return (
+    <DraxProvider>
+      <SortableContainer sortable={sortable} scrollRef={listRef}>
+        <FlatList
+          ref={listRef}
+          data={sortable.data}
+          keyExtractor={sortable.stableKeyExtractor}
+          onScroll={sortable.onScroll}
+          onContentSizeChange={sortable.onContentSizeChange}
+          renderItem={({ item, index }) => (
+            <SortableItem sortable={sortable} index={index}>
+              <View style={{ padding: 16, margin: 4, backgroundColor: '#eee' }}>
+                <Text>{item}</Text>
+              </View>
+            </SortableItem>
+          )}
+        />
+      </SortableContainer>
+    </DraxProvider>
+  );
+}
+```
+
+## Wiring Checklist
+
+The hook returns several props that **must** be wired to the list:
+
+| From `sortable` | Wire to |
+|---|---|
+| `sortable.data` | List `data` prop |
+| `sortable.stableKeyExtractor` | List `keyExtractor` prop |
+| `sortable.onScroll` | List `onScroll` prop |
+| `sortable.onContentSizeChange` | List `onContentSizeChange` prop |
+
+:::warning
+Always use `sortable.stableKeyExtractor` instead of your own `keyExtractor`. It returns stable keys that prevent FlatList from unmounting and remounting cells during reorder, which would cause flickering.
+:::
+
+## With FlashList
+
+```tsx
+import { FlashList } from '@shopify/flash-list';
+
+<SortableContainer sortable={sortable} scrollRef={listRef}>
+  <FlashList
+    ref={listRef}
+    data={sortable.data}
+    keyExtractor={sortable.stableKeyExtractor}
+    onScroll={sortable.onScroll}
+    onContentSizeChange={sortable.onContentSizeChange}
+    estimatedItemSize={60}
+    renderItem={({ item, index }) => (
+      <SortableItem sortable={sortable} index={index}>
+        <ItemCard item={item} />
+      </SortableItem>
+    )}
+  />
+</SortableContainer>
+```
+
+## With ScrollView
+
+For non-list layouts (e.g., a static set of cards):
+
+```tsx
+const scrollRef = useRef<ScrollView>(null);
+
+<SortableContainer sortable={sortable} scrollRef={scrollRef}>
+  <ScrollView ref={scrollRef} onScroll={sortable.onScroll}>
+    {sortable.data.map((item, index) => (
+      <SortableItem key={sortable.stableKeyExtractor(item, index)} sortable={sortable} index={index}>
+        <Card item={item} />
+      </SortableItem>
+    ))}
+  </ScrollView>
+</SortableContainer>
+```
+
+## Drop Indicator
+
+Render a visual indicator at the insertion point:
+
+```tsx
+<SortableContainer
+  sortable={sortable}
+  scrollRef={listRef}
+  renderDropIndicator={({ visible, horizontal }) => (
+    <View
+      style={{
+        width: horizontal ? 2 : '100%',
+        height: horizontal ? '100%' : 2,
+        backgroundColor: '#cf5f34',
+        opacity: visible ? 1 : 0,
+      }}
+    />
+  )}
+>
+```
+
+## Custom DraxView Props
+
+Pass extra props to the container's `DraxView` or each item's `DraxView`:
+
+```tsx
+<SortableContainer
+  sortable={sortable}
+  scrollRef={listRef}
+  draxViewProps={{
+    hoverStyle: { opacity: 0.8 },
+    rejectOwnChildren: true,
+  }}
+>
+```
+
+```tsx
+<SortableItem
+  sortable={sortable}
+  index={index}
+  hoverStyle={{ transform: [{ scale: 1.05 }] }}
+  dragHandle
+>
+  <DraxHandle><GripIcon /></DraxHandle>
+  <Text>{item}</Text>
+</SortableItem>
+```
+
+## Next Steps
+
+- **[Drag Handles](/guides/drag-handles)** — Only the grip starts a drag
+- **[Cross-Container Drag](/guides/cross-container-drag)** — Cross-list reorder with the composable API
+- **[API: useSortableList](/api/hooks/use-sortable-list)** — Full hook reference

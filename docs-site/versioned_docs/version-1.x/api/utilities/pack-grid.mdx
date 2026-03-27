@@ -1,0 +1,97 @@
+---
+title: packGrid
+description: API reference for packGrid — bin-packing utility for mixed-size grid layouts.
+keywords: [react-native, grid, packing, layout, utility, api, colSpan, rowSpan]
+sidebar_position: 3
+---
+
+# packGrid
+
+Bin-packing utility that places items into a 2D grid respecting each item's column and row span. Items are placed left-to-right, top-to-bottom into the first available slot that fits — the same algorithm used by mobile home screens.
+
+## Import
+
+```tsx
+import { packGrid } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+const result = packGrid(items.length, 4, (index) => ({
+  colSpan: items[index].colSpan,
+  rowSpan: items[index].rowSpan,
+}));
+
+// result.positions[i] = { row: number, col: number }
+// result.totalRows = number of rows needed
+```
+
+## Signature
+
+```tsx
+packGrid(
+  count: number,
+  numColumns: number,
+  getSpan: (index: number) => GridItemSpan,
+): GridPackResult
+```
+
+## Parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `count` | `number` | Number of items to pack |
+| `numColumns` | `number` | Number of columns in the grid |
+| `getSpan` | `(index: number) => GridItemSpan` | Returns span for item at index |
+
+## Return Value: `GridPackResult`
+
+```tsx
+interface GridPackResult {
+  /** Grid position (row, col) for each item, in input order */
+  positions: { row: number; col: number }[];
+  /** Total number of rows in the packed grid */
+  totalRows: number;
+}
+```
+
+## Converting to Pixel Positions
+
+```tsx
+const cellSize = 80;
+const gap = 8;
+
+const pixelPositions = result.positions.map((pos, i) => ({
+  x: pos.col * (cellSize + gap),
+  y: pos.row * (cellSize + gap),
+  width: items[i].colSpan * cellSize + (items[i].colSpan - 1) * gap,
+  height: items[i].rowSpan * cellSize + (items[i].rowSpan - 1) * gap,
+}));
+
+const totalHeight = result.totalRows * (cellSize + gap) - gap;
+```
+
+## Example
+
+A 4-column grid with mixed items:
+
+```
+Input order: [2×2, 1×1, 1×1, 1×1, 1×1, 2×1]
+
+Packed layout:
+┌───────┐ ┌───┐ ┌───┐
+│  2×2  │ │1×1│ │1×1│
+│       │ ├───┤ ├───┤
+│       │ │1×1│ │1×1│
+└───────┘ └───┘ └───┘
+┌───────────────┐
+│     2×1       │
+└───────────────┘
+```
+
+## Related
+
+- [Sortable Grid Guide](/guides/sortable-grid#mixed-size-grid) — Mixed-size grid tutorial
+- [Mixed-Size Grid Example](/examples/mixed-grid) — Full working example
+- [GridItemSpan Type](/api/types/sortable#griditemspan) — Span type definition

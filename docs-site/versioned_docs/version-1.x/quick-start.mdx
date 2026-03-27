@@ -1,0 +1,161 @@
+---
+title: Quick Start
+description: Three progressive examples to get you building with react-native-drax quickly.
+keywords: [react-native, drag-and-drop, quick-start, tutorial, examples]
+sidebar_position: 2
+---
+
+# Quick Start
+
+Three progressive examples — from a basic drag-and-drop to a fully composable sortable list.
+
+## 1. Basic Drag & Drop
+
+A draggable view and a drop zone. When you drop, the receiver gets the payload.
+
+```tsx
+import { DraxProvider, DraxView } from 'react-native-drax';
+
+function App() {
+  return (
+    <DraxProvider>
+      <DraxView
+        style={{ width: 100, height: 100, backgroundColor: 'blue' }}
+        onDragStart={() => console.log('dragging')}
+        payload="hello"
+      />
+      <DraxView
+        style={{ width: 100, height: 100, backgroundColor: 'green' }}
+        onReceiveDragDrop={({ dragged: { payload } }) => {
+          console.log(`received: ${payload}`);
+        }}
+      />
+    </DraxProvider>
+  );
+}
+```
+
+**What's happening:**
+- Both views are `DraxView` — they're draggable and receptive by default
+- `payload="hello"` attaches data to the drag
+- `onReceiveDragDrop` fires on the receiver when a drop occurs
+
+## 2. Sortable List with DraxList
+
+The easiest way to make a reorderable list — one component does everything:
+
+```tsx
+import { useState } from 'react';
+import { Text, View } from 'react-native';
+import { DraxProvider, DraxList } from 'react-native-drax';
+
+function App() {
+  const [items, setItems] = useState(['A', 'B', 'C', 'D', 'E']);
+
+  return (
+    <DraxProvider>
+      <DraxList
+        data={items}
+        keyExtractor={(item) => item}
+        onReorder={({ data }) => setItems(data)}
+        renderItem={({ item }) => (
+          <View style={{ padding: 16, backgroundColor: '#eee', margin: 4 }}>
+            <Text>{item}</Text>
+          </View>
+        )}
+      />
+    </DraxProvider>
+  );
+}
+```
+
+**What's happening:**
+- `DraxList` wraps a `FlatList` with drag-to-reorder behavior
+- Long-press an item to start dragging (default 250ms delay)
+- `onReorder` fires with the new `data` array after each reorder
+- Works with any list component — pass `component={FlashList}` for FlashList
+
+:::tip
+`DraxList` is list-agnostic. Pass any list component via the `component` prop:
+
+```tsx
+import { FlashList } from '@shopify/flash-list';
+
+<DraxList
+  component={FlashList}
+  estimatedItemSize={60}
+  // ...
+/>
+```
+:::
+
+## 3. Composable API
+
+For full control over layout and behavior, use the composable primitives directly:
+
+```tsx
+import { useState, useRef } from 'react';
+import { FlatList, Text, View, StyleSheet } from 'react-native';
+import {
+  DraxProvider,
+  useSortableList,
+  SortableContainer,
+  SortableItem,
+} from 'react-native-drax';
+
+function App() {
+  const [items, setItems] = useState(['A', 'B', 'C', 'D', 'E']);
+  const listRef = useRef<FlatList>(null);
+
+  const sortable = useSortableList({
+    data: items,
+    keyExtractor: (item) => item,
+    onReorder: ({ data }) => setItems(data),
+  });
+
+  return (
+    <DraxProvider>
+      <SortableContainer sortable={sortable} scrollRef={listRef}>
+        <FlatList
+          ref={listRef}
+          data={sortable.data}
+          keyExtractor={sortable.stableKeyExtractor}
+          onScroll={sortable.onScroll}
+          onContentSizeChange={sortable.onContentSizeChange}
+          renderItem={({ item, index }) => (
+            <SortableItem sortable={sortable} index={index}>
+              <View style={styles.item}>
+                <Text>{item}</Text>
+              </View>
+            </SortableItem>
+          )}
+        />
+      </SortableContainer>
+    </DraxProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  item: {
+    padding: 16,
+    backgroundColor: '#eee',
+    margin: 4,
+    borderRadius: 8,
+  },
+});
+```
+
+**What's happening:**
+- `useSortableList` manages reorder state and returns wired-up props
+- `SortableContainer` wraps the list and handles monitoring/auto-scroll
+- `SortableItem` wraps each cell with shift animations
+- Wire `sortable.data`, `sortable.stableKeyExtractor`, `sortable.onScroll`, and `sortable.onContentSizeChange` to the list
+
+This pattern works with **any** list component — FlatList, FlashList, LegendList, or even a plain ScrollView.
+
+## Next Steps
+
+- **[Drag Handles](/guides/drag-handles)** — Only the grip icon starts a drag
+- **[Animation Presets](/guides/animation-presets)** — Spring physics, gentle, snappy
+- **[Cross-Container Drag](/guides/cross-container-drag)** — Cross-list reorder
+- **[API Reference](/api/components/drax-view)** — All 30+ props on DraxView

@@ -1,0 +1,61 @@
+---
+title: useSortableBoard
+description: API reference for useSortableBoard — cross-container board coordinator hook.
+keywords: [react-native, sortable, board, cross-list, cross-container, hook, api]
+sidebar_position: 2
+---
+
+# useSortableBoard <span className="badge--experimental">Experimental</span>
+
+Board-level coordinator hook for cross-container item transfers. Returns a `SortableBoardHandle` that you pass to `SortableBoardContainer`.
+
+## Import
+
+```tsx
+import { useSortableBoard } from 'react-native-drax';
+```
+
+## Usage
+
+```tsx
+const board = useSortableBoard({
+  keyExtractor: (item) => item.id,
+  onTransfer: ({ item, fromContainerId, toContainerId, fromIndex, toIndex }) => {
+    // Move item between columns in your state
+  },
+});
+```
+
+## Options
+
+| Option | Type | Description |
+|---|---|---|
+| `keyExtractor` | `(item: TItem) => string` | Unique key per item (must be globally unique across all columns) |
+| `onTransfer` | `(event: SortableBoardTransferEvent<TItem>) => void` | Called when an item is transferred between columns |
+
+## Transfer Event
+
+```tsx
+interface SortableBoardTransferEvent<TItem> {
+  item: TItem;           // The transferred item
+  fromContainerId: string;  // Source column id
+  fromIndex: number;        // Original index in source
+  toContainerId: string;    // Target column id
+  toIndex: number;          // Insertion index in target
+}
+```
+
+## Return Value: `SortableBoardHandle<TItem>`
+
+Pass this handle to `SortableBoardContainer`:
+
+```tsx
+<SortableBoardContainer board={board}>
+  {/* Column components */}
+</SortableBoardContainer>
+```
+
+## Related
+
+- [Cross-Container Drag Guide](/guides/cross-container-drag)
+- [SortableBoardContainer](/api/components/sortable-board-container)

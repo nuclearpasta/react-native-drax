@@ -1,0 +1,150 @@
+---
+title: Sortable Grid
+description: Build reorderable grids with numColumns — multi-column sortable layouts.
+keywords: [react-native, sortable, grid, reorderable, numColumns]
+sidebar_position: 3
+---
+
+# Sortable Grid
+
+Use `numColumns` to create multi-column sortable grids.
+
+## Basic Grid
+
+```tsx
+<DraxList
+  data={items}
+  numColumns={3}
+  keyExtractor={(item) => item.id}
+  onReorder={({ data }) => setItems(data)}
+  renderItem={({ item }) => (
+    <View style={{ flex: 1, aspectRatio: 1, margin: 4, backgroundColor: item.color }}>
+      <Text>{item.label}</Text>
+    </View>
+  )}
+/>
+```
+
+Items shift in grid position during drag — both horizontally and vertically.
+
+## With the Composable API
+
+```tsx
+const sortable = useSortableList({
+  data: items,
+  keyExtractor: (item) => item.id,
+  onReorder: ({ data }) => setItems(data),
+  numColumns: 3,
+});
+
+<SortableContainer sortable={sortable} scrollRef={listRef}>
+  <FlatList
+    ref={listRef}
+    numColumns={3}
+    data={sortable.data}
+    keyExtractor={sortable.stableKeyExtractor}
+    onScroll={sortable.onScroll}
+    onContentSizeChange={sortable.onContentSizeChange}
+    renderItem={({ item, index }) => (
+      <SortableItem sortable={sortable} index={index}>
+        <View style={{ flex: 1, aspectRatio: 1, margin: 4 }}>
+          <Text>{item.label}</Text>
+        </View>
+      </SortableItem>
+    )}
+  />
+</SortableContainer>
+```
+
+:::tip
+Pass `numColumns` to both `useSortableList` and `FlatList` — Drax uses it to calculate grid positions for slot detection.
+:::
+
+## Grid with Swap Strategy
+
+For a tile-swap effect instead of insert-shift:
+
+```tsx
+<DraxList
+  numColumns={4}
+  reorderStrategy="swap"
+  data={tiles}
+  keyExtractor={(t) => t.id}
+  onReorder={({ data }) => setTiles(data)}
+  renderItem={({ item }) => <Tile tile={item} />}
+/>
+```
+
+## Mixed-Size Grid
+
+Items can span multiple columns and rows — like a mobile home screen with 1×1 app icons and 2×2 widgets. Use `getItemSpan` with a `ScrollView` and absolute positioning:
+
+```tsx
+import { packGrid, useSortableList } from 'react-native-drax';
+import type { GridItemSpan } from 'react-native-drax';
+
+interface GridItem {
+  id: string;
+  label: string;
+  colSpan: number;
+  rowSpan: number;
+}
+
+function getItemSpan(item: GridItem): GridItemSpan {
+  return { colSpan: item.colSpan, rowSpan: item.rowSpan };
+}
+
+const sortable = useSortableList({
+  data: items,
+  numColumns: 4,
+  keyExtractor: (item) => item.id,
+  getItemSpan,
+  onReorder: ({ data }) => setItems(data),
+});
+
+// Compute grid positions for rendering
+const layout = packGrid(sortable.data.length, 4, (i) => ({
+  colSpan: sortable.data[i].colSpan,
+  rowSpan: sortable.data[i].rowSpan,
+}));
+
+<SortableContainer sortable={sortable} scrollRef={scrollRef}>
+  <ScrollView ref={scrollRef} onScroll={sortable.onScroll}>
+    <View style={{ height: layout.totalRows * (cellSize + gap) - gap }}>
+      {sortable.data.map((item, index) => {
+        const pos = layout.positions[index];
+        return (
+          <SortableItem
+            key={sortable.stableKeyExtractor(item, index)}
+            sortable={sortable}
+            index={index}
+            style={{
+              position: 'absolute',
+              left: pos.col * (cellSize + gap),
+              top: pos.row * (cellSize + gap),
+              width: item.colSpan * cellSize + (item.colSpan - 1) * gap,
+              height: item.rowSpan * cellSize + (item.rowSpan - 1) * gap,
+            }}
+          >
+            <Text>{item.label}</Text>
+          </SortableItem>
+        );
+      })}
+    </View>
+  </ScrollView>
+</SortableContainer>
+```
+
+:::info Why ScrollView?
+FlatList's `numColumns` assumes all items are the same width — it can't handle items spanning multiple columns. Mixed-size grids require absolute positioning, which needs a `ScrollView` instead. Uniform grids (all items 1×1) still work with FlatList.
+:::
+
+:::tip
+`packGrid` uses a bin-packing algorithm: items are placed left-to-right, top-to-bottom into the first available slot that fits their span. This is the same algorithm used by mobile home screens.
+:::
+
+## Next Steps
+
+- **[Mixed-Size Grid Example](/examples/mixed-grid)** — Full working example
+- **[Composable API](/guides/composable-api)** — Build custom grid layouts
+- **[Animation Presets](/guides/animation-presets)** — Customize shift animations
