@@ -162,6 +162,8 @@ export interface SortableListInternal<T> {
   pendingShiftClearRef: React.RefObject<boolean>;
 
   // ── Layout engine ──
+  /** Record a measured height and update the running average for unmeasured items. */
+  recordItemHeight: (key: string, height: number) => void;
   computeGridPositions: (keys: string[]) => { positions: Map<string, Position>; dimensions: Map<string, { width: number; height: number }>; totalHeight: number };
   recomputeBasePositions: () => void;
   recomputeBasePositionsAndClearShifts: () => void;
@@ -209,6 +211,11 @@ export const useSortableList = <T,>(
   const orderedKeysRef = useRef<string[]>(externalData.map((item, i) => keyExtractor(item, i)));
   const basePositionsRef = useRef<Map<string, Position>>(new Map());
   const itemHeightsRef = useRef<Map<string, number>>(new Map());
+  // Running average of measured heights — used for unmeasured items instead of
+  // estimatedItemSize. Automatically includes margins, padding, etc.
+  // Inspired by FlashList's MultiTypeAverageWindow.
+  const measuredAvgHeightRef = useRef(estimatedItemSize);
+  const measuredCountRef = useRef(0);
   const itemCrossAxisRef = useRef<Map<string, number>>(new Map());
   const totalContentSizeRef = useRef(0);
   const containerMeasRef = useRef<{ x: number; y: number; width: number; height: number } | undefined>(undefined);
@@ -444,13 +451,14 @@ export const useSortableList = <T,>(
     if (numColumns > 1 && cw > 0) {
       // Uniform grid
       const heights = itemHeightsRef.current;
+      const avgH = measuredAvgHeightRef.current;
       let cursorY = 0;
       let maxRowHeight = 0;
       for (let i = 0; i < keys.length; i++) {
         const key = keys[i]!;
         const col = i % numColumns;
         if (col === 0 && i > 0) { cursorY += maxRowHeight; maxRowHeight = 0; }
-        const h = heights.get(key) ?? estimatedItemSize;
+        const h = heights.get(key) ?? avgH;
         positions.set(key, { x: col * cellSize, y: cursorY });
         dimensions.set(key, { width: cellSize, height: h });
         maxRowHeight = Math.max(maxRowHeight, h);
@@ -460,9 +468,21 @@ export const useSortableList = <T,>(
 
     // Linear list — alignment handled by inner wrapper's alignSelf (from contentContainerStyle.alignItems)
     const heights = itemHeightsRef.current;
+    const avgH = measuredAvgHeightRef.current;
+    const itemSizeFn = getItemSizeRef.current;
+    const data = dataRef.current;
+    const keyMap = keyToIndexRef.current;
     let cursor = 0;
     for (const key of keys) {
-      const h = heights.get(key) ?? estimatedItemSize;
+      // Priority: measured height > getItemSize callback > running average
+      let h = heights.get(key);
+      if (h === undefined && itemSizeFn) {
+        const idx = keyMap.get(key);
+        if (idx !== undefined && data[idx] !== undefined) {
+          h = horizontal ? itemSizeFn(data[idx]!, idx).width : itemSizeFn(data[idx]!, idx).height;
+        }
+      }
+      if (h === undefined) h = avgH;
       if (horizontal) {
         positions.set(key, { x: cursor, y: 0 });
         dimensions.set(key, { width: h, height: cw || 0 });
@@ -473,6 +493,26 @@ export const useSortableList = <T,>(
       cursor += h;
     }
     return { positions, dimensions, totalHeight: cursor };
+  }
+
+  /** Record a measured height and update the running average.
+   *  The running average is used for unmeasured items in computeGridPositions,
+   *  automatically compensating for margins/padding that estimatedItemSize misses. */
+  function recordItemHeight(key: string, height: number) {
+    const prev = itemHeightsRef.current.get(key);
+    itemHeightsRef.current.set(key, height);
+    if (prev === undefined) {
+      // First measurement for this item — update running average
+      measuredCountRef.current++;
+      const n = measuredCountRef.current;
+      measuredAvgHeightRef.current += (height - measuredAvgHeightRef.current) / n;
+    } else if (Math.abs(prev - height) > 0.5) {
+      // Height changed — adjust running average (subtract old, add new)
+      const n = measuredCountRef.current;
+      if (n > 0) {
+        measuredAvgHeightRef.current += (height - prev) / n;
+      }
+    }
   }
 
   // ── Layout engine ──
@@ -1021,6 +1061,7 @@ export const useSortableList = <T,>(
     currentSlotRef,
     frozenBoundariesRef,
     pendingShiftClearRef,
+    recordItemHeight,
     computeGridPositions,
     recomputeBasePositions,
     recomputeBasePositionsAndClearShifts,

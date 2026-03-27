@@ -168,7 +168,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     id: _idProp,
     numColumns = 1,
     horizontal = false,
-    drawDistance = 250,
+    drawDistance: drawDistanceProp,
     animationConfig = 'default',
     longPressDelay = 250,
     lockToMainAxis,
@@ -193,7 +193,13 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
   } = props;
 
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
-   
+
+  // Smart default: pre-render ~3 viewports of items off-screen in each direction.
+  // Items measure off-screen BEFORE scrolling into view, reducing position
+  // adjustments from estimatedItemSize mismatches during fast scroll.
+  const viewportSize = horizontal ? screenWidth : screenHeight;
+  const drawDistance = drawDistanceProp ?? viewportSize * 3;
+
   const scrollRef = useRef<any>(null);
 
   // ── Single re-render trigger (the ONLY thing that causes re-render) ──
@@ -291,6 +297,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
   // ── Cell pool (refs only) ──
   const cellBindingsRef = useRef<CellBinding[]>([]);
   const freeCellsRef = useRef<string[]>([]);
+  const cellLastHeightRef = useRef<Map<string, number>>(new Map()); // cellKey → last measured height
   const bindingMapRef = useRef<Map<string, string>>(new Map()); // itemKey → cellKey
   const visibleKeysRef = useRef(new Set<string>()); // Reused across scroll ticks (no allocation)
   const nextCellIdRef = useRef(0);
@@ -339,7 +346,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       const current = int.itemHeightsRef.current.get(itemKey);
       const changed = current === undefined || Math.abs(current - height) > 0.5;
       if (changed) {
-        int.itemHeightsRef.current.set(itemKey, height);
+        int.recordItemHeight(itemKey, height);
         itemsMeasuredRef.current = true; // At least one real measurement — positions will be correct
         if (int.isDraggingRef.current) {
           // Sync to worklet so recomputeShiftsWorklet uses actual measurements
@@ -362,23 +369,21 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     (scrollOffset: number) => {
       const keys = int.orderedKeysRef.current;
       const heights = int.itemHeightsRef.current;
-      const viewportSize = horizontal
+      const containerSize = horizontal
         ? (int.containerMeasRef.current?.width ?? screenWidth)
         : (int.containerMeasRef.current?.height ?? screenHeight);
       const buffer = drawDistance;
       const visibleStart = scrollOffset - buffer;
-      const visibleEnd = scrollOffset + viewportSize + buffer;
+      const visibleEnd = scrollOffset + containerSize + buffer;
 
       // Find visible items using visual positions (base + shift).
       const basePositions = int.basePositionsRef.current;
       const shifts = int.shiftsSV.value;
       visibleKeysRef.current.clear();
       const visibleKeys = visibleKeysRef.current;
-      let missingBaseCount = 0;
       for (const key of keys) {
         const basePos = basePositions.get(key);
         if (!basePos) {
-          missingBaseCount++;
           visibleKeys.add(key);
           continue;
         }
@@ -401,8 +406,6 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
             visibleKeys.add(key);
         }
       }
-      if (missingBaseCount > 0) {
-      }
 
       // Diff: unbind items that left, bind items that entered
       const currentMap = bindingMapRef.current;
@@ -419,17 +422,33 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       }
 
       // Bind
+      let proactiveMeasured = false;
       for (const itemKey of visibleKeys) {
         if (!currentMap.has(itemKey)) {
           let cellKey: string;
           if (freeCellsRef.current.length > 0) {
             cellKey = freeCellsRef.current.pop()!;
+            // Proactive measurement: use cell's last known height for the new item.
+            // If the height matches (same-size item recycled), position is correct
+            // immediately with no onLayout wait. If different, onLayout corrects in 1 frame.
+            const cellHeight = cellLastHeightRef.current.get(cellKey);
+            if (cellHeight !== undefined && !int.itemHeightsRef.current.has(itemKey)) {
+              int.recordItemHeight(itemKey, cellHeight);
+              proactiveMeasured = true;
+            }
           } else {
             cellKey = `cell-${nextCellIdRef.current++}`;
           }
           currentMap.set(itemKey, cellKey);
           changed = true;
         }
+      }
+
+      // Recompute positions if proactive measurements changed any heights.
+      // Without this, items stay at estimated positions when proactive height
+      // matches actual (onLayout won't fire → handleItemLayout won't recompute).
+      if (proactiveMeasured) {
+        int.recomputeBasePositions();
       }
 
       if (changed) {
@@ -1020,6 +1039,9 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
               const item = int.dataRef.current[dataIndex];
               const basePos = int.basePositionsRef.current.get(itemKey);
               if (!item || !basePos) return null;
+              // Hide unmeasured items off-screen until onLayout fires and positions correct.
+              // Items with known sizes via getItemSize are always considered measured.
+              const isMeasured = int.itemHeightsRef.current.has(itemKey) || !!getItemSize;
               const dims = int.itemDimensionsRef.current.get(itemKey);
               // Vertical: cell fills column width (users center via alignSelf on their card)
               // Horizontal: cell auto-sizes to content (primary axis measurement)
@@ -1043,8 +1065,8 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
               return (
                 <RecycledCell
                   key={cellKey}
-                  baseX={basePos.x}
-                  baseY={basePos.y}
+                  baseX={isMeasured ? basePos.x : -10000}
+                  baseY={isMeasured ? basePos.y : -10000}
                   cellWidth={itemCellWidth}
                   cellHeight={itemCellHeight}
                   itemKey={itemKey}
@@ -1070,6 +1092,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
                     style={fillStyle}
                   >
                     <View
+                      key={itemKey}
                       style={fillStyle}
                       onLayout={(e) => {
                         // Primary axis from outer wrapper (fills cell)
@@ -1077,6 +1100,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
                           ? e.nativeEvent.layout.width
                           : e.nativeEvent.layout.height;
                         handleItemLayout(itemKey, primary);
+                        cellLastHeightRef.current.set(cellKey, primary);
                       }}
                     >
                       <View

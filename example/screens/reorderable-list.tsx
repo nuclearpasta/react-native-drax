@@ -63,7 +63,7 @@ export default function ReorderableList() {
           data={data}
           keyExtractor={(item) => item.id}
           estimatedItemSize={60}
-          drawDistance={300}
+          getItemSize={(item) => ({ width: 0, height: item.height + 4 })}
           animationConfig="spring"
           longPressDelay={200}
           onReorder={({ data: newData }) => setData(newData)}
