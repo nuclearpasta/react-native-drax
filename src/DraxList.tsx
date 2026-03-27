@@ -140,6 +140,9 @@ export interface DraxListProps<T> {
   ListFooterComponent?: ReactNode;
   /** Rendered when data is empty. */
   ListEmptyComponent?: ReactNode;
+  /** Rendered while items are being measured (before first layout).
+   *  Use for a loading spinner or skeleton. Disappears once positions are calculated. */
+  ListLoadingComponent?: ReactNode;
 }
 
 /** Cell binding: which cell shows which item (dataIndex looked up at render time) */
@@ -180,6 +183,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     ListHeaderComponent,
     ListFooterComponent,
     ListEmptyComponent,
+    ListLoadingComponent,
   } = props;
 
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
@@ -953,6 +957,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       >
         {ListHeaderComponent}
         {data.length === 0 && ListEmptyComponent}
+        {data.length > 0 && !itemsMeasuredRef.current && ListLoadingComponent}
         {data.length > 0 && containerWidth > 0 && (
           <View
             style={[
