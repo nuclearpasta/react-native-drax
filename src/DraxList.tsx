@@ -282,6 +282,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
   const nextCellIdRef = useRef(0);
 
   const lastIndicatorSlotRef = useRef(-1); // Track indicator's last-set slot (avoids worklet/JS SV race)
+  const itemsMeasuredRef = useRef(false); // True after first item measurement cycle — prevents FOUC
 
   // ── Container layout ──
   const handleContainerLayout = useCallback(
@@ -323,6 +324,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       const changed = current === undefined || Math.abs(current - height) > 0.5;
       if (changed) {
         int.itemHeightsRef.current.set(itemKey, height);
+        itemsMeasuredRef.current = true; // At least one real measurement — positions will be correct
         if (int.isDraggingRef.current) {
           // Sync to worklet so recomputeShiftsWorklet uses actual measurements
           // (not stale estimatedItemSize from drag-start snapshot)
@@ -958,6 +960,8 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
               horizontal
                 ? { width: totalSize, height: '100%' }
                 : { height: totalSize, width: '100%' },
+              // Hide until items have measured — prevents FOUC from estimated positions
+              !itemsMeasuredRef.current && { opacity: 0 },
             ]}
           >
             {bindings.map((binding) => {
