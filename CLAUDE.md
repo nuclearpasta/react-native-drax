@@ -126,6 +126,43 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - `import { Drax } from 'react-native-drax'` for `Drax.View`, `Drax.Provider`, `Drax.Handle`, etc.
 - Individual exports still work for tree-shaking: `import { DraxView } from 'react-native-drax'`
 
+## DraxList Performance (Investigation LOCAL-30)
+
+See `docs/list-investigation.md` for full comparison with FlashList v2 and LegendList.
+
+### Current Architecture
+- ScrollView + absolute left/top + Reanimated translateX/Y shift offsets
+- Cell recycling via stable React keys (single pool, not type-aware)
+- O(n) linear scan for viewport tracking in `updateVisibleCells`
+- Single `estimatedItemSize` for all items (no per-type averages)
+- Async `onLayout` measurement (not synchronous Fabric `measureLayout`)
+- Symmetric draw distance buffer (not velocity-aware)
+
+### Identified Improvements (priority order)
+1. **Velocity-aware buffer**: Split drawDistance 70/30 in scroll direction (both FlashList + LegendList do this)
+2. **Range caching**: Cache safe scroll range, skip `updateVisibleCells` when offset stays within range
+3. **Binary search visibility**: O(n) → O(log n) for finding visible items (FlashList approach)
+4. **Per-type size estimation**: Running averages per `getItemType` instead of single estimatedItemSize
+5. **Batched layout recomputation**: Debounce rapid `handleItemLayout` calls via microtask
+6. **Type-aware cell pools**: Per-type recycle pools for heterogeneous lists (FlashList approach)
+7. **Progressive initial render**: Start with viewport-only items, expand to full drawDistance
+8. **Synchronous Fabric measurement**: Use `measureLayout` in `useLayoutEffect` instead of async `onLayout`
+9. **MVCP**: Maintain visible content position when items above viewport change size
+
+### Code-Level Hotspots (see docs/list-investigation.md Section 7)
+- `cellShiftRecordSV` full rebuild on cell recycle during drag (HIGH — maintain parallel Record)
+- `computeGridPositions` allocates 2 Maps per call during grid drag (HIGH — pool Maps)
+- RecycledCell worklet spreads empty `{}` per cell per frame (MEDIUM — use branch not spread)
+- `shiftsSV.value` read on every scroll even when not dragging (MEDIUM — guard with isDraggingRef)
+- Unconditional `forceRender()` after `updateVisibleCells` (MEDIUM — return boolean, skip double render)
+- No guard against no-op container layout (MEDIUM — early return if width unchanged)
+- 3 Map-to-Record conversions at drag start (MEDIUM — maintain shadow Records)
+
+### What NOT to adopt
+- LegendList's fine-grained reactive state (`set$`/`useArr$`) — our per-cell SharedValues already achieve this for animations
+- FlashList's pure-JS approach — we need Reanimated + Gesture Handler for DnD
+- FlashList's render-time offset projection — complexity not worth it for typical sortable list sizes
+
 ## Competitive Landscape
 
 We compete with two libraries. Drax must match or exceed their DX while keeping unique advantages.

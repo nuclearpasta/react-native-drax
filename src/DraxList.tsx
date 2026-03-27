@@ -284,13 +284,21 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
   const lastIndicatorSlotRef = useRef(-1); // Track indicator's last-set slot (avoids worklet/JS SV race)
   const itemsMeasuredRef = useRef(false); // True after first item measurement cycle — prevents FOUC
 
+  // ── Scroll velocity tracking (for velocity-aware buffer distribution) ──
+  const prevScrollOffsetRef = useRef(0);
+  const scrollDirectionRef = useRef<'forward' | 'back'>('forward');
+  // ── Range caching (skip updateVisibleCells when scroll stays in safe range) ──
+  const safeBoundsRef = useRef<{ start: number; end: number } | null>(null);
+
   // ── Container layout ──
   const handleContainerLayout = useCallback(
     (event: LayoutChangeEvent) => {
       const { width, height } = event.nativeEvent.layout;
       const cw = horizontal ? height : width;
+      if (cw === int.containerWidthRef.current) return; // No-op — skip redundant recompute
       int.containerWidthRef.current = cw;
       int.recomputeBasePositionsAndClearShifts();
+      safeBoundsRef.current = null; // Invalidate range cache
       // Rebind cells with new positions (grid positions change after container measured)
       updateVisibleCells(int.scrollOffsetSV.value);
       forceRender();
@@ -309,6 +317,18 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         'worklet';
         _sv.value = _v;
       })(int.scrollOffsetSV, offset);
+
+      // Track scroll direction for velocity-aware buffer
+      if (offset > prevScrollOffsetRef.current) scrollDirectionRef.current = 'forward';
+      else if (offset < prevScrollOffsetRef.current) scrollDirectionRef.current = 'back';
+      prevScrollOffsetRef.current = offset;
+
+      // Range caching: skip updateVisibleCells if scroll is within the safe range
+      const safe = safeBoundsRef.current;
+      if (safe && offset >= safe.start && offset <= safe.end) {
+        onScrollProp?.(event);
+        return;
+      }
 
       // Rebind cells for new visible range
       updateVisibleCells(offset);
@@ -342,47 +362,100 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
   );
 
   // ── Cell recycler ──
+  /** Returns true if it triggered forceRender, false otherwise. */
   const updateVisibleCells = useCallback(
-    (scrollOffset: number) => {
+    (scrollOffset: number): boolean => {
       const keys = int.orderedKeysRef.current;
       const heights = int.itemHeightsRef.current;
       const viewportSize = horizontal
         ? (int.containerMeasRef.current?.width ?? screenWidth)
         : (int.containerMeasRef.current?.height ?? screenHeight);
-      const buffer = drawDistance;
-      const visibleStart = scrollOffset - buffer;
-      const visibleEnd = scrollOffset + viewportSize + buffer;
 
-      // Find visible items using visual positions (base + shift).
+      // Velocity-aware buffer: 70% ahead, 30% behind
+      const dir = scrollDirectionRef.current;
+      const bufferAhead = drawDistance * 0.7;
+      const bufferBehind = drawDistance * 0.3;
+      const visibleStart = scrollOffset - (dir === 'forward' ? bufferBehind : bufferAhead);
+      const visibleEnd = scrollOffset + viewportSize + (dir === 'forward' ? bufferAhead : bufferBehind);
+
+      const isDragging = int.isDraggingRef.current;
+      // Only read shiftsSV when actually dragging (avoids JSI cross-thread read on every scroll)
+      const shifts = isDragging ? int.shiftsSV.value : null;
+
       const basePositions = int.basePositionsRef.current;
-      const shifts = int.shiftsSV.value;
       visibleKeysRef.current.clear();
       const visibleKeys = visibleKeysRef.current;
-      let missingBaseCount = 0;
-      for (const key of keys) {
-        const basePos = basePositions.get(key);
-        if (!basePos) {
-          missingBaseCount++;
-          visibleKeys.add(key);
-          continue;
+
+      // Binary search for the first visible item, then linear scan to end of visible range.
+      // Keys are in display order and basePositions are monotonically increasing along the main axis.
+      // Falls back to linear scan when: dragging (shifts reorder), grid layout (same-row items share Y),
+      // or base positions incomplete.
+      const canBinarySearch = !isDragging && numColumns === 1 && basePositions.size === keys.length && keys.length > 0;
+
+      if (canBinarySearch && keys.length > 16) {
+        // Binary search: find first key where position + size >= visibleStart
+        let lo = 0;
+        let hi = keys.length - 1;
+        while (lo < hi) {
+          const mid = Math.floor((lo + hi) / 2);
+          const midKey = keys[mid]!;
+          const midPos = basePositions.get(midKey);
+          if (!midPos) { lo = 0; break; } // Fallback
+          const mainEnd = horizontal
+            ? midPos.x + (int.itemDimensionsRef.current.get(midKey)?.width ?? heights.get(midKey) ?? estimatedItemSize)
+            : midPos.y + (heights.get(midKey) ?? estimatedItemSize);
+          if (mainEnd < visibleStart) lo = mid + 1;
+          else hi = mid;
         }
-        const shift = shifts[key];
-        if (horizontal) {
-          const visualX = basePos.x + (shift?.x ?? 0);
-          const w =
-            int.itemDimensionsRef.current.get(key)?.width ??
-            heights.get(key) ??
-            estimatedItemSize;
-          if (visualX + w >= visibleStart && visualX <= visibleEnd)
+
+        // Linear scan from lo to find all visible items
+        for (let i = lo; i < keys.length; i++) {
+          const key = keys[i]!;
+          const basePos = basePositions.get(key);
+          if (!basePos) { visibleKeys.add(key); continue; }
+          if (horizontal) {
+            const visualX = basePos.x;
+            if (visualX > visibleEnd) break; // Past visible range — done
+            const w = int.itemDimensionsRef.current.get(key)?.width ?? heights.get(key) ?? estimatedItemSize;
+            if (visualX + w >= visibleStart) visibleKeys.add(key);
+          } else {
+            const visualY = basePos.y;
+            if (visualY > visibleEnd) break; // Past visible range — done
+            const h = heights.get(key) ?? estimatedItemSize;
+            if (visualY + h >= visibleStart) visibleKeys.add(key);
+          }
+        }
+      } else {
+        // Linear scan fallback (during drag, grids, or small lists)
+        for (const key of keys) {
+          const basePos = basePositions.get(key);
+          if (!basePos) {
             visibleKeys.add(key);
-        } else {
-          const h = heights.get(key) ?? estimatedItemSize;
-          const visualY = basePos.y + (shift?.y ?? 0);
-          if (visualY + h >= visibleStart && visualY <= visibleEnd)
-            visibleKeys.add(key);
+            continue;
+          }
+          const shift = shifts ? shifts[key] : undefined;
+          if (horizontal) {
+            const visualX = basePos.x + (shift?.x ?? 0);
+            const w = int.itemDimensionsRef.current.get(key)?.width ?? heights.get(key) ?? estimatedItemSize;
+            if (visualX + w >= visibleStart && visualX <= visibleEnd) visibleKeys.add(key);
+          } else {
+            const h = heights.get(key) ?? estimatedItemSize;
+            const visualY = basePos.y + (shift?.y ?? 0);
+            if (visualY + h >= visibleStart && visualY <= visibleEnd) visibleKeys.add(key);
+          }
         }
       }
-      if (missingBaseCount > 0) {
+
+      // Update range cache: safe bounds where current visible set remains valid.
+      // Margin = 25% of drawDistance — recalculate before items actually enter/leave.
+      if (!isDragging) {
+        const margin = drawDistance * 0.25;
+        safeBoundsRef.current = {
+          start: scrollOffset - margin,
+          end: scrollOffset + margin,
+        };
+      } else {
+        safeBoundsRef.current = null; // Disable caching during drag
       }
 
       // Diff: unbind items that left, bind items that entered
@@ -420,7 +493,9 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         }
         cellBindingsRef.current = newBindings;
         forceRender();
+        return true;
       }
+      return false;
     },
     [
       int,
@@ -429,11 +504,14 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       screenHeight,
       drawDistance,
       estimatedItemSize,
+      numColumns,
     ]
   );
 
   // ── Initial binding + data sync ──
   useLayoutEffect(() => {
+    safeBoundsRef.current = null; // Invalidate range cache on data change
+
     // Cross-container: new items arrived — recompute positions + clear shifts atomically.
     // Skip animation so cells snap to final positions (no spring-back artifact).
     if (int.pendingShiftClearRef.current) {
@@ -446,7 +524,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       dropIndicatorVisibleSV.value = false;
       dropIndicatorInfoRef.current = undefined;
     }
-    updateVisibleCells(int.scrollOffsetSV.value);
+    const didUpdate = updateVisibleCells(int.scrollOffsetSV.value);
 
     // Source list: dragged item was transferred out — clear drag state AFTER cell is unbound.
     // This prevents the flash (opacity 0→1 on the old cell before React removes it).
@@ -462,7 +540,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       }
     }
 
-    forceRender();
+    if (!didUpdate) forceRender(); // Only if updateVisibleCells didn't already trigger one
   }, [data]);
 
   // ── Hover cleanup after cross-container transfer ──
@@ -710,7 +788,6 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
           if (renderDropIndicator) {
             const keys = int.orderedKeysSV.value;
             const heights = int.itemHeightsSV.value;
-            const hoverDims = hoverDimsSV.value;
             let cursor = 0;
             for (let i = 0; i < keys.length; i++) {
               if (i === targetSlot) break;
@@ -720,25 +797,9 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
             const posY = horizontal ? 0 : cursor;
             dropIndicatorPositionSV.value = { x: posX, y: posY };
             dropIndicatorVisibleSV.value = true;
-            const dataIdx = int.keyToIndexRef.current.get(dragKey);
-            const item =
-              dataIdx !== undefined ? int.dataRef.current[dataIdx] : undefined;
-            if (item) {
-              const dims = int.itemDimensionsRef.current.get(dragKey);
-              dropIndicatorInfoRef.current = {
-                item: item as T,
-                index: targetSlot,
-                width: dims?.width ?? 0,
-                height: dims?.height ?? estimatedItemSize,
-                isCrossContainer: false,
-                isSource: true,
-                horizontal,
-                hoverWidth: hoverDims.x,
-                hoverHeight: hoverDims.y,
-                sourceListId: int.id,
-                targetListId: int.id,
-                fromIndex: int.dragStartIndexRef.current,
-              };
+            // Mutate existing info object (allocated in onMonitorDragStart) — only index changes per slot
+            if (dropIndicatorInfoRef.current) {
+              dropIndicatorInfoRef.current.index = targetSlot;
             }
           }
         }
@@ -749,27 +810,13 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
           const pos = gridResult.positions.get(draggedKey);
           const dim = gridResult.dimensions.get(draggedKey);
           if (pos) {
-            const hoverDims = hoverDimsSV.value;
             dropIndicatorPositionSV.value = pos;
             dropIndicatorVisibleSV.value = true;
-            const dataIdx = int.keyToIndexRef.current.get(dragKey);
-            const item =
-              dataIdx !== undefined ? int.dataRef.current[dataIdx] : undefined;
-            if (item) {
-              dropIndicatorInfoRef.current = {
-                item: item as T,
-                index: targetSlot,
-                width: dim?.width ?? 0,
-                height: dim?.height ?? estimatedItemSize,
-                isCrossContainer: false,
-                isSource: true,
-                horizontal,
-                hoverWidth: hoverDims.x,
-                hoverHeight: hoverDims.y,
-                sourceListId: int.id,
-                targetListId: int.id,
-                fromIndex: int.dragStartIndexRef.current,
-              };
+            // Mutate existing info object — update index + dimensions for grid slot
+            if (dropIndicatorInfoRef.current) {
+              dropIndicatorInfoRef.current.index = targetSlot;
+              dropIndicatorInfoRef.current.width = dim?.width ?? 0;
+              dropIndicatorInfoRef.current.height = dim?.height ?? estimatedItemSize;
             }
           }
         }
@@ -876,6 +923,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         const fromIdx = int.dragStartIndexRef.current;
         const fromItem = int.dataRef.current[fromIdx];
         boardContext.commitTransfer();
+        safeBoundsRef.current = null; // Invalidate — data about to change
         updateVisibleCells(int.scrollOffsetSV.value);
         if (fromItem !== undefined) {
           onDragEndProp?.({ index: fromIdx, item: fromItem as T, toIndex: fromIdx, cancelled: false });
@@ -894,6 +942,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         int.syncWorkletToRefs();
       }
       int.commitReorder();
+      safeBoundsRef.current = null; // Invalidate — base positions about to change on data echo
       updateVisibleCells(int.scrollOffsetSV.value);
       if (fromItem !== undefined) {
         onDragEndProp?.({ index: fromIdx, item: fromItem as T, toIndex: toIdx, cancelled: false });
