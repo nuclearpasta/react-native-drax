@@ -951,7 +951,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       >
         {ListHeaderComponent}
         {data.length === 0 && ListEmptyComponent}
-        {data.length > 0 && (numColumns <= 1 || containerWidth > 0) && (
+        {data.length > 0 && containerWidth > 0 && (
           <View
             style={[
               contentContainerStyle,
