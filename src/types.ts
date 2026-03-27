@@ -742,6 +742,10 @@ export interface UseSortableListOptions<T> {
    *  where items can span multiple columns and/or rows.
    *  Only used when numColumns > 1. */
   getItemSpan?: (item: T, index: number) => GridItemSpan;
+  /** Enable flex-wrap layout. Items flow left-to-right and wrap to new rows. */
+  flexWrap?: boolean;
+  /** Returns pixel dimensions per item. Required when flexWrap is true. */
+  getItemSize?: (item: T, index: number) => { width: number; height: number };
   /** Style applied to all non-dragged items while a drag is active.
    *  Use for dimming/scaling inactive items (e.g., `{ opacity: 0.5 }`). */
   inactiveItemStyle?: ViewStyle;
@@ -782,6 +786,8 @@ export interface SortableListInternal<T> {
   animationConfig: SortableAnimationConfig;
   /** Returns the grid span for an item (non-uniform grid layout) */
   getItemSpan?: (item: T, index: number) => GridItemSpan;
+  flexWrap?: boolean;
+  getItemSize?: (item: T, index: number) => { width: number; height: number };
   inactiveItemStyle?: ViewStyle;
   itemEntering?: EntryOrExitLayoutType;
   itemExiting?: EntryOrExitLayoutType;

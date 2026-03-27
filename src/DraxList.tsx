@@ -115,8 +115,12 @@ export interface DraxListProps<T> {
   dragHandle?: boolean;
   /** Returns grid span per item. Enables mixed-size grid with bin-packing. */
   getItemSpan?: (item: T, index: number) => import('./types').GridItemSpan;
-  /** Gap between grid cells in pixels. @default 0 */
+  /** Gap between items in pixels. @default 0 */
   gridGap?: number;
+  /** Enable flex-wrap layout. Items flow left-to-right and wrap to new rows. */
+  flexWrap?: boolean;
+  /** Returns pixel dimensions per item. Required when flexWrap is true. */
+  getItemSize?: (item: T, index: number) => { width: number; height: number };
   /** Forwarded to the internal ScrollView. */
   onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   /** Scroll event throttle in ms. @default 16 */
@@ -172,6 +176,8 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     dragHandle,
     getItemSpan,
     gridGap,
+    flexWrap,
+    getItemSize,
     onScroll: onScrollProp,
     scrollEventThrottle = 16,
     style,
@@ -209,6 +215,8 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     drawDistance,
     getItemSpan,
     gridGap,
+    flexWrap,
+    getItemSize,
   });
 
   const int = sortable._internal;
@@ -255,8 +263,10 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
   }, [boardContext, int]);
 
   // ── Worklet config for UI-thread slot detection ──
+  // Flex-wrap and grids use JS-side slot detection (packFlex/packGrid).
+  // The worklet only supports linear 1D lists (cursor-based positioning).
   const sortableWorkletConfig = useMemo(
-    () => ({
+    () => flexWrap || numColumns > 1 ? null : ({
       frozenBoundariesSV: int.frozenBoundariesSV,
       orderedKeysSV: int.orderedKeysSV,
       basePositionsSV: int.basePositionsSV,
@@ -275,7 +285,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       getSlotFromPositionWorklet: int.getSlotFromPositionWorklet,
       recomputeShiftsWorklet: int.recomputeShiftsWorklet,
     }),
-    [int, numColumns, horizontal, estimatedItemSize, reorderStrategy]
+    [int, numColumns, horizontal, estimatedItemSize, reorderStrategy, flexWrap]
   );
 
   // ── Cell pool (refs only) ──
@@ -546,7 +556,8 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       // The default hover auto-sizes from DraxView measurements, but flex:1 items
       // may have stale measurements if the cell was recently recycled. The computed
       // dimensions from packGrid are always authoritative.
-      if (getItemSpan && numColumns > 1) {
+      // Set hover dimensions from computed item size for grids and flex-wrap.
+      if ((getItemSpan && numColumns > 1) || flexWrap) {
         const dims = int.itemDimensionsRef.current.get(itemKey);
         if (dims) {
           hoverDimsSV.value = { x: dims.width, y: dims.height };
@@ -697,9 +708,11 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       if (boardContext?.transferRef?.current) return;
 
       const dragKey = int.draggedKeySV.value;
-      const workletHandlesShifts = numColumns === 1 && !!sortableWorkletConfig;
+      const workletHandlesShifts = numColumns === 1 && !!sortableWorkletConfig && !flexWrap;
       let targetSlot: number;
       let gridResult: ReturnType<typeof int.computeGridPositions> | null = null;
+
+
 
       if (workletHandlesShifts) {
         // Read slot from worklet SV. On the first 1-2 frames, this may be stale (initial 0).
@@ -837,7 +850,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       // For grids (JS path): compute from JS shiftsSV (worklet didn't handle slot detection)
       let visualX: number;
       let visualY: number;
-      if (numColumns === 1) {
+      if (numColumns === 1 && !flexWrap) {
         const keys = int.orderedKeysSV.value;
         const heights = int.itemHeightsSV.value;
         let cursor = 0;
@@ -869,7 +882,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     }
 
     return DraxSnapbackTargetPreset.Default;
-  }, [int, stopAutoScroll, boardContext, horizontal]);
+  }, [int, stopAutoScroll, boardContext, horizontal, numColumns, flexWrap, estimatedItemSize]);
 
   const onMonitorDragEnd = useCallback(
     (_eventData: DraxMonitorEndEventData): DraxProtocolDragEndResponse => {
@@ -1011,16 +1024,21 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
               // Vertical: cell fills column width (users center via alignSelf on their card)
               // Horizontal: cell auto-sizes to content (primary axis measurement)
               // Grid: use computed dimensions
-              const itemCellWidth = horizontal
-                ? undefined // auto-size for primary axis measurement
-                : (dims?.width ?? cellWidthForGrid); // fill column
-              const itemCellHeight = horizontal
-                ? cellWidthForGrid // fill row height
-                : getItemSpan
-                  ? dims?.height
-                  : undefined;
-              // flex:1 for mixed-size grids (cells have explicit height from packGrid)
-              const fillStyle = getItemSpan && numColumns > 1 ? { flex: 1 } : undefined;
+              const itemCellWidth = flexWrap
+                ? dims?.width  // flex-wrap: exact item width from packFlex
+                : horizontal
+                  ? undefined // auto-size for primary axis measurement
+                  : (dims?.width ?? cellWidthForGrid); // fill column
+              const itemCellHeight = flexWrap
+                ? dims?.height // flex-wrap: exact item height from packFlex
+                : horizontal
+                  ? cellWidthForGrid // fill row height
+                  : getItemSpan
+                    ? dims?.height
+                    : undefined;
+              // flex:1 for mixed-size grids (cells have explicit height from packGrid).
+              // NOT for flex-wrap (items have their own natural size).
+              const fillStyle = !flexWrap && getItemSpan && numColumns > 1 ? { flex: 1 } : undefined;
 
               return (
                 <RecycledCell

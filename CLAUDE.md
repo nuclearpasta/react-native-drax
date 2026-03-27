@@ -56,6 +56,15 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - `packGrid` exported for users to compute grid positions in their render function
 - Example: `example/screens/mixed-grid.tsx` — 4-column grid with 1×1, 2×1, 1×2, and 2×2 items
 
+### Sortable Flex (Flex-Wrap Layout)
+
+- `flexWrap` prop on `DraxList` — items flow left-to-right and wrap to new rows
+- `getItemSize` callback returns `{ width, height }` per item (pixel dimensions)
+- `packFlex` utility — greedy left-to-right packing with row wrapping
+- Uses same virtual slot detection as mixed-size grid: gap layout frozen at drag start
+- Slot detection via nearest-by-distance on gap boundaries (no grid cells)
+- Example: `example/screens/sortable-flex.tsx` — variable-width tags with drag-to-reorder
+
 ## Cross-Container Sortable (Board)
 
 - `useSortableBoard` hook — board-level coordinator for cross-container transfers
@@ -139,7 +148,7 @@ We compete with two libraries. Drax must match or exceed their DX while keeping 
 - Sorting only — no free-form DnD, no cross-container drag, no collision algorithms, no built-in accessibility (manual only), no snap alignment
 - Grid/Flex components do NOT spread ViewProps — accessibility props must go on inner children content
 - Drax advantage: cross-container drag, monitoring views, free-form DnD, collision algorithms, built-in accessibility + reduced motion, animation presets, snap alignment (9-point + custom), 15 drag state style props, list-agnostic API, 19-callback event system, UI-thread DnD collision
-- Drax missing: sortable flex layout, haptic feedback, item removal animation, fixed-order items, collapsible items, debug mode
+- Drax missing: haptic feedback, item removal animation, fixed-order items, collapsible items, debug mode
 
 **react-native-reanimated-dnd** (https://github.com/entropyconquers/react-native-reanimated-dnd) — Docs: https://reanimated-dnd-docs.vercel.app/
 - v2 released March 2026: Reanimated ≥4.2 + react-native-worklets ≥0.7, sortable grids (insert + swap), free-form DnD

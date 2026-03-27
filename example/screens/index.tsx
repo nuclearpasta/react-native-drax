@@ -43,6 +43,14 @@ const EXAMPLES: Example[] = [
     docsSlug: 'mixed-grid',
   },
   {
+    route: '/sortable-flex',
+    title: 'Sortable Flex',
+    subtitle: 'Flex-wrap tags with drag-to-reorder',
+    icon: 'tag-multiple',
+    sourceFile: 'sortable-flex.tsx',
+    docsSlug: 'sortable-flex',
+  },
+  {
     route: '/drag-handles',
     title: 'Drag Handles',
     subtitle: 'Only the grip icon starts a drag',

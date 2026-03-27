@@ -23,7 +23,7 @@ import type {
   SortableAnimationConfig,
   SortableReorderStrategy,
 } from '../types';
-import { packGrid } from '../math';
+import { packFlex, packGrid } from '../math';
 import { useDraxId } from './useDraxId';
 
 // ─── Public Types ─────────────────────────────────────────────────────
@@ -53,6 +53,10 @@ export interface UseSortableListOptions<T> {
   getItemSpan?: (item: T, index: number) => GridItemSpan;
   /** Gap between grid cells in pixels. @default 0 */
   gridGap?: number;
+  /** Enable flex-wrap layout mode. Items flow left-to-right and wrap to new rows. */
+  flexWrap?: boolean;
+  /** Returns pixel dimensions for each item. Required when flexWrap is true. */
+  getItemSize?: (item: T, index: number) => { width: number; height: number };
 }
 
 export interface SortableListHandle<T> {
@@ -194,6 +198,8 @@ export const useSortableList = <T,>(
     drawDistance = 250,
     getItemSpan,
     gridGap = 0,
+    flexWrap = false,
+    getItemSize,
   } = options;
 
   const id = useDraxId(options.id);
@@ -216,8 +222,12 @@ export const useSortableList = <T,>(
   const getItemSpanRef = useRef<((item: unknown, index: number) => GridItemSpan) | undefined>(
     getItemSpan as ((item: unknown, index: number) => GridItemSpan) | undefined
   );
+  const getItemSizeRef = useRef<((item: unknown, index: number) => { width: number; height: number }) | undefined>(
+    getItemSize as ((item: unknown, index: number) => { width: number; height: number }) | undefined
+  );
   keyExtractorRef.current = keyExtractor as (item: unknown, index: number) => string;
   getItemSpanRef.current = getItemSpan as ((item: unknown, index: number) => GridItemSpan) | undefined;
+  getItemSizeRef.current = getItemSize as ((item: unknown, index: number) => { width: number; height: number }) | undefined;
 
   // ── SharedValues ──
   const shiftsSV = useSharedValue<Record<string, Position>>({});
@@ -257,7 +267,7 @@ export const useSortableList = <T,>(
     if (isDraggingRef.current) {
       // Compute correct shift for single-column (worklet path).
       // Grid path recomputes all shifts via JS on next dragOver.
-      if (numColumns === 1) {
+      if (numColumns === 1 && !flexWrap) {
         const orderedKeys = orderedKeysSV.value;
         const basePos = basePositionsRef.current.get(key);
         if (basePos && orderedKeys.includes(key)) {
@@ -348,6 +358,8 @@ export const useSortableList = <T,>(
   const frozenGapGeometryRef = useRef<{
     cellSize: number; gap: number; numColumns: number; totalRows: number;
   } | null>(null);
+  /** Flex-wrap gap boundaries: positions of items packed WITHOUT the dragged item. */
+  const frozenFlexGapBoundariesRef = useRef<SlotBoundary[]>([]);
 
   // ── Drag state refs ──
   const isDraggingRef = useRef(false);
@@ -368,6 +380,28 @@ export const useSortableList = <T,>(
     const gap = gridGap;
     const positions = new Map<string, Position>();
     const dimensions = new Map<string, { width: number; height: number }>();
+
+    // Flex-wrap: variable-width items flowing left-to-right with wrapping
+    const sizeFn = getItemSizeRef.current;
+    if (flexWrap && sizeFn && cw > 0) {
+      const data = dataRef.current;
+      const keyMap = keyToIndexRef.current;
+      const result = packFlex(cw, keys.length, (i) => {
+        const key = keys[i]!;
+        const idx = keyMap.get(key);
+        if (idx !== undefined && data[idx] !== undefined) {
+          return sizeFn(data[idx]!, idx);
+        }
+        return { width: estimatedItemSize, height: estimatedItemSize };
+      }, gap);
+
+      for (let i = 0; i < keys.length; i++) {
+        const key = keys[i]!;
+        positions.set(key, result.positions[i]!);
+        dimensions.set(key, result.dimensions[i]!);
+      }
+      return { positions, dimensions, totalHeight: result.totalHeight };
+    }
 
     const spanFn = getItemSpanRef.current;
     if (spanFn && numColumns > 1) {
@@ -566,13 +600,64 @@ export const useSortableList = <T,>(
       const keyToIdx = new Map<string, number>();
       gapKeys.forEach((k, i) => keyToIdx.set(k, i));
       frozenGapKeyToIndexRef.current = keyToIdx;
+    } else if (flexWrap && getItemSizeRef.current && currentDragKey) {
+      // Flex-wrap gap layout: pack without dragged item, store boundaries
+      const flexSizeFn = getItemSizeRef.current;
+      if (flexSizeFn) {
+        const gapKeys = keys.filter(k => k !== currentDragKey);
+        const data = dataRef.current;
+        const keyMap = keyToIndexRef.current;
+        const cw = containerWidthRef.current;
+        const gapResult = packFlex(cw, gapKeys.length, (i) => {
+          const key = gapKeys[i]!;
+          const idx = keyMap.get(key);
+          if (idx !== undefined && data[idx] !== undefined) {
+            return flexSizeFn(data[idx]!, idx);
+          }
+          return { width: estimatedItemSize, height: estimatedItemSize };
+        }, gridGap);
+
+        const gapBoundaries = gapKeys.map((key, i) => ({
+          key,
+          x: gapResult.positions[i]!.x,
+          y: gapResult.positions[i]!.y,
+          width: gapResult.dimensions[i]!.width,
+          height: gapResult.dimensions[i]!.height,
+        }));
+        frozenFlexGapBoundariesRef.current = gapBoundaries;
+
+        const keyToIdx = new Map<string, number>();
+        gapKeys.forEach((k, i) => keyToIdx.set(k, i));
+        frozenGapKeyToIndexRef.current = keyToIdx;
+      }
     }
-  }, [estimatedItemSize, horizontal, gridGap, numColumns]);
+  }, [estimatedItemSize, horizontal, gridGap, numColumns, flexWrap]);
 
   const getSlotFromPosition = useCallback((contentX: number, contentY: number): number => {
     const boundaries = frozenBoundariesRef.current;
     if (boundaries.length === 0) {
       return 0;
+    }
+
+    // Flex-wrap: nearest-by-distance on frozen gap boundaries
+    if (flexWrap) {
+      const gapBounds = frozenFlexGapBoundariesRef.current;
+      const gapKeyToIndex = frozenGapKeyToIndexRef.current;
+      if (gapBounds.length > 0 && gapKeyToIndex.size > 0) {
+        let bestKey = '';
+        let bestDist = Infinity;
+        for (const b of gapBounds) {
+          const cx = b.x + b.width / 2;
+          const cy = b.y + b.height / 2;
+          const dist = Math.abs(contentX - cx) + Math.abs(contentY - cy);
+          if (dist < bestDist) { bestDist = dist; bestKey = b.key; }
+        }
+        if (bestKey) {
+          const idx = gapKeyToIndex.get(bestKey);
+          return idx !== undefined ? idx : -1;
+        }
+      }
+      return -1;
     }
 
     if (numColumns > 1) {
@@ -648,7 +733,7 @@ export const useSortableList = <T,>(
       }
     }
     return boundaries.length - 1;
-  }, [numColumns, horizontal]);
+  }, [numColumns, horizontal, flexWrap]);
 
   // ── Worklet: slot detection (runs on UI thread) ──
 

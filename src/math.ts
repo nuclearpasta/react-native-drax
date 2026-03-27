@@ -345,3 +345,62 @@ export function packGrid(
 
   return { positions, totalRows, cellOwners };
 }
+
+// ─── Flex-wrap packing ────────────────────────────────────────────────
+
+/** Result of packing items into a flex-wrap layout */
+export interface FlexPackResult {
+  /** Pixel position (x, y) for each item, in input order */
+  positions: { x: number; y: number }[];
+  /** Pixel dimensions for each item, in input order */
+  dimensions: { width: number; height: number }[];
+  /** Total height of the packed layout */
+  totalHeight: number;
+}
+
+/**
+ * Pack variable-width items into a flex-wrap layout.
+ * Items are placed left-to-right, wrapping to the next row when the
+ * next item would overflow the container width.
+ *
+ * @param containerWidth Available width for items
+ * @param count Number of items to pack
+ * @param getSize Returns pixel {width, height} for the item at the given index
+ * @param gap Space between items (both horizontal and vertical)
+ */
+export function packFlex(
+  containerWidth: number,
+  count: number,
+  getSize: (index: number) => { width: number; height: number },
+  gap: number = 0,
+): FlexPackResult {
+  const positions: { x: number; y: number }[] = [];
+  const dimensions: { width: number; height: number }[] = [];
+  let cursorX = 0;
+  let cursorY = 0;
+  let maxRowHeight = 0;
+
+  for (let i = 0; i < count; i++) {
+    const size = getSize(i);
+    const w = Math.min(size.width, containerWidth); // Clamp to container
+    const h = size.height;
+
+    // Wrap to next row if item doesn't fit (but always place first item in row)
+    if (cursorX > 0 && cursorX + w > containerWidth) {
+      cursorY += maxRowHeight + gap;
+      cursorX = 0;
+      maxRowHeight = 0;
+    }
+
+    positions.push({ x: cursorX, y: cursorY });
+    dimensions.push({ width: w, height: h });
+    maxRowHeight = Math.max(maxRowHeight, h);
+    cursorX += w + gap;
+  }
+
+  return {
+    positions,
+    dimensions,
+    totalHeight: count > 0 ? cursorY + maxRowHeight : 0,
+  };
+}
