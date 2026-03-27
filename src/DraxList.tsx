@@ -380,7 +380,10 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
           if (visualX + w >= visibleStart && visualX <= visibleEnd)
             visibleKeys.add(key);
         } else {
-          const h = heights.get(key) ?? estimatedItemSize;
+          const h =
+            int.itemDimensionsRef.current.get(key)?.height ??
+            heights.get(key) ??
+            estimatedItemSize;
           const visualY = basePos.y + (shift?.y ?? 0);
           if (visualY + h >= visibleStart && visualY <= visibleEnd)
             visibleKeys.add(key);
@@ -697,8 +700,14 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
           absPos.y - containerMeas.y + (horizontal ? 0 : scrollOffset);
         targetSlot = int.getSlotFromPosition(contentX, contentY);
         if (targetSlot !== int.currentSlotRef.current) {
+          const prevSize = int.totalContentSizeRef.current;
           gridResult = int.recomputeShiftsForReorder(dragKey, targetSlot);
           int.currentSlotRef.current = targetSlot;
+          // Re-render if content area grew (prevents clipping shifted items)
+          if (int.totalContentSizeRef.current > prevSize) {
+            updateVisibleCells(int.scrollOffsetSV.value);
+            forceRender();
+          }
         }
       }
 
@@ -784,6 +793,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       horizontal,
       startAutoScroll,
       stopAutoScroll,
+      updateVisibleCells,
       renderDropIndicator,
       dropIndicatorPositionSV,
       dropIndicatorVisibleSV,
@@ -1032,7 +1042,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
                       }}
                     >
                       <View
-                        style={{ alignSelf: itemAlignSelf }}
+                        style={[{ alignSelf: itemAlignSelf }, fillStyle]}
                         onLayout={(e) => {
                           // Cross-axis from inner wrapper (doesn't stretch — card's natural size)
                           const cross = horizontal

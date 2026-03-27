@@ -678,6 +678,10 @@ export const useSortableList = <T,>(
       }
     }
     shiftsSV.value = newShifts; // Keep for JS-thread reads (visibility, snap)
+    // Grow content area during drag so shifted items aren't clipped
+    if (result.totalHeight > totalContentSizeRef.current) {
+      totalContentSizeRef.current = result.totalHeight;
+    }
     return result;
   }, [reorderStrategy, shiftsSV]);
 
