@@ -9,6 +9,7 @@
  */
 import type { ReactNode } from 'react';
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -154,6 +155,67 @@ interface CellBinding {
   cellKey: string;
   itemKey: string;
 }
+
+// ─── Measured Content (single View replacing the old 2-View wrapper) ──
+
+interface MeasuredContentProps {
+  itemKey: string;
+  cellKey: string;
+  horizontal: boolean;
+  skipMeasurement: boolean;
+  fillStyle: { flex: number } | undefined;
+  alignSelf: string;
+  onMeasure: (itemKey: string, height: number) => void;
+  onCellHeight: React.RefObject<Map<string, number>>;
+  children: ReactNode;
+}
+
+const MeasuredContent = memo(({
+  itemKey,
+  cellKey,
+  horizontal,
+  skipMeasurement,
+  fillStyle,
+  alignSelf,
+  onMeasure,
+  onCellHeight,
+  children,
+}: MeasuredContentProps) => {
+  const ref = useRef<any>(null);
+
+  // New Architecture: useLayoutEffect + measure() runs synchronously before paint (JSI).
+  // https://reactnative.dev/architecture/landing-page#synchronous-layout-and-effects
+  // key={itemKey} forces remount on recycle → useLayoutEffect fires → guaranteed measurement.
+  useLayoutEffect(() => {
+    console.log(`[EFFECT] useLayoutEffect fired key=${itemKey} skip=${skipMeasurement} hasRef=${!!ref.current}`);
+    if (skipMeasurement) return;
+    if (!ref.current) {
+      console.log(`[MEASURE] ref null for key=${itemKey}`);
+      return;
+    }
+    const hasMeasure = typeof ref.current.measure === 'function';
+    if (!hasMeasure) {
+      console.log(`[MEASURE] NO measure() on ref for key=${itemKey}, type=${typeof ref.current}`);
+      return;
+    }
+    ref.current.measure((_x: number, _y: number, width: number, height: number) => {
+      const primary = horizontal ? width : height;
+      console.log(`[MEASURE] key=${itemKey} w=${width} h=${height} primary=${primary}`);
+      if (primary > 0) {
+        onMeasure(itemKey, primary);
+        onCellHeight.current.set(cellKey, primary);
+      }
+    });
+  }, [itemKey]);
+
+  return (
+    <View ref={ref} key={itemKey} style={[{ alignSelf: alignSelf as any }, fillStyle]}>
+      {children}
+    </View>
+  );
+});
+
+MeasuredContent.displayName = 'MeasuredContent';
 
 // ─── Component ────────────────────────────────────────────────────────
 
@@ -305,6 +367,11 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
   const lastIndicatorSlotRef = useRef(-1); // Track indicator's last-set slot (avoids worklet/JS SV race)
   const itemsMeasuredRef = useRef(false); // True after first item measurement cycle — prevents FOUC
 
+  // ── Scroll perf refs ──
+  const lastProcessedOffsetRef = useRef(0); // For scroll delta threshold (only updates on threshold crossings)
+  const lastScrollOffsetRef = useRef(0); // Actual last scroll offset (for velocity — updates every event)
+  const lastScrollTimeRef = useRef(0); // For velocity tracking
+  const scrollVelocityRef = useRef(0); // px/ms — positive = scrolling forward
   // ── Container layout ──
   const handleContainerLayout = useCallback(
     (event: LayoutChangeEvent) => {
@@ -314,6 +381,8 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       // ScrollView's offset within the monitoring DraxView (accounts for padding)
       int.scrollContainerOffsetRef.current = { x, y };
       int.recomputeBasePositionsAndClearShifts();
+      // Reset scroll delta tracking (positions just changed)
+      lastProcessedOffsetRef.current = int.scrollOffsetSV.value;
       // Rebind cells with new positions (grid positions change after container measured)
       updateVisibleCells(int.scrollOffsetSV.value);
       forceRender();
@@ -322,43 +391,62 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
   );
 
   // ── Scroll handling ──
+  const SCROLL_DELTA_THRESHOLD = 4; // px — skip updateVisibleCells if scroll moved less than this
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offset = horizontal
         ? event.nativeEvent.contentOffset.x
         : event.nativeEvent.contentOffset.y;
 
+      // Always sync scrollOffset to UI thread (worklet needs accurate offset for slot detection)
       runOnUI((_sv: typeof int.scrollOffsetSV, _v: number) => {
         'worklet';
         _sv.value = _v;
       })(int.scrollOffsetSV, offset);
 
-      // Rebind cells for new visible range
-      updateVisibleCells(offset);
+      // Track scroll velocity for asymmetric buffer distribution.
+      // Uses actual last scroll offset (not lastProcessedOffset which only updates on threshold).
+      const now = Date.now();
+      const dt = now - lastScrollTimeRef.current;
+      if (dt > 0 && dt < 500) {
+        scrollVelocityRef.current = (offset - lastScrollOffsetRef.current) / dt;
+      }
+      lastScrollOffsetRef.current = offset;
+      lastScrollTimeRef.current = now;
+
+      // Skip visible cell recalculation if scroll delta below threshold.
+      // drawDistance buffer (3x viewport) makes this safe.
+      if (Math.abs(offset - lastProcessedOffsetRef.current) >= SCROLL_DELTA_THRESHOLD) {
+        lastProcessedOffsetRef.current = offset;
+        updateVisibleCells(offset);
+      }
+
       onScrollProp?.(event);
     },
     [horizontal, int.scrollOffsetSV, onScrollProp]
   );
 
-  // ── Item measurement ──
+  // ── Item measurement (synchronous) ──
   const handleItemLayout = useCallback(
     (itemKey: string, height: number) => {
       const current = int.itemHeightsRef.current.get(itemKey);
       const changed = current === undefined || Math.abs(current - height) > 0.5;
-      if (changed) {
-        int.recordItemHeight(itemKey, height);
-        itemsMeasuredRef.current = true; // At least one real measurement — positions will be correct
-        if (int.isDraggingRef.current) {
-          // Sync to worklet so recomputeShiftsWorklet uses actual measurements
-          // (not stale estimatedItemSize from drag-start snapshot)
-          int.itemHeightsSV.value = {
-            ...int.itemHeightsSV.value,
-            [itemKey]: height,
-          };
-        } else if (Object.keys(int.shiftsSV.value).length === 0) {
-          int.recomputeBasePositions();
-          forceRender();
-        }
+      if (!changed) return;
+      int.recordItemHeight(itemKey, height);
+      itemsMeasuredRef.current = true;
+      const isDragging = int.isDraggingRef.current || int.isDraggingSV.value;
+      const shiftsEmpty = Object.keys(int.shiftsSV.value).length === 0;
+      if (isDragging) {
+        console.log(`[MEASURE] DURING DRAG key=${itemKey} h=${height.toFixed(1)}`);
+        int.itemHeightsSV.value = {
+          ...int.itemHeightsSV.value,
+          [itemKey]: height,
+        };
+      } else if (shiftsEmpty) {
+        int.recomputeBasePositions();
+        forceRender();
+      } else {
+        console.log(`[MEASURE] SKIPPED (shifts active) key=${itemKey} h=${height.toFixed(1)}`);
       }
     },
     [int]
@@ -372,38 +460,81 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       const containerSize = horizontal
         ? (int.containerMeasRef.current?.width ?? screenWidth)
         : (int.containerMeasRef.current?.height ?? screenHeight);
-      const buffer = drawDistance;
-      const visibleStart = scrollOffset - buffer;
-      const visibleEnd = scrollOffset + containerSize + buffer;
 
-      // Find visible items using visual positions (base + shift).
-      const basePositions = int.basePositionsRef.current;
-      const shifts = int.shiftsSV.value;
+      // Velocity-aware buffering: distribute buffer asymmetrically based on scroll direction.
+      // 70% buffer ahead of scroll direction, 30% behind (FlashList pattern).
+      // During drag: always use symmetric buffer. Switching from asymmetric→symmetric
+      // when drag starts would unbind cells that were visible under the asymmetric buffer,
+      // causing layout jumps and visual chaos.
+      const isDragging = int.isDraggingRef.current;
+      const velocity = isDragging ? 0 : scrollVelocityRef.current;
+      const totalBuffer = drawDistance * 2;
+      let bufferBefore: number;
+      let bufferAfter: number;
+      if (Math.abs(velocity) > 0.1) {
+        bufferAfter = totalBuffer * (velocity > 0 ? 0.7 : 0.3);
+        bufferBefore = totalBuffer - bufferAfter;
+      } else {
+        bufferBefore = bufferAfter = totalBuffer * 0.5;
+      }
+      const visibleStart = scrollOffset - bufferBefore;
+      const visibleEnd = scrollOffset + containerSize + bufferAfter;
+
       visibleKeysRef.current.clear();
       const visibleKeys = visibleKeysRef.current;
-      for (const key of keys) {
-        const basePos = basePositions.get(key);
-        if (!basePos) {
-          visibleKeys.add(key);
-          continue;
+
+      // Binary search path for linear lists (O(log N + V) instead of O(N))
+      const sorted = int.sortedPositionsRef.current;
+      if (sorted.length > 0 && numColumns === 1 && !flexWrap) {
+        // Binary search: find first item where end >= visibleStart
+        let lo = 0;
+        let hi = sorted.length - 1;
+        while (lo < hi) {
+          const mid = (lo + hi) >>> 1;
+          if (sorted[mid]!.end < visibleStart) lo = mid + 1;
+          else hi = mid;
         }
-        const shift = shifts[key];
-        if (horizontal) {
-          const visualX = basePos.x + (shift?.x ?? 0);
-          const w =
-            int.itemDimensionsRef.current.get(key)?.width ??
-            heights.get(key) ??
-            estimatedItemSize;
-          if (visualX + w >= visibleStart && visualX <= visibleEnd)
+        // Walk forward collecting visible keys
+        for (let i = lo; i < sorted.length; i++) {
+          if (sorted[i]!.start > visibleEnd) break;
+          visibleKeys.add(sorted[i]!.key);
+        }
+        // During drag: pin all currently-bound keys to prevent unbinding cells
+        // that have shifted away from their base positions via animated transforms.
+        if (isDragging) {
+          for (const [itemKey] of bindingMapRef.current) {
+            visibleKeys.add(itemKey);
+          }
+        }
+
+      } else {
+        // Fallback: O(N) loop for grids/flex-wrap (2D visibility)
+        const basePositions = int.basePositionsRef.current;
+        const shifts = int.shiftsSV.value;
+        for (const key of keys) {
+          const basePos = basePositions.get(key);
+          if (!basePos) {
             visibleKeys.add(key);
-        } else {
-          const h =
-            int.itemDimensionsRef.current.get(key)?.height ??
-            heights.get(key) ??
-            estimatedItemSize;
-          const visualY = basePos.y + (shift?.y ?? 0);
-          if (visualY + h >= visibleStart && visualY <= visibleEnd)
-            visibleKeys.add(key);
+            continue;
+          }
+          const shift = shifts[key];
+          if (horizontal) {
+            const visualX = basePos.x + (shift?.x ?? 0);
+            const w =
+              int.itemDimensionsRef.current.get(key)?.width ??
+              heights.get(key) ??
+              estimatedItemSize;
+            if (visualX + w >= visibleStart && visualX <= visibleEnd)
+              visibleKeys.add(key);
+          } else {
+            const h =
+              int.itemDimensionsRef.current.get(key)?.height ??
+              heights.get(key) ??
+              estimatedItemSize;
+            const visualY = basePos.y + (shift?.y ?? 0);
+            if (visualY + h >= visibleStart && visualY <= visibleEnd)
+              visibleKeys.add(key);
+          }
         }
       }
 
@@ -451,7 +582,12 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         int.recomputeBasePositions();
       }
 
+      if (proactiveMeasured) {
+        console.log(`[VISIBLE] proactive recompute, totalContent=${int.totalContentSizeRef.current.toFixed(0)}`);
+      }
+
       if (changed) {
+        console.log(`[VISIBLE] rebind: ${currentMap.size} cells, scroll=${scrollOffset.toFixed(0)}, isDrag=${isDragging}, visibleKeys=${visibleKeys.size}`);
         const newBindings: CellBinding[] = [];
         for (const [itemKey, cellKey] of currentMap.entries()) {
           newBindings.push({ cellKey, itemKey });
@@ -467,6 +603,8 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       screenHeight,
       drawDistance,
       estimatedItemSize,
+      numColumns,
+      flexWrap,
     ]
   );
 
@@ -484,6 +622,8 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       dropIndicatorVisibleSV.value = false;
       dropIndicatorInfoRef.current = undefined;
     }
+    // Reset scroll delta tracking (positions/data just changed)
+    lastProcessedOffsetRef.current = int.scrollOffsetSV.value;
     updateVisibleCells(int.scrollOffsetSV.value);
 
     // Source list: dragged item was transferred out — clear drag state AFTER cell is unbound.
@@ -564,6 +704,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       if (item === undefined) return;
 
       const itemKey = keyExtractor(item, originalIndex);
+      console.log(`[DRAG START] key=${itemKey} idx=${originalIndex} scroll=${int.scrollOffsetSV.value.toFixed(0)} totalContent=${int.totalContentSizeRef.current.toFixed(0)} cells=${bindingMapRef.current.size} shifts=${Object.keys(int.shiftsSV.value).length}`);
       int.skipShiftAnimationSV.value = false; // Re-enable shift animations for this drag
       int.isDraggingRef.current = true;
       int.draggedKeySV.value = itemKey;
@@ -855,27 +996,45 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
 
     // During cross-container transfer, board handles snap target
     if (boardContext?.transferRef?.current) {
+      console.log(`[DRAG END] skipped: cross-container transfer`);
       return; // void — let board's snap target stand
     }
 
-    if (!int.isDraggingRef.current) return;
+    if (!int.isDraggingRef.current) {
+      console.log(`[DRAG END] skipped: isDragging=false`);
+      return;
+    }
 
     const dragKey = int.draggedKeySV.value;
     const basePos = int.basePositionsRef.current.get(dragKey);
     const containerMeas = int.containerMeasRef.current;
+    console.log(`[DRAG END] key=${dragKey} hasBasePos=${!!basePos} hasContainerMeas=${!!containerMeas} scroll=${int.scrollOffsetSV.value.toFixed(0)}`);
 
     if (basePos && containerMeas) {
-      // For single-column (worklet path): compute from worklet's orderedKeysSV (most up-to-date)
-      // For grids (JS path): compute from JS shiftsSV (worklet didn't handle slot detection)
       let visualX: number;
       let visualY: number;
       if (numColumns === 1 && !flexWrap) {
+        // Single-column: compute target position by walking the reordered keys.
+        // Use the SAME height sources as computeGridPositions to ensure consistency:
+        // measured height > getItemSize > running average > estimatedItemSize.
         const keys = int.orderedKeysSV.value;
         const heights = int.itemHeightsSV.value;
+        const avgH = int.measuredAvgHeightRef?.current ?? estimatedItemSize;
+        const sizeFn = getItemSize;
+        const dataArr = int.dataRef.current;
+        const keyMap = int.keyToIndexRef.current;
         let cursor = 0;
         for (const key of keys) {
           if (key === dragKey) break;
-          cursor += heights[key] ?? estimatedItemSize;
+          let h = heights[key];
+          if (h === undefined && sizeFn) {
+            const idx = keyMap.get(key);
+            if (idx !== undefined && dataArr[idx] !== undefined) {
+              h = horizontal ? sizeFn(dataArr[idx] as T, idx).width : sizeFn(dataArr[idx] as T, idx).height;
+            }
+          }
+          if (h === undefined) h = avgH;
+          cursor += h;
         }
         visualX = horizontal ? cursor : basePos.x;
         visualY = horizontal ? basePos.y : cursor;
@@ -886,18 +1045,11 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       }
 
       const scOffset = int.scrollContainerOffsetRef.current;
-      return {
-        x:
-          containerMeas.x +
-          scOffset.x +
-          visualX -
-          (horizontal ? int.scrollOffsetSV.value : 0),
-        y:
-          containerMeas.y +
-          scOffset.y +
-          visualY -
-          (horizontal ? 0 : int.scrollOffsetSV.value),
-      };
+      const scrollOff = int.scrollOffsetSV.value;
+      const snapX = containerMeas.x + scOffset.x + visualX - (horizontal ? scrollOff : 0);
+      const snapY = containerMeas.y + scOffset.y + visualY - (horizontal ? 0 : scrollOff);
+      console.log(`[DRAG END] SNAP target: visualY=${visualY.toFixed(0)} scroll=${scrollOff.toFixed(0)} containerY=${containerMeas.y.toFixed(0)} avgH=${(int.measuredAvgHeightRef?.current ?? 0).toFixed(1)} snapY=${snapY.toFixed(0)} baseY=${basePos.y.toFixed(0)}`);
+      return { x: snapX, y: snapY };
     }
 
     return DraxSnapbackTargetPreset.Default;
@@ -950,10 +1102,14 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       }
 
       // Normal intra-column reorder
-      if (!int.isDraggingRef.current) return;
+      if (!int.isDraggingRef.current) {
+        console.log(`[SNAP END] isDragging=false, skipping commit`);
+        return;
+      }
       const fromIdx = int.dragStartIndexRef.current;
       const toIdx = int.currentSlotRef.current;
       const fromItem = int.dataRef.current[fromIdx];
+      console.log(`[SNAP END] commit from=${fromIdx} to=${toIdx} scroll=${int.scrollOffsetSV.value.toFixed(0)} totalContent=${int.totalContentSizeRef.current.toFixed(0)}`);
       // Only sync from worklet when it handled slot detection (single-column lists).
       // For grids (numColumns > 1), JS handled slot detection — orderedKeysRef is already correct.
       if (numColumns === 1 && sortableWorkletConfig) {
@@ -1027,8 +1183,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
               horizontal
                 ? { width: totalSize, height: '100%' }
                 : { height: totalSize, width: '100%' },
-              // Hide until items have measured — prevents FOUC from estimated positions
-              !itemsMeasuredRef.current && { opacity: 0 },
+              // useLayoutEffect + measure() corrects positions before paint — no FOUC
             ]}
           >
             {bindings.map((binding) => {
@@ -1039,9 +1194,9 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
               const item = int.dataRef.current[dataIndex];
               const basePos = int.basePositionsRef.current.get(itemKey);
               if (!item || !basePos) return null;
-              // Hide unmeasured items off-screen until onLayout fires and positions correct.
-              // Items with known sizes via getItemSize are always considered measured.
-              const isMeasured = int.itemHeightsRef.current.has(itemKey) || !!getItemSize;
+              // With useLayoutEffect + measure(), items render at estimated positions and
+              // correct before paint (single commit). No need to hide at -10000.
+              const isMeasured = true;
               const dims = int.itemDimensionsRef.current.get(itemKey);
               // Vertical: cell fills column width (users center via alignSelf on their card)
               // Horizontal: cell auto-sizes to content (primary axis measurement)
@@ -1091,31 +1246,18 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
                     sortableWorklet={sortableWorkletConfig}
                     style={fillStyle}
                   >
-                    <View
-                      key={itemKey}
-                      style={fillStyle}
-                      onLayout={(e) => {
-                        // Primary axis from outer wrapper (fills cell)
-                        const primary = horizontal
-                          ? e.nativeEvent.layout.width
-                          : e.nativeEvent.layout.height;
-                        handleItemLayout(itemKey, primary);
-                        cellLastHeightRef.current.set(cellKey, primary);
-                      }}
+                    <MeasuredContent
+                      itemKey={itemKey}
+                      cellKey={cellKey}
+                      horizontal={horizontal}
+                      skipMeasurement={!!getItemSize}
+                      fillStyle={fillStyle}
+                      alignSelf={itemAlignSelf}
+                      onMeasure={handleItemLayout}
+                      onCellHeight={cellLastHeightRef}
                     >
-                      <View
-                        style={[{ alignSelf: itemAlignSelf }, fillStyle]}
-                        onLayout={(e) => {
-                          // Cross-axis from inner wrapper (doesn't stretch — card's natural size)
-                          const cross = horizontal
-                            ? e.nativeEvent.layout.height
-                            : e.nativeEvent.layout.width;
-                          int.itemCrossAxisRef.current.set(itemKey, cross);
-                        }}
-                      >
-                        {renderItem({ item, index: dataIndex })}
-                      </View>
-                    </View>
+                      {renderItem({ item, index: dataIndex })}
+                    </MeasuredContent>
                   </DraxView>
                 </RecycledCell>
               );

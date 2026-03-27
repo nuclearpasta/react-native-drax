@@ -89,6 +89,8 @@ export interface SortableListInternal<T> {
   /** Base positions (React props left/top — Yoga knows position for touch) */
   basePositionsRef: React.RefObject<Map<string, Position>>;
   itemHeightsRef: React.RefObject<Map<string, number>>;
+  /** Running average of measured heights — used for unmeasured items in position computation. */
+  measuredAvgHeightRef: React.RefObject<number>;
   /** Cross-axis measurements (width for vertical items, height for horizontal items) */
   itemCrossAxisRef: React.RefObject<Map<string, number>>;
   totalContentSizeRef: React.RefObject<number>;
@@ -103,6 +105,8 @@ export interface SortableListInternal<T> {
   /** Per-item dimensions (for mixed-size grids) */
   itemDimensionsRef: React.RefObject<Map<string, { width: number; height: number }>>;
   getItemSpanRef: React.RefObject<((item: unknown, index: number) => GridItemSpan) | undefined>;
+  /** Sorted array of item positions for binary search in updateVisibleCells (linear lists only). */
+  sortedPositionsRef: React.RefObject<{ key: string; start: number; end: number }[]>;
 
   // ── SharedValues (UI thread animation) ──
   shiftsSV: ReturnType<typeof useSharedValue<Record<string, Position>>>;
@@ -226,6 +230,7 @@ export const useSortableList = <T,>(
   const renderItemRef = useRef<((info: any) => ReactNode) | undefined>(undefined);
   const keyExtractorRef = useRef<(item: unknown, index: number) => string>(keyExtractor as (item: unknown, index: number) => string);
   const itemDimensionsRef = useRef<Map<string, { width: number; height: number }>>(new Map());
+  const sortedPositionsRef = useRef<{ key: string; start: number; end: number }[]>([]);
   const getItemSpanRef = useRef<((item: unknown, index: number) => GridItemSpan) | undefined>(
     getItemSpan as ((item: unknown, index: number) => GridItemSpan) | undefined
   );
@@ -472,17 +477,25 @@ export const useSortableList = <T,>(
     const itemSizeFn = getItemSizeRef.current;
     const data = dataRef.current;
     const keyMap = keyToIndexRef.current;
+    // Build sorted positions array alongside base positions (same loop, no extra pass)
+    const sorted: { key: string; start: number; end: number }[] = new Array(keys.length);
     let cursor = 0;
-    for (const key of keys) {
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i]!;
       // Priority: measured height > getItemSize callback > running average
       let h = heights.get(key);
       if (h === undefined && itemSizeFn) {
         const idx = keyMap.get(key);
         if (idx !== undefined && data[idx] !== undefined) {
           h = horizontal ? itemSizeFn(data[idx]!, idx).width : itemSizeFn(data[idx]!, idx).height;
+          // Record getItemSize heights so they're available for the worklet
+          // (syncRefsToWorklet copies itemHeightsRef → itemHeightsSV at drag start).
+          // Without this, the worklet falls back to estimatedItemSize for all items.
+          if (h !== undefined) recordItemHeight(key, h);
         }
       }
       if (h === undefined) h = avgH;
+      sorted[i] = { key, start: cursor, end: cursor + h };
       if (horizontal) {
         positions.set(key, { x: cursor, y: 0 });
         dimensions.set(key, { width: h, height: cw || 0 });
@@ -492,6 +505,7 @@ export const useSortableList = <T,>(
       }
       cursor += h;
     }
+    sortedPositionsRef.current = sorted;
     return { positions, dimensions, totalHeight: cursor };
   }
 
@@ -506,6 +520,7 @@ export const useSortableList = <T,>(
       measuredCountRef.current++;
       const n = measuredCountRef.current;
       measuredAvgHeightRef.current += (height - measuredAvgHeightRef.current) / n;
+      if (n <= 5 || n % 50 === 0) console.log(`[RECORD] n=${n} key=${key} h=${height} avgH=${measuredAvgHeightRef.current.toFixed(1)}`);
     } else if (Math.abs(prev - height) > 0.5) {
       // Height changed — adjust running average (subtract old, add new)
       const n = measuredCountRef.current;
@@ -1022,6 +1037,7 @@ export const useSortableList = <T,>(
     orderedKeysRef,
     basePositionsRef,
     itemHeightsRef,
+    measuredAvgHeightRef,
     itemCrossAxisRef,
     totalContentSizeRef,
     containerMeasRef,
@@ -1033,6 +1049,7 @@ export const useSortableList = <T,>(
     renderItemRef,
     itemDimensionsRef,
     getItemSpanRef,
+    sortedPositionsRef,
     shiftsSV,
     draggedKeySV,
     scrollOffsetSV,

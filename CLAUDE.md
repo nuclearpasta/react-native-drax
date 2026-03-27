@@ -8,6 +8,7 @@ Drag-and-drop framework for React Native (iOS, Android, Web). v1.0.0 — major r
 - **Reanimated 4 + Gesture Handler 3** (beta)
 - Single `HoverLayer`, per-view gesture handlers
 - Latest React features.
+- **New Architecture (Fabric)**: `useLayoutEffect` + `measure()` is synchronous (JSI SyncCallback). Measurement and state updates happen in a single commit before paint — no intermediate states visible to users. Use `useLayoutEffect` + `ref.measure()` instead of `onLayout` for item measurement. Reference: https://reactnative.dev/architecture/landing-page#synchronous-layout-and-effects
 
 
 ## Sortable Architecture

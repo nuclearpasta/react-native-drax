@@ -97,6 +97,14 @@ export const useDragGesture = (
       if (!isDragAllowedSV.value) return;
       isDragAllowedSV.value = false; // Lock — released in onSnapComplete
 
+      // Close the drag-start race window: set isDragging on the UI thread
+      // BEFORE runOnJS(handleDragStart). This prevents handleItemLayout from
+      // calling recomputeBasePositions + forceRender during the JS callback chain
+      // (between gesture activation and onMonitorDragStart).
+      if (sortableWorklet) {
+        sortableWorklet.isDraggingSV.value = true;
+      }
+
       // Convert screen-absolute touch to root-view-relative
       const rootOffset = rootOffsetSV.value;
       const rootRelX = event.absoluteX - rootOffset.x;
