@@ -759,7 +759,6 @@ function performSnapback(
    *   Then hover clears on next UI frame. Items at visual positions. No blink.
    */
   const onSnapComplete = () => {
-    console.log(`[snap] onSnapComplete @${Date.now() % 100000} — draggedEntry=${draggedEntry.id} currentDraggedId=${draggedIdSV.value}`);
 
     try {
       // Reset the deferred flag before firing callbacks.
@@ -822,7 +821,6 @@ function performSnapback(
 
   if (target === DraxSnapbackTargetPreset.None || !animateSnap) {
     // No snap animation — run cleanup immediately
-    console.log(`[snap] NO animation (None or disabled) — immediate complete`);
     onSnapComplete();
     return;
   }
@@ -838,7 +836,6 @@ function performSnapback(
       : { x: 0, y: 0 };
   }
 
-  console.log(`[snap] starting — to=(${Math.round(toValue.x)},${Math.round(toValue.y)}) delay=${snapDelay} duration=${snapDuration} custom=${!!snapAnimator}`);
 
   if (snapAnimator) {
     // Custom snap animation

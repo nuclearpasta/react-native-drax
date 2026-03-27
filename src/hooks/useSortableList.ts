@@ -441,7 +441,6 @@ export const useSortableList = <T,>(
     // SV write batch as the cell clears. Writing from the caller and reading .value
     // back can return the old value (JSI getter reads UI-thread state, not pending JS write).
     skipShiftAnimationSV.value = true;
-    console.log(`[${id}] recomputeBasePositionsAndClearShifts — keys=${orderedKeysRef.current.length}`);
     recomputeBasePositions();
     shiftsSV.value = {};
     // Clear per-cell SVs
@@ -657,8 +656,6 @@ export const useSortableList = <T,>(
     const result = computeGridPositions(keys);
     const newShifts: Record<string, Position> = {};
     const registry = cellShiftRegistryRef.current;
-    let writtenCount = 0;
-    let skippedCount = 0;
     for (const key of keys) {
       const target = result.positions.get(key);
       const basePos = basePositionsRef.current.get(key);
@@ -677,13 +674,9 @@ export const useSortableList = <T,>(
         const cur = cellSV.value;
         if (cur.x !== shift.x || cur.y !== shift.y) {
           cellSV.value = shift;
-          writtenCount++;
-        } else {
-          skippedCount++;
         }
       }
     }
-    console.log(`[${id}] recomputeShiftsForReorder — total=${keys.length} written=${writtenCount} skipped=${skippedCount}`);
     shiftsSV.value = newShifts; // Keep for JS-thread reads (visibility, snap)
     return result;
   }, [reorderStrategy, shiftsSV]);
@@ -741,11 +734,9 @@ export const useSortableList = <T,>(
   const commitReorder = useCallback(() => {
     const fromIndex = dragStartIndexRef.current;
     const toIndex = currentSlotRef.current;
-    console.log(`[${id}] commitReorder — from=${fromIndex} to=${toIndex} isDragging=${isDraggingRef.current}`);
 
     // No-op: item returned to original position
     if (fromIndex === toIndex) {
-      console.log(`[${id}]   no-op (same index)`);
       isDraggingRef.current = false;
       draggedKeySV.value = '';
       return;

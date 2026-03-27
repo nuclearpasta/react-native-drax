@@ -75,32 +75,55 @@ export interface DropIndicatorInfo<T = unknown> {
 }
 
 export interface DraxListProps<T> {
+  /** Items to render. */
   data: T[];
+  /** Render function for each item. Compatible with FlatList's renderItem signature. */
   renderItem: (info: { item: T; index: number }) => ReactNode;
+  /** Unique key for each item. */
   keyExtractor: (item: T, index: number) => string;
-  estimatedItemSize: number;
+  /** Approximate item size (height for vertical, width for horizontal) for initial layout.
+   *  Items self-measure after render — this only affects the first frame. @default 50 */
+  estimatedItemSize?: number;
+  /** Called when items are reordered via drag. Receives the new data array. */
   onReorder?: (event: SortableReorderEvent<T>) => void;
+  /** Render a custom drop indicator (ghost) at the insertion point during drag. */
   renderDropIndicator?: (info: DropIndicatorInfo<T>) => ReactNode;
+  /** Explicit DraxView id for this list. Auto-generated if omitted. */
   id?: string;
+  /** Number of columns for grid layout. @default 1 */
   numColumns?: number;
+  /** Horizontal list layout. @default false */
   horizontal?: boolean;
+  /** Extra pixels beyond the viewport to render (virtualization buffer). @default 250 */
   drawDistance?: number;
+  /** Animation preset or custom config for shift animations.
+   *  Presets: 'default', 'spring', 'gentle', 'snappy', 'none'. @default 'default' */
   animationConfig?: UseSortableListOptions<T>['animationConfig'];
+  /** Long press delay before drag starts in ms. @default 250 */
   longPressDelay?: number;
+  /** Lock item drags to the list's main axis. @default false */
   lockToMainAxis?: boolean;
+  /** Reorder strategy: 'insert' (default) or 'swap'. @default 'insert' */
   reorderStrategy?: UseSortableListOptions<T>['reorderStrategy'];
-  /** When true, only DraxHandle children start a drag */
+  /** When true, only DraxHandle children start a drag. */
   dragHandle?: boolean;
   /** Returns grid span per item. Enables mixed-size grid with bin-packing. */
   getItemSpan?: (item: T, index: number) => import('./types').GridItemSpan;
   /** Gap between grid cells in pixels. @default 0 */
   gridGap?: number;
+  /** Forwarded to the internal ScrollView. */
   onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  /** Scroll event throttle in ms. @default 16 */
   scrollEventThrottle?: number;
+  /** Style for the outer container (DraxView). */
   style?: StyleProp<ViewStyle>;
+  /** Style for the content container (inside ScrollView). */
   contentContainerStyle?: StyleProp<ViewStyle>;
+  /** Rendered before the first item. */
   ListHeaderComponent?: ReactNode;
+  /** Rendered after the last item. */
   ListFooterComponent?: ReactNode;
+  /** Rendered when data is empty. */
   ListEmptyComponent?: ReactNode;
 }
 
@@ -117,7 +140,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     data,
     renderItem,
     keyExtractor,
-    estimatedItemSize,
+    estimatedItemSize = 50,
     onReorder,
     renderDropIndicator,
     id: _idProp,
@@ -343,13 +366,11 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
 
   // ── Initial binding + data sync ──
   useLayoutEffect(() => {
-    console.log(`[${int.id}] useLayoutEffect[data] — len=${data.length} isDragging=${int.isDraggingRef.current} pendingShiftClear=${int.pendingShiftClearRef.current}`);
     // Cross-container: new items arrived — recompute positions + clear shifts atomically.
     // Skip animation so cells snap to final positions (no spring-back artifact).
     if (int.pendingShiftClearRef.current) {
       int.pendingShiftClearRef.current = false;
       int.skipShiftAnimationSV.value = true;
-      console.log(`[${int.id}]   pendingShiftClear → recompute (skipShift=${int.skipShiftAnimationSV.value})`);
       int.recomputeBasePositionsAndClearShifts();
       // Hide indicator + clear stale info — transfer complete. Clean state for next drag.
       // Without this, the board's info (from cross-container drag) persists and flashes
@@ -364,7 +385,6 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     if (int.isDraggingRef.current) {
       const dragKey = int.draggedKeySV.value;
       if (dragKey && !int.keyToIndexRef.current.has(dragKey)) {
-        console.log(`[${int.id}]   source transfer cleanup — dragKey=${dragKey} removed from data`);
         int.isDraggingRef.current = false;
         int.draggedKeySV.value = '';
         // Recompute for remaining N-1 items: corrects base positions,
@@ -425,7 +445,6 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     if (item === undefined) return;
 
     const itemKey = keyExtractor(item, originalIndex);
-    console.log(`[${int.id}] onMonitorDragStart — key=${itemKey} idx=${originalIndex} wasDragging=${int.isDraggingRef.current} prevDragKey=${int.draggedKeySV.value}`);
     int.skipShiftAnimationSV.value = false; // Re-enable shift animations for this drag
     int.isDraggingRef.current = true;
     int.draggedKeySV.value = itemKey;
@@ -649,7 +668,6 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
 
   const handleDragEnd = useCallback((): DraxProtocolDragEndResponse => {
     stopAutoScroll();
-    console.log(`[${int.id}] handleDragEnd @${Date.now() % 100000} — isDragging=${int.isDraggingRef.current} transfer=${!!boardContext?.transferRef?.current} dragKey=${int.draggedKeySV.value}`);
 
     // During cross-container transfer, board handles snap target
     if (boardContext?.transferRef?.current) {
@@ -708,14 +726,12 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     // If they differ, a new drag owns the state — don't commit stale data.
     const currentDragId = draggedIdSV.value;
     if (currentDragId !== '' && currentDragId !== snapData.dragged.id) {
-      console.log(`[${int.id}] handleSnapEnd — SKIPPED (stale: snap=${snapData.dragged.id} current=${currentDragId})`);
       // Prevent onSnapComplete from clearing the CURRENT drag's hover.
       hoverClearDeferredRef.current = true;
       dropIndicatorVisibleSV.value = false;
       dropIndicatorInfoRef.current = undefined;
       return;
     }
-    console.log(`[${int.id}] handleSnapEnd — isDragging=${int.isDraggingRef.current} transfer=${!!boardContext?.transferRef?.current} dragKey=${int.draggedKeySV.value}`);
 
     // Hide drop indicator + clear stale info — snap animation is complete.
     dropIndicatorVisibleSV.value = false;
@@ -723,7 +739,6 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
 
     // Cross-container transfer — board handles finalization
     if (boardContext?.transferRef?.current) {
-      console.log(`[${int.id}]   commitTransfer`);
       boardContext.commitTransfer();
       updateVisibleCells(int.scrollOffsetSV.value);
       return;

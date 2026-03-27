@@ -50,7 +50,6 @@ export const HoverLayer = memo(
     // Both writes happen in the same runOnUI call → same UI frame → no blink.
     useLayoutEffect(() => {
       const hasContent = hoverContentRef.current != null;
-      console.log(`[hover] useLayoutEffect — hasContent=${hasContent} version=${hoverVersion}`);
       if (hasContent) {
         runOnUI((_dragPhaseSV: SharedValue<DragPhase>, _hoverReadySV: SharedValue<boolean>) => {
           'worklet';

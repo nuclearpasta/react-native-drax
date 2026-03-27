@@ -68,10 +68,8 @@ export const SortableBoardContainer = <T,>({
     const transfer = transferRef.current;
     const source = sourceInfoRef.current;
     if (!transfer || !source) {
-      console.log(`[board] commitTransfer — SKIPPED (transfer=${!!transfer} source=${!!source})`);
       return;
     }
-    console.log(`[board] commitTransfer — ${source.itemKey} from ${transfer.sourceId} to ${transfer.targetId}@${transfer.targetSlot}`);
 
 
     // Keep hover visible during parent data update
@@ -136,7 +134,6 @@ export const SortableBoardContainer = <T,>({
       }
       transferRef.current = undefined;
       sourceInfoRef.current = undefined;
-      console.log(`[board] onMonitorDragStart — flushing stale transfer: ${staleSource.itemKey} ${staleTransfer.sourceId}→${staleTransfer.targetId}`);
       onTransfer({
         item: staleTransfer.item as T,
         fromContainerId: staleTransfer.sourceId,
@@ -146,7 +143,6 @@ export const SortableBoardContainer = <T,>({
       });
     }
 
-    console.log(`[board] onMonitorDragStart — transfer=${!!transferRef.current} source=${!!sourceInfoRef.current}`);
     // DON'T reset hoverDimsSV here — handleDragStart already reset it, and
     // HoverLayer's onLayout may have already written the actual content dimensions.
     // Resetting here would erase the measurement.
@@ -337,7 +333,6 @@ export const SortableBoardContainer = <T,>({
   const onMonitorDragEnd = useCallback((eventData: DraxMonitorEndEventData): DraxProtocolDragEndResponse => {
     const transfer = transferRef.current;
     const source = sourceInfoRef.current;
-    console.log(`[board] onMonitorDragEnd — cancelled=${eventData.cancelled} transfer=${!!transfer} source=${!!source} itemKey=${source?.itemKey}`);
 
     if (transfer && !eventData.cancelled) {
       // Successful cross-container drop — compute snap target in target column
