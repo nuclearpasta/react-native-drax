@@ -95,10 +95,16 @@ export const RecycledCell = memo(({
 
     // Skip animation during position reset (snap instantly)
     if (skipShiftAnimationSV.value) {
+      if (isInactive && inactiveItemStyle) {
+        return {
+          opacity: isDragged ? 0 : 1,
+          transform: [{ translateX: shiftX }, { translateY: shiftY }],
+          ...inactiveItemStyle,
+        };
+      }
       return {
         opacity: isDragged ? 0 : 1,
         transform: [{ translateX: shiftX }, { translateY: shiftY }],
-        ...(isInactive && inactiveItemStyle ? inactiveItemStyle : {}),
       };
     }
 
@@ -109,10 +115,16 @@ export const RecycledCell = memo(({
       ? withSpring(shiftY, clampedSpringConfig)
       : withTiming(shiftY, { duration: shiftDuration });
 
+    if (isInactive && inactiveItemStyle) {
+      return {
+        opacity: isDragged ? 0 : 1,
+        transform: [{ translateX: animatedX }, { translateY: animatedY }],
+        ...inactiveItemStyle,
+      };
+    }
     return {
       opacity: isDragged ? 0 : 1,
       transform: [{ translateX: animatedX }, { translateY: animatedY }],
-      ...(isInactive && inactiveItemStyle ? inactiveItemStyle : {}),
     };
   });
 

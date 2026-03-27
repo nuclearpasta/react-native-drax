@@ -245,8 +245,11 @@ export const useSortableList = <T,>(
 
   // ── Per-cell shift SharedValues (UI-thread perf: only moved cells re-evaluate) ──
   const cellShiftRegistryRef = useRef(new Map<string, SharedValue<Position>>());
+  // Shadow Record maintained incrementally — avoids full Map-to-Record rebuild on register/unregister
+  const cellShiftRecordRef = useRef<Record<string, SharedValue<Position>>>({});
   const registerCellShift = useCallback((key: string, sv: SharedValue<Position>) => {
     cellShiftRegistryRef.current.set(key, sv);
+    cellShiftRecordRef.current[key] = sv;
 
     // During drag, keep worklet record in sync and set correct initial shift
     // for recycled cells. Without this, cellShiftRecordSV is a stale snapshot
@@ -269,21 +272,18 @@ export const useSortableList = <T,>(
         }
       }
 
-      // Rebuild worklet Record from current registry
-      const cs: Record<string, SharedValue<Position>> = {};
-      for (const [k, v] of cellShiftRegistryRef.current) cs[k] = v;
-      cellShiftRecordSV.value = cs;
+      // Incremental update: assign shadow Record (already has the new key)
+      cellShiftRecordSV.value = { ...cellShiftRecordRef.current };
     }
   }, []);
   const unregisterCellShift = useCallback((key: string) => {
     cellShiftRegistryRef.current.delete(key);
+    delete cellShiftRecordRef.current[key];
 
     // Remove stale key from worklet record so it stops writing to
     // this SV (which will be re-registered under a different item key).
     if (isDraggingRef.current) {
-      const cs: Record<string, SharedValue<Position>> = {};
-      for (const [k, v] of cellShiftRegistryRef.current) cs[k] = v;
-      cellShiftRecordSV.value = cs;
+      cellShiftRecordSV.value = { ...cellShiftRecordRef.current };
     }
   }, []);
 
@@ -301,10 +301,8 @@ export const useSortableList = <T,>(
     const ih: Record<string, number> = {};
     for (const [k, v] of itemHeightsRef.current) ih[k] = v;
     itemHeightsSV.value = ih;
-    // Cell shift registry: Map → Record (for worklet access)
-    const cs: Record<string, SharedValue<Position>> = {};
-    for (const [k, v] of cellShiftRegistryRef.current) cs[k] = v;
-    cellShiftRecordSV.value = cs;
+    // Cell shift registry: use shadow Record (already maintained incrementally)
+    cellShiftRecordSV.value = { ...cellShiftRecordRef.current };
   }
 
   /** Sync SharedValues → JS refs after drag ends. */
@@ -323,6 +321,21 @@ export const useSortableList = <T,>(
   // Cell shift record SV — worklet needs Record access (not Map)
   const cellShiftRecordSV = useSharedValue<Record<string, SharedValue<Position>>>({});
 
+  // ── Drag state refs ──
+  const isDraggingRef = useRef(false);
+  const dragStartIndexRef = useRef(0);
+  const currentSlotRef = useRef(0);
+  const frozenBoundariesRef = useRef<SlotBoundary[]>([]);
+  /** Set during render when cross-container adds new keys. Cleared in useLayoutEffect. */
+  const pendingShiftClearRef = useRef(false);
+
+  // ── Layout helpers ──
+
+  // Pooled Maps for computeGridPositions — reused across calls to avoid allocation
+  // MUST be declared before the initialization block below that calls recomputeBasePositions → computeGridPositions
+  const positionsPoolRef = useRef(new Map<string, Position>());
+  const dimensionsPoolRef = useRef(new Map<string, { width: number; height: number }>());
+
   // Initialize keyToIndexRef AND base positions on first render
   if (keyToIndexRef.current.size === 0 && externalData.length > 0) {
     const map = new Map<string, number>();
@@ -335,26 +348,18 @@ export const useSortableList = <T,>(
     recomputeBasePositions();
   }
 
-
-  // ── Drag state refs ──
-  const isDraggingRef = useRef(false);
-  const dragStartIndexRef = useRef(0);
-  const currentSlotRef = useRef(0);
-  const frozenBoundariesRef = useRef<SlotBoundary[]>([]);
-  /** Set during render when cross-container adds new keys. Cleared in useLayoutEffect. */
-  const pendingShiftClearRef = useRef(false);
-
-  // ── Layout helpers ──
-
-  /** Compute pixel positions from keys using packGrid (mixed-size) or modulo (uniform). */
+  /** Compute pixel positions from keys using packGrid (mixed-size) or modulo (uniform).
+   *  Returns pooled Maps — caller must read before next call (Maps are reused). */
   function computeGridPositions(keys: string[]) {
     const cw = containerWidthRef.current;
     const cellSize = cw > 0
       ? (cw - gridGap * (numColumns - 1)) / numColumns
       : estimatedItemSize;
     const gap = gridGap;
-    const positions = new Map<string, Position>();
-    const dimensions = new Map<string, { width: number; height: number }>();
+    const positions = positionsPoolRef.current;
+    const dimensions = dimensionsPoolRef.current;
+    positions.clear();
+    dimensions.clear();
 
     const spanFn = getItemSpanRef.current;
     if (spanFn && numColumns > 1) {
@@ -430,8 +435,9 @@ export const useSortableList = <T,>(
   function recomputeBasePositions() {
     const keys = orderedKeysRef.current;
     const result = computeGridPositions(keys);
-    basePositionsRef.current = result.positions;
-    itemDimensionsRef.current = result.dimensions;
+    // Copy from pooled Maps into stable refs (pooled Maps get cleared on next call)
+    basePositionsRef.current = new Map(result.positions);
+    itemDimensionsRef.current = new Map(result.dimensions);
     totalContentSizeRef.current = result.totalHeight;
   }
 
@@ -678,7 +684,8 @@ export const useSortableList = <T,>(
       }
     }
     shiftsSV.value = newShifts; // Keep for JS-thread reads (visibility, snap)
-    return result;
+    // Copy pooled Maps — callers may hold the reference across future computeGridPositions calls
+    return { positions: new Map(result.positions), dimensions: new Map(result.dimensions), totalHeight: result.totalHeight };
   }, [reorderStrategy, shiftsSV]);
 
   // ── Board integration: remove/insert keys for cross-container ──
@@ -715,7 +722,9 @@ export const useSortableList = <T,>(
   }
 
   const removeKey = useCallback((key: string) => {
-    orderedKeysRef.current = orderedKeysRef.current.filter(k => k !== key);
+    const keys = orderedKeysRef.current;
+    const idx = keys.indexOf(key);
+    if (idx >= 0) keys.splice(idx, 1);
     recomputeAllShifts();
   }, []);
 
