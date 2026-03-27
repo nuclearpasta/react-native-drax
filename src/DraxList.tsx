@@ -999,8 +999,8 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
                 : getItemSpan
                   ? dims?.height
                   : undefined;
-              // flex:1 only for mixed-size grids (getItemSpan provided)
-              const fillStyle = getItemSpan ? { flex: 1 } : undefined;
+              // flex:1 for mixed-size grids (cells have explicit height from packGrid)
+              const fillStyle = getItemSpan && numColumns > 1 ? { flex: 1 } : undefined;
 
               return (
                 <RecycledCell
