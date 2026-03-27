@@ -20,8 +20,8 @@ interface Example {
 const EXAMPLES: Example[] = [
   {
     route: '/reorderable-list',
-    title: 'Reorderable List',
-    subtitle: 'DraxList with drag-and-drop reorder',
+    title: 'Reorderable List (5000)',
+    subtitle: '5000 items with cell recycling + reorder',
     icon: 'format-list-bulleted',
     sourceFile: 'reorderable-list.tsx',
     docsSlug: 'reorderable-list',
@@ -57,14 +57,6 @@ const EXAMPLES: Example[] = [
     icon: 'view-column',
     sourceFile: 'cross-list.tsx',
     docsSlug: 'cross-list',
-  },
-  {
-    route: '/stress-test',
-    title: 'Stress Test (5000)',
-    subtitle: '5000 items with cell recycling + reorder',
-    icon: 'speedometer',
-    sourceFile: 'stress-test.tsx',
-    docsSlug: 'stress-test',
   },
   {
     route: '/color-drag-drop',

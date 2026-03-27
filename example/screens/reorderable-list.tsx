@@ -26,7 +26,7 @@ const makeData = (count: number) =>
 type Item = ReturnType<typeof makeData>[number];
 
 export default function ReorderableList() {
-  const [data, setData] = useState(() => makeData(30));
+  const [data, setData] = useState(() => makeData(5000));
   const { theme, isDark } = useTheme();
   let nextId = data.length;
 
@@ -67,9 +67,7 @@ export default function ReorderableList() {
           animationConfig="spring"
           longPressDelay={200}
           onReorder={({ data: newData }) => setData(newData)}
-          renderItem={({ item, index }) => {
-            if (index < 3) console.log(`[renderItem] ${item.label} height=${item.height} type=${typeof item.height}`);
-            return (
+          renderItem={({ item, index }) => (
               <View style={[styles.item, {
                 height: item.height,
                 backgroundColor: itemColor(item.color, isDark),
@@ -81,8 +79,7 @@ export default function ReorderableList() {
                   #{index} · {item.height}px
                 </Text>
               </View>
-            );
-          }}
+          )}
           style={styles.list}
         />
       </View>
