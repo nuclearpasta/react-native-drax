@@ -36,6 +36,8 @@ interface RecycledCellProps {
   /** Pre-computed spring config (stable ref from useMemo). Null = use withTiming. */
   springConfig: SpringConfig | null;
   shiftDuration: number;
+  /** Style applied to non-dragged items while a drag is active. */
+  inactiveItemStyle?: Record<string, unknown>;
   /** Register this cell's shift SV with the parent hook for targeted writes. */
   registerCellShift: (key: string, sv: SharedValue<Position>) => void;
   unregisterCellShift: (key: string) => void;
@@ -53,6 +55,7 @@ export const RecycledCell = memo(({
   skipShiftAnimationSV,
   springConfig,
   shiftDuration,
+  inactiveItemStyle,
   registerCellShift,
   unregisterCellShift,
   children,
@@ -85,6 +88,8 @@ export const RecycledCell = memo(({
 
     const shift = shiftSV.value; // Direct atomic read — no full-record lookup
     const isDragged = draggedKeySV.value === itemKey && hoverReadySV.value;
+    const dragActive = draggedKeySV.value !== '';
+    const isInactive = dragActive && !isDragged;
     const shiftX = shift.x;
     const shiftY = shift.y;
 
@@ -93,6 +98,7 @@ export const RecycledCell = memo(({
       return {
         opacity: isDragged ? 0 : 1,
         transform: [{ translateX: shiftX }, { translateY: shiftY }],
+        ...(isInactive && inactiveItemStyle ? inactiveItemStyle : {}),
       };
     }
 
@@ -106,6 +112,7 @@ export const RecycledCell = memo(({
     return {
       opacity: isDragged ? 0 : 1,
       transform: [{ translateX: animatedX }, { translateY: animatedY }],
+      ...(isInactive && inactiveItemStyle ? inactiveItemStyle : {}),
     };
   });
 
