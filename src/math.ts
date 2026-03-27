@@ -259,6 +259,9 @@ export interface GridPackResult {
   positions: { row: number; col: number }[];
   /** Total number of rows in the packed grid */
   totalRows: number;
+  /** Flat cell→owner map: cellOwners[row * numColumns + col] = display index of the
+   *  item occupying that cell, or -1 if empty. Length = totalRows * numColumns. */
+  cellOwners: number[];
 }
 
 /**
@@ -279,14 +282,15 @@ export function packGrid(
   numColumns: number,
   getSpan: (index: number) => GridItemSpan,
 ): GridPackResult {
-  // Dynamic 2D occupancy grid — rows are added as needed
-  const occupied: boolean[][] = [];
+  // Dynamic 2D occupancy grid — rows added as needed.
+  // Each cell stores the display index of the item occupying it, or -1 if empty.
+  const occupied: number[][] = [];
   const positions: { row: number; col: number }[] = [];
   let maxRow = 0;
 
   function ensureRow(row: number) {
     while (occupied.length <= row) {
-      occupied.push(new Array<boolean>(numColumns).fill(false));
+      occupied.push(new Array<number>(numColumns).fill(-1));
     }
   }
 
@@ -295,17 +299,17 @@ export function packGrid(
     for (let r = row; r < row + rs; r++) {
       ensureRow(r);
       for (let c = col; c < col + cs; c++) {
-        if (occupied[r]![c]) return false;
+        if (occupied[r]![c]! >= 0) return false;
       }
     }
     return true;
   }
 
-  function markOccupied(row: number, col: number, cs: number, rs: number) {
+  function markOccupied(row: number, col: number, cs: number, rs: number, ownerIndex: number) {
     for (let r = row; r < row + rs; r++) {
       ensureRow(r);
       for (let c = col; c < col + cs; c++) {
-        occupied[r]![c] = true;
+        occupied[r]![c] = ownerIndex;
       }
     }
     maxRow = Math.max(maxRow, row + rs - 1);
@@ -320,7 +324,7 @@ export function packGrid(
       ensureRow(r);
       for (let c = 0; c <= numColumns - cs; c++) {
         if (isAvailable(r, c, cs, rs)) {
-          markOccupied(r, c, cs, rs);
+          markOccupied(r, c, cs, rs, i);
           positions.push({ row: r, col: c });
           placed = true;
           break;
@@ -329,5 +333,15 @@ export function packGrid(
     }
   }
 
-  return { positions, totalRows: count > 0 ? maxRow + 1 : 0 };
+  // Flatten 2D occupancy grid to 1D cellOwners array
+  const totalRows = count > 0 ? maxRow + 1 : 0;
+  const cellOwners = new Array<number>(totalRows * numColumns);
+  for (let r = 0; r < totalRows; r++) {
+    const row = occupied[r]!;
+    for (let c = 0; c < numColumns; c++) {
+      cellOwners[r * numColumns + c] = row[c]!;
+    }
+  }
+
+  return { positions, totalRows, cellOwners };
 }

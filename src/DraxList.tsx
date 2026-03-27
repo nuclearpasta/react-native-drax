@@ -291,9 +291,11 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
   // ── Container layout ──
   const handleContainerLayout = useCallback(
     (event: LayoutChangeEvent) => {
-      const { width, height } = event.nativeEvent.layout;
+      const { width, height, x, y } = event.nativeEvent.layout;
       const cw = horizontal ? height : width;
       int.containerWidthRef.current = cw;
+      // ScrollView's offset within the monitoring DraxView (accounts for padding)
+      int.scrollContainerOffsetRef.current = { x, y };
       int.recomputeBasePositionsAndClearShifts();
       // Rebind cells with new positions (grid positions change after container measured)
       updateVisibleCells(int.scrollOffsetSV.value);
@@ -540,6 +542,17 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       // Sync to worklet SVs for UI-thread slot detection
       int.syncRefsToWorklet();
 
+      // For mixed-size grids: set hover dimensions from computed cell size.
+      // The default hover auto-sizes from DraxView measurements, but flex:1 items
+      // may have stale measurements if the cell was recently recycled. The computed
+      // dimensions from packGrid are always authoritative.
+      if (getItemSpan && numColumns > 1) {
+        const dims = int.itemDimensionsRef.current.get(itemKey);
+        if (dims) {
+          hoverDimsSV.value = { x: dims.width, y: dims.height };
+        }
+      }
+
       // Fire user callback
       onDragStartProp?.({ index: originalIndex, item: item as T });
 
@@ -589,6 +602,9 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     [
       int,
       keyExtractor,
+      getItemSpan,
+      numColumns,
+      hoverDimsSV,
       renderDropIndicator,
       dropIndicatorPositionSV,
       dropIndicatorVisibleSV,
@@ -694,12 +710,13 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       } else {
         // JS handles slot detection + shifts (grids, or no worklet)
         const scrollOffset = int.scrollOffsetSV.value;
+        const scOffset = int.scrollContainerOffsetRef.current;
         const contentX =
-          absPos.x - containerMeas.x + (horizontal ? scrollOffset : 0);
+          absPos.x - containerMeas.x - scOffset.x + (horizontal ? scrollOffset : 0);
         const contentY =
-          absPos.y - containerMeas.y + (horizontal ? 0 : scrollOffset);
+          absPos.y - containerMeas.y - scOffset.y + (horizontal ? 0 : scrollOffset);
         targetSlot = int.getSlotFromPosition(contentX, contentY);
-        if (targetSlot !== int.currentSlotRef.current) {
+        if (targetSlot >= 0 && targetSlot !== int.currentSlotRef.current) {
           const prevSize = int.totalContentSizeRef.current;
           gridResult = int.recomputeShiftsForReorder(dragKey, targetSlot);
           int.currentSlotRef.current = targetSlot;
@@ -836,13 +853,16 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         visualY = basePos.y + (shift?.y ?? 0);
       }
 
+      const scOffset = int.scrollContainerOffsetRef.current;
       return {
         x:
           containerMeas.x +
+          scOffset.x +
           visualX -
           (horizontal ? int.scrollOffsetSV.value : 0),
         y:
           containerMeas.y +
+          scOffset.y +
           visualY -
           (horizontal ? 0 : int.scrollOffsetSV.value),
       };

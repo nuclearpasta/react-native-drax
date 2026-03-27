@@ -47,7 +47,7 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 ### Mixed-Size Grid (Non-Uniform Spans)
 
 - `getItemSpan` prop on `useSortableList` — returns `{ colSpan, rowSpan }` per item
-- `packGrid` utility — bin-packing algorithm placing items left-to-right, top-to-bottom into a 2D occupancy grid
+- `packGrid` utility — bin-packing algorithm placing items left-to-right, top-to-bottom into a 2D occupancy grid. Returns `cellOwners` flat array for O(1) cell→item lookup during drag.
 - Grid geometry (cell size + gaps) derived automatically from item measurements
 - `computeShiftsForOrder` uses `packGrid` to compute target positions for non-uniform items
 - `getSlotFromPosition` maps finger position to grid cell, then to display index via cell→owner map

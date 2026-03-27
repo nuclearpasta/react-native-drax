@@ -89,6 +89,8 @@ export interface SortableListInternal<T> {
   itemCrossAxisRef: React.RefObject<Map<string, number>>;
   totalContentSizeRef: React.RefObject<number>;
   containerMeasRef: React.RefObject<{ x: number; y: number; width: number; height: number } | undefined>;
+  /** ScrollView's position within the monitoring DraxView (accounts for padding). */
+  scrollContainerOffsetRef: React.RefObject<Position>;
   containerWidthRef: React.RefObject<number>;
   dataRef: React.RefObject<T[]>;
   keyExtractorRef: React.RefObject<(item: unknown, index: number) => string>;
@@ -204,6 +206,7 @@ export const useSortableList = <T,>(
   const itemCrossAxisRef = useRef<Map<string, number>>(new Map());
   const totalContentSizeRef = useRef(0);
   const containerMeasRef = useRef<{ x: number; y: number; width: number; height: number } | undefined>(undefined);
+  const scrollContainerOffsetRef = useRef<Position>({ x: 0, y: 0 });
   const containerWidthRef = useRef(0);
   const dataRef = useRef<T[]>(externalData);
   const keyToIndexRef = useRef<Map<string, number>>(new Map());
@@ -336,6 +339,16 @@ export const useSortableList = <T,>(
   }
 
 
+  // ── Gap layout for mixed-size grid slot detection (virtual slot approach) ──
+  // At drag start, pack grid WITHOUT the dragged item. This "gap layout" is frozen
+  // for the entire drag. Finger → gap cell → item key → insertion index.
+  // Because the gap layout never changes, same finger position = same result = no oscillation.
+  const frozenGapCellKeyMapRef = useRef<string[]>([]);
+  const frozenGapKeyToIndexRef = useRef<Map<string, number>>(new Map());
+  const frozenGapGeometryRef = useRef<{
+    cellSize: number; gap: number; numColumns: number; totalRows: number;
+  } | null>(null);
+
   // ── Drag state refs ──
   const isDraggingRef = useRef(false);
   const dragStartIndexRef = useRef(0);
@@ -388,7 +401,10 @@ export const useSortableList = <T,>(
       }
 
       const totalH = packing.totalRows * (cellSize + gap) - gap;
-      return { positions, dimensions, totalHeight: totalH };
+      return {
+        positions, dimensions, totalHeight: totalH,
+        cellOwners: packing.cellOwners, gridTotalRows: packing.totalRows,
+      };
     }
 
     if (numColumns > 1 && cw > 0) {
@@ -491,21 +507,67 @@ export const useSortableList = <T,>(
   // ── Slot detection (frozen boundaries) ──
 
   const frozenKeysRef = useRef<string[]>([]);
+  const frozenDragKeyRef = useRef('');
   const freezeSlotBoundaries = useCallback(() => {
     const keys = orderedKeysRef.current;
-    // Skip if keys haven't changed since last freeze (avoids redundant computeGridPositions)
-    if (keys === frozenKeysRef.current && frozenBoundariesRef.current.length > 0) return;
-    frozenKeysRef.current = keys;
+    const currentDragKey = draggedKeySV.value;
+    const keysUnchanged = keys === frozenKeysRef.current && frozenBoundariesRef.current.length > 0;
+    const dragKeyUnchanged = currentDragKey === frozenDragKeyRef.current;
+    // Skip boundaries recomputation if keys unchanged; always recompute gap layout if drag key changed
+    if (keysUnchanged && dragKeyUnchanged) return;
 
-    const result = computeGridPositions(keys);
-    const boundaries = keys.map(key => {
-      const pos = result.positions.get(key) ?? { x: 0, y: 0 };
-      const dim = result.dimensions.get(key) ?? { width: 0, height: estimatedItemSize };
-      return { key, x: pos.x, y: pos.y, width: dim.width, height: dim.height };
-    });
-    frozenBoundariesRef.current = boundaries;
-    frozenBoundariesSV.value = boundaries; // Sync to UI thread for worklet slot detection
-  }, [estimatedItemSize, horizontal]);
+    // Recompute boundaries only when keys changed (not just drag key)
+    if (!keysUnchanged) {
+      frozenKeysRef.current = keys;
+      const result = computeGridPositions(keys);
+      const boundaries = keys.map(key => {
+        const pos = result.positions.get(key) ?? { x: 0, y: 0 };
+        const dim = result.dimensions.get(key) ?? { width: 0, height: estimatedItemSize };
+        return { key, x: pos.x, y: pos.y, width: dim.width, height: dim.height };
+      });
+      frozenBoundariesRef.current = boundaries;
+      frozenBoundariesSV.value = boundaries; // Sync to UI thread for worklet slot detection
+    }
+
+    // Virtual slot: pack grid WITHOUT the dragged item to create a stable "gap layout."
+    // Recomputed when keys OR drag key changes (different item picked up).
+    frozenDragKeyRef.current = currentDragKey;
+    const spanFn = getItemSpanRef.current;
+    if (spanFn && numColumns > 1 && currentDragKey) {
+      const gapKeys = keys.filter(k => k !== currentDragKey);
+      const data = dataRef.current;
+      const keyMap = keyToIndexRef.current;
+      const gapPacking = packGrid(gapKeys.length, numColumns, (i) => {
+        const key = gapKeys[i]!;
+        const idx = keyMap.get(key);
+        if (idx !== undefined && data[idx] !== undefined) {
+          return spanFn(data[idx]!, idx);
+        }
+        return { colSpan: 1, rowSpan: 1 };
+      });
+
+      const cw = containerWidthRef.current;
+      const cellSize = cw > 0
+        ? (cw - gridGap * (numColumns - 1)) / numColumns
+        : estimatedItemSize;
+      frozenGapGeometryRef.current = {
+        cellSize, gap: gridGap, numColumns, totalRows: gapPacking.totalRows,
+      };
+
+      // Build cell → key map from gap packing
+      const gapCellKeyMap = new Array<string>(gapPacking.cellOwners.length);
+      for (let i = 0; i < gapPacking.cellOwners.length; i++) {
+        const ownerIdx = gapPacking.cellOwners[i]!;
+        gapCellKeyMap[i] = ownerIdx >= 0 && ownerIdx < gapKeys.length ? gapKeys[ownerIdx]! : '';
+      }
+      frozenGapCellKeyMapRef.current = gapCellKeyMap;
+
+      // Build key → insertion index map for O(1) lookup
+      const keyToIdx = new Map<string, number>();
+      gapKeys.forEach((k, i) => keyToIdx.set(k, i));
+      frozenGapKeyToIndexRef.current = keyToIdx;
+    }
+  }, [estimatedItemSize, horizontal, gridGap, numColumns]);
 
   const getSlotFromPosition = useCallback((contentX: number, contentY: number): number => {
     const boundaries = frozenBoundariesRef.current;
@@ -514,7 +576,46 @@ export const useSortableList = <T,>(
     }
 
     if (numColumns > 1) {
-      // 2D grid: find nearest slot by distance to center
+      // Mixed-size grid: virtual slot detection via frozen gap layout.
+      // The gap layout (pack WITHOUT dragged item) is computed once at drag start.
+      // Finger → gap cell → item key → insertion index. Frozen = no oscillation.
+      const gapCellKeyMap = frozenGapCellKeyMapRef.current;
+      const gapKeyToIndex = frozenGapKeyToIndexRef.current;
+      const geo = frozenGapGeometryRef.current;
+      if (gapCellKeyMap.length > 0 && geo && gapKeyToIndex.size > 0) {
+        const step = geo.cellSize + geo.gap;
+        const fingerCol = Math.max(0, Math.min(Math.floor(contentX / step), geo.numColumns - 1));
+        const fingerRow = Math.max(0, Math.min(Math.floor(contentY / step), geo.totalRows - 1));
+
+        // Look up the key at the finger's cell in the gap layout
+        let targetKey = gapCellKeyMap[fingerRow * geo.numColumns + fingerCol] || '';
+
+        // Empty cell in gap layout — spiral outward for nearest occupied cell
+        if (!targetKey) {
+          for (let radius = 1; radius <= Math.max(geo.totalRows, geo.numColumns); radius++) {
+            let found = false;
+            for (let dr = -radius; dr <= radius && !found; dr++) {
+              for (let dc = -radius; dc <= radius && !found; dc++) {
+                if (Math.abs(dr) !== radius && Math.abs(dc) !== radius) continue;
+                const nr = fingerRow + dr;
+                const nc = fingerCol + dc;
+                if (nr < 0 || nr >= geo.totalRows || nc < 0 || nc >= geo.numColumns) continue;
+                const k = gapCellKeyMap[nr * geo.numColumns + nc] || '';
+                if (k) { targetKey = k; found = true; }
+              }
+            }
+            if (targetKey) break;
+          }
+        }
+
+        if (!targetKey) return -1;
+
+        // Convert gap key → insertion index (position in the post-removal array)
+        const insertionIdx = gapKeyToIndex.get(targetKey);
+        return insertionIdx !== undefined ? insertionIdx : -1;
+      }
+
+      // Uniform grid (no getItemSpan): find nearest slot by distance to center
       let bestIdx = 0;
       let bestDist = Infinity;
       for (let i = 0; i < boundaries.length; i++) {
@@ -682,6 +783,9 @@ export const useSortableList = <T,>(
     if (result.totalHeight > totalContentSizeRef.current) {
       totalContentSizeRef.current = result.totalHeight;
     }
+    // NOTE: Do NOT rebuild frozenCellOwnersRef/frozenBoundariesRef here.
+    // Frozen geometry must stay frozen for the entire drag to prevent oscillation.
+    // The cell→key map from freezeSlotBoundaries provides stable slot detection.
     return result;
   }, [reorderStrategy, shiftsSV]);
 
@@ -796,6 +900,7 @@ export const useSortableList = <T,>(
     itemCrossAxisRef,
     totalContentSizeRef,
     containerMeasRef,
+    scrollContainerOffsetRef,
     containerWidthRef,
     dataRef,
     keyExtractorRef,
