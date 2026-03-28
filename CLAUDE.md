@@ -10,6 +10,29 @@ Drag-and-drop framework for React Native (iOS, Android, Web). v1.0.0 — major r
 - Latest React features.
 - **New Architecture (Fabric)**: `useLayoutEffect` + `measure()` is synchronous (JSI SyncCallback). Measurement and state updates happen in a single commit before paint — no intermediate states visible to users. Use `useLayoutEffect` + `ref.measure()` instead of `onLayout` for item measurement. Reference: https://reactnative.dev/architecture/landing-page#synchronous-layout-and-effects
 
+### Code Organization
+
+```
+src/
+├── types/           ← All shared type definitions
+│   ├── core.ts      — Geometry, phases, enums, collision, spatial, registration
+│   ├── events.ts    — Event data interfaces, snap types
+│   ├── view.ts      — DraxView props, render props, styles
+│   ├── provider.ts  — Context, registry, provider, scroll types
+│   ├── sortable.ts  — Sortable config, animation presets, item payload
+│   └── index.ts     — Barrel re-export (import from '../types' resolves here)
+├── hooks/           ← All React hooks (barrel: hooks/index.ts)
+├── compat/          ← Gesture Handler version compatibility
+├── DraxList.tsx     — Custom recycling list with drag-and-drop
+├── DraxView.tsx     — Core draggable/receptive view
+├── DraxProvider.tsx — Root provider (context + spatial index)
+├── math.ts          — Geometry utilities, grid/flex packing
+└── params.ts        — Animation presets, default constants
+```
+
+- **Type ownership**: Shared types live in `types/`. Hook-local types (e.g., `SortableListInternal` in `useSortableList.ts`, `SortableWorkletConfig` in `useDragGesture.ts`) stay co-located with their hook. Component props (e.g., `DraxListProps`) stay in their component file.
+- **Public API**: `src/index.ts` re-exports public components, hooks, utilities, and types. Hook-specific types (`SortableReorderEvent`, `SortableListHandle`, etc.) are exported from their hook files, not from `types/`.
+
 
 ## Sortable Architecture
 

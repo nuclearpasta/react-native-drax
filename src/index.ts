@@ -43,6 +43,7 @@ export type {
   DraxRenderContentProps,
   DraxRenderHoverContentProps,
   DraxStyleProp,
+  AnimatedViewStylePropWithoutLayout,
   DraxViewStyleProps,
   DraxViewRenderContent,
   DraxViewRenderHoverContent,
