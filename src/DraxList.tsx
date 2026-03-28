@@ -187,20 +187,11 @@ const MeasuredContent = memo(({
   // https://reactnative.dev/architecture/landing-page#synchronous-layout-and-effects
   // key={itemKey} forces remount on recycle → useLayoutEffect fires → guaranteed measurement.
   useLayoutEffect(() => {
-    console.log(`[EFFECT] useLayoutEffect fired key=${itemKey} skip=${skipMeasurement} hasRef=${!!ref.current}`);
     if (skipMeasurement) return;
-    if (!ref.current) {
-      console.log(`[MEASURE] ref null for key=${itemKey}`);
-      return;
-    }
-    const hasMeasure = typeof ref.current.measure === 'function';
-    if (!hasMeasure) {
-      console.log(`[MEASURE] NO measure() on ref for key=${itemKey}, type=${typeof ref.current}`);
-      return;
-    }
+    if (!ref.current) return;
+    if (typeof ref.current.measure !== 'function') return;
     ref.current.measure((_x: number, _y: number, width: number, height: number) => {
       const primary = horizontal ? width : height;
-      console.log(`[MEASURE] key=${itemKey} w=${width} h=${height} primary=${primary}`);
       if (primary > 0) {
         onMeasure(itemKey, primary);
         onCellHeight.current.set(cellKey, primary);
@@ -437,7 +428,6 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       const isDragging = int.isDraggingRef.current || int.isDraggingSV.value;
       const shiftsEmpty = Object.keys(int.shiftsSV.value).length === 0;
       if (isDragging) {
-        console.log(`[MEASURE] DURING DRAG key=${itemKey} h=${height.toFixed(1)}`);
         int.itemHeightsSV.value = {
           ...int.itemHeightsSV.value,
           [itemKey]: height,
@@ -445,8 +435,6 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       } else if (shiftsEmpty) {
         int.recomputeBasePositions();
         forceRender();
-      } else {
-        console.log(`[MEASURE] SKIPPED (shifts active) key=${itemKey} h=${height.toFixed(1)}`);
       }
     },
     [int]
@@ -582,12 +570,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         int.recomputeBasePositions();
       }
 
-      if (proactiveMeasured) {
-        console.log(`[VISIBLE] proactive recompute, totalContent=${int.totalContentSizeRef.current.toFixed(0)}`);
-      }
-
       if (changed) {
-        console.log(`[VISIBLE] rebind: ${currentMap.size} cells, scroll=${scrollOffset.toFixed(0)}, isDrag=${isDragging}, visibleKeys=${visibleKeys.size}`);
         const newBindings: CellBinding[] = [];
         for (const [itemKey, cellKey] of currentMap.entries()) {
           newBindings.push({ cellKey, itemKey });
@@ -622,6 +605,13 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       dropIndicatorVisibleSV.value = false;
       dropIndicatorInfoRef.current = undefined;
     }
+
+    // Echo: parent echoed back our committed reorder. Bases + shifts already handled above.
+    // Skip updateVisibleCells (bindings unchanged) + forceRender (main perf win).
+    const isEcho = int.echoSkipRef.current;
+    int.echoSkipRef.current = false;
+    if (isEcho) return;
+
     // Reset scroll delta tracking (positions/data just changed)
     lastProcessedOffsetRef.current = int.scrollOffsetSV.value;
     updateVisibleCells(int.scrollOffsetSV.value);
@@ -703,7 +693,6 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       if (item === undefined) return;
 
       const itemKey = keyExtractor(item, originalIndex);
-      console.log(`[DRAG START] key=${itemKey} idx=${originalIndex} scroll=${int.scrollOffsetSV.value.toFixed(0)} totalContent=${int.totalContentSizeRef.current.toFixed(0)} cells=${bindingMapRef.current.size} shifts=${Object.keys(int.shiftsSV.value).length}`);
       int.skipShiftAnimationSV.value = false; // Re-enable shift animations for this drag
       int.isDraggingRef.current = true;
       int.draggedKeySV.value = itemKey;
@@ -995,19 +984,14 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
 
     // During cross-container transfer, board handles snap target
     if (boardContext?.transferRef?.current) {
-      console.log(`[DRAG END] skipped: cross-container transfer`);
       return; // void — let board's snap target stand
     }
 
-    if (!int.isDraggingRef.current) {
-      console.log(`[DRAG END] skipped: isDragging=false`);
-      return;
-    }
+    if (!int.isDraggingRef.current) return;
 
     const dragKey = int.draggedKeySV.value;
     const basePos = int.basePositionsRef.current.get(dragKey);
     const containerMeas = int.containerMeasRef.current;
-    console.log(`[DRAG END] key=${dragKey} hasBasePos=${!!basePos} hasContainerMeas=${!!containerMeas} scroll=${int.scrollOffsetSV.value.toFixed(0)}`);
 
     if (basePos && containerMeas) {
       let visualX: number;
@@ -1047,7 +1031,6 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       const scrollOff = int.scrollOffsetSV.value;
       const snapX = containerMeas.x + scOffset.x + visualX - (horizontal ? scrollOff : 0);
       const snapY = containerMeas.y + scOffset.y + visualY - (horizontal ? 0 : scrollOff);
-      console.log(`[DRAG END] SNAP target: visualY=${visualY.toFixed(0)} scroll=${scrollOff.toFixed(0)} containerY=${containerMeas.y.toFixed(0)} avgH=${(int.measuredAvgHeightRef?.current ?? 0).toFixed(1)} snapY=${snapY.toFixed(0)} baseY=${basePos.y.toFixed(0)}`);
       return { x: snapX, y: snapY };
     }
 

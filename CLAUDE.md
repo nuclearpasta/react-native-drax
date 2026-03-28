@@ -20,7 +20,7 @@ Drag-and-drop framework for React Native (iOS, Android, Web). v1.0.0 — major r
 - Map-based measurements (keyed by item key) instead of array-indexed
 - Supports insert + swap reorder strategies
 - Drop indicator support: `SortableContainer` tracks target position via SharedValues, renders indicator at insertion point
-- **Data ownership**: Library commits reorders internally via `commitReorder`. `onReorder` is a notification — parent stores data but library already committed it. When parent echoes data back, useLayoutEffect detects the match and skips (no double-render).
+- **Data ownership**: Library commits reorders internally via `commitReorder` — updates `dataRef`, `keyToIndexRef`, and `orderedKeysRef`. `onReorder` is a notification only — parent stores data for persistence, but the library already committed the visual state. When parent echoes data back (same array reference from `event.data`), the data sync detects the match via `awaitingEchoRef` and skips `forceRender` + `updateVisibleCells` (no double-render). Bases are still recomputed + shifts cleared for touch correctness, but the expensive second React render is eliminated.
 
 ### Animation Customization
 

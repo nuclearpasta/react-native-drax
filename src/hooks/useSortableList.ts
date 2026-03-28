@@ -164,6 +164,8 @@ export interface SortableListInternal<T> {
   frozenBoundariesRef: React.RefObject<SlotBoundary[]>;
   /** Set during render when cross-container adds new keys. DraxList clears shifts in useLayoutEffect. */
   pendingShiftClearRef: React.RefObject<boolean>;
+  /** Set during render when parent echoes back committed reorder. DraxList skips forceRender. */
+  echoSkipRef: React.RefObject<boolean>;
 
   // ── Layout engine ──
   /** Record a measured height and update the running average for unmeasured items. */
@@ -381,6 +383,10 @@ export const useSortableList = <T,>(
   const frozenBoundariesRef = useRef<SlotBoundary[]>([]);
   /** Set during render when cross-container adds new keys. Cleared in useLayoutEffect. */
   const pendingShiftClearRef = useRef(false);
+  /** Set during render when parent echoes back committed reorder. DraxList skips forceRender. */
+  const echoSkipRef = useRef(false);
+  /** Holds the committed data array from commitReorder for reference-equality echo detection. */
+  const awaitingEchoRef = useRef<T[] | null>(null);
 
   // ── Layout helpers ──
 
@@ -521,7 +527,6 @@ export const useSortableList = <T,>(
       measuredCountRef.current++;
       const n = measuredCountRef.current;
       measuredAvgHeightRef.current += (height - measuredAvgHeightRef.current) / n;
-      if (n <= 5 || n % 50 === 0) console.log(`[RECORD] n=${n} key=${key} h=${height} avgH=${measuredAvgHeightRef.current.toFixed(1)}`);
     } else if (Math.abs(prev - height) > 0.5) {
       // Height changed — adjust running average (subtract old, add new)
       const n = measuredCountRef.current;
@@ -564,7 +569,6 @@ export const useSortableList = <T,>(
   const prevExternalDataRef = useRef(externalData);
   if (externalData !== prevExternalDataRef.current) {
     prevExternalDataRef.current = externalData;
-    dataRef.current = externalData;
 
     // Single loop: build both key→index map and ordered keys array
     const map = new Map<string, number>();
@@ -577,9 +581,26 @@ export const useSortableList = <T,>(
         map.set(k, i);
       }
     }
+
+    // ── Echo detection ──
+    // When commitReorder fires, it saves the reordered array in awaitingEchoRef.
+    // If the parent echoes back that exact array (reference equality), skip the
+    // expensive forceRender — the library already committed internally.
+    const isEcho = awaitingEchoRef.current !== null && externalData === awaitingEchoRef.current;
+    awaitingEchoRef.current = null;
+
+    // Always sync data source + key map
+    dataRef.current = externalData;
     keyToIndexRef.current = map;
 
-    if (!isDraggingRef.current) {
+    if (isEcho) {
+      // Library already committed order. orderedKeysRef is correct.
+      // Still recompute bases + clear shifts for Yoga touch hit-testing.
+      // echoSkipRef tells DraxList to skip forceRender (main perf win).
+      recomputeBasePositions();
+      pendingShiftClearRef.current = true;
+      echoSkipRef.current = true;
+    } else if (!isDraggingRef.current) {
       orderedKeysRef.current = keys;
 
       // Recompute base positions EAGERLY during render so cells in THIS commit
@@ -591,11 +612,6 @@ export const useSortableList = <T,>(
       pendingShiftClearRef.current = true;
     }
   }
-
-  // No flush needed. Base positions (top) stay frozen. Shifts are permanent.
-  // Visual is always correct: top + shift = correct position.
-  // Touch is correct because keyToIndexRef is synced eagerly.
-  // Next drag starts from committed shifts (via orderedKeysRef + frozen boundaries).
 
   // ── (recomputeBasePositions defined above as function, before sync block) ──
 
@@ -1011,11 +1027,22 @@ export const useSortableList = <T,>(
     const fromItem = currentData[fromIndex];
     const toItem = currentData[toIndex];
 
+    // ── Internal commit: library owns the data ──
+    // Update dataRef + keyToIndexRef so the library is self-sufficient.
+    // When the parent echoes this array back, data sync detects the reference match and skips.
+    dataRef.current = reorderedData;
+    const newKeyToIndex = new Map<string, number>();
+    for (let i = 0; i < keys.length; i++) {
+      newKeyToIndex.set(keys[i]!, i);
+    }
+    keyToIndexRef.current = newKeyToIndex;
+    awaitingEchoRef.current = reorderedData;
+
     // Clear drag state
     isDraggingRef.current = false;
     draggedKeySV.value = '';
 
-    // Fire notification — parent stores data, visual already correct
+    // Notification — parent stores data for persistence, library already committed
     if (fromItem !== undefined && toItem !== undefined) {
       onReorder({
         data: reorderedData,
@@ -1083,6 +1110,7 @@ export const useSortableList = <T,>(
     currentSlotRef,
     frozenBoundariesRef,
     pendingShiftClearRef,
+    echoSkipRef,
     recordItemHeight,
     computeGridPositions,
     recomputeBasePositions,
