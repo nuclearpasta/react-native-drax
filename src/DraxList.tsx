@@ -30,7 +30,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { runOnJS, runOnUI } from 'react-native-worklets';
+import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 import Reanimated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { DraxView } from './DraxView';
@@ -399,10 +399,10 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         : event.nativeEvent.contentOffset.y;
 
       // Always sync scrollOffset to UI thread (worklet needs accurate offset for slot detection)
-      runOnUI((_sv: typeof int.scrollOffsetSV, _v: number) => {
+      scheduleOnUI((_sv: typeof int.scrollOffsetSV, _v: number) => {
         'worklet';
         _sv.value = _v;
-      })(int.scrollOffsetSV, offset);
+      }, int.scrollOffsetSV, offset);
 
       // Track scroll velocity for asymmetric buffer distribution.
       // Uses actual last scroll offset (not lastProcessedOffset which only updates on threshold).
@@ -653,7 +653,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
 
     if (hoverClearDeferredRef.current) {
       hoverClearDeferredRef.current = false;
-      runOnUI(
+      scheduleOnUI(
         (
           _hoverReadySV: typeof hoverReadySV,
           _dragPhaseSV: typeof dragPhaseSV,
@@ -670,9 +670,8 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
           _hoverPositionSV.value = { x: 0, y: 0 };
           _hoverDimsSV.value = { x: 0, y: 0 };
           _isDragAllowedSV.value = true; // Unlock — all cleanup done, allow new drags
-          runOnJS(_setHoverContent)(null);
-        }
-      )(
+          scheduleOnRN(_setHoverContent, null);
+        },
         hoverReadySV,
         dragPhaseSV,
         draggedIdSV,
@@ -737,7 +736,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
 
       // Pre-populate drop indicator info + position for when first dragOver shows it.
       // DON'T set visible or forceRender here — that causes a race between
-      // draggedKeySV (immediate) and hoverReadySV (async via runOnUI), making the
+      // draggedKeySV (immediate) and hoverReadySV (async via scheduleOnUI), making the
       // cell flash visible for 1-2 frames before hover is ready.
       // The first onMonitorDragOver slot change will set visible + trigger re-render.
       if (renderDropIndicator) {
@@ -1327,8 +1326,9 @@ const DropIndicatorOverlay = <T,>({
     if (!visible) {
       return {
         position: 'absolute' as const,
-        left: rawLeft,
-        top: rawTop,
+        left: 0,
+        top: 0,
+        transform: [{ translateX: rawLeft }, { translateY: rawTop }],
         opacity: 0,
         pointerEvents: 'none' as const,
       };
@@ -1345,8 +1345,12 @@ const DropIndicatorOverlay = <T,>({
 
     return {
       position: 'absolute' as const,
-      left: springConfig ? withSpring(rawLeft, springConfig) : rawLeft,
-      top: springConfig ? withSpring(rawTop, springConfig) : rawTop,
+      left: 0,
+      top: 0,
+      transform: [
+        { translateX: springConfig ? withSpring(rawLeft, springConfig) : rawLeft },
+        { translateY: springConfig ? withSpring(rawTop, springConfig) : rawTop },
+      ],
       opacity: 1,
       pointerEvents: 'none' as const,
     };

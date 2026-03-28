@@ -6,7 +6,7 @@
  */
 import type { ReactNode } from 'react';
 import { useCallback, useRef } from 'react';
-// runOnUI/runOnJS no longer needed here — hover cleanup moved to DraxList
+// scheduleOnUI/scheduleOnRN no longer needed here — hover cleanup moved to DraxList
 import type { StyleProp, ViewStyle } from 'react-native';
 
 import { DraxView } from './DraxView';

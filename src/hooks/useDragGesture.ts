@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
-import { runOnJS } from 'react-native-worklets';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { useDraxPanGesture } from '../compat';
 import { computeAbsolutePositionWorklet, hitTestWorklet } from '../math';
@@ -9,7 +9,7 @@ import { useDraxContext } from './useDraxContext';
 
 /**
  * Creates a Pan gesture for a draggable DraxView.
- * Hit-testing runs entirely on the UI thread — zero runOnJS per frame
+ * Hit-testing runs entirely on the UI thread — zero scheduleOnRN per frame
  * unless the receiver changes.
  *
  * On RNGH v3, `enabledSV` and `longPressDelaySV` are SharedValues that
@@ -98,7 +98,7 @@ export const useDragGesture = (
       isDragAllowedSV.value = false; // Lock — released in onSnapComplete
 
       // Close the drag-start race window: set isDragging on the UI thread
-      // BEFORE runOnJS(handleDragStart). This prevents handleItemLayout from
+      // BEFORE scheduleOnRN(handleDragStart). This prevents handleItemLayout from
       // calling recomputeBasePositions + forceRender during the JS callback chain
       // (between gesture activation and onMonitorDragStart).
       if (sortableWorklet) {
@@ -159,7 +159,7 @@ export const useDragGesture = (
       rejectedReceiverIdSV.value = '';
 
       // Bounce to JS for callback dispatch + hover content setup
-      runOnJS(handleDragStart)(
+      scheduleOnRN(handleDragStart,
         id,
         { x: rootRelX, y: rootRelY },
         grabOffset
@@ -270,13 +270,14 @@ export const useDragGesture = (
       }
 
       // Pass static SVs as args to avoid cross-thread reads on JS thread.
-      // draggedIdSV and startPositionSV are set once in onActivate and never change during drag.
-      runOnJS(handleReceiverChange)(
+      // draggedIdSV, startPositionSV, grabOffsetSV are set once in onActivate and never change during drag.
+      scheduleOnRN(handleReceiverChange,
         oldReceiver,
         candidateReceiverId,
         hitTestPos,
         draggedIdSV.value,
         startPositionSV.value,
+        grabOffsetSV.value,
         result.monitorIds
       );
     },
@@ -309,14 +310,14 @@ export const useDragGesture = (
       receiverIdSV.value = '';
 
       // Bounce to JS for end callbacks + snap animation
-      runOnJS(handleDragEnd)(currentDraggedId, currentReceiverId, false, finalHitResult.monitorIds);
+      scheduleOnRN(handleDragEnd, currentDraggedId, currentReceiverId, false, finalHitResult.monitorIds);
     },
     onFinalize: (_event, didSucceed) => {
       'worklet';
 
       // If gesture was cancelled (not ended normally).
       // Check draggedIdSV (set in onActivate) instead of dragPhaseSV
-      // because phase is now set later in handleDragStart via runOnUI.
+      // because phase is now set later in handleDragStart via scheduleOnUI.
       if (!didSucceed && draggedIdSV.value !== '') {
         const currentDraggedId = draggedIdSV.value;
         const currentReceiverId = receiverIdSV.value;
@@ -336,7 +337,7 @@ export const useDragGesture = (
         dragPhaseSV.value = 'releasing';
         receiverIdSV.value = '';
 
-        runOnJS(handleDragEnd)(currentDraggedId, currentReceiverId, true, finalHitResult.monitorIds);
+        scheduleOnRN(handleDragEnd, currentDraggedId, currentReceiverId, true, finalHitResult.monitorIds);
       }
     },
   });

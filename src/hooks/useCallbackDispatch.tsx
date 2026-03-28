@@ -1,12 +1,11 @@
 import type { ReactNode, RefObject } from 'react';
 import { useRef } from 'react';
-import type { ViewStyle } from 'react-native';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import { withDelay, withTiming } from 'react-native-reanimated';
-import { runOnJS, runOnUI } from 'react-native-worklets';
+import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
-import type { FlattenedHoverStyles } from '../HoverLayer';
+import type { FlattenedHoverStyles } from '../types';
 import { computeAbsolutePositionWorklet, getRelativePosition } from '../math';
 import {
   defaultSnapbackDelay,
@@ -80,7 +79,7 @@ interface CallbackDispatchDeps {
 }
 
 /**
- * Provides JS-thread callback dispatch functions that are invoked via runOnJS
+ * Provides JS-thread callback dispatch functions that are invoked via scheduleOnRN
  * from gesture worklets. These handle ~5 calls per drag (start, receiver changes, end),
  * NOT per frame.
  */
@@ -108,19 +107,20 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
   const currentMonitorIdsRef = useRef<string[]>([]);
 
 
-  /** Build dragged view event data from current state */
+  /** Build dragged view event data. Position data is passed as params
+   *  (from the worklet) to avoid cross-thread SV.value reads on JS thread. */
   const buildDraggedViewData = (
     draggedId: string,
-    absolutePosition: Position
+    absolutePosition: Position,
+    startPosition: Position,
+    grabOffset: Position
   ): DraxEventDraggedViewData | undefined => {
     const entry = getViewEntry(draggedId);
     if (!entry) return undefined;
 
-    const startPos = startPositionSV.value;
-    const grabOffset = grabOffsetSV.value;
     const dragTranslation = {
-      x: absolutePosition.x - startPos.x,
-      y: absolutePosition.y - startPos.y,
+      x: absolutePosition.x - startPosition.x,
+      y: absolutePosition.y - startPosition.y,
     };
 
     const measurements = entry.measurements;
@@ -146,23 +146,24 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
         x: grabOffset.x / width,
         y: grabOffset.y / height,
       },
-      hoverPosition: hoverPositionSV.value,
+      hoverPosition: absolutePosition,
     };
   };
 
-  /** Build receiver view event data */
+  /** Build receiver view event data. Spatial entries + scroll offsets passed
+   *  as params (cached once per handler call) to avoid redundant SV.value reads. */
   const buildReceiverViewData = (
     receiverId: string,
-    absolutePosition: Position
+    absolutePosition: Position,
+    spatialEntries: SpatialEntry[],
+    scrollOffsets: Position[]
   ): DraxEventReceiverViewData | undefined => {
     const entry = getViewEntry(receiverId);
     if (!entry?.measurements) return undefined;
 
     // Compute absolute measurements of receiver
     const idx = entry.spatialIndex;
-    const entries = spatialIndexSV.value;
-    const offsets = scrollOffsetsSV.value;
-    const absPos = computeAbsolutePositionWorklet(idx, entries, offsets);
+    const absPos = computeAbsolutePositionWorklet(idx, spatialEntries, scrollOffsets);
     const absMeasurements: DraxViewMeasurements = {
       ...absPos,
       width: entry.measurements.width,
@@ -185,23 +186,22 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     };
   };
 
-  /** Called via runOnJS when drag starts */
+  /** Called via scheduleOnRN when drag starts.
+   *  absolutePosition IS the startPosition at drag start (set in onActivate). */
   const handleDragStart = (
     draggedId: string,
     absolutePosition: Position,
-    _grabOffset: Position
+    grabOffset: Position
   ) => {
     const draggedEntry = getViewEntry(draggedId);
     if (!draggedEntry) return;
 
-    const dragged = buildDraggedViewData(draggedId, absolutePosition);
+    // At drag start, absolutePosition === startPosition (both set from rootRelPos in onActivate)
+    const dragged = buildDraggedViewData(draggedId, absolutePosition, absolutePosition, grabOffset);
     if (!dragged) return;
 
-    const startPos = startPositionSV.value;
-    const dragTranslation = {
-      x: absolutePosition.x - startPos.x,
-      y: absolutePosition.y - startPos.y,
-    };
+    // At drag start, dragTranslation is always {0,0}
+    const dragTranslation = { x: 0, y: 0 };
 
     // Fire onDragStart callback
     draggedEntry.props.onDragStart?.({
@@ -215,15 +215,10 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     // actual content dimensions AFTER rendering. Board reads these for cross-orientation gaps.
     hoverDimsSV.value = { x: 0, y: 0 };
 
-    // Setup hover styles — set BEFORE setHoverContent so HoverLayer
-    // captures them when it re-renders on hoverVersion change.
-    deps.hoverStylesRef.current = {
-      hoverStyle: flattenOrNull(draggedEntry.props.hoverStyle),
-      hoverDraggingStyle: flattenOrNull(draggedEntry.props.hoverDraggingStyle),
-      hoverDraggingWithReceiverStyle: flattenOrNull(draggedEntry.props.hoverDraggingWithReceiverStyle),
-      hoverDraggingWithoutReceiverStyle: flattenOrNull(draggedEntry.props.hoverDraggingWithoutReceiverStyle),
-      hoverDragReleasedStyle: flattenOrNull(draggedEntry.props.hoverDragReleasedStyle),
-    };
+    // Use pre-flattened styles from registration — avoids 5 StyleSheet.flatten calls
+    // in the drag-start hot path. Set BEFORE setHoverContent so HoverLayer captures
+    // them when it re-renders.
+    deps.hoverStylesRef.current = draggedEntry.flattenedHoverStyles ?? null;
 
     // Setup hover content
     if (isDraggable(draggedEntry.props) && !draggedEntry.props.noHover) {
@@ -277,7 +272,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     currentMonitorIdsRef.current = [];
   };
 
-  /** Called via runOnJS on every gesture update for callback dispatch.
+  /** Called via scheduleOnRN on every gesture update for callback dispatch.
    *  Handles: enter/exit (on receiver change), onDragOver/onReceiveDragOver
    *  (continuous, same receiver), onDrag (continuous, no receiver), and monitors. */
   const handleReceiverChange = (
@@ -286,6 +281,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     absolutePosition: Position,
     draggedId: string,
     startPosition: Position,
+    grabOffset: Position,
     monitorIds?: string[]
   ) => {
 
@@ -307,8 +303,12 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       if (!hasOnDragOver && !hasOnReceiveDragOver && !hasOnDrag) return;
     }
 
-    const dragged = buildDraggedViewData(draggedId, absolutePosition);
+    const dragged = buildDraggedViewData(draggedId, absolutePosition, startPosition, grabOffset);
     if (!dragged) return;
+
+    // Cache spatial data once per handler call — avoids redundant cross-thread SV reads
+    const cachedSpatialEntries = spatialIndexSV.value;
+    const cachedScrollOffsets = scrollOffsetsSV.value;
 
     const draggedEntry = getViewEntry(draggedId);
     const draggedPayload = draggedEntry?.props.dragPayload ?? draggedEntry?.props.payload;
@@ -363,7 +363,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       // If rejected, tell the gesture worklet to skip this receiver on future frames.
       // Also clear receiverIdSV so animated styles don't flash the receiving state.
       if (!acceptedReceiverId) {
-        runOnUI((
+        scheduleOnUI((
           _receiverIdSV: typeof deps.receiverIdSV,
           _rejectedReceiverIdSV: typeof deps.rejectedReceiverIdSV,
           _rejectedId: string,
@@ -371,7 +371,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
           'worklet';
           _receiverIdSV.value = '';
           _rejectedReceiverIdSV.value = _rejectedId;
-        })(deps.receiverIdSV, deps.rejectedReceiverIdSV, newReceiverId);
+        }, deps.receiverIdSV, deps.rejectedReceiverIdSV, newReceiverId);
       }
     }
 
@@ -380,7 +380,9 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       const oldReceiverEntry = getViewEntry(oldReceiverId);
       const oldReceiverData = buildReceiverViewData(
         oldReceiverId,
-        absolutePosition
+        absolutePosition,
+        cachedSpatialEntries,
+        cachedScrollOffsets
       );
       if (oldReceiverEntry && oldReceiverData) {
         // Dragged view: onDragExit
@@ -403,7 +405,9 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       const newReceiverEntry = getViewEntry(acceptedReceiverId);
       const newReceiverData = buildReceiverViewData(
         acceptedReceiverId,
-        absolutePosition
+        absolutePosition,
+        cachedSpatialEntries,
+        cachedScrollOffsets
       );
       if (newReceiverEntry && newReceiverData) {
         // Dragged view: onDragEnter
@@ -424,7 +428,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     if (acceptedReceiverId && oldReceiverId === acceptedReceiverId) {
       // Dragging over the same receiver — fire onDragOver + onReceiveDragOver
       const receiverEntry = getViewEntry(acceptedReceiverId);
-      const receiverData = buildReceiverViewData(acceptedReceiverId, absolutePosition);
+      const receiverData = buildReceiverViewData(acceptedReceiverId, absolutePosition, cachedSpatialEntries, cachedScrollOffsets);
       if (receiverEntry && receiverData) {
         draggedEntry?.props.onDragOver?.({
           ...baseEventData,
@@ -445,7 +449,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
 
     // Build receiver data for monitor event payload (use accepted receiver, not raw hit-test)
     const receiverData = acceptedReceiverId
-      ? buildReceiverViewData(acceptedReceiverId, absolutePosition)
+      ? buildReceiverViewData(acceptedReceiverId, absolutePosition, cachedSpatialEntries, cachedScrollOffsets)
       : undefined;
 
     // Fire events on current monitors (start/enter before over)
@@ -504,10 +508,10 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     currentMonitorIdsRef.current = newMonitorIds;
 
     // Fire provider-level onDrag (use acceptedReceiverId, not raw newReceiverId)
-    onProviderDrag?.({ draggedId: draggedIdSV.value, receiverId: acceptedReceiverId || undefined, position: absolutePosition });
+    onProviderDrag?.({ draggedId, receiverId: acceptedReceiverId || undefined, position: absolutePosition });
   };
 
-  /** Called via runOnJS when drag ends or is cancelled */
+  /** Called via scheduleOnRN when drag ends or is cancelled */
   const handleDragEnd = (
     draggedId: string,
     receiverId: string,
@@ -521,7 +525,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     if (!draggedEntry) {
 
       // Reset drag state atomically on UI thread to avoid one-frame flash
-      runOnUI((
+      scheduleOnUI((
         _hoverReadySV: typeof hoverReadySV,
         _dragPhaseSV: typeof dragPhaseSV,
         _draggedIdSV: typeof draggedIdSV,
@@ -532,15 +536,21 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
         _dragPhaseSV.value = 'idle';
         _draggedIdSV.value = '';
         _hoverPositionSV.value = { x: 0, y: 0 };
-      })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
+      }, hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
       return;
     }
 
+    // Cache all SV reads once at the top — avoids redundant cross-thread syncs
     const absolutePosition = { ...hoverPositionSV.value };
-    const dragged = buildDraggedViewData(draggedId, absolutePosition);
+    const startPos = startPositionSV.value;
+    const grabOffset = grabOffsetSV.value;
+    const cachedSpatialEntries = spatialIndexSV.value;
+    const cachedScrollOffsets = scrollOffsetsSV.value;
+
+    const dragged = buildDraggedViewData(draggedId, absolutePosition, startPos, grabOffset);
     if (!dragged) {
-      runOnUI((
+      scheduleOnUI((
         _hoverReadySV: typeof hoverReadySV,
         _dragPhaseSV: typeof dragPhaseSV,
         _draggedIdSV: typeof draggedIdSV,
@@ -551,12 +561,11 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
         _dragPhaseSV.value = 'idle';
         _draggedIdSV.value = '';
         _hoverPositionSV.value = { x: 0, y: 0 };
-      })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
+      }, hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
       return;
     }
 
-    const startPos = startPositionSV.value;
     const dragTranslation = {
       x: absolutePosition.x - startPos.x,
       y: absolutePosition.y - startPos.y,
@@ -574,15 +583,17 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       const receiverEntry = getViewEntry(receiverId);
       const receiverData = buildReceiverViewData(
         receiverId,
-        absolutePosition
+        absolutePosition,
+        cachedSpatialEntries,
+        cachedScrollOffsets
       );
 
       if (receiverData && receiverEntry) {
         // Compute receiver's absolute position and center the dragged item within it
         const receiverAbsPos = computeAbsolutePositionWorklet(
           receiverEntry.spatialIndex,
-          spatialIndexSV.value,
-          scrollOffsetsSV.value
+          cachedSpatialEntries,
+          cachedScrollOffsets
         );
         const draggedDims = draggedEntry.measurements;
         const receiverDims = receiverEntry.measurements;
@@ -642,7 +653,9 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       if (receiverId && !cancelled) {
         const receiverData = buildReceiverViewData(
           receiverId,
-          absolutePosition
+          absolutePosition,
+          cachedSpatialEntries,
+          cachedScrollOffsets
         );
         if (receiverData) {
           const monitorDropResponse =
@@ -671,8 +684,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     if (snapTarget === DraxSnapbackTargetPreset.Default) {
       const absPos = computeAbsolutePositionWorklet(
         draggedEntry.spatialIndex,
-        spatialIndexSV.value,
-        scrollOffsetsSV.value
+        cachedSpatialEntries,
+        cachedScrollOffsets
       );
       snapTarget = absPos;
     }
@@ -692,7 +705,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     );
 
     // Fire provider-level onDragEnd (use last known hover position)
-    onProviderDragEnd?.({ draggedId, receiverId: receiverId || undefined, position: hoverPositionSV.value, cancelled });
+    onProviderDragEnd?.({ draggedId, receiverId: receiverId || undefined, position: absolutePosition, cancelled });
   };
 
   return {
@@ -752,7 +765,7 @@ function performSnapback(
    * Called when snap animation completes. Fires callbacks FIRST (so finalizeDrag
    * can set permanent shifts + clear hover), THEN clears hover & drag state.
    *
-   * For REORDER: finalizeDrag sets permanent shifts + clears hover via runOnUI
+   * For REORDER: finalizeDrag sets permanent shifts + clears hover via scheduleOnUI
    *   in a single atomic block. No FlatList data change, so no blink.
    *
    * For CANCEL: finalizeDrag → cancelDrag → reverts to committed shifts.
@@ -776,7 +789,7 @@ function performSnapback(
 
       // Step 3: Clear hover if NOT deferred by a sortable reorder.
       if (!hoverClearDeferredRef.current) {
-        runOnUI((
+        scheduleOnUI((
           _hoverReadySV: typeof hoverReadySV,
           _dragPhaseSV: typeof dragPhaseSV,
           _draggedIdSV: typeof draggedIdSV,
@@ -789,7 +802,7 @@ function performSnapback(
           _draggedIdSV.value = '';
           _hoverPositionSV.value = { x: 0, y: 0 };
           _isDragAllowedSV.value = true; // Unlock — allow new drags
-        })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV, isDragAllowedSV);
+        }, hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV, isDragAllowedSV);
         setHoverContent(null);
       } else {
         // Do NOT call setHoverContent(null) here — the hover must remain visible
@@ -803,7 +816,7 @@ function performSnapback(
       console.error('[snap] onSnapComplete crashed — emergency cleanup', e);
       isDragAllowedSV.value = true;
       hoverClearDeferredRef.current = false;
-      runOnUI((
+      scheduleOnUI((
         _hoverReadySV: typeof hoverReadySV,
         _dragPhaseSV: typeof dragPhaseSV,
         _draggedIdSV: typeof draggedIdSV,
@@ -814,7 +827,7 @@ function performSnapback(
         _dragPhaseSV.value = 'idle';
         _draggedIdSV.value = '';
         _hoverPositionSV.value = { x: 0, y: 0 };
-      })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
+      }, hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
     }
   };
@@ -858,7 +871,7 @@ function performSnapback(
       withTiming(toValue, { duration: snapDuration }, (finished) => {
         'worklet';
         if (finished) {
-          runOnJS(onSnapComplete)();
+          scheduleOnRN(onSnapComplete);
         }
       })
     );
@@ -866,8 +879,3 @@ function performSnapback(
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
-
-function flattenOrNull(s: unknown): ViewStyle | null {
-  if (!s) return null;
-  return StyleSheet.flatten(s as ViewStyle) ?? null;
-}

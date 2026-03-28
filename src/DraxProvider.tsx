@@ -1,12 +1,11 @@
 import type { ReactNode, RefObject } from 'react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { HostInstance } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 
 import { DebugOverlay } from './DebugOverlay';
 import { DraxContext } from './DraxContext';
-import type { FlattenedHoverStyles } from './HoverLayer';
 import { HoverLayer } from './HoverLayer';
 import { useCallbackDispatch } from './hooks/useCallbackDispatch';
 import { useSpatialIndex } from './hooks/useSpatialIndex';
@@ -14,6 +13,7 @@ import type {
   DragPhase,
   DraxContextValue,
   DraxProviderProps,
+  FlattenedHoverStyles,
   Position,
 } from './types';
 
@@ -69,19 +69,20 @@ export const DraxProvider = ({
     getViewEntry,
   } = useSpatialIndex();
 
-  // ── Hover content (ref-based to avoid provider re-renders) ─────────
-  // Store content in a ref so changing it doesn't re-render the entire tree.
-  // Only HoverLayer re-renders via the version counter.
+  // ── Hover content (ref-based, zero provider re-renders) ─────────────
+  // Content stored in a ref. HoverLayer watches hoverTriggerSV via
+  // useAnimatedReaction and forces its own re-render — Provider never
+  // re-renders for hover changes.
   const hoverContentRef: RefObject<ReactNode> = useRef<ReactNode>(null);
   const hoverStylesRef: RefObject<FlattenedHoverStyles | null> = useRef<FlattenedHoverStyles | null>(null);
-  const [hoverVersion, setHoverVersion] = useState(0);
+  const hoverTriggerSV = useSharedValue(0);
   const setHoverContent = useCallback((content: ReactNode | null) => {
     hoverContentRef.current = content;
     if (content === null) {
       hoverStylesRef.current = null;
     }
-    setHoverVersion((v) => v + 1);
-  }, []);
+    hoverTriggerSV.value += 1;
+  }, [hoverTriggerSV]);
 
   // ── Callback dispatch ──────────────────────────────────────────────
   const { handleDragStart, handleReceiverChange, handleDragEnd } =
@@ -209,7 +210,7 @@ export const DraxProvider = ({
         )}
         <HoverLayer
           hoverContentRef={hoverContentRef}
-          hoverVersion={hoverVersion}
+          hoverTriggerSV={hoverTriggerSV}
           hoverPositionSV={hoverPositionSV}
           dragPhaseSV={dragPhaseSV}
           receiverIdSV={receiverIdSV}

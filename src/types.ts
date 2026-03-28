@@ -431,6 +431,15 @@ export interface DraxViewProps
 
 // ─── View Registry (JS Thread) ─────────────────────────────────────────────
 
+/** Flattened hover styles for the currently dragged view */
+export interface FlattenedHoverStyles {
+  hoverStyle: ViewStyle | null;
+  hoverDraggingStyle: ViewStyle | null;
+  hoverDraggingWithReceiverStyle: ViewStyle | null;
+  hoverDraggingWithoutReceiverStyle: ViewStyle | null;
+  hoverDragReleasedStyle: ViewStyle | null;
+}
+
 /** Entry in the JS-thread view registry Map */
 export interface ViewRegistryEntry {
   id: string;
@@ -443,6 +452,9 @@ export interface ViewRegistryEntry {
   measurements?: DraxViewMeasurements;
   /** All props from DraxView (callbacks, styles, payload, etc.) */
   props: DraxViewProps;
+  /** Pre-flattened hover styles — computed at registration/prop-update time
+   *  to avoid 5 StyleSheet.flatten calls in the drag-start hot path. */
+  flattenedHoverStyles?: FlattenedHoverStyles;
 }
 
 // ─── Context Value ─────────────────────────────────────────────────────────
@@ -494,7 +506,7 @@ export interface DraxContextValue {
   updateViewProps: (id: string, props: DraxViewProps) => void;
   getViewEntry: (id: string) => ViewRegistryEntry | undefined;
 
-  // ── Callback dispatch (JS thread, called via runOnJS from gesture) ─
+  // ── Callback dispatch (JS thread, called via scheduleOnRN from gesture) ─
   handleDragStart: (
     draggedId: string,
     absolutePosition: Position,
@@ -506,6 +518,7 @@ export interface DraxContextValue {
     absolutePosition: Position,
     draggedId: string,
     startPosition: Position,
+    grabOffset: Position,
     monitorIds?: string[]
   ) => void;
   handleDragEnd: (

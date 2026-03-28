@@ -1,26 +1,19 @@
 import type { ReactNode, RefObject } from 'react';
-import { memo, useLayoutEffect } from 'react';
+import { memo, useLayoutEffect, useReducer } from 'react';
 import type { ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
-import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
-import { runOnUI } from 'react-native-worklets';
+import Reanimated, { useAnimatedReaction, useAnimatedStyle } from 'react-native-reanimated';
+import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
-import type { DragPhase, Position } from './types';
-
-/** Flattened hover styles for the currently dragged view */
-export interface FlattenedHoverStyles {
-  hoverStyle: ViewStyle | null;
-  hoverDraggingStyle: ViewStyle | null;
-  hoverDraggingWithReceiverStyle: ViewStyle | null;
-  hoverDraggingWithoutReceiverStyle: ViewStyle | null;
-  hoverDragReleasedStyle: ViewStyle | null;
-}
+import type { DragPhase, FlattenedHoverStyles, Position } from './types';
 
 interface HoverLayerProps {
   hoverContentRef: RefObject<ReactNode>;
-  /** Changing this value triggers a re-render to pick up new ref content */
-  hoverVersion: number;
+  /** SharedValue trigger — incremented when hover content changes.
+   *  HoverLayer watches this via useAnimatedReaction and forces a local re-render.
+   *  This avoids re-rendering DraxProvider. */
+  hoverTriggerSV: SharedValue<number>;
   hoverPositionSV: SharedValue<Position>;
   dragPhaseSV: SharedValue<DragPhase>;
   receiverIdSV: SharedValue<string>;
@@ -38,29 +31,42 @@ interface HoverLayerProps {
  * This is the ONLY component that reads hoverPositionSV (changes every frame).
  * All other DraxViews read draggedIdSV/receiverIdSV/dragPhaseSV which change ~5x per drag.
  *
- * Content is passed via ref to avoid re-rendering the entire DraxProvider tree.
- * Only this component re-renders when hover content changes (via hoverVersion).
+ * Content is passed via ref. DraxProvider never re-renders for hover changes.
+ * Only this component re-renders when hover content changes (via hoverTriggerSV).
  */
 export const HoverLayer = memo(
-  ({ hoverContentRef, hoverVersion, hoverPositionSV, dragPhaseSV, receiverIdSV, hoverReadySV, hoverDimsSV, hoverStylesRef }: HoverLayerProps) => {
+  ({ hoverContentRef, hoverTriggerSV, hoverPositionSV, dragPhaseSV, receiverIdSV, hoverReadySV, hoverDimsSV, hoverStylesRef }: HoverLayerProps) => {
+    // Local re-render trigger — only HoverLayer re-renders, not DraxProvider.
+    // hoverTriggerSV is incremented on the JS thread by setHoverContent.
+    // useAnimatedReaction picks it up and forces a local re-render.
+    const [renderVersion, forceRender] = useReducer((x: number) => x + 1, 0);
+    useAnimatedReaction(
+      () => hoverTriggerSV.value,
+      (curr, prev) => {
+        if (prev !== null && curr !== prev) {
+          scheduleOnRN(forceRender);
+        }
+      }
+    );
+
     // After hover content is committed to the DOM, activate drag phase + signal readiness.
     // dragPhaseSV is NOT set in the gesture handler — it's set HERE, ensuring:
     //   1. HoverLayer becomes visible (opacity 1) only AFTER content is rendered
     //   2. SortableItem hides only AFTER hover is visible (reads hoverReadySV)
-    // Both writes happen in the same runOnUI call → same UI frame → no blink.
+    // Both writes happen in the same scheduleOnUI call → same UI frame → no blink.
     useLayoutEffect(() => {
       const hasContent = hoverContentRef.current != null;
       if (hasContent) {
-        runOnUI((_dragPhaseSV: SharedValue<DragPhase>, _hoverReadySV: SharedValue<boolean>) => {
+        scheduleOnUI((_dragPhaseSV: SharedValue<DragPhase>, _hoverReadySV: SharedValue<boolean>) => {
           'worklet';
           _dragPhaseSV.value = 'dragging';
           _hoverReadySV.value = true;
-        })(dragPhaseSV, hoverReadySV);
+        }, dragPhaseSV, hoverReadySV);
       }
-    }, [hoverVersion]);
+    }, [renderVersion]);
 
     // Read hover styles from ref in the component body — they're captured by the
-    // worklet closure when the component re-renders (on hoverVersion change).
+    // worklet closure when the component re-renders (on renderVersion change).
     // This ensures the latest styles are available without SharedValues.
     const hs = hoverStylesRef.current;
     const flatHoverStyle = hs?.hoverStyle ?? null;
