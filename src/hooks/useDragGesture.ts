@@ -29,6 +29,7 @@ export interface SortableWorkletConfig {
   draggedKeySV: SharedValue<string>;
   dropIndicatorPositionSV: SharedValue<Position>;
   scrollOffsetSV: SharedValue<number>;
+  snapTargetSV: SharedValue<Position>;
   numColumns: number;
   horizontal: boolean;
   estimatedItemSize: number;
@@ -97,13 +98,11 @@ export const useDragGesture = (
       if (!isDragAllowedSV.value) return;
       isDragAllowedSV.value = false; // Lock — released in onSnapComplete
 
-      // Close the drag-start race window: set isDragging on the UI thread
-      // BEFORE scheduleOnRN(handleDragStart). This prevents handleItemLayout from
-      // calling recomputeBasePositions + forceRender during the JS callback chain
-      // (between gesture activation and onMonitorDragStart).
-      if (sortableWorklet) {
-        sortableWorklet.isDraggingSV.value = true;
-      }
+      // DO NOT set isDraggingSV here. It gates worklet slot detection (onUpdate).
+      // syncRefsToWorklet (called from onMonitorDragStart on JS thread) writes
+      // isDraggingSV=true LAST in an atomic scheduleOnUI batch with all other SVs.
+      // Setting it here would let the worklet run with stale base positions,
+      // computing wrong shifts that cause items to jump to incorrect positions.
 
       // Convert screen-absolute touch to root-view-relative
       const rootOffset = rootOffsetSV.value;
@@ -263,7 +262,16 @@ export const useDragGesture = (
                 sw.itemHeightsSV.value, sw.cellShiftRecordSV.value,
                 sw.estimatedItemSize, sw.horizontal, sw.reorderStrategy,
               );
-              if (newKeys) sw.orderedKeysSV.value = newKeys;
+              if (newKeys) {
+                sw.orderedKeysSV.value = newKeys;
+                // Cache dragged item's target for O(1) snap at drag end
+                const bp = sw.basePositionsSV.value[dragKey];
+                const cs = sw.cellShiftRecordSV.value[dragKey];
+                if (bp && cs) {
+                  const s = cs.value;
+                  sw.snapTargetSV.value = { x: bp.x + s.x, y: bp.y + s.y };
+                }
+              }
             }
           }
         }
@@ -308,6 +316,9 @@ export const useDragGesture = (
       // re-evaluates immediately (receiver style clears instantly).
       dragPhaseSV.value = 'releasing';
       receiverIdSV.value = '';
+      // Stop worklet slot detection immediately. Without this, isDraggingSV stays
+      // true between drags, letting the next drag's worklet run with stale SVs.
+      if (sortableWorklet) sortableWorklet.isDraggingSV.value = false;
 
       // Bounce to JS for end callbacks + snap animation
       scheduleOnRN(handleDragEnd, currentDraggedId, currentReceiverId, false, finalHitResult.monitorIds);
@@ -336,6 +347,7 @@ export const useDragGesture = (
 
         dragPhaseSV.value = 'releasing';
         receiverIdSV.value = '';
+        if (sortableWorklet) sortableWorklet.isDraggingSV.value = false;
 
         scheduleOnRN(handleDragEnd, currentDraggedId, currentReceiverId, true, finalHitResult.monitorIds);
       }

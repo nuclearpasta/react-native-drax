@@ -16,6 +16,7 @@ import type { ReactNode } from 'react';
 import { useCallback, useRef } from 'react';
 import type { SharedValue } from 'react-native-reanimated';
 import { useSharedValue } from 'react-native-reanimated';
+import { scheduleOnUI } from 'react-native-worklets';
 
 import type {
   GridItemSpan,
@@ -130,6 +131,7 @@ export interface SortableListInternal<T> {
   cellShiftRecordSV: SharedValue<Record<string, SharedValue<Position>>>;
   syncRefsToWorklet: () => void;
   syncWorkletToRefs: () => void;
+  syncPositionsToWorklet: () => void;
   getSlotFromPositionWorklet: (
     contentX: number, contentY: number,
     boundaries: { key: string; x: number; y: number; width: number; height: number }[],
@@ -166,6 +168,12 @@ export interface SortableListInternal<T> {
   pendingShiftClearRef: React.RefObject<boolean>;
   /** Set during render when parent echoes back committed reorder. DraxList skips forceRender. */
   echoSkipRef: React.RefObject<boolean>;
+  /** Cached result from freezeSlotBoundaries' computeGridPositions — avoids redundant O(N) recompute. */
+  frozenGridResultRef: React.RefObject<{ positions: Map<string, Position>; dimensions: Map<string, { width: number; height: number }>; totalHeight: number } | null>;
+  /** Cached snap target position — updated during each shift recompute. Avoids O(N) walk at drag end. */
+  snapTargetPositionRef: React.RefObject<Position | null>;
+  /** Snap target (worklet-accessible SV). Written by worklet path during shift computation. */
+  snapTargetSV: SharedValue<Position>;
 
   // ── Layout engine ──
   /** Record a measured height and update the running average for unmeasured items. */
@@ -244,6 +252,10 @@ export const useSortableList = <T,>(
   getItemSpanRef.current = getItemSpan as ((item: unknown, index: number) => GridItemSpan) | undefined;
   getItemSizeRef.current = getItemSize as ((item: unknown, index: number) => { width: number; height: number }) | undefined;
 
+  // ── Shadow data (maintained alongside Maps for O(1) worklet sync at drag start) ──
+  const basePositionsRecordRef = useRef<Record<string, Position>>({});
+  const itemHeightsRecordRef = useRef<Record<string, number>>({});
+
   // ── SharedValues ──
   const shiftsSV = useSharedValue<Record<string, Position>>({});
   const draggedKeySV = useSharedValue('');
@@ -257,6 +269,8 @@ export const useSortableList = <T,>(
   const itemHeightsSV = useSharedValue<Record<string, number>>({});
   const currentSlotSV = useSharedValue(0);
   const isDraggingSV = useSharedValue(false);
+  /** Snap target position (worklet writes here during shift computation for O(1) snap at drag end). */
+  const snapTargetSV = useSharedValue<Position>({ x: 0, y: 0 });
   const containerMeasSV = useSharedValue<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // ── Drop indicator ──
@@ -315,24 +329,41 @@ export const useSortableList = <T,>(
     }
   }, []);
 
-  /** Sync JS refs → SharedValues for worklet slot detection. Called at drag start. */
+  /** Sync JS refs → SharedValues for worklet slot detection. Called at drag start.
+   *
+   *  Large data (basePositions, itemHeights, orderedKeys) is PRE-SYNCED during
+   *  render/measurement in recomputeBasePositions() and the data sync block.
+   *  This function only writes scalars + cellShiftRecord — O(K) where K ≈ visible cells.
+   *
+   *  All SV writes go through scheduleOnUI for ATOMIC application on the UI thread.
+   *  isDraggingSV is set LAST — it gates the worklet, ensuring all other SVs are
+   *  correct before slot detection runs. */
   function syncRefsToWorklet() {
-    orderedKeysSV.value = [...orderedKeysRef.current];
-    currentSlotSV.value = currentSlotRef.current;
-    isDraggingSV.value = isDraggingRef.current;
-    containerMeasSV.value = containerMeasRef.current ?? null;
-    // Base positions: Map → Record
-    const bp: Record<string, Position> = {};
-    for (const [k, v] of basePositionsRef.current) bp[k] = v;
-    basePositionsSV.value = bp;
-    // Item heights: Map → Record
-    const ih: Record<string, number> = {};
-    for (const [k, v] of itemHeightsRef.current) ih[k] = v;
-    itemHeightsSV.value = ih;
-    // Cell shift registry: Map → Record (for worklet access)
+    const slot = currentSlotRef.current;
+    const cm = containerMeasRef.current ?? null;
+    // Cell shift registry: Map → Record (O(K) where K ≈ visible cells)
     const cs: Record<string, SharedValue<Position>> = {};
     for (const [k, v] of cellShiftRegistryRef.current) cs[k] = v;
-    cellShiftRecordSV.value = cs;
+
+    // Atomic write on UI thread. Gesture onUpdate is also on UI thread →
+    // serialized with this worklet. Either onUpdate runs before (isDraggingSV
+    // still false → worklet gate skips) or after (all SVs correct).
+    scheduleOnUI((
+      _currentSlotSV: typeof currentSlotSV,
+      _containerMeasSV: typeof containerMeasSV,
+      _cellShiftRecordSV: typeof cellShiftRecordSV,
+      _isDraggingSV: typeof isDraggingSV,
+      _slot: number,
+      _cm: typeof cm,
+      _cs: Record<string, SharedValue<Position>>,
+    ) => {
+      'worklet';
+      _currentSlotSV.value = _slot;
+      _containerMeasSV.value = _cm;
+      _cellShiftRecordSV.value = _cs;
+      _isDraggingSV.value = true; // LAST — gates the worklet
+    }, currentSlotSV, containerMeasSV, cellShiftRecordSV, isDraggingSV,
+       slot, cm, cs);
   }
 
   /** Sync SharedValues → JS refs after drag ends. */
@@ -375,6 +406,8 @@ export const useSortableList = <T,>(
   } | null>(null);
   /** Flex-wrap gap boundaries: positions of items packed WITHOUT the dragged item. */
   const frozenFlexGapBoundariesRef = useRef<SlotBoundary[]>([]);
+  /** Cached computeGridPositions result from freezeSlotBoundaries — reused by drop indicator. */
+  const frozenGridResultRef = useRef<ReturnType<typeof computeGridPositions> | null>(null);
 
   // ── Drag state refs ──
   const isDraggingRef = useRef(false);
@@ -387,6 +420,8 @@ export const useSortableList = <T,>(
   const echoSkipRef = useRef(false);
   /** Holds the committed data array from commitReorder for reference-equality echo detection. */
   const awaitingEchoRef = useRef<T[] | null>(null);
+  /** Cached target position of the dragged item — updated during each shift recompute. Avoids O(N) walk at drag end. */
+  const snapTargetPositionRef = useRef<Position | null>(null);
 
   // ── Layout helpers ──
 
@@ -537,13 +572,32 @@ export const useSortableList = <T,>(
   }
 
   // ── Layout engine ──
-  /** Recompute base positions. Does NOT clear shifts (caller decides). */
+  /** Recompute base positions. Does NOT clear shifts (caller decides).
+   *  Updates refs only — no SharedValue writes (safe to call during render).
+   *  Call syncPositionsToWorklet() afterwards from a non-render context. */
   function recomputeBasePositions() {
     const keys = orderedKeysRef.current;
     const result = computeGridPositions(keys);
     basePositionsRef.current = result.positions;
     itemDimensionsRef.current = result.dimensions;
     totalContentSizeRef.current = result.totalHeight;
+    // Cache for drop indicator position lookup.
+    // Guard: frozenGridResultRef not yet declared during first-render initialization.
+    if (frozenGridResultRef) frozenGridResultRef.current = result;
+  }
+
+  /** Sync position/height data to worklet SharedValues.
+   *  Creates fresh Record copies (Reanimated freezes SV values — never share with refs).
+   *  Call OUTSIDE render: useLayoutEffect, callbacks, commitReorder. */
+  function syncPositionsToWorklet() {
+    const bp: Record<string, Position> = {};
+    for (const [k, v] of basePositionsRef.current) bp[k] = v;
+    basePositionsRecordRef.current = bp;
+    basePositionsSV.value = bp;
+    const ih: Record<string, number> = {};
+    for (const [k, v] of itemHeightsRef.current) ih[k] = v;
+    itemHeightsRecordRef.current = ih;
+    itemHeightsSV.value = ih;
   }
 
   /** Clear all shifts (snap to 0). Caller must ensure base positions are already current. */
@@ -594,11 +648,10 @@ export const useSortableList = <T,>(
     keyToIndexRef.current = map;
 
     if (isEcho) {
-      // Library already committed order. orderedKeysRef is correct.
-      // Still recompute bases + clear shifts for Yoga touch hit-testing.
-      // echoSkipRef tells DraxList to skip forceRender (main perf win).
-      recomputeBasePositions();
-      pendingShiftClearRef.current = true;
+      // Library already committed. Shifts are permanent. Visual is correct.
+      // DON'T recompute bases or clear shifts — Fabric/Reanimated race causes blink
+      // (newBase + oldShift visible for 1 frame before clearShifts takes effect).
+      // Permanent shifts: visual = oldBase + shift = correct. Zero work.
       echoSkipRef.current = true;
     } else if (!isDraggingRef.current) {
       orderedKeysRef.current = keys;
@@ -606,6 +659,8 @@ export const useSortableList = <T,>(
       // Recompute base positions EAGERLY during render so cells in THIS commit
       // get new baseX/baseY props. Without this, shifts clear to 0 in useLayoutEffect
       // but cells still have OLD base positions → 1-frame blink at original positions.
+      // SV writes (orderedKeysSV, basePositionsSV, itemHeightsSV) happen in
+      // useLayoutEffect via syncPositionsToWorklet (not during render).
       recomputeBasePositions();
 
       // Mark for shift clear in useLayoutEffect (SV writes not allowed during render).
@@ -630,14 +685,24 @@ export const useSortableList = <T,>(
     // Recompute boundaries only when keys changed (not just drag key)
     if (!keysUnchanged) {
       frozenKeysRef.current = keys;
-      const result = computeGridPositions(keys);
-      const boundaries = keys.map(key => {
-        const pos = result.positions.get(key) ?? { x: 0, y: 0 };
-        const dim = result.dimensions.get(key) ?? { width: 0, height: estimatedItemSize };
-        return { key, x: pos.x, y: pos.y, width: dim.width, height: dim.height };
+      // Build boundaries from CURRENT key order with VISUAL positions (base + permanentShift).
+      // Must iterate orderedKeysRef (not shadowBoundariesRef) because shadow is in OLD order.
+      const shifts = shiftsSV.value;
+      const basePositions = basePositionsRef.current;
+      const dimensions = itemDimensionsRef.current;
+      frozenBoundariesRef.current = keys.map(key => {
+        const pos = basePositions.get(key) ?? { x: 0, y: 0 };
+        const shift = shifts[key];
+        const dim = dimensions.get(key) ?? { width: 0, height: estimatedItemSize };
+        return {
+          key,
+          x: pos.x + (shift?.x ?? 0),
+          y: pos.y + (shift?.y ?? 0),
+          width: dim.width,
+          height: dim.height,
+        };
       });
-      frozenBoundariesRef.current = boundaries;
-      frozenBoundariesSV.value = boundaries; // Sync to UI thread for worklet slot detection
+      frozenBoundariesSV.value = frozenBoundariesRef.current;
     }
 
     // Virtual slot: pack grid WITHOUT the dragged item to create a stable "gap layout."
@@ -941,6 +1006,9 @@ export const useSortableList = <T,>(
       }
     }
     shiftsSV.value = newShifts; // Keep for JS-thread reads (visibility, snap)
+    // Cache dragged item's target position for O(1) snap at drag end
+    const draggedTarget = result.positions.get(dragKey);
+    if (draggedTarget) snapTargetPositionRef.current = draggedTarget;
     // Grow content area during drag so shifted items aren't clipped
     if (result.totalHeight > totalContentSizeRef.current) {
       totalContentSizeRef.current = result.totalHeight;
@@ -1037,6 +1105,8 @@ export const useSortableList = <T,>(
     }
     keyToIndexRef.current = newKeyToIndex;
     awaitingEchoRef.current = reorderedData;
+    // PRE-SYNC orderedKeys so next drag start doesn't need O(N) copy
+    orderedKeysSV.value = [...keys];
 
     // Clear drag state
     isDraggingRef.current = false;
@@ -1096,8 +1166,10 @@ export const useSortableList = <T,>(
     isDraggingSV,
     containerMeasSV,
     cellShiftRecordSV,
+    snapTargetSV,
     syncRefsToWorklet,
     syncWorkletToRefs,
+    syncPositionsToWorklet,
     getSlotFromPositionWorklet,
     recomputeShiftsWorklet,
     dropIndicatorPositionSV,
@@ -1111,6 +1183,8 @@ export const useSortableList = <T,>(
     frozenBoundariesRef,
     pendingShiftClearRef,
     echoSkipRef,
+    frozenGridResultRef,
+    snapTargetPositionRef,
     recordItemHeight,
     computeGridPositions,
     recomputeBasePositions,

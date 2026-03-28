@@ -337,6 +337,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       draggedKeySV: int.draggedKeySV,
       dropIndicatorPositionSV: int.dropIndicatorPositionSV,
       scrollOffsetSV: int.scrollOffsetSV,
+      snapTargetSV: int.snapTargetSV,
       numColumns,
       horizontal,
       estimatedItemSize,
@@ -372,6 +373,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       // ScrollView's offset within the monitoring DraxView (accounts for padding)
       int.scrollContainerOffsetRef.current = { x, y };
       int.recomputeBasePositionsAndClearShifts();
+      int.syncPositionsToWorklet();
       // Reset scroll delta tracking (positions just changed)
       lastProcessedOffsetRef.current = int.scrollOffsetSV.value;
       // Rebind cells with new positions (grid positions change after container measured)
@@ -434,6 +436,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         };
       } else if (shiftsEmpty) {
         int.recomputeBasePositions();
+        int.syncPositionsToWorklet();
         forceRender();
       }
     },
@@ -593,8 +596,16 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
 
   // ── Initial binding + data sync ──
   useLayoutEffect(() => {
-    // Cross-container: new items arrived — recompute positions + clear shifts atomically.
-    // Skip animation so cells snap to final positions (no spring-back artifact).
+    // Echo: parent echoed back our committed reorder. Shifts are permanent, visual is correct.
+    // Skip ALL work — no base recompute, no shift clear, no SV sync, no forceRender.
+    const isEcho = int.echoSkipRef.current;
+    int.echoSkipRef.current = false;
+    if (isEcho) return;
+
+    // PRE-SYNC position/height/orderedKeys SVs to worklet (safe here — after render, before paint).
+    int.syncPositionsToWorklet();
+    int.orderedKeysSV.value = [...int.orderedKeysRef.current];
+
     if (int.pendingShiftClearRef.current) {
       int.pendingShiftClearRef.current = false;
       // Base positions were recomputed eagerly during render (in useSortableList data sync).
@@ -605,12 +616,6 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       dropIndicatorVisibleSV.value = false;
       dropIndicatorInfoRef.current = undefined;
     }
-
-    // Echo: parent echoed back our committed reorder. Bases + shifts already handled above.
-    // Skip updateVisibleCells (bindings unchanged) + forceRender (main perf win).
-    const isEcho = int.echoSkipRef.current;
-    int.echoSkipRef.current = false;
-    if (isEcho) return;
 
     // Reset scroll delta tracking (positions/data just changed)
     lastProcessedOffsetRef.current = int.scrollOffsetSV.value;
@@ -697,6 +702,8 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       int.isDraggingRef.current = true;
       int.draggedKeySV.value = itemKey;
       int.dragStartIndexRef.current = originalIndex;
+      int.snapTargetPositionRef.current = null; // Reset for this drag
+      int.snapTargetSV.value = { x: -1, y: -1 }; // Sentinel: worklet hasn't set target yet
       // Sync to worklet SVs for UI-thread slot detection
       int.syncRefsToWorklet();
 
@@ -715,19 +722,14 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       // Fire user callback
       onDragStartProp?.({ index: originalIndex, item: item as T });
 
-      // Find display index
-      const keys = int.orderedKeysRef.current;
-      const displayIdx = keys.indexOf(itemKey);
+      // Find display index — O(1) Map lookup instead of O(N) indexOf
+      const displayIdx = int.keyToIndexRef.current.get(itemKey) ?? -1;
       int.currentSlotRef.current = displayIdx >= 0 ? displayIdx : originalIndex;
 
       // Freeze slot boundaries for stable detection
       int.freezeSlotBoundaries();
 
-      // Pre-populate drop indicator info + position for when first dragOver shows it.
-      // DON'T set visible or forceRender here — that causes a race between
-      // draggedKeySV (immediate) and hoverReadySV (async via scheduleOnUI), making the
-      // cell flash visible for 1-2 frames before hover is ready.
-      // The first onMonitorDragOver slot change will set visible + trigger re-render.
+      // Pre-populate drop indicator info + position. Read from basePositionsRef (already computed, O(1)).
       if (renderDropIndicator) {
         const draggedMeas = eventData.dragged.measurements;
         const dims = int.itemDimensionsRef.current.get(itemKey);
@@ -745,17 +747,16 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
           targetListId: int.id,
           fromIndex: originalIndex,
         };
-        const result = int.computeGridPositions(int.orderedKeysRef.current);
-        const indicatorPos = result.positions.get(itemKey);
+        // Use visual position (base + permanentShift) for permanent shifts after reorder
+        const baseIndicatorPos = int.basePositionsRef.current.get(itemKey);
+        const indicatorShift = int.shiftsSV.value[itemKey];
+        const indicatorPos = baseIndicatorPos
+          ? { x: baseIndicatorPos.x + (indicatorShift?.x ?? 0), y: baseIndicatorPos.y + (indicatorShift?.y ?? 0) }
+          : undefined;
         if (indicatorPos) dropIndicatorPositionSV.value = indicatorPos;
         int.dropIndicatorGenSV.value++;
-        // DON'T set visible here — let onMonitorDragOver show it after the first real slot detection.
-        // Setting visible here + the worklet's stale currentSlotSV causes the indicator to flash at (0,0).
         lastIndicatorSlotRef.current =
           displayIdx >= 0 ? displayIdx : originalIndex;
-        // No forceRender() — that causes a race with hoverReadySV.
-        // The overlay shows empty (no info prop yet) but at correct position + opacity.
-        // First onMonitorDragOver slot change will trigger a natural re-render with info.
       }
     },
     [
@@ -996,35 +997,24 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     if (basePos && containerMeas) {
       let visualX: number;
       let visualY: number;
-      if (numColumns === 1 && !flexWrap) {
-        // Single-column: compute target position by walking the reordered keys.
-        // Use the SAME height sources as computeGridPositions to ensure consistency:
-        // measured height > getItemSize > running average > estimatedItemSize.
-        const keys = int.orderedKeysSV.value;
-        const heights = int.itemHeightsSV.value;
-        const avgH = int.measuredAvgHeightRef?.current ?? estimatedItemSize;
-        const sizeFn = getItemSize;
-        const dataArr = int.dataRef.current;
-        const keyMap = int.keyToIndexRef.current;
-        let cursor = 0;
-        for (const key of keys) {
-          if (key === dragKey) break;
-          let h = heights[key];
-          if (h === undefined && sizeFn) {
-            const idx = keyMap.get(key);
-            if (idx !== undefined && dataArr[idx] !== undefined) {
-              h = horizontal ? sizeFn(dataArr[idx] as T, idx).width : sizeFn(dataArr[idx] as T, idx).height;
-            }
-          }
-          if (h === undefined) h = avgH;
-          cursor += h;
-        }
-        visualX = horizontal ? cursor : basePos.x;
-        visualY = horizontal ? basePos.y : cursor;
+      // O(1) snap target: read from cache (JS path) or SV (worklet path).
+      // JS recomputeShiftsForReorder writes snapTargetPositionRef.
+      // Worklet recomputeShiftsWorklet writes snapTargetSV via useDragGesture.
+      const cachedJS = int.snapTargetPositionRef.current;
+      const cachedWorklet = sortableWorkletConfig ? int.snapTargetSV.value : null;
+      if (cachedJS) {
+        // JS path (grids): target cached in recomputeShiftsForReorder
+        visualX = cachedJS.x;
+        visualY = cachedJS.y;
+      } else if (cachedWorklet && cachedWorklet.x >= 0) {
+        // Worklet path (single-column): target cached in useDragGesture onUpdate
+        // Sentinel {-1,-1} means worklet hasn't computed a reorder yet
+        visualX = cachedWorklet.x;
+        visualY = cachedWorklet.y;
       } else {
-        const shift = int.shiftsSV.value[dragKey];
-        visualX = basePos.x + (shift?.x ?? 0);
-        visualY = basePos.y + (shift?.y ?? 0);
+        // No reorder — visual position = base + permanent shift
+        visualX = basePos.x;
+        visualY = basePos.y;
       }
 
       const scOffset = int.scrollContainerOffsetRef.current;
@@ -1035,7 +1025,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     }
 
     return DraxSnapbackTargetPreset.Default;
-  }, [int, stopAutoScroll, boardContext, horizontal, numColumns, flexWrap, estimatedItemSize]);
+  }, [int, stopAutoScroll, boardContext, horizontal, sortableWorkletConfig]);
 
   const onMonitorDragEnd = useCallback(
     (_eventData: DraxMonitorEndEventData): DraxProtocolDragEndResponse => {
