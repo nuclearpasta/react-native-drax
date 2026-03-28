@@ -2,10 +2,8 @@ import type { Ref, RefObject } from 'react';
 import { useCallback, useEffect, useRef } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { FlatList, ScrollView } from 'react-native';
-import {
-  runOnUI,
-  useSharedValue,
-} from 'react-native-reanimated';
+import { useSharedValue } from 'react-native-reanimated';
+import { scheduleOnUI } from 'react-native-worklets';
 
 import { defaultAutoScrollIntervalLength } from '../params';
 import type { DraxViewMeasurements, Position } from '../types';
@@ -53,13 +51,13 @@ export const useDraxScrollHandler = <T extends ScrollableComponents>({
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     onScrollProp?.(event);
 
-    runOnUI((_scrollPos: typeof scrollPosition, _event: NativeScrollEvent) => {
+    scheduleOnUI((_scrollPos: typeof scrollPosition, _event: NativeScrollEvent) => {
       'worklet';
       _scrollPos.value = {
         x: _event.contentOffset.x,
         y: _event.contentOffset.y,
       };
-    })(scrollPosition, event.nativeEvent);
+    }, scrollPosition, event.nativeEvent);
   };
 
   const setScrollRefs = (instance: T | null) => {

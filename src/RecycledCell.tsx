@@ -1,14 +1,12 @@
 /**
  * RecycledCell — A single cell in the recycling pool.
  *
- * Position model:
- *   left/top: baseX/baseY (React props → Yoga → touch hit-testing)
- *   translateX/Y: shiftX/Y (per-cell SharedValue → Reanimated → visual offset during drag)
- *   Visual = (left + translateX, top + translateY) = (baseX + shiftX, baseY + shiftY)
+ * Position model (zero Yoga relayout):
+ *   left/top: always 0 (no Yoga relayout on position change)
+ *   translateX/Y = basePosition + shift (all via SharedValues on UI thread)
  *
- * Each cell has its own SharedValue for shift — only cells with changed shifts
- * re-evaluate their animated style on the UI thread. This eliminates full-record
- * lookups per cell per frame.
+ * basePositionSV: written by pushBasePositionsToSVs (JS → SV, no React re-render)
+ * shiftSV: written by worklet during drag (UI thread)
  */
 import type { ReactNode } from 'react';
 import { memo, useLayoutEffect, useMemo } from 'react';
@@ -33,12 +31,11 @@ interface RecycledCellProps {
   draggedKeySV: SharedValue<string>;
   hoverReadySV: SharedValue<boolean>;
   skipShiftAnimationSV: SharedValue<boolean>;
-  /** Pre-computed spring config (stable ref from useMemo). Null = use withTiming. */
   springConfig: SpringConfig | null;
   shiftDuration: number;
-  /** Style applied to non-dragged items while a drag is active. */
   inactiveItemStyle?: Record<string, unknown>;
-  /** Register this cell's shift SV with the parent hook for targeted writes. */
+  registerCellBase: (key: string, sv: SharedValue<Position>) => void;
+  unregisterCellBase: (key: string) => void;
   registerCellShift: (key: string, sv: SharedValue<Position>) => void;
   unregisterCellShift: (key: string) => void;
   children: ReactNode;
@@ -56,87 +53,113 @@ export const RecycledCell = memo(({
   springConfig,
   shiftDuration,
   inactiveItemStyle,
+  registerCellBase,
+  unregisterCellBase,
   registerCellShift,
   unregisterCellShift,
   children,
 }: RecycledCellProps) => {
-  // Per-cell shift SharedValue — only THIS cell re-evaluates when its shift changes
+  // Per-cell base position SV — all positioning via translateX/Y (no Yoga relayout)
+  const basePositionSV = useSharedValue<Position>({ x: baseX, y: baseY });
+  // Per-cell shift SV — drag reorder animation
   const shiftSV = useSharedValue<Position>({ x: 0, y: 0 });
 
-  // Register with parent hook so it can write to this cell's SV
+  // Register base position SV
+  useLayoutEffect(() => {
+    if (!itemKey) return;
+    registerCellBase(itemKey, basePositionSV);
+    return () => unregisterCellBase(itemKey);
+  }, [itemKey, basePositionSV, registerCellBase, unregisterCellBase]);
+
+  // Register shift SV
   useLayoutEffect(() => {
     if (!itemKey) return;
     registerCellShift(itemKey, shiftSV);
     return () => unregisterCellShift(itemKey);
   }, [itemKey, shiftSV, registerCellShift, unregisterCellShift]);
 
-  // Memoize spring config with overshootClamping — MUST be stable reference,
-  // NOT created inside useAnimatedStyle (new object every frame → spring restarts)
+  // Sync base position from props on mount/recycle
+  useLayoutEffect(() => {
+    basePositionSV.value = { x: baseX, y: baseY };
+  }, [baseX, baseY, basePositionSV]);
+
   const clampedSpringConfig = useMemo(
     () => springConfig ? { ...springConfig, overshootClamping: true } : null,
     [springConfig],
   );
 
-  // Memoize the static style to avoid inline object allocation per render
+  // Static: position absolute at origin, dimensions from props
   const staticStyle = useMemo(
-    () => ({ position: 'absolute' as const, left: baseX, top: baseY, width: cellWidth, height: cellHeight }),
-    [baseX, baseY, cellWidth, cellHeight],
+    () => ({ position: 'absolute' as const, left: 0, top: 0, width: cellWidth, height: cellHeight }),
+    [cellWidth, cellHeight],
   );
 
+  // All positioning via translateX/Y — no Yoga relayout
+  //
+  // CRITICAL: base position and shift are SEPARATE transforms, not combined.
+  // Combining them (`translateX: base.x + withSpring(shift.x)`) causes Reanimated
+  // to reset/misinterpret the spring when the worklet re-evaluates (e.g., on
+  // draggedKeySV change), making all cells jump to wrong positions.
+  // Stacking transforms avoids this: base is always direct, shift is always animated.
   const animatedStyle = useAnimatedStyle(() => {
     if (!itemKey) return { opacity: 0 };
 
-    const shift = shiftSV.value; // Direct atomic read — no full-record lookup
+    const base = basePositionSV.value;
+    const shift = shiftSV.value;
     const isDragged = draggedKeySV.value === itemKey && hoverReadySV.value;
     const dragActive = draggedKeySV.value !== '';
     const isInactive = dragActive && !isDragged;
-    const shiftX = shift.x;
-    const shiftY = shift.y;
 
-    // Skip animation during position reset (snap instantly)
     if (skipShiftAnimationSV.value) {
       if (isInactive && inactiveItemStyle) {
         return {
           opacity: isDragged ? 0 : 1,
-          transform: [{ translateX: shiftX }, { translateY: shiftY }],
+          transform: [
+            { translateX: base.x }, { translateY: base.y },
+            { translateX: shift.x }, { translateY: shift.y },
+          ],
           ...inactiveItemStyle,
         };
       }
       return {
         opacity: isDragged ? 0 : 1,
-        transform: [{ translateX: shiftX }, { translateY: shiftY }],
+        transform: [
+          { translateX: base.x }, { translateY: base.y },
+          { translateX: shift.x }, { translateY: shift.y },
+        ],
       };
     }
 
     const animatedX = clampedSpringConfig
-      ? withSpring(shiftX, clampedSpringConfig)
-      : withTiming(shiftX, { duration: shiftDuration });
+      ? withSpring(shift.x, clampedSpringConfig)
+      : withTiming(shift.x, { duration: shiftDuration });
     const animatedY = clampedSpringConfig
-      ? withSpring(shiftY, clampedSpringConfig)
-      : withTiming(shiftY, { duration: shiftDuration });
+      ? withSpring(shift.y, clampedSpringConfig)
+      : withTiming(shift.y, { duration: shiftDuration });
 
     if (isInactive && inactiveItemStyle) {
       return {
         opacity: isDragged ? 0 : 1,
-        transform: [{ translateX: animatedX }, { translateY: animatedY }],
+        transform: [
+          { translateX: base.x }, { translateY: base.y },
+          { translateX: animatedX }, { translateY: animatedY },
+        ],
         ...inactiveItemStyle,
       };
     }
     return {
       opacity: isDragged ? 0 : 1,
-      transform: [{ translateX: animatedX }, { translateY: animatedY }],
+      transform: [
+        { translateX: base.x }, { translateY: base.y },
+        { translateX: animatedX }, { translateY: animatedY },
+      ],
     };
   });
 
   if (!itemKey) return null;
 
   return (
-    <Reanimated.View
-      style={[
-        staticStyle,
-        animatedStyle,
-      ]}
-    >
+    <Reanimated.View style={[staticStyle, animatedStyle]}>
       {children}
     </Reanimated.View>
   );

@@ -72,6 +72,8 @@ export const DraxScrollView = (
     const contentSize = contentSizeRef.current;
     if (!scroll || !containerMeasurements || !contentSize) return;
     const autoScrollState = autoScrollStateRef.current;
+    // Single SV read — avoids 11 redundant cross-thread syncs per auto-scroll tick
+    const currentScroll = scrollPosition.value;
     const jump = {
       x: containerMeasurements.width * autoScrollJumpRatio,
       y: containerMeasurements.height * autoScrollJumpRatio,
@@ -80,29 +82,29 @@ export const DraxScrollView = (
     let yNew: number | undefined;
     if (autoScrollState.x === AutoScrollDirection.Forward) {
       const xMax = contentSize.x - containerMeasurements.width;
-      if (scrollPosition.value.x < xMax) {
-        xNew = Math.min(scrollPosition.value.x + jump.x, xMax);
+      if (currentScroll.x < xMax) {
+        xNew = Math.min(currentScroll.x + jump.x, xMax);
       }
     } else if (autoScrollState.x === AutoScrollDirection.Back) {
-      if (scrollPosition.value.x > 0) {
-        xNew = Math.max(scrollPosition.value.x - jump.x, 0);
+      if (currentScroll.x > 0) {
+        xNew = Math.max(currentScroll.x - jump.x, 0);
       }
     }
     if (autoScrollState.y === AutoScrollDirection.Forward) {
       const yMax = contentSize.y - containerMeasurements.height;
-      if (scrollPosition.value.y < yMax) {
-        yNew = Math.min(scrollPosition.value.y + jump.y, yMax);
+      if (currentScroll.y < yMax) {
+        yNew = Math.min(currentScroll.y + jump.y, yMax);
       }
     } else if (autoScrollState.y === AutoScrollDirection.Back) {
-      if (scrollPosition.value.y > 0) {
-        yNew = Math.max(scrollPosition.value.y - jump.y, 0);
+      if (currentScroll.y > 0) {
+        yNew = Math.max(currentScroll.y - jump.y, 0);
       }
     }
     if (xNew !== undefined || yNew !== undefined) {
       // @ts-expect-error Reanimated's type augmentation hides scrollTo, but it exists at runtime
       scroll.scrollTo({
-        x: xNew ?? scrollPosition.value.x,
-        y: yNew ?? scrollPosition.value.y,
+        x: xNew ?? currentScroll.x,
+        y: yNew ?? currentScroll.y,
       });
       if (
         'flashScrollIndicators' in scroll &&

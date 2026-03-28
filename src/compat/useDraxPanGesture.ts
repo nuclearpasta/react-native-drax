@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAnimatedReaction } from 'react-native-reanimated';
-import { runOnJS } from 'react-native-worklets';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { isGestureHandlerV3 } from './detectVersion';
 import type { DraxPanEvent, DraxPanGesture, DraxPanGestureConfig } from './types';
@@ -53,7 +53,7 @@ function useDraxPanGestureV2(config: DraxPanGestureConfig): DraxPanGesture {
     () => config.enabledSV.value,
     (current, prev) => {
       if (prev !== null && current !== prev) {
-        runOnJS(setEnabled)(current);
+        scheduleOnRN(setEnabled, current);
       }
     }
   );
@@ -62,7 +62,7 @@ function useDraxPanGestureV2(config: DraxPanGestureConfig): DraxPanGesture {
     () => config.longPressDelaySV.value,
     (current, prev) => {
       if (prev !== null && current !== prev) {
-        runOnJS(setLongPressDelay)(current);
+        scheduleOnRN(setLongPressDelay, current);
       }
     }
   );

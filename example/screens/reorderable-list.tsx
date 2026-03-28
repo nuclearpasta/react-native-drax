@@ -1,11 +1,19 @@
 import { useState } from 'react';
-import { StyleSheet, View, Text, Pressable } from 'react-native';
-import { DraxProvider, DraxList } from 'react-native-drax';
-import { useTheme, itemColor } from '../components/ThemeContext';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { DraxList, DraxProvider } from 'react-native-drax';
+import { itemColor, useTheme } from '../components/ThemeContext';
 
 const COLORS = [
-  '#ff6b6b', '#ffa06b', '#ffd96b', '#a8e06b', '#6be0a8',
-  '#6bd4e0', '#6b9fe0', '#8b6be0', '#d46be0', '#e06ba8',
+  '#ff6b6b',
+  '#ffa06b',
+  '#ffd96b',
+  '#a8e06b',
+  '#6be0a8',
+  '#6bd4e0',
+  '#6b9fe0',
+  '#8b6be0',
+  '#d46be0',
+  '#e06ba8',
 ];
 
 const getHeight = (i: number) => {
@@ -42,8 +50,13 @@ export default function ReorderableList() {
               onPress={() => {
                 const id = `item-${Date.now()}-${nextId++}`;
                 const h = getHeight(Math.floor(Math.random() * 6));
-                setData(prev => [
-                  { id, label: `New ${prev.length + 1}`, color: COLORS[prev.length % COLORS.length]!, height: h },
+                setData((prev) => [
+                  {
+                    id,
+                    label: `New ${prev.length + 1}`,
+                    color: COLORS[prev.length % COLORS.length]!,
+                    height: h,
+                  },
                   ...prev,
                 ]);
               }}
@@ -52,7 +65,9 @@ export default function ReorderableList() {
               <Text style={styles.btnText}>+ Add Top</Text>
             </Pressable>
             <Pressable
-              onPress={() => data.length > 0 && setData(prev => prev.slice(1))}
+              onPress={() =>
+                data.length > 0 && setData((prev) => prev.slice(1))
+              }
               style={styles.btn}
             >
               <Text style={styles.btnText}>- Remove Top</Text>
@@ -63,22 +78,34 @@ export default function ReorderableList() {
           data={data}
           keyExtractor={(item) => item.id}
           estimatedItemSize={60}
-          drawDistance={300}
+          getItemSize={(item) => ({ width: 0, height: item.height + 4 })}
           animationConfig="spring"
           longPressDelay={200}
           onReorder={({ data: newData }) => setData(newData)}
           renderItem={({ item, index }) => (
-              <View style={[styles.item, {
-                height: item.height,
-                backgroundColor: itemColor(item.color, isDark),
-              }]}>
-                <Text style={[styles.itemText, { color: isDark ? '#e0e0e0' : '#333' }]}>
-                  {item.label}
-                </Text>
-                <Text style={[styles.indexText, { color: isDark ? '#999' : '#666' }]}>
-                  #{index} · {item.height}px
-                </Text>
-              </View>
+            <View
+              style={[
+                styles.item,
+                {
+                  height: item.height,
+                  backgroundColor: itemColor(item.color, isDark),
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.itemText,
+                  { color: isDark ? '#e0e0e0' : '#333' },
+                ]}
+              >
+                {item.label}
+              </Text>
+              <Text
+                style={[styles.indexText, { color: isDark ? '#999' : '#666' }]}
+              >
+                #{index} · {item.height}px
+              </Text>
+            </View>
           )}
           style={styles.list}
         />
@@ -92,7 +119,12 @@ const styles = StyleSheet.create({
   header: { padding: 12, alignItems: 'center' },
   headerText: { fontSize: 14, fontStyle: 'italic' },
   buttons: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  btn: { backgroundColor: '#4a90d9', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 6 },
+  btn: {
+    backgroundColor: '#4a90d9',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
   btnText: { color: '#fff', fontWeight: '600' },
   list: { flex: 1 },
   item: {

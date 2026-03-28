@@ -88,9 +88,12 @@ export default function MixedGrid() {
           longPressDelay={200}
           onReorder={({ data: newData }) => setData(newData)}
           renderItem={({ item }) => (
-            <View style={[styles.tile, {
-              backgroundColor: itemColor(item.color, isDark),
-            }]}>
+            <View
+              testID={`mixed-tile-${item.id}`}
+              style={[styles.tile, {
+                backgroundColor: itemColor(item.color, isDark),
+              }]}
+            >
               <Text style={[styles.tileText, { color: isDark ? '#e0e0e0' : '#333' }]}>
                 {item.label}
               </Text>

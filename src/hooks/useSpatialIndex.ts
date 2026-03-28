@@ -1,4 +1,6 @@
 import { useRef } from 'react';
+import type { ViewStyle } from 'react-native';
+import { StyleSheet } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import { useSharedValue } from 'react-native-reanimated';
 
@@ -6,11 +8,27 @@ import type {
   CollisionAlgorithm,
   DraxViewMeasurements,
   DraxViewProps,
+  FlattenedHoverStyles,
   Position,
   RegisterViewPayload,
   SpatialEntry,
   ViewRegistryEntry,
 } from '../types';
+
+function flattenOrNull(s: unknown): ViewStyle | null {
+  if (!s) return null;
+  return StyleSheet.flatten(s as ViewStyle) ?? null;
+}
+
+function buildFlattenedHoverStyles(props: DraxViewProps): FlattenedHoverStyles {
+  return {
+    hoverStyle: flattenOrNull(props.hoverStyle),
+    hoverDraggingStyle: flattenOrNull(props.hoverDraggingStyle),
+    hoverDraggingWithReceiverStyle: flattenOrNull(props.hoverDraggingWithReceiverStyle),
+    hoverDraggingWithoutReceiverStyle: flattenOrNull(props.hoverDraggingWithoutReceiverStyle),
+    hoverDragReleasedStyle: flattenOrNull(props.hoverDragReleasedStyle),
+  };
+}
 
 /**
  * Module-level helper to update spatial entry capabilities.
@@ -133,6 +151,7 @@ export const useSpatialIndex = () => {
       existing.parentId = parentId;
       existing.scrollPosition = scrollPosition;
       existing.props = props;
+      existing.flattenedHoverStyles = buildFlattenedHoverStyles(props);
 
       const idx = existing.spatialIndex;
       updateSpatialEntryCapabilities(
@@ -184,6 +203,7 @@ export const useSpatialIndex = () => {
       scrollPosition,
       measurements: undefined,
       props,
+      flattenedHoverStyles: buildFlattenedHoverStyles(props),
     });
 
     // Fix up children that registered before this parent.
@@ -263,6 +283,7 @@ export const useSpatialIndex = () => {
     if (!entry) return;
 
     entry.props = props;
+    entry.flattenedHoverStyles = buildFlattenedHoverStyles(props);
 
     // Update capabilities in spatial index
     const draggable = isDraggable(props);

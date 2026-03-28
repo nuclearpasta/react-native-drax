@@ -20,8 +20,8 @@ export { useSortableList } from './hooks/useSortableList';
 export { useSortableBoard } from './hooks/useSortableBoard';
 
 // ── Public Utilities ─────────────────────────────────────────────────
-export { snapToAlignment, packGrid } from './math';
-export type { SnapAlignment, GridPackResult } from './math';
+export { snapToAlignment, packGrid, packFlex } from './math';
+export type { SnapAlignment, GridPackResult, FlexPackResult } from './math';
 
 // ── Public Types ─────────────────────────────────────────────────────
 export type {
@@ -43,6 +43,7 @@ export type {
   DraxRenderContentProps,
   DraxRenderHoverContentProps,
   DraxStyleProp,
+  AnimatedViewStylePropWithoutLayout,
   DraxViewStyleProps,
   DraxViewRenderContent,
   DraxViewRenderHoverContent,

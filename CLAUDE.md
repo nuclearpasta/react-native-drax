@@ -8,6 +8,30 @@ Drag-and-drop framework for React Native (iOS, Android, Web). v1.0.0 — major r
 - **Reanimated 4 + Gesture Handler 3** (beta)
 - Single `HoverLayer`, per-view gesture handlers
 - Latest React features.
+- **New Architecture (Fabric)**: `useLayoutEffect` + `measure()` is synchronous (JSI SyncCallback). Measurement and state updates happen in a single commit before paint — no intermediate states visible to users. Use `useLayoutEffect` + `ref.measure()` instead of `onLayout` for item measurement. Reference: https://reactnative.dev/architecture/landing-page#synchronous-layout-and-effects
+
+### Code Organization
+
+```
+src/
+├── types/           ← All shared type definitions
+│   ├── core.ts      — Geometry, phases, enums, collision, spatial, registration
+│   ├── events.ts    — Event data interfaces, snap types
+│   ├── view.ts      — DraxView props, render props, styles
+│   ├── provider.ts  — Context, registry, provider, scroll types
+│   ├── sortable.ts  — Sortable config, animation presets, item payload
+│   └── index.ts     — Barrel re-export (import from '../types' resolves here)
+├── hooks/           ← All React hooks (barrel: hooks/index.ts)
+├── compat/          ← Gesture Handler version compatibility
+├── DraxList.tsx     — Custom recycling list with drag-and-drop
+├── DraxView.tsx     — Core draggable/receptive view
+├── DraxProvider.tsx — Root provider (context + spatial index)
+├── math.ts          — Geometry utilities, grid/flex packing
+└── params.ts        — Animation presets, default constants
+```
+
+- **Type ownership**: Shared types live in `types/`. Hook-local types (e.g., `SortableListInternal` in `useSortableList.ts`, `SortableWorkletConfig` in `useDragGesture.ts`) stay co-located with their hook. Component props (e.g., `DraxListProps`) stay in their component file.
+- **Public API**: `src/index.ts` re-exports public components, hooks, utilities, and types. Hook-specific types (`SortableReorderEvent`, `SortableListHandle`, etc.) are exported from their hook files, not from `types/`.
 
 
 ## Sortable Architecture
@@ -19,7 +43,7 @@ Drag-and-drop framework for React Native (iOS, Android, Web). v1.0.0 — major r
 - Map-based measurements (keyed by item key) instead of array-indexed
 - Supports insert + swap reorder strategies
 - Drop indicator support: `SortableContainer` tracks target position via SharedValues, renders indicator at insertion point
-- **Data ownership**: Library commits reorders internally via `commitReorder`. `onReorder` is a notification — parent stores data but library already committed it. When parent echoes data back, useLayoutEffect detects the match and skips (no double-render).
+- **Data ownership**: Library commits reorders internally via `commitReorder` — updates `dataRef`, `keyToIndexRef`, and `orderedKeysRef`. `onReorder` is a notification only — parent stores data for persistence, but the library already committed the visual state. When parent echoes data back (same array reference from `event.data`), the data sync detects the match via `awaitingEchoRef` and skips `forceRender` + `updateVisibleCells` (no double-render). Bases are still recomputed + shifts cleared for touch correctness, but the expensive second React render is eliminated.
 
 ### Animation Customization
 
@@ -47,7 +71,7 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 ### Mixed-Size Grid (Non-Uniform Spans)
 
 - `getItemSpan` prop on `useSortableList` — returns `{ colSpan, rowSpan }` per item
-- `packGrid` utility — bin-packing algorithm placing items left-to-right, top-to-bottom into a 2D occupancy grid
+- `packGrid` utility — bin-packing algorithm placing items left-to-right, top-to-bottom into a 2D occupancy grid. Returns `cellOwners` flat array for O(1) cell→item lookup during drag.
 - Grid geometry (cell size + gaps) derived automatically from item measurements
 - `computeShiftsForOrder` uses `packGrid` to compute target positions for non-uniform items
 - `getSlotFromPosition` maps finger position to grid cell, then to display index via cell→owner map
@@ -55,6 +79,15 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - Rendering: user provides absolute positioning (ScrollView + absolute items); shifts handle reorder
 - `packGrid` exported for users to compute grid positions in their render function
 - Example: `example/screens/mixed-grid.tsx` — 4-column grid with 1×1, 2×1, 1×2, and 2×2 items
+
+### Sortable Flex (Flex-Wrap Layout)
+
+- `flexWrap` prop on `DraxList` — items flow left-to-right and wrap to new rows
+- `getItemSize` callback returns `{ width, height }` per item (pixel dimensions)
+- `packFlex` utility — greedy left-to-right packing with row wrapping
+- Uses same virtual slot detection as mixed-size grid: gap layout frozen at drag start
+- Slot detection via nearest-by-distance on gap boundaries (no grid cells)
+- Example: `example/screens/sortable-flex.tsx` — variable-width tags with drag-to-reorder
 
 ## Cross-Container Sortable (Board)
 
@@ -176,7 +209,7 @@ We compete with two libraries. Drax must match or exceed their DX while keeping 
 - Sorting only — no free-form DnD, no cross-container drag, no collision algorithms, no built-in accessibility (manual only), no snap alignment
 - Grid/Flex components do NOT spread ViewProps — accessibility props must go on inner children content
 - Drax advantage: cross-container drag, monitoring views, free-form DnD, collision algorithms, built-in accessibility + reduced motion, animation presets, snap alignment (9-point + custom), 15 drag state style props, list-agnostic API, 19-callback event system, UI-thread DnD collision
-- Drax missing: sortable flex layout, haptic feedback, item removal animation, fixed-order items, collapsible items, debug mode
+- Drax missing: haptic feedback, item removal animation, fixed-order items, collapsible items, debug mode
 
 **react-native-reanimated-dnd** (https://github.com/entropyconquers/react-native-reanimated-dnd) — Docs: https://reanimated-dnd-docs.vercel.app/
 - v2 released March 2026: Reanimated ≥4.2 + react-native-worklets ≥0.7, sortable grids (insert + swap), free-form DnD
