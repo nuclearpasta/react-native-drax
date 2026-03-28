@@ -668,6 +668,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         // Fallback: O(N) loop for grids/flex-wrap (2D visibility)
         const basePositions = int.basePositionsRef.current;
         const shifts = int.shiftsSV.value;
+
         for (const key of keys) {
           const basePos = basePositions.get(key);
           if (!basePos) {
@@ -693,6 +694,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
               visibleKeys.add(key);
           }
         }
+
       }
 
       // Diff: unbind items that left, bind items that entered
@@ -754,6 +756,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       }
 
       return poolGrew;
+
     },
     [
       int,
@@ -765,6 +768,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       numColumns,
       flexWrap,
       computeCellBindingData,
+
     ]
   );
 
@@ -788,6 +792,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     int.pushBasePositionsToSVs();
     int.orderedKeysSV.value = [...int.orderedKeysRef.current];
 
+
     if (int.pendingShiftClearRef.current) {
       int.pendingShiftClearRef.current = false;
       // Base positions were recomputed eagerly during render (in useSortableList data sync).
@@ -805,6 +810,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     // forceRender only if pool grew (to add new CellSlot elements).
     const poolGrew = updateVisibleCells(int.scrollOffsetSV.value);
 
+
     // Source list: dragged item was transferred out — clear drag state AFTER cell is unbound.
     // This prevents the flash (opacity 0→1 on the old cell before React removes it).
     if (int.isDraggingRef.current) {
@@ -821,6 +827,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     }
 
     if (poolGrew) forceRender();
+
   }, [data]);
 
   // ── Hover cleanup after cross-container transfer ──
@@ -1087,7 +1094,6 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
           if (renderDropIndicator) {
             const keys = int.orderedKeysSV.value;
             const heights = int.itemHeightsSV.value;
-            const hoverDims = hoverDimsSV.value;
             let cursor = 0;
             for (let i = 0; i < keys.length; i++) {
               if (i === targetSlot) break;
@@ -1097,25 +1103,9 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
             const posY = horizontal ? 0 : cursor;
             dropIndicatorPositionSV.value = { x: posX, y: posY };
             dropIndicatorVisibleSV.value = true;
-            const dataIdx = int.keyToIndexRef.current.get(dragKey);
-            const item =
-              dataIdx !== undefined ? int.dataRef.current[dataIdx] : undefined;
-            if (item) {
-              const dims = int.itemDimensionsRef.current.get(dragKey);
-              dropIndicatorInfoRef.current = {
-                item: item as T,
-                index: targetSlot,
-                width: dims?.width ?? 0,
-                height: dims?.height ?? estimatedItemSize,
-                isCrossContainer: false,
-                isSource: true,
-                horizontal,
-                hoverWidth: hoverDims.x,
-                hoverHeight: hoverDims.y,
-                sourceListId: int.id,
-                targetListId: int.id,
-                fromIndex: int.dragStartIndexRef.current,
-              };
+            // Mutate existing info object (allocated in onMonitorDragStart) — only index changes per slot
+            if (dropIndicatorInfoRef.current) {
+              dropIndicatorInfoRef.current.index = targetSlot;
             }
           }
         }
@@ -1126,27 +1116,13 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
           const pos = gridResult.positions.get(draggedKey);
           const dim = gridResult.dimensions.get(draggedKey);
           if (pos) {
-            const hoverDims = hoverDimsSV.value;
             dropIndicatorPositionSV.value = pos;
             dropIndicatorVisibleSV.value = true;
-            const dataIdx = int.keyToIndexRef.current.get(dragKey);
-            const item =
-              dataIdx !== undefined ? int.dataRef.current[dataIdx] : undefined;
-            if (item) {
-              dropIndicatorInfoRef.current = {
-                item: item as T,
-                index: targetSlot,
-                width: dim?.width ?? 0,
-                height: dim?.height ?? estimatedItemSize,
-                isCrossContainer: false,
-                isSource: true,
-                horizontal,
-                hoverWidth: hoverDims.x,
-                hoverHeight: hoverDims.y,
-                sourceListId: int.id,
-                targetListId: int.id,
-                fromIndex: int.dragStartIndexRef.current,
-              };
+            // Mutate existing info object — update index + dimensions for grid slot
+            if (dropIndicatorInfoRef.current) {
+              dropIndicatorInfoRef.current.index = targetSlot;
+              dropIndicatorInfoRef.current.width = dim?.width ?? 0;
+              dropIndicatorInfoRef.current.height = dim?.height ?? estimatedItemSize;
             }
           }
         }
@@ -1252,6 +1228,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         const fromItem = int.dataRef.current[fromIdx];
         boardContext.commitTransfer();
         if (updateVisibleCells(int.scrollOffsetSV.value)) forceRender();
+
         if (fromItem !== undefined) {
           onDragEndProp?.({ index: fromIdx, item: fromItem as T, toIndex: fromIdx, cancelled: false });
         }
@@ -1278,6 +1255,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         if (bd) store.setBinding(ck, bd);
       }
       if (updateVisibleCells(int.scrollOffsetSV.value)) forceRender();
+
       if (fromItem !== undefined) {
         onDragEndProp?.({ index: fromIdx, item: fromItem as T, toIndex: toIdx, cancelled: false });
       }

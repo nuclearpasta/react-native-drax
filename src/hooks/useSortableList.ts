@@ -314,8 +314,11 @@ export const useSortableList = <T,>(
 
   // ── Per-cell shift SharedValues (UI-thread perf: only moved cells re-evaluate) ──
   const cellShiftRegistryRef = useRef(new Map<string, SharedValue<Position>>());
+  // Shadow Record maintained incrementally — avoids full Map-to-Record rebuild on register/unregister
+  const cellShiftRecordRef = useRef<Record<string, SharedValue<Position>>>({});
   const registerCellShift = useCallback((key: string, sv: SharedValue<Position>) => {
     cellShiftRegistryRef.current.set(key, sv);
+    cellShiftRecordRef.current[key] = sv;
 
     // During drag, keep worklet record in sync and set correct initial shift
     // for recycled cells. Without this, cellShiftRecordSV is a stale snapshot
@@ -348,17 +351,17 @@ export const useSortableList = <T,>(
       // After clearShifts, all are {0,0}. New object avoids frozen ref.
       const existing = shiftsSV.value[key];
       sv.value = existing ? { x: existing.x, y: existing.y } : { x: 0, y: 0 };
+
     }
   }, []);
   const unregisterCellShift = useCallback((key: string) => {
     cellShiftRegistryRef.current.delete(key);
+    delete cellShiftRecordRef.current[key];
 
     // Remove stale key from worklet record so it stops writing to
     // this SV (which will be re-registered under a different item key).
     if (isDraggingRef.current) {
-      const cs: Record<string, SharedValue<Position>> = {};
-      for (const [k, v] of cellShiftRegistryRef.current) cs[k] = v;
-      cellShiftRecordSV.value = cs;
+      cellShiftRecordSV.value = { ...cellShiftRecordRef.current };
     }
   }, []);
 
@@ -397,6 +400,7 @@ export const useSortableList = <T,>(
       _isDraggingSV.value = true; // LAST — gates the worklet
     }, currentSlotSV, containerMeasSV, cellShiftRecordSV, isDraggingSV,
        slot, cm, cs);
+
   }
 
   /** Sync SharedValues → JS refs after drag ends. */
@@ -414,6 +418,13 @@ export const useSortableList = <T,>(
 
   // Cell shift record SV — worklet needs Record access (not Map)
   const cellShiftRecordSV = useSharedValue<Record<string, SharedValue<Position>>>({});
+
+  // ── Layout helpers ──
+
+  // Pooled Maps for computeGridPositions — reused across calls to avoid allocation
+  // MUST be declared before the initialization block below that calls recomputeBasePositions → computeGridPositions
+  const positionsPoolRef = useRef(new Map<string, Position>());
+  const dimensionsPoolRef = useRef(new Map<string, { width: number; height: number }>());
 
   // Initialize keyToIndexRef AND base positions on first render
   if (keyToIndexRef.current.size === 0 && externalData.length > 0) {
@@ -459,14 +470,17 @@ export const useSortableList = <T,>(
   // ── Layout helpers ──
 
   /** Compute pixel positions from keys using packGrid (mixed-size) or modulo (uniform). */
+
   function computeGridPositions(keys: string[]) {
     const cw = containerWidthRef.current;
     const cellSize = cw > 0
       ? (cw - gridGap * (numColumns - 1)) / numColumns
       : estimatedItemSize;
     const gap = gridGap;
-    const positions = new Map<string, Position>();
-    const dimensions = new Map<string, { width: number; height: number }>();
+    const positions = positionsPoolRef.current;
+    const dimensions = dimensionsPoolRef.current;
+    positions.clear();
+    dimensions.clear();
 
     // Flex-wrap: variable-width items flowing left-to-right with wrapping
     const sizeFn = getItemSizeRef.current;
@@ -611,8 +625,9 @@ export const useSortableList = <T,>(
   function recomputeBasePositions() {
     const keys = orderedKeysRef.current;
     const result = computeGridPositions(keys);
-    basePositionsRef.current = result.positions;
-    itemDimensionsRef.current = result.dimensions;
+    // Copy from pooled Maps into stable refs (pooled Maps get cleared on next call)
+    basePositionsRef.current = new Map(result.positions);
+    itemDimensionsRef.current = new Map(result.dimensions);
     totalContentSizeRef.current = result.totalHeight;
     // Cache for drop indicator position lookup.
     // Guard: frozenGridResultRef not yet declared during first-render initialization.
@@ -1099,6 +1114,7 @@ export const useSortableList = <T,>(
     // Frozen geometry must stay frozen for the entire drag to prevent oscillation.
     // The cell→key map from freezeSlotBoundaries provides stable slot detection.
     return result;
+
   }, [reorderStrategy, shiftsSV]);
 
   // ── Board integration: remove/insert keys for cross-container ──
@@ -1139,6 +1155,7 @@ export const useSortableList = <T,>(
     // Clean up stale entries — avoids accumulating data for transferred items
     basePositionsRef.current.delete(key);
     delete basePositionsRecordRef.current[key];
+
     recomputeAllShifts();
   }, []);
 

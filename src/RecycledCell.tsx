@@ -111,15 +111,22 @@ export const RecycledCell = memo(({
     const isInactive = dragActive && !isDragged;
 
     if (skipShiftAnimationSV.value) {
+      if (isInactive && inactiveItemStyle) {
+        return {
+          opacity: isDragged ? 0 : 1,
+          transform: [
+            { translateX: base.x }, { translateY: base.y },
+            { translateX: shift.x }, { translateY: shift.y },
+          ],
+          ...inactiveItemStyle,
+        };
+      }
       return {
         opacity: isDragged ? 0 : 1,
         transform: [
-          { translateX: base.x },
-          { translateY: base.y },
-          { translateX: shift.x },
-          { translateY: shift.y },
+          { translateX: base.x }, { translateY: base.y },
+          { translateX: shift.x }, { translateY: shift.y },
         ],
-        ...(isInactive && inactiveItemStyle ? inactiveItemStyle : {}),
       };
     }
 
@@ -130,15 +137,22 @@ export const RecycledCell = memo(({
       ? withSpring(shift.y, clampedSpringConfig)
       : withTiming(shift.y, { duration: shiftDuration });
 
+    if (isInactive && inactiveItemStyle) {
+      return {
+        opacity: isDragged ? 0 : 1,
+        transform: [
+          { translateX: base.x }, { translateY: base.y },
+          { translateX: animatedX }, { translateY: animatedY },
+        ],
+        ...inactiveItemStyle,
+      };
+    }
     return {
       opacity: isDragged ? 0 : 1,
       transform: [
-        { translateX: base.x },
-        { translateY: base.y },
-        { translateX: animatedX },
-        { translateY: animatedY },
+        { translateX: base.x }, { translateY: base.y },
+        { translateX: animatedX }, { translateY: animatedY },
       ],
-      ...(isInactive && inactiveItemStyle ? inactiveItemStyle : {}),
     };
   });
 
