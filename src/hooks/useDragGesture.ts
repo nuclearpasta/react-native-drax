@@ -26,6 +26,7 @@ export interface SortableWorkletConfig {
   isDraggingSV: SharedValue<boolean>;
   containerMeasSV: SharedValue<{ x: number; y: number; width: number; height: number } | null>;
   cellShiftRecordSV: SharedValue<Record<string, SharedValue<Position>>>;
+  cumulativeEndsSV: SharedValue<number[]>;
   draggedKeySV: SharedValue<string>;
   dropIndicatorPositionSV: SharedValue<Position>;
   scrollOffsetSV: SharedValue<number>;
@@ -34,7 +35,7 @@ export interface SortableWorkletConfig {
   horizontal: boolean;
   estimatedItemSize: number;
   reorderStrategy: string;
-  getSlotFromPositionWorklet: (contentX: number, contentY: number, boundaries: any[], cols: number, horiz: boolean) => number;
+  getSlotFromPositionWorklet: (contentX: number, contentY: number, boundaries: any[], cumulativeEnds: number[], cols: number, horiz: boolean) => number;
   recomputeShiftsWorklet: (dragKey: string, targetSlot: number, keys: string[], basePosRecord: Record<string, Position>, heightsRecord: Record<string, number>, cellShiftRecord: Record<string, SharedValue<Position>>, estItemSize: number, horiz: boolean, strategy: string) => string[] | null;
 }
 
@@ -252,7 +253,7 @@ export const useDragGesture = (
           const scrollOff = sw.scrollOffsetSV.value;
           const cX = hitTestPos.x - cm.x + (sw.horizontal ? scrollOff : 0);
           const cY = hitTestPos.y - cm.y + (sw.horizontal ? 0 : scrollOff);
-          const slot = sw.getSlotFromPositionWorklet(cX, cY, sw.frozenBoundariesSV.value, sw.numColumns, sw.horizontal);
+          const slot = sw.getSlotFromPositionWorklet(cX, cY, sw.frozenBoundariesSV.value, sw.cumulativeEndsSV.value, sw.numColumns, sw.horizontal);
           if (slot !== sw.currentSlotSV.value) {
             sw.currentSlotSV.value = slot;
             const dragKey = sw.draggedKeySV.value;
@@ -277,17 +278,24 @@ export const useDragGesture = (
         }
       }
 
-      // Pass static SVs as args to avoid cross-thread reads on JS thread.
-      // draggedIdSV, startPositionSV, grabOffsetSV are set once in onActivate and never change during drag.
-      scheduleOnRN(handleReceiverChange,
-        oldReceiver,
-        candidateReceiverId,
-        hitTestPos,
-        draggedIdSV.value,
-        startPositionSV.value,
-        grabOffsetSV.value,
-        result.monitorIds
-      );
+      // Skip JS bounce when the UI-thread sortable worklet is handling reorder
+      // AND receiver hasn't changed AND no monitors need updating.
+      // This eliminates ~60 cross-thread calls/sec during intra-list single-column
+      // drag. For non-sortable views or views with monitors, always bounce to JS
+      // so continuous callbacks (onDrag, onDragOver, onReceiveDragOver) still fire.
+      const sortableHandled = sortableWorklet && sortableWorklet.isDraggingSV.value && sortableWorklet.numColumns === 1;
+      const hasMonitors = result.monitorIds.length > 0;
+      if (!sortableHandled || receiverChanged || hasMonitors) {
+        scheduleOnRN(handleReceiverChange,
+          oldReceiver,
+          candidateReceiverId,
+          hitTestPos,
+          draggedIdSV.value,
+          startPositionSV.value,
+          grabOffsetSV.value,
+          result.monitorIds
+        );
+      }
     },
     onDeactivate: (_event) => {
       'worklet';

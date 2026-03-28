@@ -90,6 +90,7 @@ const DRAX_PROP_KEYS: ReadonlySet<string> = new Set([
   'dragActivationFailOffset',
   'collisionAlgorithm',
   'scrollHorizontal',
+  '_contentPosition',
 ]);
 
 /** Extract only ViewProps-compatible props by filtering out Drax-specific keys */
@@ -188,6 +189,15 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
    *  `measurements._transformDetected` to know whether shift subtraction is needed. */
   const finalizeMeasurement = useCallback(
     (x: number, y: number, width: number, height: number, handler?: DraxViewMeasurementHandler, transformDetected = 0) => {
+      // Skip expensive downstream work when measurement hasn't changed.
+      // measureLayout (JSI) still runs, but spatial index update + callbacks are avoided.
+      const prev = measurementsRef.current;
+      if (prev && prev.x === x && prev.y === y
+          && prev.width === width && prev.height === height
+          && prev._transformDetected === transformDetected) {
+        handler?.(prev);
+        return;
+      }
       const measurements: DraxViewMeasurements = { height, x, y, width, _transformDetected: transformDetected };
       measurementsRef.current = measurements;
       updateMeasurementsCtx(id, measurements);
@@ -200,6 +210,24 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
   const measureWithHandler = useCallback((handler?: DraxViewMeasurementHandler) => {
     const view = viewRef.current;
     if (!view || !parentViewRef.current) return;
+
+    // Fast path: recycled list cells provide authoritative position from basePositionsRef.
+    // Bypasses view.measure() which returns stale transform positions due to the
+    // timing gap between SharedValue writes (JS) and UI-thread transform application.
+    // LegendList avoids this by applying transforms as React props (committed before
+    // measurement). Our RecycledCell uses SVs for zero-render position updates, so
+    // we provide the known-correct position directly instead of measuring.
+    const contentPos = props._contentPosition;
+    if (contentPos) {
+      view.measureLayout(
+        parentViewRef.current,
+        (_x, _y, width, height) => {
+          finalizeMeasurement(contentPos.x, contentPos.y, width!, height!, handler, 1);
+        },
+        () => {}
+      );
+      return;
+    }
 
     view.measureLayout(
       parentViewRef.current,
@@ -251,7 +279,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
       },
       () => {}
     );
-  }, [id, parentId, viewRef, parentViewRef, getViewEntry, finalizeMeasurement]);
+  }, [id, parentId, viewRef, parentViewRef, getViewEntry, finalizeMeasurement, props._contentPosition]);
 
   // ── Register/unregister with context ────────────────────────────────
   // Keep a ref to the latest props so registry always has current callbacks
@@ -282,12 +310,10 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     }
   });
 
-  const onLayout = () => {
+  // New Architecture: useLayoutEffect + measure() runs synchronously before paint.
+  // Replaces onLayout callback — measurement happens in same commit as render.
+  useLayoutEffect(() => {
     measureWithHandler();
-    // Re-measure drag bounds on every layout change. The initial useEffect
-    // measurement may fire before the parent flex layout has settled (especially
-    // on native where Fabric commits layout asynchronously). By the time this
-    // DraxView receives onLayout, the bounds view's layout is also finalized.
     if (dragBoundsRef?.current && rootViewRef.current) {
       dragBoundsRef.current.measureLayout(
         rootViewRef.current,
@@ -297,7 +323,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
         () => {}
       );
     }
-  };
+  });
 
   // External registration — useLayoutEffect so SortableItem's FLIP
   // useLayoutEffect (which runs after children) sees measureFnRef.
@@ -422,7 +448,6 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
       {...viewProps}
       style={[style, animatedDragStyle]}
       ref={viewRef}
-      onLayout={onLayout}
       collapsable={false}
     >
       {renderedContent}

@@ -116,9 +116,12 @@ export interface SortableListInternal<T> {
   /** When true, cells snap shifts instantly (no spring/timing). Set during cross-container reset. */
   skipShiftAnimationSV: ReturnType<typeof useSharedValue<boolean>>;
 
-  // ── Per-cell shift SharedValues (UI-thread perf: only moved cells re-evaluate) ──
+  // ── Per-cell SharedValues (position + shift, zero React re-renders) ──
+  registerCellBase: (key: string, sv: SharedValue<Position>) => void;
+  unregisterCellBase: (key: string) => void;
   registerCellShift: (key: string, sv: SharedValue<Position>) => void;
   unregisterCellShift: (key: string) => void;
+  pushBasePositionsToSVs: () => void;
 
   // ── Worklet-accessible SharedValues (for UI-thread slot detection) ──
   frozenBoundariesSV: SharedValue<{ key: string; x: number; y: number; width: number; height: number }[]>;
@@ -132,9 +135,11 @@ export interface SortableListInternal<T> {
   syncRefsToWorklet: () => void;
   syncWorkletToRefs: () => void;
   syncPositionsToWorklet: () => void;
+  cumulativeEndsSV: SharedValue<number[]>;
   getSlotFromPositionWorklet: (
     contentX: number, contentY: number,
     boundaries: { key: string; x: number; y: number; width: number; height: number }[],
+    cumulativeEnds: number[],
     cols: number, horiz: boolean,
   ) => number;
   recomputeShiftsWorklet: (
@@ -272,6 +277,8 @@ export const useSortableList = <T,>(
   /** Snap target position (worklet writes here during shift computation for O(1) snap at drag end). */
   const snapTargetSV = useSharedValue<Position>({ x: 0, y: 0 });
   const containerMeasSV = useSharedValue<{ x: number; y: number; width: number; height: number } | null>(null);
+  /** Pre-computed cumulative item ends for O(log N) binary search slot detection (single-column). */
+  const cumulativeEndsSV = useSharedValue<number[]>([]);
 
   // ── Drop indicator ──
   const dropIndicatorPositionSV = useSharedValue<Position>({ x: 0, y: 0 });
@@ -284,6 +291,26 @@ export const useSortableList = <T,>(
     sourceListId: string; targetListId: string; fromIndex: number;
   } | undefined>(undefined);
   const forceRenderRef = useRef<(() => void) | undefined>(undefined);
+
+  // ── Per-cell base position SharedValues (position changes via SV, zero React re-renders) ──
+  const cellBaseRegistryRef = useRef(new Map<string, SharedValue<Position>>());
+  const registerCellBase = useCallback((key: string, sv: SharedValue<Position>) => {
+    cellBaseRegistryRef.current.set(key, sv);
+    // Set correct base position on registration (cell mount or recycle)
+    const pos = basePositionsRef.current.get(key);
+    if (pos) sv.value = { x: pos.x, y: pos.y };
+  }, []);
+  const unregisterCellBase = useCallback((key: string) => {
+    cellBaseRegistryRef.current.delete(key);
+  }, []);
+
+  /** Push base positions to all registered cells via SharedValues (zero React re-renders). */
+  function pushBasePositionsToSVs() {
+    for (const [key, sv] of cellBaseRegistryRef.current) {
+      const pos = basePositionsRef.current.get(key);
+      if (pos) sv.value = { x: pos.x, y: pos.y };
+    }
+  }
 
   // ── Per-cell shift SharedValues (UI-thread perf: only moved cells re-evaluate) ──
   const cellShiftRegistryRef = useRef(new Map<string, SharedValue<Position>>());
@@ -315,6 +342,12 @@ export const useSortableList = <T,>(
       const cs: Record<string, SharedValue<Position>> = {};
       for (const [k, v] of cellShiftRegistryRef.current) cs[k] = v;
       cellShiftRecordSV.value = cs;
+    } else {
+      // Not dragging: set correct shift for this item on recycle.
+      // After echo, shiftsSV has permanent reorder offsets per key.
+      // After clearShifts, all are {0,0}. New object avoids frozen ref.
+      const existing = shiftsSV.value[key];
+      sv.value = existing ? { x: existing.x, y: existing.y } : { x: 0, y: 0 };
     }
   }, []);
   const unregisterCellShift = useCallback((key: string) => {
@@ -590,14 +623,42 @@ export const useSortableList = <T,>(
    *  Creates fresh Record copies (Reanimated freezes SV values — never share with refs).
    *  Call OUTSIDE render: useLayoutEffect, callbacks, commitReorder. */
   function syncPositionsToWorklet() {
-    const bp: Record<string, Position> = {};
-    for (const [k, v] of basePositionsRef.current) bp[k] = v;
-    basePositionsRecordRef.current = bp;
-    basePositionsSV.value = bp;
-    const ih: Record<string, number> = {};
-    for (const [k, v] of itemHeightsRef.current) ih[k] = v;
-    itemHeightsRecordRef.current = ih;
-    itemHeightsSV.value = ih;
+    // Create SEPARATE objects for ref and SV — Reanimated freezes SV values,
+    // so sharing the same object would make the ref point to a frozen object.
+    const bpForRef: Record<string, Position> = {};
+    const bpForSV: Record<string, Position> = {};
+    for (const [k, v] of basePositionsRef.current) {
+      bpForRef[k] = v;
+      bpForSV[k] = v;
+    }
+    basePositionsRecordRef.current = bpForRef;
+    basePositionsSV.value = bpForSV;
+    const ihForRef: Record<string, number> = {};
+    const ihForSV: Record<string, number> = {};
+    for (const [k, v] of itemHeightsRef.current) {
+      ihForRef[k] = v;
+      ihForSV[k] = v;
+    }
+    itemHeightsRecordRef.current = ihForRef;
+    itemHeightsSV.value = ihForSV;
+
+    // Single-column: update cumulative ends for O(log N) binary search slot detection.
+    // Flat number[] is ~6x cheaper to write to SV than the object[] frozenBoundaries.
+    syncCumulativeEnds();
+  }
+
+  /** Compute and write cumulative item end positions for single-column binary search.
+   *  Called from syncPositionsToWorklet (data change) and commitReorder (after reorder). */
+  function syncCumulativeEnds() {
+    if (numColumns !== 1 || flexWrap) return;
+    const keys = orderedKeysRef.current;
+    const ends: number[] = new Array(keys.length);
+    let cursor = 0;
+    for (let i = 0; i < keys.length; i++) {
+      cursor += itemHeightsRef.current.get(keys[i]!) ?? estimatedItemSize;
+      ends[i] = cursor;
+    }
+    cumulativeEndsSV.value = ends;
   }
 
   /** Clear all shifts (snap to 0). Caller must ensure base positions are already current. */
@@ -677,16 +738,20 @@ export const useSortableList = <T,>(
   const freezeSlotBoundaries = useCallback(() => {
     const keys = orderedKeysRef.current;
     const currentDragKey = draggedKeySV.value;
-    const keysUnchanged = keys === frozenKeysRef.current && frozenBoundariesRef.current.length > 0;
     const dragKeyUnchanged = currentDragKey === frozenDragKeyRef.current;
-    // Skip boundaries recomputation if keys unchanged; always recompute gap layout if drag key changed
-    if (keysUnchanged && dragKeyUnchanged) return;
 
-    // Recompute boundaries only when keys changed (not just drag key)
+    // Single-column: cumulativeEndsSV is kept current by syncPositionsToWorklet +
+    // commitReorder. No frozenBoundariesSV write needed (saves 139-145ms).
+    if (numColumns === 1 && !flexWrap) {
+      frozenDragKeyRef.current = currentDragKey;
+      frozenKeysRef.current = keys;
+      return;
+    }
+
+    // Grid/flex-wrap: compute frozen boundaries (small N, fast SV write)
+    const keysUnchanged = keys === frozenKeysRef.current && frozenBoundariesRef.current.length > 0;
     if (!keysUnchanged) {
       frozenKeysRef.current = keys;
-      // Build boundaries from CURRENT key order with VISUAL positions (base + permanentShift).
-      // Must iterate orderedKeysRef (not shadowBoundariesRef) because shadow is in OLD order.
       const shifts = shiftsSV.value;
       const basePositions = basePositionsRef.current;
       const dimensions = itemDimensionsRef.current;
@@ -704,6 +769,8 @@ export const useSortableList = <T,>(
       });
       frozenBoundariesSV.value = frozenBoundariesRef.current;
     }
+
+    if (dragKeyUnchanged) return;
 
     // Virtual slot: pack grid WITHOUT the dragged item to create a stable "gap layout."
     // Recomputed when keys OR drag key changes (different item picked up).
@@ -884,10 +951,24 @@ export const useSortableList = <T,>(
     contentX: number,
     contentY: number,
     boundaries: { key: string; x: number; y: number; width: number; height: number }[],
+    cumulativeEnds: number[],
     cols: number,
     horiz: boolean,
   ): number {
     'worklet';
+    // Single-column: O(log N) binary search on pre-computed cumulative ends
+    if (cols === 1 && cumulativeEnds.length > 0) {
+      const pos = horiz ? contentX : contentY;
+      let lo = 0;
+      let hi = cumulativeEnds.length - 1;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (cumulativeEnds[mid]! <= pos) lo = mid + 1;
+        else hi = mid;
+      }
+      return Math.min(lo, cumulativeEnds.length - 1);
+    }
+    // Grid: O(N) center-distance (grids have small N)
     if (boundaries.length === 0) return 0;
     if (cols > 1) {
       let bestIdx = 0;
@@ -899,6 +980,7 @@ export const useSortableList = <T,>(
       }
       return bestIdx;
     }
+    // Fallback: 1D linear scan
     for (let i = 0; i < boundaries.length - 1; i++) {
       const current = boundaries[i]!;
       const next = boundaries[i + 1]!;
@@ -1054,6 +1136,9 @@ export const useSortableList = <T,>(
 
   const removeKey = useCallback((key: string) => {
     orderedKeysRef.current = orderedKeysRef.current.filter(k => k !== key);
+    // Clean up stale entries — avoids accumulating data for transferred items
+    basePositionsRef.current.delete(key);
+    delete basePositionsRecordRef.current[key];
     recomputeAllShifts();
   }, []);
 
@@ -1064,6 +1149,22 @@ export const useSortableList = <T,>(
     }
     orderedKeysRef.current = keys;
     itemHeightsRef.current.set(key, height);
+
+    // Pre-compute where the new key WILL land, set as its base position.
+    // New item: shift = target - target = 0 (appears at insertion point).
+    // Existing items: shift = newTarget - oldBase (animate to make room).
+    // Without this, recomputeAllShifts sees no basePos for the new key and
+    // sets shift = target (huge value) instead of 0.
+    const preview = computeGridPositions(keys);
+    const newKeyTarget = preview.positions.get(key);
+    if (newKeyTarget) {
+      basePositionsRef.current.set(key, newKeyTarget);
+      // Create new object — Reanimated freezes objects assigned to SharedValues,
+      // so basePositionsRecordRef.current may be non-extensible.
+      basePositionsRecordRef.current = { ...basePositionsRecordRef.current, [key]: newKeyTarget };
+    }
+    totalContentSizeRef.current = preview.totalHeight;
+
     recomputeAllShifts();
   }, []);
 
@@ -1107,11 +1208,12 @@ export const useSortableList = <T,>(
     awaitingEchoRef.current = reorderedData;
     // PRE-SYNC orderedKeys so next drag start doesn't need O(N) copy
     orderedKeysSV.value = [...keys];
+    // Update cumulative ends for binary search slot detection at next drag
+    syncCumulativeEnds();
 
     // Clear drag state
     isDraggingRef.current = false;
     draggedKeySV.value = '';
-
     // Notification — parent stores data for persistence, library already committed
     if (fromItem !== undefined && toItem !== undefined) {
       onReorder({
@@ -1156,8 +1258,11 @@ export const useSortableList = <T,>(
     draggedKeySV,
     scrollOffsetSV,
     skipShiftAnimationSV,
+    registerCellBase,
+    unregisterCellBase,
     registerCellShift,
     unregisterCellShift,
+    pushBasePositionsToSVs,
     frozenBoundariesSV,
     orderedKeysSV,
     basePositionsSV,
@@ -1166,6 +1271,7 @@ export const useSortableList = <T,>(
     isDraggingSV,
     containerMeasSV,
     cellShiftRecordSV,
+    cumulativeEndsSV,
     snapTargetSV,
     syncRefsToWorklet,
     syncWorkletToRefs,

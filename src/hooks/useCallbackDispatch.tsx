@@ -220,7 +220,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     // them when it re-renders.
     deps.hoverStylesRef.current = draggedEntry.flattenedHoverStyles ?? null;
 
-    // Setup hover content
+    // Setup hover content — synchronous, renders HoverLayer in same frame.
+    // hoverReadySV gates visibility (opacity 0) until HoverLayer's useLayoutEffect fires.
     if (isDraggable(draggedEntry.props) && !draggedEntry.props.noHover) {
       const renderFn =
         draggedEntry.props.renderHoverContent ??

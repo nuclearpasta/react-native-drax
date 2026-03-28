@@ -242,4 +242,8 @@ export interface DraxViewProps
   collisionAlgorithm?: CollisionAlgorithm;
   /** Ref to a View that constrains the drag area. The dragged view will be clamped within these bounds. */
   dragBoundsRef?: RefObject<any>;
+  /** @internal Authoritative content-relative position for recycled list cells.
+   *  Bypasses view.measure() timing gap with SV-driven transforms.
+   *  Set by CellSlot from basePositionsRef. */
+  _contentPosition?: Position;
 }

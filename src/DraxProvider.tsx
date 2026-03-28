@@ -1,5 +1,5 @@
 import type { ReactNode, RefObject } from 'react';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import type { HostInstance } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
@@ -70,19 +70,20 @@ export const DraxProvider = ({
   } = useSpatialIndex();
 
   // ── Hover content (ref-based, zero provider re-renders) ─────────────
-  // Content stored in a ref. HoverLayer watches hoverTriggerSV via
-  // useAnimatedReaction and forces its own re-render — Provider never
-  // re-renders for hover changes.
+  // Content stored in a ref. setHoverContent calls hoverForceRenderRef
+  // directly (JS→JS) — no SV bounce. Provider never re-renders for hover changes.
   const hoverContentRef: RefObject<ReactNode> = useRef<ReactNode>(null);
   const hoverStylesRef: RefObject<FlattenedHoverStyles | null> = useRef<FlattenedHoverStyles | null>(null);
-  const hoverTriggerSV = useSharedValue(0);
+  // Direct JS→JS re-render trigger — no SV bounce through UI thread.
+  // HoverLayer registers its forceRender here; setHoverContent calls it directly.
+  const hoverForceRenderRef = useRef<(() => void) | undefined>(undefined);
   const setHoverContent = useCallback((content: ReactNode | null) => {
     hoverContentRef.current = content;
     if (content === null) {
       hoverStylesRef.current = null;
     }
-    hoverTriggerSV.value += 1;
-  }, [hoverTriggerSV]);
+    hoverForceRenderRef.current?.();
+  }, []);
 
   // ── Callback dispatch ──────────────────────────────────────────────
   const { handleDragStart, handleReceiverChange, handleDragEnd } =
@@ -115,8 +116,9 @@ export const DraxProvider = ({
     rootViewRef.current = ref;
   };
 
-  // Measure root view's screen position on layout
-  const handleRootLayout = useCallback(() => {
+  // New Architecture: useLayoutEffect + measure() runs synchronously before paint.
+  // Root view screen position measured on every render (catches layout changes).
+  useLayoutEffect(() => {
     const view = rootViewRef.current;
     if (view) {
       (view as unknown as { measure: (cb: (...args: number[]) => void) => void })
@@ -124,7 +126,7 @@ export const DraxProvider = ({
           rootOffsetSV.value = { x: pageX, y: pageY };
         });
     }
-  }, [rootOffsetSV]);
+  });
 
   // ── Stable context value ───────────────────────────────────────────
   const contextValue = useMemo<DraxContextValue>(
@@ -200,7 +202,7 @@ export const DraxProvider = ({
 
   return (
     <DraxContext value={contextValue}>
-      <View style={style} ref={setRootViewRef} onLayout={handleRootLayout} collapsable={false}>
+      <View style={style} ref={setRootViewRef} collapsable={false}>
         {children}
         {debug && (
           <DebugOverlay
@@ -210,7 +212,7 @@ export const DraxProvider = ({
         )}
         <HoverLayer
           hoverContentRef={hoverContentRef}
-          hoverTriggerSV={hoverTriggerSV}
+          hoverForceRenderRef={hoverForceRenderRef}
           hoverPositionSV={hoverPositionSV}
           dragPhaseSV={dragPhaseSV}
           receiverIdSV={receiverIdSV}

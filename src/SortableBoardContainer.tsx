@@ -324,7 +324,12 @@ export const SortableBoardContainer = <T,>({
           sourceCol.dropIndicatorGenSV.value++; // New indicator on source → snap (no spring from old position)
           sourceCol.dropIndicatorVisibleSV.value = true;
         }
+        // Source needs to re-render to bind a cell for the returned item
+        sourceCol.forceRenderRef.current?.();
       }
+
+      // Also trigger forceRender on the previous target to unbind the transferred cell
+      prevTarget?.forceRenderRef.current?.();
 
       transferRef.current = undefined;
     }

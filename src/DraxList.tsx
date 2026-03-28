@@ -7,32 +7,32 @@
  *
  * No FlatList. No Fabric/Reanimated race. No blink.
  */
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import {
   memo,
+  startTransition,
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
+  useSyncExternalStore,
 } from 'react';
 import type {
-  LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
   StyleProp,
   ViewStyle,
 } from 'react-native';
 import {
-  ScrollView,
   StyleSheet,
   View,
   useWindowDimensions,
 } from 'react-native';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
-import Reanimated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Reanimated, { useAnimatedRef, useAnimatedStyle, useScrollViewOffset, useSharedValue, withSpring } from 'react-native-reanimated';
 import { DraxView } from './DraxView';
 import { RecycledCell } from './RecycledCell';
 import { useSortableBoardContext } from './SortableBoardContext';
@@ -150,10 +150,45 @@ export interface DraxListProps<T> {
   ListLoadingComponent?: ReactNode;
 }
 
-/** Cell binding: which cell shows which item (dataIndex looked up at render time) */
-interface CellBinding {
-  cellKey: string;
+/** Cell binding data — content identity only. Positions flow through SharedValues. */
+interface CellBindingData {
   itemKey: string;
+  cellWidth: number | undefined;
+  cellHeight: number | undefined;
+  dataIndex: number;
+}
+
+/** Per-cell subscription store. Only notifies a cell's subscriber when its binding actually changes. */
+class CellBindingStore {
+  bindings = new Map<string, CellBindingData>();
+  private subscribers = new Map<string, Set<() => void>>();
+
+  subscribe(cellKey: string, cb: () => void): () => void {
+    let set = this.subscribers.get(cellKey);
+    if (!set) { set = new Set(); this.subscribers.set(cellKey, set); }
+    set.add(cb);
+    return () => { set.delete(cb); };
+  }
+
+  getBinding(cellKey: string): CellBindingData | undefined {
+    return this.bindings.get(cellKey);
+  }
+
+  setBinding(cellKey: string, data: CellBindingData): void {
+    const prev = this.bindings.get(cellKey);
+    if (prev && prev.itemKey === data.itemKey && prev.dataIndex === data.dataIndex
+        && prev.cellWidth === data.cellWidth && prev.cellHeight === data.cellHeight) {
+      return;
+    }
+    this.bindings.set(cellKey, data);
+    this.subscribers.get(cellKey)?.forEach(fn => fn());
+  }
+
+  clearBinding(cellKey: string): void {
+    if (!this.bindings.has(cellKey)) return;
+    this.bindings.delete(cellKey);
+    this.subscribers.get(cellKey)?.forEach(fn => fn());
+  }
 }
 
 // ─── Measured Content (single View replacing the old 2-View wrapper) ──
@@ -208,6 +243,108 @@ const MeasuredContent = memo(({
 
 MeasuredContent.displayName = 'MeasuredContent';
 
+// ─── Stable props ref for CellSlot (avoids re-renders from prop identity changes) ──
+
+interface CellSlotStableProps {
+  dataRef: RefObject<unknown[]>;
+  renderItemRef: RefObject<(info: { item: unknown; index: number }) => ReactNode>;
+  draggedKeySV: import('react-native-reanimated').SharedValue<string>;
+  hoverReadySV: import('react-native-reanimated').SharedValue<boolean>;
+  skipShiftAnimationSV: import('react-native-reanimated').SharedValue<boolean>;
+  springConfig: { damping: number; stiffness: number; mass: number } | null;
+  shiftDuration: number;
+  inactiveItemStyle?: Record<string, unknown>;
+  registerCellBase: (key: string, sv: import('react-native-reanimated').SharedValue<import('./types').Position>) => void;
+  unregisterCellBase: (key: string) => void;
+  registerCellShift: (key: string, sv: import('react-native-reanimated').SharedValue<import('./types').Position>) => void;
+  unregisterCellShift: (key: string) => void;
+  dragHandle?: boolean;
+  longPressDelay: number;
+  itemDraxViewProps?: Record<string, unknown>;
+  lockDragX: boolean;
+  lockDragY: boolean;
+  handleSnapEnd: (data: DraxSnapEndEventData) => void;
+  sortableWorkletConfig: unknown;
+  fillStyle: { flex: number } | undefined;
+  horizontal: boolean;
+  skipMeasurement: boolean;
+  itemAlignSelf: string;
+  handleItemLayout: (itemKey: string, height: number) => void;
+  cellLastHeightRef: RefObject<Map<string, number>>;
+  basePositionsRef: RefObject<Map<string, import('./types').Position>>;
+}
+
+// Debug: count CellSlot renders per second
+/** Per-cell component with independent subscription. Only re-renders when its binding changes. */
+const CellSlot = memo(function CellSlot({
+  cellKey,
+  store,
+  sp,
+}: {
+  cellKey: string;
+  store: CellBindingStore;
+  sp: RefObject<CellSlotStableProps>;
+}) {
+  const subscribe = useCallback((cb: () => void) => store.subscribe(cellKey, cb), [store, cellKey]);
+  const getSnapshot = useCallback(() => store.getBinding(cellKey), [store, cellKey]);
+  const binding = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+
+  if (!binding) return null;
+
+  const { itemKey, cellWidth, cellHeight, dataIndex } = binding;
+  const p = sp.current;
+  const item = (p.dataRef.current as unknown[])[dataIndex];
+  if (!item) return null;
+  const basePos = p.basePositionsRef.current.get(itemKey);
+
+  return (
+    <RecycledCell
+      baseX={basePos?.x ?? 0}
+      baseY={basePos?.y ?? 0}
+      cellWidth={cellWidth}
+      cellHeight={cellHeight}
+      itemKey={itemKey}
+      draggedKeySV={p.draggedKeySV}
+      hoverReadySV={p.hoverReadySV}
+      skipShiftAnimationSV={p.skipShiftAnimationSV}
+      springConfig={p.springConfig}
+      shiftDuration={p.shiftDuration}
+      inactiveItemStyle={p.inactiveItemStyle}
+      registerCellBase={p.registerCellBase}
+      unregisterCellBase={p.unregisterCellBase}
+      registerCellShift={p.registerCellShift}
+      unregisterCellShift={p.unregisterCellShift}
+    >
+      <DraxView
+        draggable
+        dragHandle={p.dragHandle}
+        longPressDelay={p.longPressDelay}
+        {...(p.itemDraxViewProps as Record<string, unknown>)}
+        lockDragXPosition={p.lockDragX}
+        lockDragYPosition={p.lockDragY}
+        payload={{ index: dataIndex, originalIndex: dataIndex }}
+        onSnapEnd={p.handleSnapEnd}
+        sortableWorklet={p.sortableWorkletConfig}
+        style={p.fillStyle}
+        _contentPosition={basePos}
+      >
+        <MeasuredContent
+          itemKey={itemKey}
+          cellKey={cellKey}
+          horizontal={p.horizontal}
+          skipMeasurement={p.skipMeasurement}
+          fillStyle={p.fillStyle}
+          alignSelf={p.itemAlignSelf}
+          onMeasure={p.handleItemLayout}
+          onCellHeight={p.cellLastHeightRef}
+        >
+          {p.renderItemRef.current({ item, index: dataIndex })}
+        </MeasuredContent>
+      </DraxView>
+    </RecycledCell>
+  );
+});
+
 // ─── Component ────────────────────────────────────────────────────────
 
 export const DraxList = <T,>(props: DraxListProps<T>) => {
@@ -253,10 +390,19 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
   const viewportSize = horizontal ? screenWidth : screenHeight;
   const drawDistance = drawDistanceProp ?? viewportSize * 3;
 
-  const scrollRef = useRef<any>(null);
+  const scrollAnimatedRef = useAnimatedRef<Reanimated.ScrollView>();
 
-  // ── Single re-render trigger (the ONLY thing that causes re-render) ──
+  // ── Re-render trigger — ONLY used for cell pool growth (adding new CellSlot elements) ──
+  // Normal scroll/data updates go through the CellBindingStore → per-cell useSyncExternalStore.
   const [, forceRender] = useReducer((x: number) => x + 1, 0);
+
+  // ── Per-cell subscription store ──
+  const cellStoreRef = useRef(new CellBindingStore());
+  // Active cell keys — grows on demand, never shrinks during session.
+  // forceRender is called when this grows (to add CellSlot elements to the tree).
+  const activeCellKeysRef = useRef<string[]>([]);
+  // Stable ref for props passed to CellSlot (avoids memo-busting from new object identity)
+  const stablePropsRef = useRef<CellSlotStableProps>(null!);
 
   // ── Core hook (all refs + SharedValues, no state) ──
   const sortable = useSortableList({
@@ -280,9 +426,12 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
 
   const int = sortable._internal;
 
-  // Register renderItem + forceRender so board can trigger re-renders on any column
+  // UI-thread scroll offset tracking via Reanimated (no JS onScroll needed).
+  // Passes int.scrollOffsetSV as the target SV — Reanimated writes directly to it.
+  useScrollViewOffset(scrollAnimatedRef, int.scrollOffsetSV);
+
+  // Register renderItem so board can access it
   int.renderItemRef.current = renderItem as (info: any) => ReactNode;
-  int.forceRenderRef.current = forceRender;
 
   const resolvedAnimConfig = useMemo(
     () => resolveAnimationConfig(animationConfig),
@@ -334,6 +483,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       isDraggingSV: int.isDraggingSV,
       containerMeasSV: int.containerMeasSV,
       cellShiftRecordSV: int.cellShiftRecordSV,
+      cumulativeEndsSV: int.cumulativeEndsSV,
       draggedKeySV: int.draggedKeySV,
       dropIndicatorPositionSV: int.dropIndicatorPositionSV,
       scrollOffsetSV: int.scrollOffsetSV,
@@ -349,74 +499,88 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
   );
 
   // ── Cell pool (refs only) ──
-  const cellBindingsRef = useRef<CellBinding[]>([]);
   const freeCellsRef = useRef<string[]>([]);
   const cellLastHeightRef = useRef<Map<string, number>>(new Map()); // cellKey → last measured height
   const bindingMapRef = useRef<Map<string, string>>(new Map()); // itemKey → cellKey
   const visibleKeysRef = useRef(new Set<string>()); // Reused across scroll ticks (no allocation)
   const nextCellIdRef = useRef(0);
 
+  /** Compute binding data for a single item (content identity + dimensions, NO position). */
+  const computeCellBindingData = useCallback(
+    (itemKey: string): CellBindingData | null => {
+      const dataIndex = int.keyToIndexRef.current.get(itemKey);
+      if (dataIndex === undefined) return null;
+      const dims = int.itemDimensionsRef.current.get(itemKey);
+      const cw = int.containerWidthRef.current;
+      const cwg = cw > 0 ? (numColumns > 1 ? cw / numColumns : cw) : undefined;
+      const cellWidth = flexWrap ? dims?.width : horizontal ? undefined : (dims?.width ?? cwg);
+      const cellHeight = flexWrap ? dims?.height : horizontal ? cwg : getItemSpan ? dims?.height : undefined;
+      return { itemKey, cellWidth, cellHeight, dataIndex };
+    },
+    [int, flexWrap, horizontal, numColumns, getItemSpan]
+  );
+
   const lastIndicatorSlotRef = useRef(-1); // Track indicator's last-set slot (avoids worklet/JS SV race)
   const itemsMeasuredRef = useRef(false); // True after first item measurement cycle — prevents FOUC
 
-  // ── Scroll perf refs ──
-  const lastProcessedOffsetRef = useRef(0); // For scroll delta threshold (only updates on threshold crossings)
-  const lastScrollOffsetRef = useRef(0); // Actual last scroll offset (for velocity — updates every event)
-  const lastScrollTimeRef = useRef(0); // For velocity tracking
-  const scrollVelocityRef = useRef(0); // px/ms — positive = scrolling forward
-  // ── Container layout ──
-  const handleContainerLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      const { width, height, x, y } = event.nativeEvent.layout;
-      const cw = horizontal ? height : width;
-      int.containerWidthRef.current = cw;
-      // ScrollView's offset within the monitoring DraxView (accounts for padding)
-      int.scrollContainerOffsetRef.current = { x, y };
-      int.recomputeBasePositionsAndClearShifts();
-      int.syncPositionsToWorklet();
-      // Reset scroll delta tracking (positions just changed)
-      lastProcessedOffsetRef.current = int.scrollOffsetSV.value;
-      // Rebind cells with new positions (grid positions change after container measured)
-      updateVisibleCells(int.scrollOffsetSV.value);
-      forceRender();
-    },
-    [horizontal, int]
-  );
+  // Scroll velocity for asymmetric buffer distribution (0 = symmetric buffer).
+  // TODO: track velocity on UI thread via worklet for asymmetric pre-rendering.
+  const scrollVelocityRef = useRef(0);
+  // ── Container measurement (synchronous on Fabric via JSI) ──
+  const measureContainer = useCallback(() => {
+    const node = scrollAnimatedRef.current;
+    if (!node) return;
+    (node as any).measure(
+      (_x: number, _y: number, width: number, height: number, pageX: number, pageY: number) => {
+        const cw = horizontal ? height : width;
+        if (cw === int.containerWidthRef.current) return; // No change
+        int.containerWidthRef.current = cw;
+        int.containerMeasRef.current = { x: pageX, y: pageY, width, height };
+        int.recomputeBasePositionsAndClearShifts();
+        int.syncPositionsToWorklet();
+        int.pushBasePositionsToSVs();
+        lastProcessedOffsetRef.current = int.scrollOffsetSV.value;
+        if (updateVisibleCells(int.scrollOffsetSV.value)) forceRender();
+      }
+    );
+  }, [horizontal, int]);
+
+  // New Architecture: useLayoutEffect + measure() runs synchronously before paint.
+  // Container width available on first commit — no FOUC from async onLayout.
+  useLayoutEffect(() => {
+    measureContainer();
+  }, [measureContainer]);
+
+  // Container measurement handled by useLayoutEffect above (New Architecture pattern).
+  // No onLayout needed — useLayoutEffect + measure() is synchronous on Fabric.
+
+  // ── Animated content container height (avoids React re-render on size change) ──
+  const totalSizeSV = useSharedValue(data.length * estimatedItemSize);
+  const contentContainerAnimStyle = useAnimatedStyle(() => {
+    return horizontal
+      ? { width: totalSizeSV.value, height: '100%' as any }
+      : { height: totalSizeSV.value, width: '100%' as any };
+  });
 
   // ── Scroll handling ──
-  const SCROLL_DELTA_THRESHOLD = 4; // px — skip updateVisibleCells if scroll moved less than this
+  // Scroll offset SV is tracked on UI thread via useScrollViewOffset (no scheduleOnUI needed).
+  // onScroll still handles visibility threshold + user callback on JS thread.
+  const SCROLL_DELTA_THRESHOLD = Math.max(4, estimatedItemSize / 4);
+  const lastProcessedOffsetRef = useRef(0);
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const offset = horizontal
         ? event.nativeEvent.contentOffset.x
         : event.nativeEvent.contentOffset.y;
 
-      // Always sync scrollOffset to UI thread (worklet needs accurate offset for slot detection)
-      scheduleOnUI((_sv: typeof int.scrollOffsetSV, _v: number) => {
-        'worklet';
-        _sv.value = _v;
-      }, int.scrollOffsetSV, offset);
-
-      // Track scroll velocity for asymmetric buffer distribution.
-      // Uses actual last scroll offset (not lastProcessedOffset which only updates on threshold).
-      const now = Date.now();
-      const dt = now - lastScrollTimeRef.current;
-      if (dt > 0 && dt < 500) {
-        scrollVelocityRef.current = (offset - lastScrollOffsetRef.current) / dt;
-      }
-      lastScrollOffsetRef.current = offset;
-      lastScrollTimeRef.current = now;
-
-      // Skip visible cell recalculation if scroll delta below threshold.
-      // drawDistance buffer (3x viewport) makes this safe.
       if (Math.abs(offset - lastProcessedOffsetRef.current) >= SCROLL_DELTA_THRESHOLD) {
         lastProcessedOffsetRef.current = offset;
-        updateVisibleCells(offset);
+        if (updateVisibleCells(offset)) forceRender();
       }
 
       onScrollProp?.(event);
     },
-    [horizontal, int.scrollOffsetSV, onScrollProp]
+    [horizontal, onScrollProp, SCROLL_DELTA_THRESHOLD]
   );
 
   // ── Item measurement (synchronous) ──
@@ -437,15 +601,17 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       } else if (shiftsEmpty) {
         int.recomputeBasePositions();
         int.syncPositionsToWorklet();
-        forceRender();
+        int.pushBasePositionsToSVs();
+        if (updateVisibleCells(int.scrollOffsetSV.value)) startTransition(forceRender);
       }
     },
     [int]
   );
 
   // ── Cell recycler ──
+  // Returns true if cell pool grew (caller must forceRender to add CellSlot elements).
   const updateVisibleCells = useCallback(
-    (scrollOffset: number) => {
+    (scrollOffset: number): boolean => {
       const keys = int.orderedKeysRef.current;
       const heights = int.itemHeightsRef.current;
       const containerSize = horizontal
@@ -531,28 +697,29 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
 
       // Diff: unbind items that left, bind items that entered
       const currentMap = bindingMapRef.current;
-      let changed = false;
+      const store = cellStoreRef.current;
+      let poolGrew = false;
 
       // Unbind (but never free the dragged item's cell)
       const dragKey = int.draggedKeySV.value;
+      const freedCells: string[] = [];
       for (const [itemKey, cellKey] of currentMap.entries()) {
         if (!visibleKeys.has(itemKey) && itemKey !== dragKey) {
           currentMap.delete(itemKey);
           freeCellsRef.current.push(cellKey);
-          changed = true;
+          freedCells.push(cellKey);
         }
       }
 
       // Bind
       let proactiveMeasured = false;
+      const newlyBound: [string, string][] = [];
       for (const itemKey of visibleKeys) {
         if (!currentMap.has(itemKey)) {
           let cellKey: string;
           if (freeCellsRef.current.length > 0) {
             cellKey = freeCellsRef.current.pop()!;
             // Proactive measurement: use cell's last known height for the new item.
-            // If the height matches (same-size item recycled), position is correct
-            // immediately with no onLayout wait. If different, onLayout corrects in 1 frame.
             const cellHeight = cellLastHeightRef.current.get(cellKey);
             if (cellHeight !== undefined && !int.itemHeightsRef.current.has(itemKey)) {
               int.recordItemHeight(itemKey, cellHeight);
@@ -560,27 +727,33 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
             }
           } else {
             cellKey = `cell-${nextCellIdRef.current++}`;
+            activeCellKeysRef.current.push(cellKey);
+            poolGrew = true;
           }
           currentMap.set(itemKey, cellKey);
-          changed = true;
+          newlyBound.push([itemKey, cellKey]);
         }
       }
 
       // Recompute positions if proactive measurements changed any heights.
-      // Without this, items stay at estimated positions when proactive height
-      // matches actual (onLayout won't fire → handleItemLayout won't recompute).
       if (proactiveMeasured) {
         int.recomputeBasePositions();
+        int.syncPositionsToWorklet();
+        int.pushBasePositionsToSVs(); // SV write → animatedStyle on UI thread, zero React re-renders
       }
 
-      if (changed) {
-        const newBindings: CellBinding[] = [];
-        for (const [itemKey, cellKey] of currentMap.entries()) {
-          newBindings.push({ cellKey, itemKey });
-        }
-        cellBindingsRef.current = newBindings;
-        forceRender();
+      // Clear freed cells FIRST — a freed cell may be reused in newlyBound (same cellKey).
+      // If we clear AFTER set, we'd destroy the new binding.
+      for (const cellKey of freedCells) {
+        store.clearBinding(cellKey);
       }
+      // Then set newly bound cells (may reuse cellKeys that were just cleared)
+      for (const [itemKey, cellKey] of newlyBound) {
+        const bd = computeCellBindingData(itemKey);
+        if (bd) store.setBinding(cellKey, bd);
+      }
+
+      return poolGrew;
     },
     [
       int,
@@ -591,8 +764,16 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       estimatedItemSize,
       numColumns,
       flexWrap,
+      computeCellBindingData,
     ]
   );
+
+  // Register forceRenderRef for board cross-container triggers.
+  // Board calls this after insertKey/removeKey to update cell bindings.
+  int.forceRenderRef.current = () => {
+    const poolGrew = updateVisibleCells(int.scrollOffsetSV.value);
+    if (poolGrew) forceRender();
+  };
 
   // ── Initial binding + data sync ──
   useLayoutEffect(() => {
@@ -604,6 +785,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
 
     // PRE-SYNC position/height/orderedKeys SVs to worklet (safe here — after render, before paint).
     int.syncPositionsToWorklet();
+    int.pushBasePositionsToSVs();
     int.orderedKeysSV.value = [...int.orderedKeysRef.current];
 
     if (int.pendingShiftClearRef.current) {
@@ -619,7 +801,9 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
 
     // Reset scroll delta tracking (positions/data just changed)
     lastProcessedOffsetRef.current = int.scrollOffsetSV.value;
-    updateVisibleCells(int.scrollOffsetSV.value);
+    // updateVisibleCells updates store → per-cell re-renders via useSyncExternalStore.
+    // forceRender only if pool grew (to add new CellSlot elements).
+    const poolGrew = updateVisibleCells(int.scrollOffsetSV.value);
 
     // Source list: dragged item was transferred out — clear drag state AFTER cell is unbound.
     // This prevents the flash (opacity 0→1 on the old cell before React removes it).
@@ -632,10 +816,11 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         // totalContentSize, and clears permanent drag shifts.
         int.skipShiftAnimationSV.value = true;
         int.recomputeBasePositionsAndClearShifts();
+        int.pushBasePositionsToSVs();
       }
     }
 
-    forceRender();
+    if (poolGrew) forceRender();
   }, [data]);
 
   // ── Hover cleanup after cross-container transfer ──
@@ -800,7 +985,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         const current = int.scrollOffsetSV.value;
         const target =
           direction === 'back' ? Math.max(0, current - jump) : current + jump;
-        scrollRef.current?.scrollTo?.({
+        (scrollAnimatedRef.current as any)?.scrollTo?.({
           [horizontal ? 'x' : 'y']: target,
           animated: true,
         });
@@ -1066,7 +1251,7 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         const fromIdx = int.dragStartIndexRef.current;
         const fromItem = int.dataRef.current[fromIdx];
         boardContext.commitTransfer();
-        updateVisibleCells(int.scrollOffsetSV.value);
+        if (updateVisibleCells(int.scrollOffsetSV.value)) forceRender();
         if (fromItem !== undefined) {
           onDragEndProp?.({ index: fromIdx, item: fromItem as T, toIndex: fromIdx, cancelled: false });
         }
@@ -1084,7 +1269,15 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
         int.syncWorkletToRefs();
       }
       int.commitReorder();
-      updateVisibleCells(int.scrollOffsetSV.value);
+      // After commitReorder, keyToIndexRef has the new order but existing cell bindings
+      // still have OLD dataIndex values. Re-set all bindings so CellSlot re-renders
+      // with correct dataIndex → correct item content.
+      const store = cellStoreRef.current;
+      for (const [ik, ck] of bindingMapRef.current) {
+        const bd = computeCellBindingData(ik);
+        if (bd) store.setBinding(ck, bd);
+      }
+      if (updateVisibleCells(int.scrollOffsetSV.value)) forceRender();
       if (fromItem !== undefined) {
         onDragEndProp?.({ index: fromIdx, item: fromItem as T, toIndex: toIdx, cancelled: false });
       }
@@ -1093,22 +1286,17 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
   );
 
   // ── Render ──
-  const bindings = cellBindingsRef.current;
-  const totalSize =
+  // Sync totalSizeSV from ref (no React re-render needed for height changes)
+  const currentTotalSize =
     int.totalContentSizeRef.current ||
     (numColumns > 1
       ? Math.ceil(data.length / numColumns) * estimatedItemSize
       : data.length * estimatedItemSize);
+  // Sync totalSizeSV outside render (useEffect) to avoid "Reading from value during render" warning.
+  useEffect(() => { totalSizeSV.value = currentTotalSize; }, [currentTotalSize, totalSizeSV]);
   const containerWidth = int.containerWidthRef.current;
-  const cellWidthForGrid =
-    containerWidth > 0
-      ? numColumns > 1
-        ? containerWidth / numColumns
-        : containerWidth
-      : undefined;
 
   // Read cross-axis alignment from contentContainerStyle.alignItems.
-  // Applied to inner wrapper — handles centering + correct cross-axis measurement.
   const itemAlignSelf = useMemo(() => {
     const flat = contentContainerStyle
       ? StyleSheet.flatten(contentContainerStyle)
@@ -1119,6 +1307,39 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       | 'flex-end'
       | 'stretch';
   }, [contentContainerStyle]);
+
+  const fillStyle = !flexWrap && getItemSpan && numColumns > 1 ? { flex: 1 } : undefined;
+
+  // Update stablePropsRef every render (before children render).
+  // CellSlot reads this via ref — memo on CellSlot is never busted by prop identity.
+  stablePropsRef.current = {
+    dataRef: int.dataRef as RefObject<unknown[]>,
+    renderItemRef: int.renderItemRef as RefObject<(info: { item: unknown; index: number }) => ReactNode>,
+    draggedKeySV: int.draggedKeySV,
+    hoverReadySV,
+    skipShiftAnimationSV: int.skipShiftAnimationSV,
+    springConfig: cellSpringConfig,
+    shiftDuration: resolvedAnimConfig.shiftDuration,
+    inactiveItemStyle,
+    registerCellBase: int.registerCellBase,
+    unregisterCellBase: int.unregisterCellBase,
+    registerCellShift: int.registerCellShift,
+    unregisterCellShift: int.unregisterCellShift,
+    dragHandle,
+    longPressDelay,
+    itemDraxViewProps: itemDraxViewProps as Record<string, unknown> | undefined,
+    lockDragX: !!(lockToMainAxis && !horizontal),
+    lockDragY: !!(lockToMainAxis && horizontal),
+    handleSnapEnd,
+    sortableWorkletConfig,
+    fillStyle,
+    horizontal,
+    skipMeasurement: !!getItemSize,
+    itemAlignSelf,
+    handleItemLayout,
+    cellLastHeightRef,
+    basePositionsRef: int.basePositionsRef as RefObject<Map<string, import('./types').Position>>,
+  };
 
   return (
     <DraxView
@@ -1134,106 +1355,31 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       onMonitorDragDrop={onMonitorDragDrop}
       style={style}
     >
-      <ScrollView
-        ref={scrollRef}
+      <Reanimated.ScrollView
+        ref={scrollAnimatedRef}
         horizontal={horizontal}
         onScroll={handleScroll}
         scrollEventThrottle={scrollEventThrottle}
-        onLayout={handleContainerLayout}
       >
         {ListHeaderComponent}
         {data.length === 0 && ListEmptyComponent}
         {data.length > 0 && !itemsMeasuredRef.current && ListLoadingComponent}
         {data.length > 0 && containerWidth > 0 && (
-          <View
-            style={[
-              contentContainerStyle,
-              horizontal
-                ? { width: totalSize, height: '100%' }
-                : { height: totalSize, width: '100%' },
-              // useLayoutEffect + measure() corrects positions before paint — no FOUC
-            ]}
+          <Reanimated.View
+            style={[contentContainerStyle, contentContainerAnimStyle]}
           >
-            {bindings.map((binding) => {
-              const { cellKey, itemKey } = binding;
-              // Look up dataIndex at render time (always fresh from keyToIndexRef)
-              const dataIndex = int.keyToIndexRef.current.get(itemKey);
-              if (dataIndex === undefined) return null; // Key removed from data (cross-container)
-              const item = int.dataRef.current[dataIndex];
-              const basePos = int.basePositionsRef.current.get(itemKey);
-              if (!item || !basePos) return null;
-              // With useLayoutEffect + measure(), items render at estimated positions and
-              // correct before paint (single commit). No need to hide at -10000.
-              const isMeasured = true;
-              const dims = int.itemDimensionsRef.current.get(itemKey);
-              // Vertical: cell fills column width (users center via alignSelf on their card)
-              // Horizontal: cell auto-sizes to content (primary axis measurement)
-              // Grid: use computed dimensions
-              const itemCellWidth = flexWrap
-                ? dims?.width  // flex-wrap: exact item width from packFlex
-                : horizontal
-                  ? undefined // auto-size for primary axis measurement
-                  : (dims?.width ?? cellWidthForGrid); // fill column
-              const itemCellHeight = flexWrap
-                ? dims?.height // flex-wrap: exact item height from packFlex
-                : horizontal
-                  ? cellWidthForGrid // fill row height
-                  : getItemSpan
-                    ? dims?.height
-                    : undefined;
-              // flex:1 for mixed-size grids (cells have explicit height from packGrid).
-              // NOT for flex-wrap (items have their own natural size).
-              const fillStyle = !flexWrap && getItemSpan && numColumns > 1 ? { flex: 1 } : undefined;
-
-              return (
-                <RecycledCell
-                  key={cellKey}
-                  baseX={isMeasured ? basePos.x : -10000}
-                  baseY={isMeasured ? basePos.y : -10000}
-                  cellWidth={itemCellWidth}
-                  cellHeight={itemCellHeight}
-                  itemKey={itemKey}
-                  draggedKeySV={int.draggedKeySV}
-                  hoverReadySV={hoverReadySV}
-                  skipShiftAnimationSV={int.skipShiftAnimationSV}
-                  springConfig={cellSpringConfig}
-                  shiftDuration={resolvedAnimConfig.shiftDuration}
-                  inactiveItemStyle={inactiveItemStyle}
-                  registerCellShift={int.registerCellShift}
-                  unregisterCellShift={int.unregisterCellShift}
-                >
-                  <DraxView
-                    draggable
-                    dragHandle={dragHandle}
-                    longPressDelay={longPressDelay}
-                    {...itemDraxViewProps}
-                    lockDragXPosition={lockToMainAxis && !horizontal}
-                    lockDragYPosition={lockToMainAxis && horizontal}
-                    payload={{ index: dataIndex, originalIndex: dataIndex }}
-                    onSnapEnd={handleSnapEnd}
-                    sortableWorklet={sortableWorkletConfig}
-                    style={fillStyle}
-                  >
-                    <MeasuredContent
-                      itemKey={itemKey}
-                      cellKey={cellKey}
-                      horizontal={horizontal}
-                      skipMeasurement={!!getItemSize}
-                      fillStyle={fillStyle}
-                      alignSelf={itemAlignSelf}
-                      onMeasure={handleItemLayout}
-                      onCellHeight={cellLastHeightRef}
-                    >
-                      {renderItem({ item, index: dataIndex })}
-                    </MeasuredContent>
-                  </DraxView>
-                </RecycledCell>
-              );
-            })}
-          </View>
+            {activeCellKeysRef.current.map((cellKey) => (
+              <CellSlot
+                key={cellKey}
+                cellKey={cellKey}
+                store={cellStoreRef.current}
+                sp={stablePropsRef}
+              />
+            ))}
+          </Reanimated.View>
         )}
         {ListFooterComponent}
-      </ScrollView>
+      </Reanimated.ScrollView>
 
       {/* Drop indicator — rendered outside ScrollView, positioned absolutely */}
       {renderDropIndicator && (

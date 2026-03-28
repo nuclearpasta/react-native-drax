@@ -3,17 +3,16 @@ import { memo, useLayoutEffect, useReducer } from 'react';
 import type { ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
-import Reanimated, { useAnimatedReaction, useAnimatedStyle } from 'react-native-reanimated';
-import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
+import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
+import { scheduleOnUI } from 'react-native-worklets';
 
 import type { DragPhase, FlattenedHoverStyles, Position } from './types';
 
 interface HoverLayerProps {
   hoverContentRef: RefObject<ReactNode>;
-  /** SharedValue trigger — incremented when hover content changes.
-   *  HoverLayer watches this via useAnimatedReaction and forces a local re-render.
-   *  This avoids re-rendering DraxProvider. */
-  hoverTriggerSV: SharedValue<number>;
+  /** Direct JS→JS re-render trigger. setHoverContent calls this to force a local re-render.
+   *  Replaces the old hoverTriggerSV→useAnimatedReaction→scheduleOnRN bounce chain. */
+  hoverForceRenderRef: RefObject<(() => void) | undefined>;
   hoverPositionSV: SharedValue<Position>;
   dragPhaseSV: SharedValue<DragPhase>;
   receiverIdSV: SharedValue<string>;
@@ -32,22 +31,17 @@ interface HoverLayerProps {
  * All other DraxViews read draggedIdSV/receiverIdSV/dragPhaseSV which change ~5x per drag.
  *
  * Content is passed via ref. DraxProvider never re-renders for hover changes.
- * Only this component re-renders when hover content changes (via hoverTriggerSV).
+ * Only this component re-renders when hover content changes (via direct forceRender).
  */
 export const HoverLayer = memo(
-  ({ hoverContentRef, hoverTriggerSV, hoverPositionSV, dragPhaseSV, receiverIdSV, hoverReadySV, hoverDimsSV, hoverStylesRef }: HoverLayerProps) => {
-    // Local re-render trigger — only HoverLayer re-renders, not DraxProvider.
-    // hoverTriggerSV is incremented on the JS thread by setHoverContent.
-    // useAnimatedReaction picks it up and forces a local re-render.
+  ({ hoverContentRef, hoverForceRenderRef, hoverPositionSV, dragPhaseSV, receiverIdSV, hoverReadySV, hoverDimsSV, hoverStylesRef }: HoverLayerProps) => {
+    // Direct JS→JS re-render trigger. setHoverContent calls forceRender directly —
+    // no SV bounce, no useAnimatedReaction, no scheduleOnRN. Same-frame render.
     const [renderVersion, forceRender] = useReducer((x: number) => x + 1, 0);
-    useAnimatedReaction(
-      () => hoverTriggerSV.value,
-      (curr, prev) => {
-        if (prev !== null && curr !== prev) {
-          scheduleOnRN(forceRender);
-        }
-      }
-    );
+    useLayoutEffect(() => {
+      hoverForceRenderRef.current = forceRender;
+      return () => { hoverForceRenderRef.current = undefined; };
+    }, [hoverForceRenderRef, forceRender]);
 
     // After hover content is committed to the DOM, activate drag phase + signal readiness.
     // dragPhaseSV is NOT set in the gesture handler — it's set HERE, ensuring:
