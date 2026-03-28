@@ -614,11 +614,11 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
     // Skip animation so cells snap to final positions (no spring-back artifact).
     if (int.pendingShiftClearRef.current) {
       int.pendingShiftClearRef.current = false;
-      int.skipShiftAnimationSV.value = true;
-      int.recomputeBasePositionsAndClearShifts();
+      // Base positions were recomputed eagerly during render (in useSortableList data sync).
+      // Cells in THIS commit already have new baseX/baseY. Now clear shifts — both
+      // updates land in the same Fabric commit, so no 1-frame blink at old positions.
+      int.clearShifts();
       // Hide indicator + clear stale info — transfer complete. Clean state for next drag.
-      // Without this, the board's info (from cross-container drag) persists and flashes
-      // when the next drag in this column sets visible=true before re-render.
       dropIndicatorVisibleSV.value = false;
       dropIndicatorInfoRef.current = undefined;
     }
@@ -1101,14 +1101,10 @@ export const DraxList = <T,>(props: DraxListProps<T>) => {
       }
 
       // Normal intra-column reorder
-      if (!int.isDraggingRef.current) {
-        console.log(`[SNAP END] isDragging=false, skipping commit`);
-        return;
-      }
+      if (!int.isDraggingRef.current) return;
       const fromIdx = int.dragStartIndexRef.current;
       const toIdx = int.currentSlotRef.current;
       const fromItem = int.dataRef.current[fromIdx];
-      console.log(`[SNAP END] commit from=${fromIdx} to=${toIdx} scroll=${int.scrollOffsetSV.value.toFixed(0)} totalContent=${int.totalContentSizeRef.current.toFixed(0)}`);
       // Only sync from worklet when it handled slot detection (single-column lists).
       // For grids (numColumns > 1), JS handled slot detection — orderedKeysRef is already correct.
       if (numColumns === 1 && sortableWorkletConfig) {

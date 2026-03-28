@@ -170,6 +170,7 @@ export interface SortableListInternal<T> {
   recordItemHeight: (key: string, height: number) => void;
   computeGridPositions: (keys: string[]) => { positions: Map<string, Position>; dimensions: Map<string, { width: number; height: number }>; totalHeight: number };
   recomputeBasePositions: () => void;
+  clearShifts: () => void;
   recomputeBasePositionsAndClearShifts: () => void;
   freezeSlotBoundaries: () => void;
   getSlotFromPosition: (contentX: number, contentY: number) => number;
@@ -540,18 +541,21 @@ export const useSortableList = <T,>(
     totalContentSizeRef.current = result.totalHeight;
   }
 
-  /** Recompute base positions AND clear shifts (used after layout changes, not during drag). */
-  function recomputeBasePositionsAndClearShifts() {
-    // Set skipShift HERE (not just in caller) to ensure it's in the same Reanimated
-    // SV write batch as the cell clears. Writing from the caller and reading .value
-    // back can return the old value (JSI getter reads UI-thread state, not pending JS write).
+  /** Clear all shifts (snap to 0). Caller must ensure base positions are already current. */
+  function clearShifts() {
     skipShiftAnimationSV.value = true;
-    recomputeBasePositions();
     shiftsSV.value = {};
-    // Clear per-cell SVs
     for (const sv of cellShiftRegistryRef.current.values()) {
       sv.value = { x: 0, y: 0 };
     }
+  }
+
+  /** Recompute base positions AND clear shifts.
+   *  Used by paths where base positions weren't recomputed during render
+   *  (container layout change, cross-container transfer). */
+  function recomputeBasePositionsAndClearShifts() {
+    recomputeBasePositions();
+    clearShifts();
   }
 
   // ── Sync external data EAGERLY during render (not in useLayoutEffect) ──
@@ -578,10 +582,12 @@ export const useSortableList = <T,>(
     if (!isDraggingRef.current) {
       orderedKeysRef.current = keys;
 
-      // ALWAYS reset base positions + clear shifts after data change.
-      // "Permanent shifts" kept Yoga touch at OLD base positions → wrong item grabbed.
-      // useLayoutEffect handles: skipShiftAnimation → recomputeBasePositionsAndClearShifts → forceRender.
-      // No visual change: newBase + 0 = oldBase + oldShift. But Yoga touch now correct.
+      // Recompute base positions EAGERLY during render so cells in THIS commit
+      // get new baseX/baseY props. Without this, shifts clear to 0 in useLayoutEffect
+      // but cells still have OLD base positions → 1-frame blink at original positions.
+      recomputeBasePositions();
+
+      // Mark for shift clear in useLayoutEffect (SV writes not allowed during render).
       pendingShiftClearRef.current = true;
     }
   }
@@ -1005,7 +1011,6 @@ export const useSortableList = <T,>(
     const fromItem = currentData[fromIndex];
     const toItem = currentData[toIndex];
 
-
     // Clear drag state
     isDraggingRef.current = false;
     draggedKeySV.value = '';
@@ -1081,6 +1086,7 @@ export const useSortableList = <T,>(
     recordItemHeight,
     computeGridPositions,
     recomputeBasePositions,
+    clearShifts,
     recomputeBasePositionsAndClearShifts,
     freezeSlotBoundaries,
     getSlotFromPosition,
