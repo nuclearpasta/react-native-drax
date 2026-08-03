@@ -88,6 +88,10 @@ const DRAX_PROP_KEYS: ReadonlySet<string> = new Set([
   'otherDraggingWithoutReceiverStyle',
   'dragHandle',
   'dragActivationFailOffset',
+  'dragActivationOffsetX',
+  'dragActivationOffsetY',
+  'dragActivationFailOffsetX',
+  'dragActivationFailOffsetY',
   'collisionAlgorithm',
   'scrollHorizontal',
 ]);
@@ -355,7 +359,13 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     lockDragYPosition,
     dragBoundsSV,
     props.dragActivationFailOffset,
-    scrollHorizontal
+    scrollHorizontal,
+    {
+      offsetX: props.dragActivationOffsetX,
+      offsetY: props.dragActivationOffsetY,
+      failOffsetX: props.dragActivationFailOffsetX,
+      failOffsetY: props.dragActivationFailOffsetY,
+    }
   );
 
   // ── Animated styles ────────────────────────────────────────────────
