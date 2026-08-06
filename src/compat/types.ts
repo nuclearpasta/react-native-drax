@@ -13,6 +13,10 @@ export interface DraxPanEvent {
   y: number;
   absoluteX: number;
   absoluteY: number;
+  /** Released v3 (gesture-handler PR #3887) moved the end flag into the
+   *  event, inverted, replacing the legacy `success` second parameter.
+   *  Absent on v2 and on v3 betas before the change. */
+  canceled?: boolean;
 }
 
 /** Config for the version-agnostic pan gesture hook. */
@@ -31,5 +35,7 @@ export interface DraxPanGestureConfig {
   onActivate: (event: DraxPanEvent) => void;
   onUpdate: (event: DraxPanEvent) => void;
   onDeactivate: (event: DraxPanEvent) => void;
-  onFinalize: (event: DraxPanEvent, didSucceed: boolean) => void;
+  /** `didSucceed` is only passed by v2 and by v3 betas predating
+   *  gesture-handler PR #3887; released v3 sends `event.canceled` instead. */
+  onFinalize: (event: DraxPanEvent, didSucceed?: boolean) => void;
 }

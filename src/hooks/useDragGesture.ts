@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import { runOnJS } from 'react-native-worklets';
 
-import { useDraxPanGesture } from '../compat';
+import { isFinalizeCanceled, useDraxPanGesture } from '../compat';
 import { computeAbsolutePositionWorklet, hitTestWorklet } from '../math';
 import type { Position } from '../types';
 import { useDraxContext } from './useDraxContext';
@@ -239,13 +239,13 @@ export const useDragGesture = (
       // Bounce to JS for end callbacks + snap animation
       runOnJS(handleDragEnd)(currentDraggedId, currentReceiverId, false, finalHitResult.monitorIds);
     },
-    onFinalize: (_event, didSucceed) => {
+    onFinalize: (event, didSucceed) => {
       'worklet';
 
       // If gesture was cancelled (not ended normally).
       // Check draggedIdSV (set in onActivate) instead of dragPhaseSV
       // because phase is now set later in handleDragStart via runOnUI.
-      if (!didSucceed && draggedIdSV.value !== '') {
+      if (isFinalizeCanceled(event, didSucceed) && draggedIdSV.value !== '') {
         const currentDraggedId = draggedIdSV.value;
         const currentReceiverId = receiverIdSV.value;
 

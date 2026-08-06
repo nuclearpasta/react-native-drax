@@ -365,6 +365,17 @@ export const SortableBoardContainer = <TItem,>({
       }
     }
 
+    // A cancelled drag-end arriving after the success path above has already
+    // run (source info cleared, transfer still pending for finalizeTransfer)
+    // is stale — reinjecting would revert the completed transfer. Return the
+    // phantom snap target again so the in-flight snap stays aimed at the
+    // target column instead of resolving to the default origin target.
+    if (cancelled && transfer?.targetId && !sourceInfoRef.current) {
+      draxViewProps?.onMonitorDragEnd?.(eventData);
+      const staleTarget = columns.get(transfer.targetId);
+      return staleTarget ? staleTarget.getPhantomSnapTarget() : undefined;
+    }
+
     if (transfer) {
       // Cancelled or no target — clear phantom and reinject
       if (transfer.targetId) {
