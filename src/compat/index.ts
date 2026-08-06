@@ -1,4 +1,5 @@
 export { useDraxPanGesture } from './useDraxPanGesture';
+export { isFinalizeCanceled } from './finalizeCanceled';
 export type {
   DraxPanEvent,
   DraxPanGesture,
