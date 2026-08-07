@@ -812,7 +812,7 @@ export interface SortableListInternal<T> {
   /** Called by SortableItem's onSnapEnd to finalize the drag.
    *  Stored as a ref so the latest finalizeDrag is always called,
    *  even if SortableItem has a stale _internal reference. */
-  onItemSnapEnd?: () => void;
+  onItemSnapEndRef: RefObject<(() => void) | undefined>;
   /** Current display index of the dragged item (updated during live reorder) */
   draggedDisplayIndexRef: RefObject<number | undefined>;
   /** Original display index where the drag started */
