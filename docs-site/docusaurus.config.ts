@@ -189,11 +189,11 @@ const config: Config = {
             const paths = new Set(items.map((item) => pathnameOf(item.url)));
             const visible = items.filter((item) => {
               const path = pathnameOf(item.url);
-              if (
-                path === sitePrefix ||
-                path === releasedPrefix ||
-                path.startsWith(`${releasedPrefix}/`)
-              ) {
+              // /1.x is a redirect to getting-started, not its own page.
+              if (path === releasedPrefix) {
+                return false;
+              }
+              if (path === sitePrefix || path.startsWith(`${releasedPrefix}/`)) {
                 return true;
               }
               if (!path.startsWith(`${sitePrefix}/`)) {
