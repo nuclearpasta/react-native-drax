@@ -150,14 +150,20 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           editUrl:
             'https://github.com/nuclearpasta/react-native-drax/tree/main/docs-site/',
-          lastVersion: 'current',
+          // npm latest is 1.x. The docs in ./docs are the unreleased 2.x tree.
+          lastVersion: '1.x',
           versions: {
             current: {
-              label: 'v2.x',
+              label: '2.x (next, unreleased)',
+              // Empty path keeps this tree at the docs root (/getting-started, …).
+              // With lastVersion '1.x', the default path would otherwise be "next".
+              path: '',
+              banner: 'unreleased',
             },
             '1.x': {
               label: 'v1.x',
-              banner: 'unmaintained',
+              // Explicit path so the default version stays at /1.x instead of moving to the root.
+              path: '1.x',
             },
           },
         },

@@ -63,15 +63,15 @@ function HeroSection() {
       </p>
       <code className="install-command">npm install react-native-drax</code>
       <div className="cta-buttons">
-        <Link className="button button--primary" to="/getting-started">
+        <Link className="button button--primary" to="/1.x/getting-started">
           <svg aria-hidden="true" className="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
           Get Started
         </Link>
-        <Link className="button button--secondary" to="/quick-start">
+        <Link className="button button--secondary" to="/1.x/quick-start">
           <svg aria-hidden="true" className="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 3 14 9-14 9V3z"/></svg>
           Quick Start
         </Link>
-        <Link className="button button--outline" to="/examples">
+        <Link className="button button--outline" to="/1.x/examples">
           <svg aria-hidden="true" className="cta-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
           Live Examples
         </Link>
@@ -198,11 +198,11 @@ function FooterCTA() {
       <Heading as="h2">Ready to build?</Heading>
       <p>
         Get started in minutes with the{' '}
-        <Link to="/getting-started">installation guide</Link>, or explore the{' '}
-        <Link to="/quick-start">quick start examples</Link>.
+        <Link to="/1.x/getting-started">installation guide</Link>, or explore the{' '}
+        <Link to="/1.x/quick-start">quick start examples</Link>.
       </p>
       <div className="cta-buttons">
-        <Link className="button button--primary" to="/getting-started">
+        <Link className="button button--primary" to="/1.x/getting-started">
           Read the Docs
         </Link>
         <Link
