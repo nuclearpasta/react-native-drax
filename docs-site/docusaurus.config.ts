@@ -248,7 +248,7 @@ const config: Config = {
           label: 'API',
         },
         {
-          href: 'https://nuclearpasta.com/react-native-drax/example/',
+          href: 'https://nuclearpasta.com/react-native-drax/example',
           label: 'Live Demo',
           position: 'left',
         },

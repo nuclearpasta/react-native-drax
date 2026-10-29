@@ -196,7 +196,7 @@ All interactive elements have `testID` for identification via `ui_describe_all` 
 
 ## Docs site versions
 
-npm `latest` is 1.x (1.1.0). The Docusaurus tree in `docs-site/docs` is unreleased 2.x and must stay at the docs root (`/getting-started`, …). Released docs stay at `/1.x`. `docusaurus.config.ts` sets `lastVersion: '1.x'` with `versions.current.path: ''` (otherwise current moves to `/next`) and `versions['1.x'].path: '1.x'` (otherwise the default version moves to the root). Do not set `versions.current.noIndex`. Homepage doc links point at `/1.x/...`. The live demo canonical is `https://nuclearpasta.com/react-native-drax/example` with no trailing slash; the example tab title is `react-native-drax — Live Demo` via `Head` in `example/app/(tabs)/_layout.tsx` so hydration does not replace the `+html.tsx` title.
+npm `latest` is 1.x (1.1.0). The Docusaurus tree in `docs-site/docs` is unreleased 2.x and must stay at the docs root (`/getting-started`, …). Released docs stay at `/1.x`. `docusaurus.config.ts` sets `lastVersion: '1.x'` with `versions.current.path: ''` (otherwise current moves to `/next`) and `versions['1.x'].path: '1.x'` (otherwise the default version moves to the root). Do not set `versions.current.noIndex`. Homepage doc links point at `/1.x/...`. The live demo canonical, navbar Live Demo link, and examples-index links are `https://nuclearpasta.com/react-native-drax/example` with no trailing slash; the example tab title is `react-native-drax — Live Demo` via `Head` in `example/app/(tabs)/_layout.tsx` so hydration does not replace the `+html.tsx` title.
 
 ## Debugging with Device Automation
 
