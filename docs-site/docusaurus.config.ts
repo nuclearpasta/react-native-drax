@@ -154,7 +154,8 @@ const config: Config = {
           lastVersion: '1.x',
           versions: {
             current: {
-              label: '2.x (next, unreleased)',
+              // The unreleased banner already says this tree is unreleased.
+              label: '2.x (next)',
               // Empty path keeps this tree at the docs root (/getting-started, …).
               // With lastVersion '1.x', the default path would otherwise be "next".
               path: '',
@@ -178,7 +179,30 @@ const config: Config = {
           filename: 'sitemap.xml',
           async createSitemapItems({ defaultCreateSitemapItems, ...params }) {
             const items = await defaultCreateSitemapItems(params);
-            return items.map((item) => {
+            // The unreleased tree lives at the docs root. Drop a current URL
+            // when the same path exists under /1.x so the sitemap lists the
+            // released page. Pages that exist only on current stay.
+            const releasedPrefix = '/react-native-drax/1.x';
+            const sitePrefix = '/react-native-drax';
+            const pathnameOf = (url: string) =>
+              new URL(url).pathname.replace(/\/$/, '') || '/';
+            const paths = new Set(items.map((item) => pathnameOf(item.url)));
+            const visible = items.filter((item) => {
+              const path = pathnameOf(item.url);
+              if (
+                path === sitePrefix ||
+                path === releasedPrefix ||
+                path.startsWith(`${releasedPrefix}/`)
+              ) {
+                return true;
+              }
+              if (!path.startsWith(`${sitePrefix}/`)) {
+                return true;
+              }
+              const twin = `${releasedPrefix}${path.slice(sitePrefix.length)}`;
+              return !paths.has(twin);
+            });
+            return visible.map((item) => {
               const path = new URL(item.url).pathname;
               if (path === '/react-native-drax/' || path === '/react-native-drax') {
                 return { ...item, priority: 1.0, changefreq: 'weekly' as const };
@@ -219,7 +243,6 @@ const config: Config = {
       { property: 'og:site_name', content: 'react-native-drax' },
       { property: 'og:type', content: 'website' },
       { property: 'og:locale', content: 'en_US' },
-      { property: 'og:url', content: 'https://nuclearpasta.com/react-native-drax/' },
       { property: 'og:image', content: 'https://nuclearpasta.com/react-native-drax/img/social-card.png' },
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
@@ -274,9 +297,9 @@ const config: Config = {
         {
           title: 'Docs',
           items: [
-            { label: 'Getting Started', to: '/getting-started' },
-            { label: 'Guides', to: '/guides/drag-and-drop' },
-            { label: 'API Reference', to: '/api/components/drax-provider' },
+            { label: 'Getting Started', to: '/1.x/getting-started' },
+            { label: 'Guides', to: '/1.x/guides/drag-and-drop' },
+            { label: 'API Reference', to: '/1.x/api/components/drax-provider' },
           ],
         },
         {
