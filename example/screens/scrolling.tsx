@@ -33,8 +33,6 @@ export default function Scrolling() {
             hoverDraggingWithReceiverStyle={styles.hoverItemOverBucket}
             hoverDragReleasedStyle={styles.hoverItemReleased}
             snapDuration={200}
-            onDragStart={() => console.log('[scrolling:item1] dragStart')}
-            onDragEnd={() => console.log('[scrolling:item1] dragEnd')}
           >
             <Text style={styles.scrollItemText}>1</Text>
           </DraxView>
@@ -51,8 +49,6 @@ export default function Scrolling() {
             hoverDraggingWithReceiverStyle={styles.hoverItemOverBucket}
             hoverDragReleasedStyle={styles.hoverItemReleased}
             snapDuration={200}
-            onDragStart={() => console.log('[scrolling:item2] dragStart')}
-            onDragEnd={() => console.log('[scrolling:item2] dragEnd')}
           >
             <Text style={styles.scrollItemText}>2</Text>
           </DraxView>
@@ -69,8 +65,6 @@ export default function Scrolling() {
             hoverDraggingWithReceiverStyle={styles.hoverItemOverBucket}
             hoverDragReleasedStyle={styles.hoverItemReleased}
             snapDuration={200}
-            onDragStart={() => console.log('[scrolling:item3] dragStart')}
-            onDragEnd={() => console.log('[scrolling:item3] dragEnd')}
           >
             <Text style={styles.scrollItemText}>3</Text>
           </DraxView>
@@ -87,8 +81,6 @@ export default function Scrolling() {
             hoverDraggingWithReceiverStyle={styles.hoverItemOverBucket}
             hoverDragReleasedStyle={styles.hoverItemReleased}
             snapDuration={200}
-            onDragStart={() => console.log('[scrolling:item4] dragStart')}
-            onDragEnd={() => console.log('[scrolling:item4] dragEnd')}
           >
             <Text style={styles.scrollItemText}>4</Text>
           </DraxView>
@@ -108,7 +100,6 @@ export default function Scrolling() {
             receivingStyle={styles.bucketReceiving}
             onReceiveDragDrop={(event) => {
               const payload = event.dragged.payload;
-              console.log(`[scrolling:bucket] receiveDragDrop payload=${payload}`);
               if (typeof payload === 'number') {
                 setSum((s) => s + payload);
               }
