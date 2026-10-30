@@ -152,7 +152,7 @@ export const HoverLayer = memo(
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     // Default hidden — useAnimatedStyle overrides to opacity:1 when dragging.
     // Prevents a one-frame flash on first mount before the animated style evaluates.
     opacity: 0,

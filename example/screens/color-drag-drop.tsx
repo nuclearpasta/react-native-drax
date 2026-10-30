@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'flex-end',
     alignItems: 'flex-end',
   },
