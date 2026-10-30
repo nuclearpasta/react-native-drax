@@ -31,21 +31,6 @@ const config: Config = {
     {
       tagName: 'meta',
       attributes: {
-        name: 'robots',
-        content: 'index, follow',
-      },
-    },
-    {
-      tagName: 'meta',
-      attributes: {
-        name: 'googlebot',
-        content:
-          'index, follow, max-video-preview:-1, max-image-preview:large, max-snippet:-1',
-      },
-    },
-    {
-      tagName: 'meta',
-      attributes: {
         name: 'author',
         content: 'Nuclear Pasta',
       },
@@ -154,17 +139,16 @@ const config: Config = {
           lastVersion: '1.x',
           versions: {
             current: {
-              // The unreleased banner already says this tree is unreleased.
               label: '2.x (next)',
-              // Empty path keeps this tree at the docs root (/getting-started, …).
-              // With lastVersion '1.x', the default path would otherwise be "next".
-              path: '',
+              path: 'next',
               banner: 'unreleased',
+              noIndex: true,
             },
             '1.x': {
               label: 'v1.x',
-              // Explicit path so the default version stays at /1.x instead of moving to the root.
-              path: '1.x',
+              // '' is the unprefixed docs root. Keep it explicit so the released
+              // version does not fall through to another path.
+              path: '',
             },
           },
         },
@@ -179,28 +163,22 @@ const config: Config = {
           filename: 'sitemap.xml',
           async createSitemapItems({ defaultCreateSitemapItems, ...params }) {
             const items = await defaultCreateSitemapItems(params);
-            // The unreleased tree lives at the docs root. Drop a current URL
-            // when the same path exists under /1.x so the sitemap lists the
-            // released page. Pages that exist only on current stay.
-            const releasedPrefix = '/react-native-drax/1.x';
-            const sitePrefix = '/react-native-drax';
+            // 1.x is the only docs version in the sitemap. 2.x is noindex under
+            // /next, including pages that have no released twin. The host 308s
+            // /1.x, so those paths are not docs URLs anymore.
+            const nextPrefix = '/react-native-drax/next';
+            const oldReleasedPrefix = '/react-native-drax/1.x';
             const pathnameOf = (url: string) =>
               new URL(url).pathname.replace(/\/$/, '') || '/';
-            const paths = new Set(items.map((item) => pathnameOf(item.url)));
             const visible = items.filter((item) => {
               const path = pathnameOf(item.url);
-              // /1.x is a redirect to getting-started, not its own page.
-              if (path === releasedPrefix) {
+              if (path === nextPrefix || path.startsWith(`${nextPrefix}/`)) {
                 return false;
               }
-              if (path === sitePrefix || path.startsWith(`${releasedPrefix}/`)) {
-                return true;
+              if (path === oldReleasedPrefix || path.startsWith(`${oldReleasedPrefix}/`)) {
+                return false;
               }
-              if (!path.startsWith(`${sitePrefix}/`)) {
-                return true;
-              }
-              const twin = `${releasedPrefix}${path.slice(sitePrefix.length)}`;
-              return !paths.has(twin);
+              return true;
             });
             return visible.map((item) => {
               const path = new URL(item.url).pathname;
@@ -297,9 +275,9 @@ const config: Config = {
         {
           title: 'Docs',
           items: [
-            { label: 'Getting Started', to: '/1.x/getting-started' },
-            { label: 'Guides', to: '/1.x/guides/drag-and-drop' },
-            { label: 'API Reference', to: '/1.x/api/components/drax-provider' },
+            { label: 'Getting Started', to: '/getting-started' },
+            { label: 'Guides', to: '/guides/drag-and-drop' },
+            { label: 'API Reference', to: '/api/components/drax-provider' },
           ],
         },
         {
