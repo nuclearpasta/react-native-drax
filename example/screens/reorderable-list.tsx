@@ -126,31 +126,8 @@ export default function ReorderableList() {
             accessibilityLabel: 'Reorderable list of letters A through Z',
           }}
           scrollEventThrottle={16}
-          onReorder={({ data, fromIndex, fromItem, toIndex, toItem }) => {
-            console.log(
-              `[reorderableList:onReorder] from=${fromIndex} (${fromItem}) to=${toIndex} (${toItem})`
-            );
+          onReorder={({ data }) => {
             setAlphaData(data);
-          }}
-          onDragStart={({ index, item }) => {
-            console.log(
-              `[reorderableList:onDragStart] index=${index} item=${item}`
-            );
-          }}
-          onDragPositionChange={({
-            index,
-            item,
-            toIndex,
-            previousIndex,
-          }) => {
-            console.log(
-              `[reorderableList:onDragPositionChange] index=${index} item=${item} toIndex=${toIndex} previousIndex=${previousIndex}`
-            );
-          }}
-          onDragEnd={({ index, item, toIndex, cancelled }) => {
-            console.log(
-              `[reorderableList:onDragEnd] index=${index} item=${item} toIndex=${toIndex} cancelled=${cancelled}`
-            );
           }}
           renderItem={({ item }) => {
             const tweaks = getItemStyleTweaks(item);

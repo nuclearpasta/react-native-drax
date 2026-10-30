@@ -31,21 +31,6 @@ const config: Config = {
     {
       tagName: 'meta',
       attributes: {
-        name: 'robots',
-        content: 'index, follow',
-      },
-    },
-    {
-      tagName: 'meta',
-      attributes: {
-        name: 'googlebot',
-        content:
-          'index, follow, max-video-preview:-1, max-image-preview:large, max-snippet:-1',
-      },
-    },
-    {
-      tagName: 'meta',
-      attributes: {
         name: 'author',
         content: 'Nuclear Pasta',
       },
@@ -150,14 +135,20 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           editUrl:
             'https://github.com/nuclearpasta/react-native-drax/tree/main/docs-site/',
-          lastVersion: 'current',
+          // npm latest is 1.x. The docs in ./docs are the unreleased 2.x tree.
+          lastVersion: '1.x',
           versions: {
             current: {
-              label: 'v2.x',
+              label: '2.x (next)',
+              path: 'next',
+              banner: 'unreleased',
+              noIndex: true,
             },
             '1.x': {
               label: 'v1.x',
-              banner: 'unmaintained',
+              // '' is the unprefixed docs root. Keep it explicit so the released
+              // version does not fall through to another path.
+              path: '',
             },
           },
         },
@@ -172,7 +163,24 @@ const config: Config = {
           filename: 'sitemap.xml',
           async createSitemapItems({ defaultCreateSitemapItems, ...params }) {
             const items = await defaultCreateSitemapItems(params);
-            return items.map((item) => {
+            // 1.x is the only docs version in the sitemap. 2.x is noindex under
+            // /next, including pages that have no released twin. The host 308s
+            // /1.x, so those paths are not docs URLs anymore.
+            const nextPrefix = '/react-native-drax/next';
+            const oldReleasedPrefix = '/react-native-drax/1.x';
+            const pathnameOf = (url: string) =>
+              new URL(url).pathname.replace(/\/$/, '') || '/';
+            const visible = items.filter((item) => {
+              const path = pathnameOf(item.url);
+              if (path === nextPrefix || path.startsWith(`${nextPrefix}/`)) {
+                return false;
+              }
+              if (path === oldReleasedPrefix || path.startsWith(`${oldReleasedPrefix}/`)) {
+                return false;
+              }
+              return true;
+            });
+            return visible.map((item) => {
               const path = new URL(item.url).pathname;
               if (path === '/react-native-drax/' || path === '/react-native-drax') {
                 return { ...item, priority: 1.0, changefreq: 'weekly' as const };
@@ -213,7 +221,6 @@ const config: Config = {
       { property: 'og:site_name', content: 'react-native-drax' },
       { property: 'og:type', content: 'website' },
       { property: 'og:locale', content: 'en_US' },
-      { property: 'og:url', content: 'https://nuclearpasta.com/react-native-drax/' },
       { property: 'og:image', content: 'https://nuclearpasta.com/react-native-drax/img/social-card.png' },
       { property: 'og:image:width', content: '1200' },
       { property: 'og:image:height', content: '630' },
@@ -242,7 +249,7 @@ const config: Config = {
           label: 'API',
         },
         {
-          href: 'https://nuclearpasta.com/react-native-drax/example/',
+          href: 'https://nuclearpasta.com/react-native-drax/example',
           label: 'Live Demo',
           position: 'left',
         },

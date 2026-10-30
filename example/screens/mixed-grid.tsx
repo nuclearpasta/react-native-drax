@@ -99,17 +99,8 @@ export default function MixedGrid() {
     keyExtractor: (item) => item.id,
     getItemSpan,
     animationConfig: 'spring',
-    onReorder: ({ data: newData, fromIndex, fromItem, toIndex, toItem }) => {
-      console.log(
-        `Item dragged from ${fromIndex} (${fromItem.label}) to ${toIndex} (${toItem.label})`
-      );
+    onReorder: ({ data: newData }) => {
       setData(newData);
-    },
-    onDragStart: ({ index, item }) => {
-      console.log(`Item #${index} (${item.label}) drag start`);
-    },
-    onDragEnd: ({ index, item, toIndex }) => {
-      console.log(`Item #${index} (${item.label}) drag ended at ${toIndex}`);
     },
   });
 

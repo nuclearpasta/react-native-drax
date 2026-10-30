@@ -194,6 +194,17 @@ All interactive elements have `testID` for identification via `ui_describe_all` 
 | Scrolling | `scroll-item-{n}`, `sum-bucket` | `scroll-item-1`, `sum-bucket` |
 | Stress Test | `stress-item-{id}`, `stress-test-container` | `stress-item-stress-0` |
 
+## Docs site versions
+
+- npm `latest` is 1.x (1.1.0). Released docs are the default version at the unprefixed paths (`/getting-started`, `/api/...`). The tree in `docs-site/docs` is unreleased 2.x and lives at `/next/...`. The host 308s `/1.x` and `/1.x/*` to the unprefixed paths. Do not add a docs redirect or an `index` doc for `/1.x`. Do not add `docs/index.mdx` — that file would collide with the custom homepage.
+- `docusaurus.config.ts`: `lastVersion: '1.x'`, `versions['1.x'].path: ''` (keep the empty string; `??` would otherwise ignore it), `versions['1.x'].label: 'v1.x'`, no banner and no `noIndex` on 1.x. `versions.current.path: 'next'`, `label: '2.x (next)'`, `banner: 'unreleased'`, `noIndex: true`.
+- Homepage CTAs, footer Docs links, and navbar Docs/API point at the unprefixed 1.x URLs. The Docs/API items are `docSidebar` components swizzled to the latest version, so they stay on 1.x even while a `/next/` page is open. Do not set a site-wide `og:url`. On a `/next/` page that has a 1.x doc with the same id, `SiteMetadata` sets canonical and `og:url` to that unprefixed twin. A `/next/` page with no twin keeps its own canonical and stays `noindex`.
+- `createSitemapItems` drops `/next` and `/1.x`. The sitemap lists the homepage and the released docs only.
+- Live demo canonical and the navbar Live Demo link are `https://nuclearpasta.com/react-native-drax/example` with no trailing slash.
+- The example tab title is `react-native-drax — Live Demo` via `Head` in `example/app/(tabs)/_layout.tsx`. Keep the `Platform.OS === 'web'` guard: iOS `expo-router/head` calls `getStaticUrlFromExpoRouter` and throws in dev when the Expo config has no `expo-router` origin.
+- Production `appendBaseUrl` still joins `experiments.baseUrl` with the index path `/` and `history.replaceState`s the address bar to `/react-native-drax/example/`. There is no app config for that; parsing accepts both URLs.
+- `clientScreen` must render the same placeholder on the server and on the first web client render. Mount the lazy screen in an effect. A module-level `typeof window` branch (placeholder vs `Suspense`+`lazy`) is React hydration error #418.
+
 ## Debugging with Device Automation
 
 ### agent-device (preferred)

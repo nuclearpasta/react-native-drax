@@ -42,19 +42,8 @@ export default function ReorderableGrid() {
     numColumns: NUM_COLUMNS,
     keyExtractor: (item) => item.id,
     animationConfig: 'spring',
-    onReorder: ({ data: newData, fromIndex, fromItem, toIndex, toItem }) => {
-      console.log(
-        `Tile dragged from index ${fromIndex} (${fromItem.label}) to index ${toIndex} (${toItem.label})`
-      );
+    onReorder: ({ data: newData }) => {
       setData(newData);
-    },
-    onDragStart: ({ index, item }) => {
-      console.log(`Tile #${index} (${item.label}) drag start`);
-    },
-    onDragEnd: ({ index, item, toIndex }) => {
-      console.log(
-        `Tile #${index} (${item.label}) drag ended at index ${toIndex}`
-      );
     },
   });
 
@@ -100,11 +89,7 @@ export default function ReorderableGrid() {
                 </Text>
               </View>
             }
-            renderItem={({ item, index }) => {
-              if (index < 3) {
-                console.log(`[renderItem] index=${index} label=${item.label} color=${item.color.slice(0,4)}`);
-              }
-              return (
+            renderItem={({ item, index }) => (
               <SortableItem
                 sortable={sortable}
                 index={index}
@@ -127,8 +112,7 @@ export default function ReorderableGrid() {
               >
                 <Text style={[styles.tileText, { color: isDark ? '#e0e0e0' : '#333' }]}>{item.label}</Text>
               </SortableItem>
-              );
-            }}
+            )}
           />
         </SortableContainer>
       </View>
