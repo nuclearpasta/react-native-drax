@@ -200,6 +200,10 @@ export const SortableContainer = ({
             // move to correct positions immediately. The delayed flush caused
             // races when the user grabbed another item before it fired.
             sortable._internal.flushVisualOrder();
+          } else {
+            setTimeout(() => {
+              sortable._internal.flushVisualOrder();
+            }, 0);
           }
         });
       }
