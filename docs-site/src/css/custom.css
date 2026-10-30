@@ -937,3 +937,10 @@ code.install-command {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* The comparison matrix is wider than the article column. */
+.comparison-page table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+}
