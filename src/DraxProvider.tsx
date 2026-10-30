@@ -1,8 +1,7 @@
-import type { ReactNode, RefObject } from 'react';
+import type { ComponentRef, ReactNode, RefObject } from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { HostInstance } from 'react-native';
 import { StyleSheet, View } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
+import { useAnimatedRef, useSharedValue } from 'react-native-reanimated';
 
 import { DebugOverlay } from './DebugOverlay';
 import { DraxContext } from './DraxContext';
@@ -106,10 +105,7 @@ export const DraxProvider = ({
     });
 
   // ── Root view ref ──────────────────────────────────────────────────
-  const rootViewRef = useRef<HostInstance>(null);
-  const setRootViewRef = (ref: HostInstance | null) => {
-    rootViewRef.current = ref;
-  };
+  const rootViewRef = useAnimatedRef<ComponentRef<typeof View>>();
 
   // Measure root view's screen position on layout
   const handleRootLayout = useCallback(() => {
@@ -120,7 +116,7 @@ export const DraxProvider = ({
           rootOffsetSV.value = { x: pageX, y: pageY };
         });
     }
-  }, [rootOffsetSV]);
+  }, [rootOffsetSV, rootViewRef]);
 
   // ── Stable context value ───────────────────────────────────────────
   const contextValue = useMemo<DraxContextValue>(
@@ -189,12 +185,13 @@ export const DraxProvider = ({
       handleDragEnd,
       setHoverContent,
       droppedItemsRef,
+      rootViewRef,
     ]
   );
 
   return (
     <DraxContext value={contextValue}>
-      <View style={style} ref={setRootViewRef} onLayout={handleRootLayout} collapsable={false}>
+      <View style={style} ref={rootViewRef} onLayout={handleRootLayout} collapsable={false}>
         {children}
         {debug && (
           <DebugOverlay
