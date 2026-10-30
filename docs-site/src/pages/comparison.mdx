@@ -100,7 +100,7 @@ For how drax handles these, see [drag handles](https://nuclearpasta.com/react-na
 |---|---|---|---|---|---|
 | Drag handles | Yes (DraxHandle) [R-drax] | Via the `drag()` callback from any element [R-DFL] | Yes [R-RDND] | Yes (Sortable.Handle) [D-S-handle] | Via the `useReorderableDrag` hook [R-RL] |
 | Auto-scroll while dragging | Yes (DraxScrollView; list auto-scroll) [R-drax] | Yes (`autoscrollThreshold`, `autoscrollSpeed`) [R-DFL] | Yes [R-RDND] | Yes [R-S] | Yes (`autoscroll*` props) [R-RL] |
-| Move items between lists | Experimental (SortableBoardContainer) [R-drax], [drax-table] | Nested lists in one scroll container; transfer between lists not documented [R-DFL] | Track items across multiple drop zones [R-RDND]; cross-list sortable **unverified** | Not documented | Nested lists; transfer not documented [R-RL] |
+| Move items between lists | Experimental (SortableBoardContainer) [R-drax], [drax-table] | Nested lists in one scroll container; transfer between lists not documented [R-DFL] | Track items across multiple drop zones. Cross-list sorting: No (planned for the next release) [R-RDND] | Not documented | Nested lists; transfer not documented [R-RL] |
 | Axis lock / drag bounds | Yes (`lockToMainAxis`, `lockDragX/YPosition`, `dragBoundsRef`) [API-list], [API-view] | **unverified** (`dragItemOverflow` only) [R-DFL] | Yes ("axis-locked and bounded dragging") [R-RDND] | **unverified** | **unverified** |
 | Collision modes | center / intersect / contain [R-drax] | Not documented | center / intersect / contain [R-RDND] | Not documented | Not documented |
 | Drop acceptance / capacity | `acceptsDrag` + `capacity` [R-drax], [API-view] | n/a | **unverified** | n/a | n/a |
