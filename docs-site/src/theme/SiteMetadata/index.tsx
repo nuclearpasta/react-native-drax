@@ -12,6 +12,7 @@ import {useLocation} from '@docusaurus/router';
 import {applyTrailingSlash} from '@docusaurus/utils-common';
 import {useAllDocsData} from '@docusaurus/plugin-content-docs/client';
 import SearchMetadata from '@theme/SearchMetadata';
+import {useNotFoundSeo} from '../notFoundSeo';
 
 // baseUrl stays `/react-native-drax/` so routing and assets keep working.
 // The host serves the docs home at that path without a trailing slash.
@@ -23,7 +24,14 @@ function homePath(path: string, baseUrl: string): string {
 }
 
 function isNotFoundPath(pathname: string): boolean {
+  // The prerendered 404 document. Any other missing URL still renders NotFound,
+  // which publishes useNotFoundSeo() for hydration and client navigation.
   return /\/404(?:\.html)?$/.test(pathname);
+}
+
+function useIsNotFoundPage(): boolean {
+  const {pathname} = useLocation();
+  return useNotFoundSeo() || isNotFoundPath(pathname);
 }
 
 function alternateHref(href: string, siteUrl: string, baseUrl: string): string {
@@ -35,6 +43,7 @@ function alternateHref(href: string, siteUrl: string, baseUrl: string): string {
 }
 
 function AlternateLangHeaders(): ReactNode {
+  const notFound = useIsNotFoundPage();
   const {
     siteConfig: {url: siteUrl, baseUrl},
     i18n: {currentLocale, defaultLocale, localeConfigs},
@@ -56,8 +65,12 @@ function AlternateLangHeaders(): ReactNode {
       baseUrl,
     );
 
+  if (notFound) {
+    return null;
+  }
+
   return (
-    <Head>
+    <Head defer={false}>
       {Object.entries(localeConfigs).map(([locale, {htmlLang}]) => (
         <link
           key={locale}
@@ -131,20 +144,21 @@ function useCanonicalUrl(): string {
 }
 
 function RobotsHeaders(): ReactNode {
-  const {pathname} = useLocation();
-  if (isNotFoundPath(pathname)) {
+  const notFound = useIsNotFoundPage();
+  const active = useActiveDocsVersion();
+  if (notFound) {
     return (
-      <Head>
+      <Head defer={false}>
         <meta name="robots" content="noindex" />
+        <meta name="googlebot" content="noindex" />
       </Head>
     );
   }
-  const active = useActiveDocsVersion();
   if (active && !active.isLast) {
     return null;
   }
   return (
-    <Head>
+    <Head defer={false}>
       <meta name="robots" content="index, follow" />
       <meta
         name="googlebot"
@@ -155,13 +169,12 @@ function RobotsHeaders(): ReactNode {
 }
 
 function CanonicalUrlHeaders(): ReactNode {
-  const {pathname} = useLocation();
   const canonicalUrl = useCanonicalUrl();
-  if (isNotFoundPath(pathname)) {
+  if (useIsNotFoundPage()) {
     return null;
   }
   return (
-    <Head>
+    <Head defer={false}>
       <meta property="og:url" content={canonicalUrl} />
       <link rel="canonical" href={canonicalUrl} />
     </Head>
