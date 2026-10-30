@@ -11,6 +11,7 @@ import {
   useActiveDocContext,
   useDocsVersionCandidates,
   useDocsPreferredVersion,
+  useLatestVersion,
 } from '@docusaurus/plugin-content-docs/client';
 import {translate} from '@docusaurus/Translate';
 import {useHistorySelector} from '@docusaurus/theme-common';
@@ -132,12 +133,19 @@ export default function DocsVersionDropdownNavbarItem({
   const search = useHistorySelector((history) => history.location.search);
   const hash = useHistorySelector((history) => history.location.hash);
   const activeDocContext = useActiveDocContext(docsPluginId);
+  const latestVersion = useLatestVersion(docsPluginId);
   const {savePreferredVersionName} = useDocsPreferredVersion(docsPluginId);
   const versionItems = useVersionItems({docsPluginId, configs});
   const displayedVersionItem = useDisplayedVersionItem({
     docsPluginId,
     versionItems,
   });
+  // The static 404 document is /404.html, which sits on the latest version
+  // and is not a doc. A missing /next URL would otherwise show "2.x (next)".
+  const navbarVersionItem = activeDocContext.activeDoc
+    ? displayedVersionItem
+    : (versionItems.find((item) => item.version.name === latestVersion.name) ??
+      displayedVersionItem);
 
   function versionItemToLink({
     version,
@@ -148,7 +156,10 @@ export default function DocsVersionDropdownNavbarItem({
       label,
       // preserve ?search#hash suffix on version switches
       to: `${targetDoc.path}${search}${hash}`,
-      isActive: () => version === activeDocContext.activeVersion,
+      isActive: () =>
+        activeDocContext.activeDoc
+          ? version === activeDocContext.activeVersion
+          : version.name === latestVersion.name,
       onClick: () => savePreferredVersionName(version.name),
     };
   }
@@ -168,13 +179,12 @@ export default function DocsVersionDropdownNavbarItem({
           description:
             'The label for the navbar versions dropdown on mobile view',
         })
-      : displayedVersionItem.label;
+      : navbarVersionItem.label;
 
   const dropdownTo =
     mobile && items.length > 1
       ? undefined
-      : getVersionTargetDoc(displayedVersionItem.version, activeDocContext)
-          .path;
+      : getVersionTargetDoc(navbarVersionItem.version, activeDocContext).path;
 
   // We don't want to render a version dropdown with 0 or 1 item. If we build
   // the site with a single docs version (onlyIncludeVersions: ['1.0.0']),

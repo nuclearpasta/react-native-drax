@@ -38,7 +38,7 @@
     "prepare": "bob build",
     "typecheck": "tsc && tsc --project example/tsconfig.json",
     "lint": "eslint .",
-    "test": "jest --passWithNoTests",
+    "test": "jest --passWithNoTests && node docs-site/scripts/check-not-found-route.cjs",
     "release": "release-it"
   },
   "keywords": [

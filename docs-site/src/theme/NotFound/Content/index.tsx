@@ -5,20 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, {type ReactNode, useLayoutEffect} from 'react';
+import React, {type ReactNode} from 'react';
 import clsx from 'clsx';
 import Head from '@docusaurus/Head';
 import Translate from '@docusaurus/Translate';
 import type {Props} from '@theme/NotFound/Content';
 import Heading from '@theme/Heading';
-import {setNotFoundSeo} from '../../notFoundSeo';
 
 export default function NotFoundContent({className}: Props): ReactNode {
-  useLayoutEffect(() => {
-    setNotFoundSeo(true);
-    return () => setNotFoundSeo(false);
-  }, []);
-
   return (
     <main className={clsx('container margin-vert--xl', className)}>
       <Head defer={false}>

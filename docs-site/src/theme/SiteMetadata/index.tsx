@@ -11,8 +11,9 @@ import {
 import {useLocation} from '@docusaurus/router';
 import {applyTrailingSlash} from '@docusaurus/utils-common';
 import {useAllDocsData} from '@docusaurus/plugin-content-docs/client';
+import routes from '@generated/routes';
 import SearchMetadata from '@theme/SearchMetadata';
-import {useNotFoundSeo} from '../notFoundSeo';
+import {isNotFoundLocation} from '../notFoundRoute';
 
 // baseUrl stays `/react-native-drax/` so routing and assets keep working.
 // The host serves the docs home at that path without a trailing slash.
@@ -23,15 +24,11 @@ function homePath(path: string, baseUrl: string): string {
   return path;
 }
 
-function isNotFoundPath(pathname: string): boolean {
-  // The prerendered 404 document. Any other missing URL still renders NotFound,
-  // which publishes useNotFoundSeo() for hydration and client navigation.
-  return /\/404(?:\.html)?$/.test(pathname);
-}
-
 function useIsNotFoundPage(): boolean {
   const {pathname} = useLocation();
-  return useNotFoundSeo() || isNotFoundPath(pathname);
+  // Route match, not an effect: the first client render must already omit
+  // canonical, og:url and hreflang, or a failed hydration leaves them behind.
+  return isNotFoundLocation(pathname, routes);
 }
 
 function alternateHref(href: string, siteUrl: string, baseUrl: string): string {
