@@ -20,8 +20,8 @@ function DocVersionRootMetadata(props: Props): ReactNode {
       <PageMetadata>
         {version.noIndex && (
           <>
-            <meta name="robots" content="noindex, nofollow" />
-            <meta name="googlebot" content="noindex, nofollow" />
+            <meta name="robots" content="noindex, follow" />
+            <meta name="googlebot" content="noindex, follow" />
           </>
         )}
       </PageMetadata>
