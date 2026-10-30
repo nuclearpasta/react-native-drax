@@ -249,6 +249,14 @@ const config: Config = {
           label: 'API',
         },
         {
+          // Standalone page, not a versioned doc. A doc link would become
+          // /next/comparison while the 2.x docs are open.
+          to: '/comparison',
+          label: 'Comparison',
+          position: 'left',
+          activeBaseRegex: String.raw`/react-native-drax/comparison/?$`,
+        },
+        {
           href: 'https://nuclearpasta.com/react-native-drax/example',
           label: 'Live Demo',
           position: 'left',
