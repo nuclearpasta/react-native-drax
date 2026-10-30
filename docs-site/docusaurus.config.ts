@@ -181,9 +181,17 @@ const config: Config = {
               return true;
             });
             return visible.map((item) => {
-              const path = new URL(item.url).pathname;
+              const parsed = new URL(item.url);
+              const path = parsed.pathname;
+              // The docs home is served without a trailing slash. baseUrl still
+              // ends in `/`, so the default sitemap entry would 308.
+              const url =
+                path === '/react-native-drax/'
+                  ? `${parsed.origin}/react-native-drax`
+                  : item.url;
+              const entry = url === item.url ? item : { ...item, url };
               if (path === '/react-native-drax/' || path === '/react-native-drax') {
-                return { ...item, priority: 1.0, changefreq: 'weekly' as const };
+                return { ...entry, priority: 1.0, changefreq: 'weekly' as const };
               }
               if (path.includes('/getting-started') || path.includes('/quick-start')) {
                 return { ...item, priority: 0.9, changefreq: 'weekly' as const };

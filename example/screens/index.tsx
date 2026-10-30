@@ -1,6 +1,7 @@
 import { FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Icon from '@expo/vector-icons/MaterialCommunityIcons';
+import { DemoIntro } from '../components/DemoIntro';
 import { useTheme } from '../components/ThemeContext';
 
 const DOCS_EXAMPLES_BASE =
@@ -174,6 +175,7 @@ export default function ExamplesList() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      <DemoIntro color={theme.text} muted={theme.muted} />
       <Text style={[styles.heading, { color: theme.text }]}>Examples</Text>
       <FlatList
         data={EXAMPLES}
@@ -190,10 +192,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   heading: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 12,
     paddingBottom: 8,
   },
   list: {

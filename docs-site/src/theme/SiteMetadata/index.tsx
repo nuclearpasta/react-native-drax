@@ -13,8 +13,30 @@ import {applyTrailingSlash} from '@docusaurus/utils-common';
 import {useAllDocsData} from '@docusaurus/plugin-content-docs/client';
 import SearchMetadata from '@theme/SearchMetadata';
 
+// baseUrl stays `/react-native-drax/` so routing and assets keep working.
+// The host serves the docs home at that path without a trailing slash.
+function homePath(path: string, baseUrl: string): string {
+  if (baseUrl !== '/' && path === baseUrl) {
+    return baseUrl.replace(/\/$/, '');
+  }
+  return path;
+}
+
+function isNotFoundPath(pathname: string): boolean {
+  return /\/404(?:\.html)?$/.test(pathname);
+}
+
+function alternateHref(href: string, siteUrl: string, baseUrl: string): string {
+  const slashed = `${siteUrl.replace(/\/$/, '')}${baseUrl}`;
+  if (baseUrl !== '/' && baseUrl.endsWith('/') && href === slashed) {
+    return slashed.replace(/\/$/, '');
+  }
+  return href;
+}
+
 function AlternateLangHeaders(): ReactNode {
   const {
+    siteConfig: {url: siteUrl, baseUrl},
     i18n: {currentLocale, defaultLocale, localeConfigs},
   } = useDocusaurusContext();
   const alternatePageUtils = useAlternatePageUtils();
@@ -24,25 +46,29 @@ function AlternateLangHeaders(): ReactNode {
   const bcp47ToOpenGraphLocale = (code: string): string =>
     code.replace('-', '_');
 
+  const hrefFor = (locale: string) =>
+    alternateHref(
+      alternatePageUtils.createUrl({
+        locale,
+        fullyQualified: true,
+      }),
+      siteUrl,
+      baseUrl,
+    );
+
   return (
     <Head>
       {Object.entries(localeConfigs).map(([locale, {htmlLang}]) => (
         <link
           key={locale}
           rel="alternate"
-          href={alternatePageUtils.createUrl({
-            locale,
-            fullyQualified: true,
-          })}
+          href={hrefFor(locale)}
           hrefLang={htmlLang}
         />
       ))}
       <link
         rel="alternate"
-        href={alternatePageUtils.createUrl({
-          locale: defaultLocale,
-          fullyQualified: true,
-        })}
+        href={hrefFor(defaultLocale)}
         hrefLang="x-default"
       />
 
@@ -68,11 +94,10 @@ function samePath(left: string, right: string): boolean {
   return normalize(left) === normalize(right);
 }
 
-function useActiveDocsVersions() {
+function useActiveDocsVersion() {
   const {pathname} = useLocation();
   const allDocsData = useAllDocsData();
   for (const pluginData of Object.values(allDocsData)) {
-    const released = pluginData.versions.find((version) => version.isLast);
     const active = [...pluginData.versions]
       .sort((a, b) => b.path.length - a.path.length)
       .find(
@@ -81,7 +106,7 @@ function useActiveDocsVersions() {
           pathname.startsWith(`${version.path.replace(/\/$/, '')}/`),
       );
     if (active) {
-      return {released, active};
+      return active;
     }
   }
   return undefined;
@@ -92,27 +117,30 @@ function useCanonicalUrl(): string {
     siteConfig: {url: siteUrl, baseUrl, trailingSlash},
   } = useDocusaurusContext();
   const {pathname} = useLocation();
-  const match = useActiveDocsVersions();
 
-  const defaultPath = applyTrailingSlash(useBaseUrl(pathname), {
-    trailingSlash,
+  // Every page, including /next, canonicalizes to itself. The unreleased
+  // version stays noindex; it does not point search engines at the 1.x twin.
+  const defaultPath = homePath(
+    applyTrailingSlash(useBaseUrl(pathname), {
+      trailingSlash,
+      baseUrl,
+    }),
     baseUrl,
-  });
-
-  if (!match?.released || !match.active || match.active.isLast) {
-    return siteUrl + defaultPath;
-  }
-  const doc = match.active.docs.find((item) => samePath(item.path, pathname));
-  const twin = doc && match.released.docs.find((item) => item.id === doc.id);
-  if (!twin) {
-    return siteUrl + defaultPath;
-  }
-  return siteUrl + applyTrailingSlash(twin.path, {trailingSlash, baseUrl});
+  );
+  return siteUrl + defaultPath;
 }
 
 function RobotsHeaders(): ReactNode {
-  const match = useActiveDocsVersions();
-  if (match && !match.active.isLast) {
+  const {pathname} = useLocation();
+  if (isNotFoundPath(pathname)) {
+    return (
+      <Head>
+        <meta name="robots" content="noindex" />
+      </Head>
+    );
+  }
+  const active = useActiveDocsVersion();
+  if (active && !active.isLast) {
     return null;
   }
   return (
@@ -127,7 +155,11 @@ function RobotsHeaders(): ReactNode {
 }
 
 function CanonicalUrlHeaders(): ReactNode {
+  const {pathname} = useLocation();
   const canonicalUrl = useCanonicalUrl();
+  if (isNotFoundPath(pathname)) {
+    return null;
+  }
   return (
     <Head>
       <meta property="og:url" content={canonicalUrl} />
