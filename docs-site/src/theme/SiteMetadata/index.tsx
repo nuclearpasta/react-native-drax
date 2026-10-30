@@ -13,6 +13,7 @@ import {applyTrailingSlash} from '@docusaurus/utils-common';
 import {useAllDocsData} from '@docusaurus/plugin-content-docs/client';
 import routes from '@generated/routes';
 import SearchMetadata from '@theme/SearchMetadata';
+import {alternateHref} from '../docsHomeUrl';
 import {isNotFoundLocation} from '../notFoundRoute';
 
 // baseUrl stays `/react-native-drax/` so routing and assets keep working.
@@ -29,14 +30,6 @@ function useIsNotFoundPage(): boolean {
   // Route match, not an effect: the first client render must already omit
   // canonical, og:url and hreflang, or a failed hydration leaves them behind.
   return isNotFoundLocation(pathname, routes);
-}
-
-function alternateHref(href: string, siteUrl: string, baseUrl: string): string {
-  const slashed = `${siteUrl.replace(/\/$/, '')}${baseUrl}`;
-  if (baseUrl !== '/' && baseUrl.endsWith('/') && href === slashed) {
-    return slashed.replace(/\/$/, '');
-  }
-  return href;
 }
 
 function AlternateLangHeaders(): ReactNode {
