@@ -1,4 +1,5 @@
 import Link from '@docusaurus/Link';
+import Head from '@docusaurus/Head';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
@@ -216,12 +217,30 @@ function FooterCTA() {
   );
 }
 
+const homepageFontPreloads = [
+  '/react-native-drax/fonts/space-grotesk-latin.06408904.woff2',
+  '/react-native-drax/fonts/ibm-plex-mono-latin-400.08949f72.woff2',
+  '/react-native-drax/fonts/ibm-plex-mono-latin-600.0d1f0b8d.woff2',
+];
+
 export default function Home(): JSX.Element {
   return (
     <Layout
       title="Drag-and-drop for React Native"
       description="A drag-and-drop framework for React Native with sortable lists, grids, cross-container drag, and more. Built on Reanimated 4."
     >
+      <Head>
+        {homepageFontPreloads.map((href) => (
+          <link
+            key={href}
+            rel="preload"
+            href={href}
+            as="font"
+            type="font/woff2"
+            crossOrigin="anonymous"
+          />
+        ))}
+      </Head>
       <main className="container" style={{ paddingTop: 20, paddingBottom: 40 }}>
         <HeroSection />
         <HomepageFeatures />
