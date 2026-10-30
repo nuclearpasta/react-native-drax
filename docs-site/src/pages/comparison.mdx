@@ -26,8 +26,8 @@ Each recommendation below comes only from the [feature matrix](#feature-matrix).
 | Sortable grid | react-native-sortables, react-native-drax, react-native-reanimated-dnd | sortables has `Sortable.Grid`. drax has `numColumns` and a mixed-size grid ([sortable grid guide](https://nuclearpasta.com/react-native-drax/guides/sortable-grid), [mixed-size grid example](https://nuclearpasta.com/react-native-drax/examples/mixed-grid)). reanimated-dnd documents grids with insert and swap. reorderable-list says it doesn't support multi-column lists. |
 | Flex / wrapping layout | react-native-sortables | sortables is the only library here that documents a flex (wrapping) layout (`Sortable.Flex`). drax doesn't support it. |
 | Free-form drop zones | react-native-drax, react-native-reanimated-dnd | Both document draggable and droppable primitives, and both document center / intersect / contain collision modes. drax also documents drop acceptance and capacity ([drop zone acceptance](https://nuclearpasta.com/react-native-drax/guides/drop-zone-acceptance)). |
-| Moving items between lists | None documents it as stable | In drax, cross-container drag is Experimental ([drag between lists (experimental)](https://nuclearpasta.com/react-native-drax/guides/cross-container-drag)). reanimated-dnd tracks items across multiple drop zones, but cross-list sorting is unverified. draggable-flatlist and reorderable-list document nested lists, not moving items between them. Prototype this before you commit to a library. |
-| Web support | react-native-drax | drax is the only library here that documents web support ([web support](https://nuclearpasta.com/react-native-drax/guides/web-support)). The sortables repo has a web example app, but its level of web support is unverified. reanimated-dnd and reorderable-list don't claim web support. |
+| Moving items between lists | None documents it as stable | In drax, cross-container drag is Experimental ([drag between lists (experimental)](https://nuclearpasta.com/react-native-drax/guides/cross-container-drag)). reanimated-dnd tracks items across multiple drop zones. draggable-flatlist and reorderable-list document nested lists, not moving items between them. Prototype this before you commit to a library. |
+| Web support | react-native-drax | drax is the only library here that documents web support ([web support](https://nuclearpasta.com/react-native-drax/guides/web-support)). The sortables repo has a web example app. reanimated-dnd and reorderable-list don't claim web support. |
 | FlashList / LegendList | react-native-drax | drax documents support for any list component, naming FlatList, FlashList and LegendList [R-drax] ([DraxList API](https://nuclearpasta.com/react-native-drax/api/components/drax-list)). |
 
 ## Feature matrix
@@ -70,7 +70,7 @@ Reanimated 4 supports only the New Architecture ([RA-compat]). So any library th
 |---|---|---|---|---|---|
 | Reanimated peer [npm] | ^4.0.0 | >=2.8.0 | >=4.2.0 (+ react-native-worklets >=0.7.0) | >=3.0.0 | >=3.12.0 |
 | Gesture Handler peer [npm] | >=2.0.0 (v3 recommended [R-drax]) | >=2.0.0 | >=2.28.0 | >=2.0.0 | >=2.12.0 |
-| Minimum React Native [npm] | 0.78 (required by Reanimated 4 [RA-compat]) | >=0.64.0 | >=0.80.0 | `*` | `*` |
+| Minimum React Native | 0.78 (required by Reanimated 4 [RA-compat]) | >=0.64.0 [npm] | >=0.80.0 [npm] | `*` [npm] | `*` [npm] |
 | Architecture | New Architecture only (Reanimated 4 [RA-compat]); "New Architecture compatible (Fabric)" [R-drax] | Not documented. Open New-Arch flicker issues [#602](https://github.com/computerjazz/react-native-draggable-flatlist/issues/602), [#621](https://github.com/computerjazz/react-native-draggable-flatlist/issues/621) | New Architecture ("built for … Expo SDK 55+") [R-RDND] | Old and New [R-S] | Not documented: **unverified** |
 | Expo | Expo CLI badge [R-drax]. Expo Router example app [R-drax] | Not documented: **unverified** | "Tested against Expo SDK 55 and React Native 0.83" [R-RDND] | "Expo compatible" [R-S] | Not documented: **unverified** |
 | iOS / Android | Yes [R-drax] | Not stated explicitly: **unverified** | Yes (mobile-first) [R-RDND] | Yes ("iOS and Android") [sortables docs](https://react-native-sortables-docs.vercel.app/) | Yes (README badges) [R-RL] |
@@ -194,7 +194,7 @@ Every source below was loaded on 30 Oct 2026.
 
 **Where it's strongest:** grids with insert and swap, center / intersect / contain collision modes, "axis-locked and bounded dragging", variable-height lists, optional FlatList rendering with virtualization, and a dedicated accessibility guide (labels are set manually).
 
-**Limits:** it doesn't claim web support ("designed specifically for mobile, not ported from web"). A drop indicator isn't documented, and cross-list sorting is unverified. Because it needs Reanimated 4, it runs on the New Architecture only.
+**Limits:** it doesn't claim web support ("designed specifically for mobile, not ported from web"). A drop indicator isn't documented. Because it needs Reanimated 4, it runs on the New Architecture only.
 
 **Requirements:** v2 needs Reanimated >=4.2.0, react-native-worklets >=0.7.0, Gesture Handler >=2.28.0 and React Native >=0.80.0. It's "tested against Expo SDK 55 and React Native 0.83". The latest release is 2.0.0 (2026-03-16).
 
@@ -206,7 +206,7 @@ Every source below was loaded on 30 Oct 2026.
 
 **Where it's strongest:** it's the only library in this comparison that documents a flex (wrapping) layout and optional haptic feedback. It supports both the Old and New Architecture, and its README says it's "Expo compatible". It also documents handles, a drop indicator, insertion and swapping, items with different dimensions, and add/remove layout animations.
 
-**Limits:** the README lists only Grid and Flex layouts, so vertical and horizontal lists are unverified. Free-form drop zones and moving items between lists aren't documented. The repo has a web example app, but the level of web support is unverified.
+**Limits:** the README lists only Grid and Flex layouts. Free-form drop zones and moving items between lists aren't documented. The repo has a web example app.
 
 **Requirements:** Reanimated >=3.0.0 (works with Reanimated 3 or 4), Gesture Handler >=2.0.0, React Native `*`. The latest release is 1.10.1 (2026-09-26).
 
@@ -218,7 +218,7 @@ Every source below was loaded on 30 Oct 2026.
 
 **Where it's strongest:** a built-in drop indicator (`renderDropIndicator`), nested lists, handles via the `useReorderableDrag` hook, `autoscroll*` props and layout animations. It supports vertical and horizontal lists.
 
-**Limits:** `numColumns` isn't supported, so there are no grids. Moving items between lists isn't documented, and it doesn't claim web support (its badges list iOS and Android only). It's pre-1.0 (0.x), and its README says the API isn't stable yet. Its architecture support is unverified.
+**Limits:** `numColumns` isn't supported, so there are no grids. Moving items between lists isn't documented, and it doesn't claim web support (its badges list iOS and Android only). It's pre-1.0 (0.x), and its README says the API isn't stable yet.
 
 **Requirements:** Reanimated >=3.12.0, Gesture Handler >=2.12.0, React Native `*`. The latest release is 0.18.2 (2026-10-18).
 
