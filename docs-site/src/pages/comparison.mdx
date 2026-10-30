@@ -1,6 +1,6 @@
 ---
 title: React Native Drag and Drop Libraries Compared (2026)
-description: "Compare 7 React Native drag-and-drop and sortable libraries: features, platforms, New Architecture support and maintenance, each cell sourced."
+description: "Compare 5 React Native drag-and-drop and sortable libraries: features, platforms, New Architecture support and maintenance, each cell sourced."
 hide_table_of_contents: true
 wrapperClassName: comparison-page
 ---
@@ -14,7 +14,7 @@ import Head from '@docusaurus/Head';
 
 # React Native drag and drop libraries compared
 
-The react-native-drax maintainers at NuclearPasta maintain this page, so we have a stake in one of the seven libraries compared here. To make the comparison checkable, every cell in the matrix links to its source. All data is as of 30 Oct 2026. If you find a mistake, please [open a GitHub issue](https://github.com/nuclearpasta/react-native-drax/issues).
+The react-native-drax maintainers at NuclearPasta maintain this page, so we have a stake in one of the five libraries compared here. To make the comparison checkable, every cell in the matrix links to its source. All data is as of 30 Oct 2026. If you find a mistake, please [open a GitHub issue](https://github.com/nuclearpasta/react-native-drax/issues).
 
 ## Quick answer: which library fits which job
 
@@ -22,14 +22,13 @@ Each recommendation below comes only from the [feature matrix](#feature-matrix).
 
 | Job | Libraries that fit | Why (from the matrix) |
 |---|---|---|
-| Simple reorderable list | react-native-reorderable-list, react-native-draggable-flatlist, react-native-draglist, react-native-drax, react-native-reanimated-dnd | All five document a sortable vertical list. reorderable-list and draggable-flatlist are FlatList-based list components with a drop indicator or placeholder. For drax, see [sortable list in React Native](https://nuclearpasta.com/react-native-drax/guides/sortable-list). |
-| List without Reanimated | react-native-draglist | In this comparison, it's the only library with no Reanimated or Gesture Handler peer dependency. It uses PanResponder. |
-| Sortable grid | react-native-sortables, react-native-drax, react-native-reanimated-dnd | sortables has `Sortable.Grid`. drax has `numColumns` and a mixed-size grid ([sortable grid guide](https://nuclearpasta.com/react-native-drax/guides/sortable-grid), [mixed-size grid example](https://nuclearpasta.com/react-native-drax/examples/mixed-grid)). reanimated-dnd documents grids with insert and swap. reorderable-list and draglist say they don't support multi-column lists. |
+| Simple reorderable list | react-native-reorderable-list, react-native-draggable-flatlist, react-native-drax, react-native-reanimated-dnd | All four document a sortable vertical list. reorderable-list and draggable-flatlist are FlatList-based list components with a drop indicator or placeholder. For drax, see [sortable list in React Native](https://nuclearpasta.com/react-native-drax/guides/sortable-list). |
+| Sortable grid | react-native-sortables, react-native-drax, react-native-reanimated-dnd | sortables has `Sortable.Grid`. drax has `numColumns` and a mixed-size grid ([sortable grid guide](https://nuclearpasta.com/react-native-drax/guides/sortable-grid), [mixed-size grid example](https://nuclearpasta.com/react-native-drax/examples/mixed-grid)). reanimated-dnd documents grids with insert and swap. reorderable-list says it doesn't support multi-column lists. |
 | Flex / wrapping layout | react-native-sortables | sortables is the only library here that documents a flex (wrapping) layout (`Sortable.Flex`). drax doesn't support it. |
-| Free-form drop zones | react-native-drax, react-native-reanimated-dnd, @mgcrea/react-native-dnd | All three document draggable and droppable primitives. drax and reanimated-dnd also document center / intersect / contain collision modes. drax also documents drop acceptance and capacity ([drop zone acceptance](https://nuclearpasta.com/react-native-drax/guides/drop-zone-acceptance)). |
+| Free-form drop zones | react-native-drax, react-native-reanimated-dnd | Both document draggable and droppable primitives, and both document center / intersect / contain collision modes. drax also documents drop acceptance and capacity ([drop zone acceptance](https://nuclearpasta.com/react-native-drax/guides/drop-zone-acceptance)). |
 | Moving items between lists | None documents it as stable | In drax, cross-container drag is Experimental ([drag between lists (experimental)](https://nuclearpasta.com/react-native-drax/guides/cross-container-drag)). reanimated-dnd tracks items across multiple drop zones, but cross-list sorting is unverified. draggable-flatlist and reorderable-list document nested lists, not moving items between them. Prototype this before you commit to a library. |
 | Web support | react-native-drax | drax is the only library here that documents web support ([web support](https://nuclearpasta.com/react-native-drax/guides/web-support)). The sortables repo has a web example app, but its level of web support is unverified. reanimated-dnd and reorderable-list don't claim web support. |
-| FlashList / LegendList | react-native-drax | drax documents support for any list component, naming FlatList, FlashList and LegendList [R-drax] ([DraxList API](https://nuclearpasta.com/react-native-drax/api/components/drax-list)). draglist accepts any FlatList-compatible component via `CustomFlatList`. Whether that includes FlashList or LegendList isn't documented. |
+| FlashList / LegendList | react-native-drax | drax documents support for any list component, naming FlatList, FlashList and LegendList [R-drax] ([DraxList API](https://nuclearpasta.com/react-native-drax/api/components/drax-list)). |
 
 ## Feature matrix
 
@@ -38,21 +37,21 @@ How to read the cells:
 - **Yes / No:** the cited source says so explicitly.
 - **Not documented** (or **Not stated**): the cited source doesn't mention the feature. That isn't the same as "No". The feature may exist and just not be documented.
 - **unverified:** we couldn't confirm the cell from a source. Don't rely on it until it's checked.
-- **n/a:** the criterion doesn't apply to that kind of library. For example, @mgcrea/react-native-dnd provides primitives, not a list component.
+- **n/a:** the criterion doesn't apply to that kind of library. For example, a list component has no free-form drop-acceptance setting.
 
-Column abbreviations: **draggable-flatlist** = react-native-draggable-flatlist, **reanimated-dnd** = react-native-reanimated-dnd, **sortables** = react-native-sortables, **reorderable-list** = react-native-reorderable-list, **draglist** = react-native-draglist, **@mgcrea/dnd** = @mgcrea/react-native-dnd.
+Column abbreviations: **draggable-flatlist** = react-native-draggable-flatlist, **reanimated-dnd** = react-native-reanimated-dnd, **sortables** = react-native-sortables, **reorderable-list** = react-native-reorderable-list.
 
 ### Maintenance and adoption
 
 *As of 30 Oct 2026. Download counts cover 2026-09-29 to 2026-10-28.*
 
-| Criterion | Drax | draggable-flatlist | reanimated-dnd | sortables | reorderable-list | draglist | @mgcrea/dnd |
-|---|---|---|---|---|---|---|---|
-| Latest version (date) [npm] | 1.1.0 (2026-03-23) | 4.0.3 (2025-05-06) | 2.0.0 (2026-03-16) | 1.10.1 (2026-09-26) | 0.18.2 (2026-10-18) | 3.11.0 (2026-07-28) | 2.5.3 (2025-01-05) |
-| npm downloads, last month [dl] | 101,111 | 1,943,449 | 121,547 | 622,279 | 378,523 | 125,148 | 21,034 |
-| GitHub stars / open issues + PRs [gh] | 716 / 35 | 2,197 / 232 | 1,075 / 9 | 981 / 21 | 326 / 13 | 209 / 2 | 246 / 17 |
-| Last push to repo [gh] | 2026-10-30 | 2026-01-21 | 2026-07-30 | 2026-09-26 | 2026-10-18 | 2026-07-28 | 2025-03-11 |
-| License [gh] | MIT | MIT | MIT | MIT | MIT | MIT | MIT |
+| Criterion | Drax | draggable-flatlist | reanimated-dnd | sortables | reorderable-list |
+|---|---|---|---|---|---|
+| Latest version (date) [npm] | 1.1.0 (2026-03-23) | 4.0.3 (2025-05-06) | 2.0.0 (2026-03-16) | 1.10.1 (2026-09-26) | 0.18.2 (2026-10-18) |
+| npm downloads, last month [dl] | 101,111 | 1,943,449 | 121,547 | 622,279 | 378,523 |
+| GitHub stars / open issues + PRs [gh] | 716 / 35 | 2,197 / 232 | 1,075 / 9 | 981 / 21 | 326 / 13 |
+| Last push to repo [gh] | 2026-10-30 | 2026-01-21 | 2026-07-30 | 2026-09-26 | 2026-10-18 |
+| License [gh] | MIT | MIT | MIT | MIT | MIT |
 
 What these signals tell you, and what they don't:
 
@@ -67,29 +66,29 @@ What these signals tell you, and what they don't:
 
 Reanimated 4 supports only the New Architecture ([RA-compat]). So any library that requires Reanimated 4 can't be used in an app that's still on the Old Architecture. This row decides which libraries are open to Old Architecture apps.
 
-| Criterion | Drax | draggable-flatlist | reanimated-dnd | sortables | reorderable-list | draglist | @mgcrea/dnd |
-|---|---|---|---|---|---|---|---|
-| Reanimated peer [npm] | ^4.0.0 | >=2.8.0 | >=4.2.0 (+ react-native-worklets >=0.7.0) | >=3.0.0 | >=3.12.0 | None | >=3 |
-| Gesture Handler peer [npm] | >=2.0.0 (v3 recommended [R-drax]) | >=2.0.0 | >=2.28.0 | >=2.0.0 | >=2.12.0 | None (uses PanResponder [R-DL]) | >=2 |
-| Minimum React Native [npm] | 0.78 (required by Reanimated 4 [RA-compat]) | >=0.64.0 | >=0.80.0 | `*` | `*` | >=0.64.0 | >=0.70 |
-| Architecture | New Architecture only (Reanimated 4 [RA-compat]); "New Architecture compatible (Fabric)" [R-drax] | Not documented. Open New-Arch flicker issues [#602](https://github.com/computerjazz/react-native-draggable-flatlist/issues/602), [#621](https://github.com/computerjazz/react-native-draggable-flatlist/issues/621) | New Architecture ("built for … Expo SDK 55+") [R-RDND] | Old and New [R-S] | Not documented: **unverified** | Not documented (no native deps): **unverified** | Not documented: **unverified** |
-| Expo | Expo CLI badge [R-drax]. Expo Router example app [R-drax] | Not documented: **unverified** | "Tested against Expo SDK 55 and React Native 0.83" [R-RDND] | "Expo compatible" [R-S] | Not documented: **unverified** | Not documented: **unverified** | Not documented: **unverified** |
-| iOS / Android | Yes [R-drax] | Not stated explicitly: **unverified** | Yes (mobile-first) [R-RDND] | Yes ("iOS and Android") [sortables docs](https://react-native-sortables-docs.vercel.app/) | Yes (README badges) [R-RL] | Not stated explicitly: **unverified** | Not stated: **unverified** |
-| Web | Yes [R-drax], [G-web] | Not documented: **unverified** | Not claimed ("designed specifically for mobile, not ported from web") [R-RDND] | Web example app in repo [R-S]; support level **unverified** | Not claimed (badges iOS/Android only) [R-RL] | Not documented: **unverified** | Not documented: **unverified** |
+| Criterion | Drax | draggable-flatlist | reanimated-dnd | sortables | reorderable-list |
+|---|---|---|---|---|---|
+| Reanimated peer [npm] | ^4.0.0 | >=2.8.0 | >=4.2.0 (+ react-native-worklets >=0.7.0) | >=3.0.0 | >=3.12.0 |
+| Gesture Handler peer [npm] | >=2.0.0 (v3 recommended [R-drax]) | >=2.0.0 | >=2.28.0 | >=2.0.0 | >=2.12.0 |
+| Minimum React Native [npm] | 0.78 (required by Reanimated 4 [RA-compat]) | >=0.64.0 | >=0.80.0 | `*` | `*` |
+| Architecture | New Architecture only (Reanimated 4 [RA-compat]); "New Architecture compatible (Fabric)" [R-drax] | Not documented. Open New-Arch flicker issues [#602](https://github.com/computerjazz/react-native-draggable-flatlist/issues/602), [#621](https://github.com/computerjazz/react-native-draggable-flatlist/issues/621) | New Architecture ("built for … Expo SDK 55+") [R-RDND] | Old and New [R-S] | Not documented: **unverified** |
+| Expo | Expo CLI badge [R-drax]. Expo Router example app [R-drax] | Not documented: **unverified** | "Tested against Expo SDK 55 and React Native 0.83" [R-RDND] | "Expo compatible" [R-S] | Not documented: **unverified** |
+| iOS / Android | Yes [R-drax] | Not stated explicitly: **unverified** | Yes (mobile-first) [R-RDND] | Yes ("iOS and Android") [sortables docs](https://react-native-sortables-docs.vercel.app/) | Yes (README badges) [R-RL] |
+| Web | Yes [R-drax], [G-web] | Not documented: **unverified** | Not claimed ("designed specifically for mobile, not ported from web") [R-RDND] | Web example app in repo [R-S]; support level **unverified** | Not claimed (badges iOS/Android only) [R-RL] |
 
 ### Layouts
 
 *As of 30 Oct 2026.*
 
-| Criterion | Drax | draggable-flatlist | reanimated-dnd | sortables | reorderable-list | draglist | @mgcrea/dnd |
-|---|---|---|---|---|---|---|---|
-| Free-form drag to drop zones | Yes (DraxView drag/receive) [R-drax], [API-view] | Not documented (README describes a FlatList component) | Yes (Draggable, Droppable) [R-RDND] | Not documented | Not documented | Not documented | Yes (Draggable, Droppable, hooks) [R-MG] |
-| Sortable vertical list | Yes (DraxList) [R-drax] | Yes [R-DFL] | Yes [R-RDND] | **unverified** (README lists Grid and Flex only) | Yes [R-RL] | Yes [R-DL] | Possible via hooks per README ("sorting items"); no list component documented: **unverified** |
-| Horizontal list | Yes (`horizontal`) [API-list] | Not documented (props are spread to FlatList): **unverified** | Yes [R-RDND] | **unverified** | Yes [R-RL] | Yes [R-DL] | **unverified** |
-| Sortable grid / multi-column | Yes (`numColumns`) [API-list] | Not documented | Yes (insert and swap) [R-RDND] | Yes (Sortable.Grid) [R-S] | No (`numColumns` listed as unsupported) [R-RL] | No ("makes no attempt to handle multi-column lists") [R-DL] | **unverified** |
-| Variable / mixed item sizes | Yes: mixed-size grid (`getItemSpan` on `useSortableList`, `packGrid`) [R-drax] | Not documented | Variable-height lists [R-RDND] | Items with different dimensions [R-S] | **unverified** | **unverified** | **unverified** |
-| Flex (wrapping) layout | No [drax-table] | Not documented | Not documented | Yes (Sortable.Flex) [R-S] | Not documented | Not documented | Not documented |
-| Underlying list / virtualization | Any list: FlatList, FlashList, LegendList [R-drax] | FlatList [R-DFL] | Optional FlatList rendering with virtualization [R-RDND] | **unverified** | FlatList [R-RL] | FlatList, or any FlatList-compatible component via `CustomFlatList` [R-DL] | n/a (primitives) |
+| Criterion | Drax | draggable-flatlist | reanimated-dnd | sortables | reorderable-list |
+|---|---|---|---|---|---|
+| Free-form drag to drop zones | Yes (DraxView drag/receive) [R-drax], [API-view] | Not documented (README describes a FlatList component) | Yes (Draggable, Droppable) [R-RDND] | Not documented | Not documented |
+| Sortable vertical list | Yes (DraxList) [R-drax] | Yes [R-DFL] | Yes [R-RDND] | **unverified** (README lists Grid and Flex only) | Yes [R-RL] |
+| Horizontal list | Yes (`horizontal`) [API-list] | Not documented (props are spread to FlatList): **unverified** | Yes [R-RDND] | **unverified** | Yes [R-RL] |
+| Sortable grid / multi-column | Yes (`numColumns`) [API-list] | Not documented | Yes (insert and swap) [R-RDND] | Yes (Sortable.Grid) [R-S] | No (`numColumns` listed as unsupported) [R-RL] |
+| Variable / mixed item sizes | Yes: mixed-size grid (`getItemSpan` on `useSortableList`, `packGrid`) [R-drax] | Not documented | Variable-height lists [R-RDND] | Items with different dimensions [R-S] | **unverified** |
+| Flex (wrapping) layout | No [drax-table] | Not documented | Not documented | Yes (Sortable.Flex) [R-S] | Not documented |
+| Underlying list / virtualization | Any list: FlatList, FlashList, LegendList [R-drax] | FlatList [R-DFL] | Optional FlatList rendering with virtualization [R-RDND] | **unverified** | FlatList [R-RL] |
 
 ### Interaction features
 
@@ -97,28 +96,28 @@ Reanimated 4 supports only the New Architecture ([RA-compat]). So any library th
 
 For how drax handles these, see [drag handles](https://nuclearpasta.com/react-native-drax/guides/drag-handles), [collision algorithms](https://nuclearpasta.com/react-native-drax/guides/collision-algorithms) and [drop zone acceptance](https://nuclearpasta.com/react-native-drax/guides/drop-zone-acceptance).
 
-| Criterion | Drax | draggable-flatlist | reanimated-dnd | sortables | reorderable-list | draglist | @mgcrea/dnd |
-|---|---|---|---|---|---|---|---|
-| Drag handles | Yes (DraxHandle) [R-drax] | Via the `drag()` callback from any element [R-DFL] | Yes [R-RDND] | Yes (Sortable.Handle) [D-S-handle] | Via the `useReorderableDrag` hook [R-RL] | Via `onDragStart` from a handle [R-DL] | **unverified** |
-| Auto-scroll while dragging | Yes (DraxScrollView; list auto-scroll) [R-drax] | Yes (`autoscrollThreshold`, `autoscrollSpeed`) [R-DFL] | Yes [R-RDND] | Yes [R-S] | Yes (`autoscroll*` props) [R-RL] | Not documented: **unverified** | Not documented |
-| Move items between lists | Experimental (SortableBoardContainer) [R-drax], [drax-table] | Nested lists in one scroll container; transfer between lists not documented [R-DFL] | Track items across multiple drop zones [R-RDND]; cross-list sortable **unverified** | Not documented | Nested lists; transfer not documented [R-RL] | Not documented | **unverified** |
-| Axis lock / drag bounds | Yes (`lockToMainAxis`, `lockDragX/YPosition`, `dragBoundsRef`) [API-list], [API-view] | **unverified** (`dragItemOverflow` only) [R-DFL] | Yes ("axis-locked and bounded dragging") [R-RDND] | **unverified** | **unverified** | **unverified** | **unverified** |
-| Collision modes | center / intersect / contain [R-drax] | Not documented | center / intersect / contain [R-RDND] | Not documented | Not documented | Not documented | **unverified** |
-| Drop acceptance / capacity | `acceptsDrag` + `capacity` [R-drax], [API-view] | n/a | **unverified** | n/a | n/a | n/a | **unverified** |
-| Reorder strategies | insert / swap [API-list] | Not documented | insert / swap (grid) [R-RDND] | insertion / swapping [R-S] | Not documented | Not documented | n/a |
-| Drop indicator / placeholder | Yes (`renderDropIndicator` on `SortableContainer`) [R-drax] | `renderPlaceholder` [R-DFL] | Not documented | Yes [D-S-drop] | Yes (`renderDropIndicator`) [R-RL] | Not documented | n/a |
-| Item add/remove animations | `itemEntering` / `itemExiting` [API-list] | `itemEnteringAnimation` / `itemExitingAnimation` [R-DFL] | **unverified** | Yes (layout animations for add/remove) [R-S] | Yes ("Layout Animations") [R-RL] | **unverified** | n/a |
-| Haptic feedback | No [drax-table] | Not documented | Not documented | Yes, optional (via several haptics libraries) [R-S] | Not documented | Not documented | Not documented |
+| Criterion | Drax | draggable-flatlist | reanimated-dnd | sortables | reorderable-list |
+|---|---|---|---|---|---|
+| Drag handles | Yes (DraxHandle) [R-drax] | Via the `drag()` callback from any element [R-DFL] | Yes [R-RDND] | Yes (Sortable.Handle) [D-S-handle] | Via the `useReorderableDrag` hook [R-RL] |
+| Auto-scroll while dragging | Yes (DraxScrollView; list auto-scroll) [R-drax] | Yes (`autoscrollThreshold`, `autoscrollSpeed`) [R-DFL] | Yes [R-RDND] | Yes [R-S] | Yes (`autoscroll*` props) [R-RL] |
+| Move items between lists | Experimental (SortableBoardContainer) [R-drax], [drax-table] | Nested lists in one scroll container; transfer between lists not documented [R-DFL] | Track items across multiple drop zones [R-RDND]; cross-list sortable **unverified** | Not documented | Nested lists; transfer not documented [R-RL] |
+| Axis lock / drag bounds | Yes (`lockToMainAxis`, `lockDragX/YPosition`, `dragBoundsRef`) [API-list], [API-view] | **unverified** (`dragItemOverflow` only) [R-DFL] | Yes ("axis-locked and bounded dragging") [R-RDND] | **unverified** | **unverified** |
+| Collision modes | center / intersect / contain [R-drax] | Not documented | center / intersect / contain [R-RDND] | Not documented | Not documented |
+| Drop acceptance / capacity | `acceptsDrag` + `capacity` [R-drax], [API-view] | n/a | **unverified** | n/a | n/a |
+| Reorder strategies | insert / swap [API-list] | Not documented | insert / swap (grid) [R-RDND] | insertion / swapping [R-S] | Not documented |
+| Drop indicator / placeholder | Yes (`renderDropIndicator` on `SortableContainer`) [R-drax] | `renderPlaceholder` [R-DFL] | Not documented | Yes [D-S-drop] | Yes (`renderDropIndicator`) [R-RL] |
+| Item add/remove animations | `itemEntering` / `itemExiting` [API-list] | `itemEnteringAnimation` / `itemExitingAnimation` [R-DFL] | **unverified** | Yes (layout animations for add/remove) [R-S] | Yes ("Layout Animations") [R-RL] |
+| Haptic feedback | No [drax-table] | Not documented | Not documented | Yes, optional (via several haptics libraries) [R-S] | Not documented |
 
 ### Accessibility and developer experience
 
 *As of 30 Oct 2026.*
 
-| Criterion | Drax | draggable-flatlist | reanimated-dnd | sortables | reorderable-list | draglist | @mgcrea/dnd |
-|---|---|---|---|---|---|---|---|
-| Built-in accessibility | Auto-generated labels/hints/role on sortable list items + reduced motion [G-a11y] | Not documented | Guidance guide; labels set manually [D-RDND-a11y] | Not documented | Not documented | Not documented | Not documented |
-| TypeScript types shipped | Yes [npm] (written in TS [R-drax]) | Yes [npm] | Yes [npm], [R-RDND] | Yes [npm], [R-S] | Yes [npm] | Yes [npm] | Yes [npm] |
-| Dedicated docs site | Yes ([docs](https://nuclearpasta.com/react-native-drax)) | No (README) | Yes ([docs](https://reanimated-dnd-docs.vercel.app/docs/intro)) | Yes ([docs](https://react-native-sortables-docs.vercel.app/)) | No (README) | No (README) | Yes ([docs](https://mgcrea.github.io/react-native-dnd/)) |
+| Criterion | Drax | draggable-flatlist | reanimated-dnd | sortables | reorderable-list |
+|---|---|---|---|---|---|
+| Built-in accessibility | Auto-generated labels/hints/role on sortable list items + reduced motion [G-a11y] | Not documented | Guidance guide; labels set manually [D-RDND-a11y] | Not documented | Not documented |
+| TypeScript types shipped | Yes [npm] (written in TS [R-drax]) | Yes [npm] | Yes [npm], [R-RDND] | Yes [npm], [R-S] | Yes [npm] |
+| Dedicated docs site | Yes ([docs](https://nuclearpasta.com/react-native-drax)) | No (README) | Yes ([docs](https://reanimated-dnd-docs.vercel.app/docs/intro)) | Yes ([docs](https://react-native-sortables-docs.vercel.app/)) | No (README) |
 
 For drax's accessibility features, see [accessibility and reduced motion](https://nuclearpasta.com/react-native-drax/guides/accessibility).
 
@@ -142,8 +141,6 @@ Every source below was loaded on 30 Oct 2026.
 - **[D-S-handle]**: [sortables Handle docs](https://react-native-sortables-docs.vercel.app/helper-components/handle)
 - **[D-S-drop]**: [sortables drop indicator example](https://react-native-sortables-docs.vercel.app/grid/examples/drop-indicator)
 - **[R-RL]**: [react-native-reorderable-list README](https://github.com/omahili/react-native-reorderable-list)
-- **[R-DL]**: [react-native-draglist README](https://github.com/fivecar/react-native-draglist)
-- **[R-MG]**: [@mgcrea/react-native-dnd README](https://github.com/mgcrea/react-native-dnd)
 - **[RA-compat]**: [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/)
 
 [R-drax]: https://github.com/nuclearpasta/react-native-drax
@@ -159,8 +156,6 @@ Every source below was loaded on 30 Oct 2026.
 [D-S-handle]: https://react-native-sortables-docs.vercel.app/helper-components/handle
 [D-S-drop]: https://react-native-sortables-docs.vercel.app/grid/examples/drop-indicator
 [R-RL]: https://github.com/omahili/react-native-reorderable-list
-[R-DL]: https://github.com/fivecar/react-native-draglist
-[R-MG]: https://github.com/mgcrea/react-native-dnd
 [RA-compat]: https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/
 [npm]: #sources
 [dl]: #sources
@@ -229,30 +224,6 @@ Every source below was loaded on 30 Oct 2026.
 
 **Links:** [README](https://github.com/omahili/react-native-reorderable-list) · [npm](https://www.npmjs.com/package/react-native-reorderable-list)
 
-### react-native-draglist
-
-**What it's for:** a reorderable list for projects that don't want Reanimated or Gesture Handler.
-
-**Where it's strongest:** it has no Reanimated or Gesture Handler peer dependency and uses PanResponder instead. It supports vertical and horizontal lists, handles via `onDragStart`, and any FlatList-compatible component via `CustomFlatList`.
-
-**Limits:** its README says it "makes no attempt to handle multi-column lists". Auto-scroll, a drop indicator and moving items between lists aren't documented. Architecture support, Expo support, platform statements and web support are all unverified.
-
-**Requirements:** React Native >=0.64.0, with no Reanimated or Gesture Handler. The latest release is 3.11.0 (2026-07-28).
-
-**Links:** [README](https://github.com/fivecar/react-native-draglist) · [npm](https://www.npmjs.com/package/react-native-draglist)
-
-### @mgcrea/react-native-dnd
-
-**What it's for:** hooks-based Draggable and Droppable primitives for building your own drag-and-drop interactions.
-
-**Where it's strongest:** free-form drag to drop zones using components and hooks. The README says sorting is possible via hooks.
-
-**Limits:** it has no documented list component, so sortable lists, horizontal lists and grids are all unverified. Handles, moving items between lists, axis lock, collision modes and drop acceptance are unverified too. The latest release is 2.5.3 (2025-01-05), and the last push to the repo was on 2025-03-11.
-
-**Requirements:** Reanimated >=3, Gesture Handler >=2, React Native >=0.70. Architecture and Expo support aren't documented.
-
-**Links:** [docs](https://mgcrea.github.io/react-native-dnd/) · [GitHub](https://github.com/mgcrea/react-native-dnd) · [npm](https://www.npmjs.com/package/@mgcrea/react-native-dnd)
-
 ### Older libraries
 
 These two are listed so you can find them if you're searching for them. We don't recommend either for a new app unless you check its current state first. They aren't in the matrix.
@@ -265,8 +236,7 @@ These two are listed so you can find them if you're searching for them. We don't
 The Reanimated version a library requires decides whether you can use it on the Old Architecture ([RA-compat]):
 
 - **Reanimated 4 or later, New Architecture only:** react-native-drax (^4.0.0) and react-native-reanimated-dnd (>=4.2.0).
-- **Reanimated 3 or later, which works on both architectures:** react-native-sortables (>=3.0.0; documents Old and New), react-native-reorderable-list (>=3.12.0) and @mgcrea/react-native-dnd (>=3). react-native-draggable-flatlist's peer range starts lower (>=2.8.0), so it also accepts Reanimated 3. Except for sortables, these libraries don't document which architectures they support. Their peer ranges allow Reanimated 3, but that alone doesn't confirm they run on either architecture.
-- **No Reanimated:** react-native-draglist.
+- **Reanimated 3 or later, which works on both architectures:** react-native-sortables (>=3.0.0; documents Old and New) and react-native-reorderable-list (>=3.12.0). react-native-draggable-flatlist's peer range starts lower (>=2.8.0), so it also accepts Reanimated 3. Except for sortables, these libraries don't document which architectures they support. Their peer ranges allow Reanimated 3, but that alone doesn't confirm they run on either architecture.
 
 The deciding constraint is this: React Native 0.82+ and Expo SDK 55+ always run the New Architecture ([React Native 0.82 release notes](https://reactnative.dev/blog/2025/10/08/react-native-0.82), [Expo New Architecture guide](https://docs.expo.dev/guides/new-architecture/)). On those versions, the Old Architecture question doesn't come up. It only matters for apps still on older React Native versions that haven't migrated.
 
