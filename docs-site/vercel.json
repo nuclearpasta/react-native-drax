@@ -23,7 +23,7 @@
       ]
     },
     {
-      "source": "/react-native-drax/fonts/(.*)\\.woff2",
+      "source": "/react-native-drax/fonts/(.*)\\.([0-9a-f]{8})\\.woff2",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
