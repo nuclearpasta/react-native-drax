@@ -203,7 +203,7 @@ All interactive elements have `testID` for identification via `ui_describe_all` 
 - Live demo canonical and the navbar Live Demo link are `https://nuclearpasta.com/react-native-drax/example` with no trailing slash.
 - The example tab title is `react-native-drax — Live Demo` via `Head` in `example/app/(tabs)/_layout.tsx`. Keep the `Platform.OS === 'web'` guard: iOS `expo-router/head` calls `getStaticUrlFromExpoRouter` and throws in dev when the Expo config has no `expo-router` origin.
 - Production `appendBaseUrl` still joins `experiments.baseUrl` with the index path `/` and `history.replaceState`s the address bar to `/react-native-drax/example/`. There is no app config for that; parsing accepts both URLs.
-- `clientScreen` must render the same placeholder on the server and on the first web client render. Mount the lazy screen in an effect. A module-level `typeof window` branch (placeholder vs `Suspense`+`lazy`) is React hydration error #418.
+- `clientScreen` must render the same placeholder on the server and on the first web client render. Mount the lazy screen in an effect. A module-level `typeof window` branch (placeholder vs `Suspense`+`lazy`) is React hydration error #418. The example home passes `intro` so that placeholder includes `DemoIntro` (`role="heading"` renders `<h1>` on web, `role="paragraph"` renders `<p>`). The home screen renders the same component after hydration. Do not put the heading only in `+html.tsx` above `{children}` — that would show on every demo route.
 
 ## Debugging with Device Automation
 
