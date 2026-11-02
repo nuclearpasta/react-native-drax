@@ -3,6 +3,7 @@ import { useAnimatedReaction } from 'react-native-reanimated';
 import { runOnJS } from 'react-native-worklets';
 
 import { isGestureHandlerV3 } from './detectVersion';
+import { gestureDidSucceed } from './gestureDidSucceed';
 import type { DraxPanEvent, DraxPanGesture, DraxPanGestureConfig } from './types';
 
 // Module-scope require — cached by the bundler, always the same reference.
@@ -17,6 +18,7 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
   // Build config without undefined failOffset keys — RNGH v3 warns on
   // undefined keys that survive transformOffsetProp without deletion.
   // Spread is not allowed here (Reanimated workletizes hook arguments).
+  const onDeactivate = config.onDeactivate;
   const onFinalize = config.onFinalize;
   const panConfig: Record<string, unknown> = {
     enabled: config.enabledSV,
@@ -26,17 +28,16 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
     touchAction: config.touchAction,
     onActivate: config.onActivate,
     onUpdate: config.onUpdate,
-    onDeactivate: config.onDeactivate,
-    // RNGH 3.0.0-beta.3+ (incl. 3.x stable) reports the end flag as
-    // `event.canceled`; 3.0.0-beta.2 and earlier passed `success` as a second
-    // argument. Normalize to `didSucceed` so consumers stay version-agnostic.
-    // Without this, every normal drop finalizes as cancelled.
+    // Normalize the end flag to `didSucceed` so consumers stay
+    // version-agnostic (see gestureDidSucceed). RNGH 3.x also calls
+    // onDeactivate for an ACTIVE gesture that gets cancelled.
+    onDeactivate: (event: DraxPanEvent, success?: boolean) => {
+      'worklet';
+      onDeactivate(event, gestureDidSucceed(event, success));
+    },
     onFinalize: (event: DraxPanEvent, success?: boolean) => {
       'worklet';
-      onFinalize(
-        event,
-        typeof success === 'boolean' ? success : event.canceled !== true
-      );
+      onFinalize(event, gestureDidSucceed(event, success));
     },
   };
   if (config.failOffsetX !== undefined) panConfig.failOffsetX = config.failOffsetX;
@@ -98,9 +99,9 @@ function useDraxPanGestureV2(config: DraxPanGestureConfig): DraxPanGesture {
         'worklet';
         config.onUpdate(event);
       })
-      .onEnd((event: DraxPanEvent) => {
+      .onEnd((event: DraxPanEvent, success: boolean) => {
         'worklet';
-        config.onDeactivate(event);
+        config.onDeactivate(event, success);
       })
       .onFinalize((event: DraxPanEvent, success: boolean) => {
         'worklet';

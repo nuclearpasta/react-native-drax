@@ -209,8 +209,11 @@ export const useDragGesture = (
         result.monitorIds
       );
     },
-    onDeactivate: (_event) => {
+    onDeactivate: (_event, didSucceed) => {
       'worklet';
+
+      // A cancelled gesture is not a drop: onFinalize runs the cancel path.
+      if (!didSucceed) return;
 
       const currentDraggedId = draggedIdSV.value;
       const currentReceiverId = receiverIdSV.value;

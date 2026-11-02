@@ -230,6 +230,8 @@ Drax uses `longPressDelay` (default 250ms) before activating drag.
 - Fallback: `ui_swipe` with `duration=5` and `delta=1` via ios-simulator MCP for slow movement that triggers long-press then drag
 - `ui_tap` with duration does long-press but lifts finger — does NOT become a drag
 - For lists: vertical swipe may trigger FlatList scroll instead of drag — ask user if automated approach fails
+- System cancel (e.g. app backgrounded mid-drag) must not drop: RNGH 3.x calls `onDeactivate({canceled:true})` then `onFinalize`. The compat layer passes `didSucceed` to both; `useDragGesture.onDeactivate` returns early on cancel, and `SortableContainer` restores the start order when the end event is `cancelled`.
+- To reproduce a system cancel on the simulator: hold a drag (no Up), press Argent `button home`, wait ≥2s, then send Up. An Up sent sooner arrives before the app resigns active and RNGH reports a normal END (a real drop).
 
 
 Other: 

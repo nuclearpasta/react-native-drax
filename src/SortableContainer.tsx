@@ -296,6 +296,17 @@ export const SortableContainer = ({
     unfreezeScroll();
     dropTargetVisibleSV.value = false;
 
+    const cancelled = isWithCancelledFlag(eventData) && eventData.cancelled;
+
+    // A cancelled drag (e.g. the app went to the background mid-drag) is not
+    // a reorder: restore the start order so the item snaps back to its slot
+    // and finalizeDrag commits nothing.
+    if (cancelled && totalDragEnd && dragStartIndexRef.current !== undefined) {
+      initPendingOrder();
+      draggedDisplayIndexRef.current = dragStartIndexRef.current;
+      cancelDrag();
+    }
+
     const { dragged, receiver } = eventData;
     const draggedPayload = isSortableItemPayload(dragged.payload)
       ? dragged.payload
@@ -317,9 +328,7 @@ export const SortableContainer = ({
         index: fromIndex,
         item: fromItem as any,
         toIndex: draggedDisplayIndexRef.current,
-        cancelled: isWithCancelledFlag(eventData)
-          ? eventData.cancelled
-          : false,
+        cancelled,
       });
     }
 
