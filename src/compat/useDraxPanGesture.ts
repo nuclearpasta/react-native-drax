@@ -30,7 +30,9 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
     onUpdate: config.onUpdate,
     // Normalize the end flag to `didSucceed` so consumers stay
     // version-agnostic (see resolveDidSucceed). RNGH 3.x also calls
-    // onDeactivate for an ACTIVE gesture that gets cancelled.
+    // onDeactivate for an ACTIVE gesture that gets cancelled. Older 3.0
+    // betas that pass neither `canceled` nor `success` here resolve to true,
+    // i.e. the old drop-then-cancel behavior.
     onDeactivate: (event: DraxPanEvent, success?: boolean) => {
       'worklet';
       onDeactivate(event, resolveDidSucceed(event, success));
