@@ -90,6 +90,7 @@ export const SortableContainer = ({
     computeShiftsForOrder,
     pendingOrderRef,
     committedOrderRef,
+    committedShiftsRef,
     cancelDrag,
     shiftsRef,
     instantClearSV,
@@ -300,11 +301,13 @@ export const SortableContainer = ({
 
     // A cancelled drag (e.g. the app went to the background mid-drag) is not
     // a reorder: restore the start order so the item snaps back to its slot
-    // and finalizeDrag commits nothing.
+    // and finalizeDrag commits nothing. Neighbours animate back to their
+    // committed slots with the snap (initPendingOrder keeps instantClearSV
+    // false); finalizeDrag clears the drag state once the snap ends.
     if (cancelled && totalDragEnd && dragStartIndexRef.current !== undefined) {
       initPendingOrder();
       draggedDisplayIndexRef.current = dragStartIndexRef.current;
-      cancelDrag();
+      shiftsRef.value = committedShiftsRef.current;
     }
 
     const { dragged, receiver } = eventData;
