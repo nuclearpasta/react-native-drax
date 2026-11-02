@@ -231,7 +231,9 @@ Drax uses `longPressDelay` (default 250ms) before activating drag.
 - `ui_tap` with duration does long-press but lifts finger — does NOT become a drag
 - For lists: vertical swipe may trigger FlatList scroll instead of drag — ask user if automated approach fails
 - System cancel (e.g. app backgrounded mid-drag) must not drop: RNGH 3.x calls `onDeactivate({canceled:true})` then `onFinalize`. The compat layer passes `didSucceed` to both; `useDragGesture.onDeactivate` returns early on cancel, and `SortableContainer` restores the start order when the end event is `cancelled`.
-- To reproduce a system cancel on the simulator: hold a drag (no Up), press Argent `button home`, wait ≥2s, then send Up. An Up sent sooner arrives before the app resigns active and RNGH reports a normal END (a real drop).
+- To reproduce a system cancel on the simulator: hold a drag (no Up), press Argent `button home`, wait ≥2s, then send Up. On the iOS 27 simulator, an Up sent less than ~1s after Home arrived before the app resigned active and RNGH reported a normal END (a real drop).
+- Before the cancel fix, a cancelled list drag committed the reorder when the app stayed active (drop and cancel both returned the reordered snap target). When the app was backgrounded at the cancel, the list reverted instead (cause not established). Test cancels in the foreground too, not only via Home.
+- In-app cancel without HID: call the item's `GestureDetector.props.gesture.detectorCallbacks.jsEventHandler` (via `debugger-evaluate`) with UNDETERMINED→BEGAN→ACTIVE, updates, then ACTIVE→CANCELLED. RNGH sets `canceled` from the CANCELLED/FAILED state.
 
 
 Other: 
