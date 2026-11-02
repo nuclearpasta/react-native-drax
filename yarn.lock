@@ -21000,7 +21000,7 @@ __metadata:
     react-dom: "npm:19.2.4"
     react-native: "npm:0.83.2"
     react-native-builder-bob: "npm:^0.40.13"
-    react-native-gesture-handler: "npm:3.0.0-beta.2"
+    react-native-gesture-handler: "npm:3.4.0"
     react-native-monorepo-config: "npm:^0.3.1"
     react-native-reanimated: "npm:4.3.0-rc.0"
     react-native-safe-area-context: "npm:~5.6.2"
@@ -21034,7 +21034,7 @@ __metadata:
     react: "npm:19.2.4"
     react-native: "npm:0.83.1"
     react-native-builder-bob: "npm:^0.40.13"
-    react-native-gesture-handler: "npm:^3.0.0-beta.2"
+    react-native-gesture-handler: "npm:^3.4.0"
     react-native-reanimated: "npm:^4.3.0-rc.0"
     react-native-worklets: "npm:^0.8.0-rc.0"
     release-it: "npm:^19.0.4"
@@ -21047,28 +21047,16 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"react-native-gesture-handler@npm:3.0.0-beta.2":
-  version: 3.0.0-beta.2
-  resolution: "react-native-gesture-handler@npm:3.0.0-beta.2"
-  dependencies:
-    invariant: "npm:^2.2.4"
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-  checksum: 10c0/c0f1e2bfad0c51b8aa6943b6f93694a5a5e72fb537166a4b57e174d535bcadc10884056cfa6d2e8418beee24a8b19560b03916d6ab0a02606a193ff127fd8d8b
-  languageName: node
-  linkType: hard
-
-"react-native-gesture-handler@npm:^3.0.0-beta.2":
-  version: 3.0.0-nightly-20260311-0ec1cd2ab
-  resolution: "react-native-gesture-handler@npm:3.0.0-nightly-20260311-0ec1cd2ab"
+"react-native-gesture-handler@npm:3.4.0, react-native-gesture-handler@npm:^3.4.0":
+  version: 3.4.0
+  resolution: "react-native-gesture-handler@npm:3.4.0"
   dependencies:
     "@types/react-test-renderer": "npm:^19.1.0"
     invariant: "npm:^2.2.4"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/87b21d1262428e208ae3b19a6a6c54d051d11ebf7af9bf99317e85f254585a3098f72dd2abf52eaa52ee346cee2352f20c0c1f7d2d6739a6f7bb0167e7be826c
+  checksum: 10c0/49fac726e4716347dcbefa7573272d2ec75f8a48eb0721f4fbd71386c10b3f630c339c664a521684425cf03c1b96b7245dd3df93f5262e426bb7a3517e58e8ee
   languageName: node
   linkType: hard
 
