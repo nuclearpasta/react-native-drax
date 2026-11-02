@@ -219,6 +219,8 @@ function FooterCTA() {
 
 const homepageFontPreloads = [
   '/react-native-drax/fonts/space-grotesk-latin.06408904.woff2',
+  '/react-native-drax/fonts/ibm-plex-mono-latin-400.08949f72.woff2',
+  '/react-native-drax/fonts/ibm-plex-mono-latin-600.0d1f0b8d.woff2',
 ];
 
 export default function Home(): JSX.Element {
