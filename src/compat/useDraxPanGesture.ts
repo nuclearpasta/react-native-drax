@@ -3,7 +3,7 @@ import { useAnimatedReaction } from 'react-native-reanimated';
 import { runOnJS } from 'react-native-worklets';
 
 import { isGestureHandlerV3 } from './detectVersion';
-import { gestureDidSucceed } from './gestureDidSucceed';
+import { resolveDidSucceed } from './resolveDidSucceed';
 import type { DraxPanEvent, DraxPanGesture, DraxPanGestureConfig } from './types';
 
 // Module-scope require — cached by the bundler, always the same reference.
@@ -29,15 +29,15 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
     onActivate: config.onActivate,
     onUpdate: config.onUpdate,
     // Normalize the end flag to `didSucceed` so consumers stay
-    // version-agnostic (see gestureDidSucceed). RNGH 3.x also calls
+    // version-agnostic (see resolveDidSucceed). RNGH 3.x also calls
     // onDeactivate for an ACTIVE gesture that gets cancelled.
     onDeactivate: (event: DraxPanEvent, success?: boolean) => {
       'worklet';
-      onDeactivate(event, gestureDidSucceed(event, success));
+      onDeactivate(event, resolveDidSucceed(event, success));
     },
     onFinalize: (event: DraxPanEvent, success?: boolean) => {
       'worklet';
-      onFinalize(event, gestureDidSucceed(event, success));
+      onFinalize(event, resolveDidSucceed(event, success));
     },
   };
   if (config.failOffsetX !== undefined) panConfig.failOffsetX = config.failOffsetX;
