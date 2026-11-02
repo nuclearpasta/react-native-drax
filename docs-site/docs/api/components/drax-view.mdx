@@ -46,8 +46,35 @@ import { DraxView } from 'react-native-drax';
 | `lockDragXPosition` | `boolean` | `false` | Lock horizontal drag movement |
 | `lockDragYPosition` | `boolean` | `false` | Lock vertical drag movement |
 | `dragActivationFailOffset` | `number` | — | Cancel drag if finger moves more than this (px) during long press |
+| `dragActivationOffsetX` | `number \| [number, number]` | — | Minimum horizontal travel (px) before the drag activates (`activeOffsetX`) |
+| `dragActivationOffsetY` | `number \| [number, number]` | — | Vertical counterpart of `dragActivationOffsetX` (`activeOffsetY`) |
+| `dragActivationFailOffsetX` | `number \| [number, number]` | — | Per-axis `dragActivationFailOffset`; takes precedence on its own axis |
+| `dragActivationFailOffsetY` | `number \| [number, number]` | — | See `dragActivationFailOffsetX` |
 | `capacity` | `number` | — | Max items this view can receive (auto-rejects when full) |
 | `rejectOwnChildren` | `boolean` | `false` | Don't receive drags from own children |
+
+### Activating a drag by direction
+
+`longPressDelay` activates the pan after its delay **regardless of movement**, so
+a stationary press starts a drag. That is a problem when the draggable view also
+hosts a long-press context menu, or sits in a scrollable list: any delay short
+enough to feel responsive cancels the menu, and any delay long enough to avoid it
+loses the drag.
+
+When every meaningful drop is on one axis, the offsets can separate the gestures
+instead of a timer:
+
+```jsx
+<DraxView
+  longPressDelay={0}              // a stationary press never starts a drag
+  dragActivationOffsetX={[-15, 15]}    // only a sideways pull picks the view up
+  dragActivationFailOffsetY={[-15, 15]} // vertical travel returns the gesture to the list
+  payload={item}
+/>
+```
+
+A press that doesn't move leaves the context menu to open, a vertical drag scrolls
+the list, and a horizontal drag starts the drag.
 
 ## Drag Callbacks
 

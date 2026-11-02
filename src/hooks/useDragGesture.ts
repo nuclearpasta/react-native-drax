@@ -25,7 +25,15 @@ export const useDragGesture = (
   lockDragYPosition?: boolean,
   dragBoundsSV?: SharedValue<{ x: number; y: number; width: number; height: number } | null>,
   dragActivationFailOffset?: number,
-  scrollHorizontal?: boolean
+  scrollHorizontal?: boolean,
+  /** Per-axis activation, for telling a drag apart by direction rather than
+   *  by time. See `dragActivationOffsetX` in types.ts. */
+  dragActivationOffsets?: {
+    offsetX?: number | [number, number];
+    offsetY?: number | [number, number];
+    failOffsetX?: number | [number, number];
+    failOffsetY?: number | [number, number];
+  }
 ) => {
   const {
     draggedIdSV,
@@ -58,14 +66,21 @@ export const useDragGesture = (
     ? [-dragActivationFailOffset, dragActivationFailOffset] as [number, number]
     : undefined;
 
+  // Per-axis values win over the symmetric shorthand on their own axis, so a
+  // caller can fail the drag on one axis while activating it on the other.
+  const failOffsetX = dragActivationOffsets?.failOffsetX ?? failOffset;
+  const failOffsetY = dragActivationOffsets?.failOffsetY ?? failOffset;
+
   const gesture = useDraxPanGesture({
     enabledSV,
     longPressDelaySV,
     maxPointers: 1,
     shouldCancelWhenOutside: false,
     touchAction,
-    failOffsetX: failOffset,
-    failOffsetY: failOffset,
+    activeOffsetX: dragActivationOffsets?.offsetX,
+    activeOffsetY: dragActivationOffsets?.offsetY,
+    failOffsetX,
+    failOffsetY,
     onActivate: (event) => {
       'worklet';
 

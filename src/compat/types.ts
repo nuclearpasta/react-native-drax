@@ -28,6 +28,11 @@ export interface DraxPanGestureConfig {
    *  Prevents accidental drags when the user is trying to scroll. */
   failOffsetX?: number | [number, number];
   failOffsetY?: number | [number, number];
+  /** Minimum travel on an axis before the gesture activates. Lets a drag be
+   *  told apart from a stationary press or a scroll by direction rather than
+   *  by a long-press delay. */
+  activeOffsetX?: number | [number, number];
+  activeOffsetY?: number | [number, number];
   onActivate: (event: DraxPanEvent) => void;
   onUpdate: (event: DraxPanEvent) => void;
   onDeactivate: (event: DraxPanEvent) => void;

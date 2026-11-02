@@ -30,6 +30,8 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
   };
   if (config.failOffsetX !== undefined) panConfig.failOffsetX = config.failOffsetX;
   if (config.failOffsetY !== undefined) panConfig.failOffsetY = config.failOffsetY;
+  if (config.activeOffsetX !== undefined) panConfig.activeOffsetX = config.activeOffsetX;
+  if (config.activeOffsetY !== undefined) panConfig.activeOffsetY = config.activeOffsetY;
   return rngh.usePanGesture(panConfig);
 }
 
@@ -78,6 +80,8 @@ function useDraxPanGestureV2(config: DraxPanGestureConfig): DraxPanGesture {
       .shouldCancelWhenOutside(config.shouldCancelWhenOutside);
     if (config.failOffsetX !== undefined) g = g.failOffsetX(config.failOffsetX);
     if (config.failOffsetY !== undefined) g = g.failOffsetY(config.failOffsetY);
+    if (config.activeOffsetX !== undefined) g = g.activeOffsetX(config.activeOffsetX);
+    if (config.activeOffsetY !== undefined) g = g.activeOffsetY(config.activeOffsetY);
     return g
       .onStart((event: DraxPanEvent) => {
         'worklet';

@@ -318,6 +318,24 @@ export interface DraxViewProps
    *  Prevents accidental drags when the user is trying to scroll.
    *  Can be a number (symmetric) or [min, max] tuple per axis. */
   dragActivationFailOffset?: number;
+  /** Minimum horizontal travel (px) before the drag activates. Maps to
+   *  gesture-handler's `activeOffsetX`.
+   *
+   *  Use this to tell a drag apart by *direction* rather than by time. With
+   *  `longPressDelay: 0` and this set, a stationary press never starts a
+   *  drag — so a long-press context menu underneath the view still opens —
+   *  and pairing it with `dragActivationFailOffsetY` leaves vertical
+   *  scrolling to the list the view sits in.
+   *
+   *  Can be a number (symmetric) or [min, max] tuple. */
+  dragActivationOffsetX?: number | [number, number];
+  /** Vertical counterpart of `dragActivationOffsetX` (`activeOffsetY`). */
+  dragActivationOffsetY?: number | [number, number];
+  /** Per-axis `dragActivationFailOffset`. Takes precedence over it on its
+   *  own axis, so one axis can fail the drag while the other activates it. */
+  dragActivationFailOffsetX?: number | [number, number];
+  /** See `dragActivationFailOffsetX`. */
+  dragActivationFailOffsetY?: number | [number, number];
 
   /** Hint that this view is inside a horizontal scroll container.
    *  On mobile web, sets `touch-action: pan-x` so the browser allows
