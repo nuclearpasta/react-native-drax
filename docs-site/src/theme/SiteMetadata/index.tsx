@@ -9,10 +9,12 @@ import {
   keyboardFocusedClassName,
 } from '@docusaurus/theme-common/internal';
 import {useLocation} from '@docusaurus/router';
+import {Route} from 'react-router-dom';
 import {applyTrailingSlash} from '@docusaurus/utils-common';
 import {useAllDocsData} from '@docusaurus/plugin-content-docs/client';
 import routes from '@generated/routes';
 import SearchMetadata from '@theme/SearchMetadata';
+import {useRenderedLocation} from '../../clientModules/routeNavigation';
 import {alternateHref} from '../docsHomeUrl';
 import {isNotFoundLocation} from '../notFoundRoute';
 
@@ -171,7 +173,7 @@ function CanonicalUrlHeaders(): ReactNode {
   );
 }
 
-export default function SiteMetadata(): ReactNode {
+function SiteMetadataContent(): ReactNode {
   const {
     i18n: {currentLocale},
   } = useDocusaurusContext();
@@ -200,5 +202,15 @@ export default function SiteMetadata(): ReactNode {
         ))}
       </Head>
     </>
+  );
+}
+
+export default function SiteMetadata(): ReactNode {
+  // SiteMetadata sits outside Docusaurus' PendingNavigation, so useLocation()
+  // has the next URL while the old route is still on screen. Describe the page
+  // that is shown, or the head mixes the old content with the new URL.
+  const renderedLocation = useRenderedLocation();
+  return (
+    <Route location={renderedLocation} render={() => <SiteMetadataContent />} />
   );
 }

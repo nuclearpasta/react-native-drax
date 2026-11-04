@@ -126,6 +126,8 @@ const config: Config = {
     },
   ],
 
+  clientModules: ['./src/clientModules/routeNavigation.ts'],
+
   presets: [
     [
       'classic',
