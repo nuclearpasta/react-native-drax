@@ -17,6 +17,7 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
   // Build config without undefined failOffset keys — RNGH v3 warns on
   // undefined keys that survive transformOffsetProp without deletion.
   // Spread is not allowed here (Reanimated workletizes hook arguments).
+  const onFinalize = config.onFinalize;
   const panConfig: Record<string, unknown> = {
     enabled: config.enabledSV,
     activateAfterLongPress: config.longPressDelaySV,
@@ -26,7 +27,17 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
     onActivate: config.onActivate,
     onUpdate: config.onUpdate,
     onDeactivate: config.onDeactivate,
-    onFinalize: config.onFinalize,
+    // RNGH 3.0.0-beta.3+ (incl. 3.x stable) reports the end flag as
+    // `event.canceled`; 3.0.0-beta.2 and earlier passed `success` as a second
+    // argument. Normalize to `didSucceed` so consumers stay version-agnostic.
+    // Without this, every normal drop finalizes as cancelled.
+    onFinalize: (event: DraxPanEvent, success?: boolean) => {
+      'worklet';
+      onFinalize(
+        event,
+        typeof success === 'boolean' ? success : event.canceled !== true
+      );
+    },
   };
   if (config.failOffsetX !== undefined) panConfig.failOffsetX = config.failOffsetX;
   if (config.failOffsetY !== undefined) panConfig.failOffsetY = config.failOffsetY;

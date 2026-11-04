@@ -13,6 +13,9 @@ export interface DraxPanEvent {
   y: number;
   absoluteX: number;
   absoluteY: number;
+  /** RNGH 3.0.0-beta.3+ end events (onDeactivate/onFinalize): true when the
+   *  gesture was cancelled or failed. Absent on v2 and earlier v3 betas. */
+  canceled?: boolean;
 }
 
 /** Config for the version-agnostic pan gesture hook. */
