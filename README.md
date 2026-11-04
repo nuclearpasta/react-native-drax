@@ -19,7 +19,7 @@
 
 Drax is a declarative drag-and-drop framework for React Native, written in TypeScript. It supports free-form drag-and-drop, sortable lists and grids, cross-list reorder, drag handles, collision algorithms, and more.
 
-Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and [Gesture Handler 3](https://docs.swmansion.com/react-native-gesture-handler/) (v2.24+ also supported) with a UI-thread-first architecture for smooth 60fps interactions.
+Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and [Gesture Handler 3](https://docs.swmansion.com/react-native-gesture-handler/) (v2 also supported) with a UI-thread-first architecture for smooth 60fps interactions.
 
 **Platforms:** iOS, Android, Web
 
@@ -56,7 +56,7 @@ Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and
 | Accessibility + reduced motion | ✅ | Manual | Manual |
 | Web support | ✅ | ➖ | Partial |
 | Reanimated | ≥ 4 | ≥ 4.2 | ≥ 3 |
-| Gesture Handler | ≥ 2.24 | ≥ 2.28 | ≥ 2 |
+| Gesture Handler | ≥ 2 | ≥ 2.28 | ≥ 2 |
 
 [See full comparison →](https://nuclearpasta.com/react-native-drax#comparison)
 
@@ -79,10 +79,9 @@ npm install react-native-reanimated react-native-worklets react-native-gesture-h
 | `react` | >= 19.0.0 |
 | `react-native` | >= 0.78.0 (New Architecture) |
 | `react-native-reanimated` | ^4.0.0 |
-| `react-native-worklets` | >= 0.4.0 (use the version matching your Reanimated release) |
-| `react-native-gesture-handler` | >= 2.24.0 (v3 recommended) |
+| `react-native-gesture-handler` | >= 2.0.0 (v3 recommended) |
 
-Reanimated 4 requires the New Architecture and a matching `react-native-worklets` version; see the [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/). Gesture Handler v3 is recommended; v2 (2.24+) is supported via a compatibility layer with reduced performance.
+`react-native-worklets` is not a direct peer of Drax, but Reanimated 4 requires it: install the version matching your Reanimated release (see the [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/)). Reanimated 4 also requires the New Architecture. Gesture Handler v2 and v3 both work; v3 is recommended, and v2 is supported via a compatibility layer with reduced performance.
 
 ## 🚀 Quick Start
 
@@ -403,7 +402,7 @@ v1.0.0 is a complete rewrite. Key changes:
 
 - **`DraxList` is new** — list-agnostic convenience wrapper using the new sortable architecture. The old `DraxList` / `DraxListItem` API from v0.10.x and v0.11.0-alpha is removed.
 - **New sortable architecture** — `useSortableList` + `SortableContainer` + `SortableItem` composable API replaces the old array-indexed approach.
-- **Reanimated 4 + react-native-worklets** — required peer dependencies. Gesture Handler v3 is recommended; v2 (2.24+) is supported via a compat layer with reduced performance. See [Peer Dependencies](#-peer-dependencies) for exact ranges.
+- **Reanimated 4 + Gesture Handler** — required peer dependencies (Reanimated 4 also needs `react-native-worklets`). Gesture Handler v2 and v3 both work; v3 is recommended, v2 is supported via a compat layer with reduced performance. See [Peer Dependencies](#-peer-dependencies) for exact ranges.
 - **New Architecture (Fabric)** compatible.
 
 ## 📋 Changelog

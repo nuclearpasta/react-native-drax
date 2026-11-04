@@ -21042,9 +21042,8 @@ __metadata:
   peerDependencies:
     react: ">=19.0.0"
     react-native: ">=0.78.0"
-    react-native-gesture-handler: ">=2.24.0"
+    react-native-gesture-handler: ">=2.0.0"
     react-native-reanimated: ^4.0.0
-    react-native-worklets: ">=0.4.0"
   languageName: unknown
   linkType: soft
 
