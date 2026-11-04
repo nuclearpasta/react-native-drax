@@ -8018,6 +8018,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/react-test-renderer@npm:^19":
+  version: 19.3.0
+  resolution: "@types/react-test-renderer@npm:19.3.0"
+  dependencies:
+    "@types/react": "npm:*"
+  checksum: 10c0/37f5588f698a057a33c1f4d5fd28a042f3df7f29a3554ddebb7f9c8ecd3e5fba085e5b12d14b30734c30b51959ef17544650b2a9704d629d0af251f126d8ae73
+  languageName: node
+  linkType: hard
+
 "@types/react-test-renderer@npm:^19.1.0":
   version: 19.1.0
   resolution: "@types/react-test-renderer@npm:19.1.0"
@@ -20897,6 +20906,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-is@npm:^19.2.4":
+  version: 19.3.1
+  resolution: "react-is@npm:19.3.1"
+  checksum: 10c0/428e02d986d56f1859c57756084489f6d2900fd686905003c405b32f1168738b78772bfa4bb6c706f5ac821199171522c28bf6434281f524f901459390a19606
+  languageName: node
+  linkType: hard
+
 "react-json-view-lite@npm:^2.3.0":
   version: 2.5.0
   resolution: "react-json-view-lite@npm:2.5.0"
@@ -21023,6 +21039,7 @@ __metadata:
     "@release-it/conventional-changelog": "npm:^10.0.4"
     "@types/jest": "npm:^30.0.0"
     "@types/react": "npm:^19.2.10"
+    "@types/react-test-renderer": "npm:^19"
     commitlint: "npm:^20.4.1"
     del-cli: "npm:^7.0.0"
     eslint: "npm:^9.39.2"
@@ -21037,6 +21054,7 @@ __metadata:
     react-native-gesture-handler: "npm:^3.4.0"
     react-native-reanimated: "npm:^4.3.0-rc.0"
     react-native-worklets: "npm:^0.8.0-rc.0"
+    react-test-renderer: "npm:19.2.4"
     release-it: "npm:^19.0.4"
     typescript: "npm:^5.9.3"
   peerDependencies:
@@ -21376,6 +21394,18 @@ __metadata:
     "@types/react":
       optional: true
   checksum: 10c0/841938ff16d16a6b76895f4cb2e1fea957e5fe3b30febbf03a54892dae1c9153f2383e231dea0b3ba41192ad2f2849448fa859caccd288943bce32639e971bee
+  languageName: node
+  linkType: hard
+
+"react-test-renderer@npm:19.2.4":
+  version: 19.2.4
+  resolution: "react-test-renderer@npm:19.2.4"
+  dependencies:
+    react-is: "npm:^19.2.4"
+    scheduler: "npm:^0.27.0"
+  peerDependencies:
+    react: ^19.2.4
+  checksum: 10c0/76f0a419a8ca7776ac6fae7c25056b9326a92a3d79971817e8ffd262d9121d1e87fde058b4fd6d33c365b1001cd6236d9053816dabed20afa62fbfe2a1a59f1a
   languageName: node
   linkType: hard
 
