@@ -1,14 +1,15 @@
-import type { ReactNode, RefObject } from 'react';
+import type { ComponentRef, ReactNode, RefObject } from 'react';
 import type {
   NativeScrollEvent,
   NativeSyntheticEvent,
   ScrollViewProps,
   StyleProp,
+  View,
   ViewProps,
   ViewStyle,
 } from 'react-native';
-import type { HostInstance } from 'react-native';
 import type {
+  AnimatedRef,
   AnimatedStyle,
   EntryOrExitLayoutType,
   SharedValue,
@@ -517,7 +518,7 @@ export interface DraxContextValue {
   droppedItemsRef: RefObject<Map<string, Set<string>>>;
 
   // ── View refs ──────────────────────────────────────────────────────
-  rootViewRef: { current: HostInstance | null };
+  rootViewRef: AnimatedRef<ComponentRef<typeof View>>;
   parent?: DraxParentView;
 }
 

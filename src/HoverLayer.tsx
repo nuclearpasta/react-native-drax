@@ -6,6 +6,7 @@ import type { SharedValue } from 'react-native-reanimated';
 import Reanimated, { useAnimatedStyle } from 'react-native-reanimated';
 import { runOnUI } from 'react-native-worklets';
 
+import { DraxHandleContext } from './DraxHandleContext';
 import type { DragPhase, Position } from './types';
 
 /** Flattened hover styles for the currently dragged view */
@@ -138,21 +139,23 @@ export const HoverLayer = memo(
     // If we returned null when content is empty, remounting causes a one-frame
     // flash (the view renders at default position before useAnimatedStyle kicks in).
     return (
-      <Reanimated.View
-        style={[styles.container, positionStyle]}
-        pointerEvents="none"
-      >
-        <Reanimated.View style={[styles.content, dimensionStyle, visualStyle]}>
-          {hoverContentRef.current}
+      <DraxHandleContext.Provider value={null}>
+        <Reanimated.View
+          style={[styles.container, positionStyle]}
+          pointerEvents="none"
+        >
+          <Reanimated.View style={[styles.content, dimensionStyle, visualStyle]}>
+            {hoverContentRef.current}
+          </Reanimated.View>
         </Reanimated.View>
-      </Reanimated.View>
+      </DraxHandleContext.Provider>
     );
   }
 );
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     // Default hidden — useAnimatedStyle overrides to opacity:1 when dragging.
     // Prevents a one-frame flash on first mount before the animated style evaluates.
     opacity: 0,
