@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { measure } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import { runOnJS } from 'react-native-worklets';
 
@@ -25,7 +26,8 @@ export const useDragGesture = (
   lockDragYPosition?: boolean,
   dragBoundsSV?: SharedValue<{ x: number; y: number; width: number; height: number } | null>,
   dragActivationFailOffset?: number,
-  scrollHorizontal?: boolean
+  scrollHorizontal?: boolean,
+  dragHandle?: boolean
 ) => {
   const {
     draggedIdSV,
@@ -39,6 +41,7 @@ export const useDragGesture = (
     grabOffsetSV,
     startPositionSV,
     rootOffsetSV,
+    rootViewRef,
     handleDragStart,
     handleReceiverChange,
     handleDragEnd,
@@ -69,24 +72,43 @@ export const useDragGesture = (
     onActivate: (event) => {
       'worklet';
 
+      // Re-measure the root view on drag start in case DraxProvider is nested
+      // inside an outer ScrollView/FlatList that has scrolled since onLayout.
+      if (Platform.OS !== 'web') {
+        const measuredRoot = measure(rootViewRef);
+        if (measuredRoot) {
+          rootOffsetSV.value = { x: measuredRoot.pageX, y: measuredRoot.pageY };
+        }
+      }
+
       // Convert screen-absolute touch to root-view-relative
       const rootOffset = rootOffsetSV.value;
       const rootRelX = event.absoluteX - rootOffset.x;
       const rootRelY = event.absoluteY - rootOffset.y;
 
-      // Derive the view's visual position from the gesture event.
-      // event.x/y = touch relative to the view's bounds (accounts for transforms).
-      // This is more accurate than the spatial index for sortable items where
-      // permanent shifts move views via CSS transform without updating layout.
-      const viewAbsPos: Position = {
-        x: rootRelX - event.x,
-        y: rootRelY - event.y,
-      };
+      // Derive the view's visual position and grab offset.
+      // When dragHandle is false, GestureDetector wraps the DraxView directly,
+      // so event.x/y is touch relative to the DraxView's bounds (accounts for transforms).
+      // When dragHandle is true, GestureDetector wraps the child DraxHandle,
+      // so event.x/y is relative to the handle — use the spatial index for the DraxView's position.
+      const spatialIndex = viewSpatialIndexSV.value;
+      const entries = spatialIndexSV.value;
+      const viewAbsPos: Position =
+        dragHandle && spatialIndex >= 0 && entries[spatialIndex]
+          ? computeAbsolutePositionWorklet(
+              spatialIndex,
+              entries,
+              scrollOffsetsSV.value
+            )
+          : {
+              x: rootRelX - event.x,
+              y: rootRelY - event.y,
+            };
 
-      // Grab offset = touch position within the view
+      // Grab offset = touch position within the DraxView
       const grabOffset: Position = {
-        x: event.x,
-        y: event.y,
+        x: rootRelX - viewAbsPos.x,
+        y: rootRelY - viewAbsPos.y,
       };
 
       // Store shared state (all positions in root-relative space).
@@ -105,8 +127,7 @@ export const useDragGesture = (
       // Clamp to drag bounds if specified
       if (dragBoundsSV?.value) {
         const b = dragBoundsSV.value;
-        const entries = spatialIndexSV.value;
-        const viewEntry = entries[viewSpatialIndexSV.value];
+        const viewEntry = entries[spatialIndex];
         const vw = viewEntry ? viewEntry.width : 0;
         const vh = viewEntry ? viewEntry.height : 0;
         hoverX = Math.max(b.x, Math.min(b.x + b.width - vw, hoverX));
