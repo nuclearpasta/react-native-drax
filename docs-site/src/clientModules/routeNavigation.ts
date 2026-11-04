@@ -1,11 +1,6 @@
 import {useSyncExternalStore} from 'react';
 import type {ClientModule} from '@docusaurus/types';
-import {
-  claimStalledReload,
-  releaseStalledReload,
-  routeKey,
-  shouldWatchNavigation,
-} from './stalledNavigation';
+import {createStalledNavigationWatcher} from './stalledNavigation';
 
 type RouteArgs = Parameters<NonNullable<ClientModule['onRouteUpdate']>>[0];
 type RenderedLocation = RouteArgs['location'];
@@ -21,14 +16,8 @@ type RenderedLocation = RouteArgs['location'];
 // Without sessionStorage there is no record, so there is no reload either.
 const STALLED_NAVIGATION_MS = 8000;
 
-let stalledNavigationTimer: ReturnType<typeof setTimeout> | undefined;
 let renderedLocation: RenderedLocation | undefined;
 const listeners = new Set<() => void>();
-
-function clearStalledNavigationTimer() {
-  clearTimeout(stalledNavigationTimer);
-  stalledNavigationTimer = undefined;
-}
 
 function sessionStorageOrUndefined(): Storage | undefined {
   try {
@@ -38,23 +27,20 @@ function sessionStorageOrUndefined(): Storage | undefined {
   }
 }
 
+const stalledNavigation = createStalledNavigationWatcher({
+  delayMs: STALLED_NAVIGATION_MS,
+  setTimer: (callback, delayMs) => window.setTimeout(callback, delayMs),
+  clearTimer: (timer) => window.clearTimeout(timer),
+  getStorage: sessionStorageOrUndefined,
+  reload: () => window.location.reload(),
+});
+
 export function onRouteUpdate({previousLocation, location}: RouteArgs): void {
-  clearStalledNavigationTimer();
-  if (!shouldWatchNavigation(previousLocation, location)) {
-    return;
-  }
-  const target = routeKey(location);
-  stalledNavigationTimer = setTimeout(() => {
-    stalledNavigationTimer = undefined;
-    if (claimStalledReload(sessionStorageOrUndefined(), target)) {
-      window.location.reload();
-    }
-  }, STALLED_NAVIGATION_MS);
+  stalledNavigation.routeUpdate(previousLocation, location);
 }
 
 export function onRouteDidUpdate({location}: RouteArgs): void {
-  clearStalledNavigationTimer();
-  releaseStalledReload(sessionStorageOrUndefined(), routeKey(location));
+  stalledNavigation.routeDidUpdate(location);
   renderedLocation = location;
   listeners.forEach((listener) => listener());
 }

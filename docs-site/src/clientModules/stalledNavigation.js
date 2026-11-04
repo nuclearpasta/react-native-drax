@@ -10,17 +10,6 @@ function routeKey(location) {
 }
 
 /**
- * Only a navigation to another pathname or query loads new route chunks. The
- * first render (no previous location) is hydration, not a navigation.
- */
-function shouldWatchNavigation(previousLocation, location) {
-  return (
-    previousLocation != null &&
-    routeKey(previousLocation) !== routeKey(location)
-  );
-}
-
-/**
  * Records a reload for `target` and returns true, at most once until
  * releaseStalledReload(target). Returns false when storage is unavailable, so
  * a reload that cannot be recorded never happens and cannot loop.
@@ -53,9 +42,79 @@ function releaseStalledReload(storage, target) {
   }
 }
 
+/**
+ * Tracks the route on screen and the one pending, and reloads a pending target
+ * that has not rendered after `delayMs`. Docusaurus passes the previous ROUTER
+ * location to onRouteUpdate, which may itself still be pending, so decisions
+ * compare against the rendered route instead.
+ */
+function createStalledNavigationWatcher({
+  delayMs,
+  setTimer,
+  clearTimer,
+  getStorage,
+  reload,
+}) {
+  let renderedKey;
+  let pendingKey;
+  let timer;
+
+  function cancel() {
+    if (pendingKey !== undefined) {
+      clearTimer(timer);
+    }
+    pendingKey = undefined;
+    timer = undefined;
+  }
+
+  function routeUpdate(previousLocation, location) {
+    // No previous location is hydration, not a navigation.
+    if (previousLocation == null) {
+      return;
+    }
+    const key = routeKey(location);
+    // A hash change, the same page, or back to the page on screen loads
+    // nothing, and abandons any other pending navigation.
+    const onScreen =
+      renderedKey !== undefined
+        ? key === renderedKey
+        : key === routeKey(previousLocation);
+    if (onScreen) {
+      cancel();
+      return;
+    }
+    // A repeat click or a hash push on the pending target does not restart
+    // the wait: the reload stays due from the first navigation.
+    if (key === pendingKey) {
+      return;
+    }
+    cancel();
+    pendingKey = key;
+    timer = setTimer(() => {
+      pendingKey = undefined;
+      timer = undefined;
+      if (claimStalledReload(getStorage(), key)) {
+        reload();
+      }
+    }, delayMs);
+  }
+
+  function routeDidUpdate(location) {
+    const key = routeKey(location);
+    renderedKey = key;
+    releaseStalledReload(getStorage(), key);
+    // Only the pending target rendering ends its wait.
+    if (key === pendingKey) {
+      cancel();
+    }
+  }
+
+  return {routeUpdate, routeDidUpdate};
+}
+
 module.exports = {
   claimStalledReload,
+  createStalledNavigationWatcher,
   releaseStalledReload,
   routeKey,
-  shouldWatchNavigation,
 };
