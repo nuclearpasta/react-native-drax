@@ -9,17 +9,29 @@ const isWeb = Platform.OS === 'web';
 // render or React hydration fails (error #418).
 const isSSR = isWeb && typeof window === 'undefined';
 
-function Placeholder({ name, intro }: { name: string; intro?: boolean }) {
+// Colours match the home screen theme so the intro does not shift on hydration.
+function IntroPlaceholder() {
   const isDark = useColorScheme() === 'dark';
-  const color = isDark ? '#f5f5f0' : '#111111';
-  const muted = isDark ? '#afafa8' : '#5d5d5d';
+  return (
+    <View style={{ flex: 1 }}>
+      <DemoIntro
+        color={isDark ? '#f5f5f0' : '#111111'}
+        muted={isDark ? '#afafa8' : '#5d5d5d'}
+      />
+    </View>
+  );
+}
+
+function Placeholder({ name, intro }: { name: string; intro?: boolean }) {
   if (intro) {
-    return (
-      <View style={{ flex: 1 }}>
-        <DemoIntro color={color} muted={muted} />
-      </View>
-    );
+    return <IntroPlaceholder />;
   }
+  return <ScreenPlaceholder name={name} />;
+}
+
+function ScreenPlaceholder({ name }: { name: string }) {
+  const isDark = useColorScheme() === 'dark';
+  const color = isDark ? '#e0e0e0' : '#000';
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
       <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8, color }}>{name}</Text>

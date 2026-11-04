@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 export const DEMO_H1 = 'react-native-drax live demo';
 export const DEMO_INTRO =
@@ -10,7 +10,8 @@ type DemoIntroProps = {
 };
 
 /**
- * Web export renders role="heading" as <h1> and role="paragraph" as <p>.
+ * Web export renders role="heading" as <h1>. React Native's Role type has no
+ * "paragraph", so web renders a plain <p> styled like the native Text.
  * The same tree is used for the static placeholder and the home screen, so
  * the first client render matches the server HTML.
  */
@@ -20,12 +21,11 @@ export function DemoIntro({ color, muted }: DemoIntroProps) {
       <Text role="heading" style={[styles.heading, { color }]}>
         {DEMO_H1}
       </Text>
-      <Text
-        role={'paragraph' as 'note'}
-        style={[styles.intro, { color: muted }]}
-      >
-        {DEMO_INTRO}
-      </Text>
+      {Platform.OS === 'web' ? (
+        <p style={{ ...webParagraph, color: muted }}>{DEMO_INTRO}</p>
+      ) : (
+        <Text style={[styles.intro, { color: muted }]}>{DEMO_INTRO}</Text>
+      )}
     </View>
   );
 }
@@ -47,3 +47,15 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 });
+
+// Plain DOM element: mirror react-native-web's Text reset and font stack.
+const webParagraph = {
+  margin: 0,
+  padding: 0,
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  fontSize: styles.intro.fontSize,
+  lineHeight: `${styles.intro.lineHeight}px`,
+  whiteSpace: 'pre-wrap',
+  overflowWrap: 'break-word',
+} as const;
