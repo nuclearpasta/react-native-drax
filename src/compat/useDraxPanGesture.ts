@@ -3,6 +3,7 @@ import { useAnimatedReaction } from 'react-native-reanimated';
 import { runOnJS } from 'react-native-worklets';
 
 import { isGestureHandlerV3 } from './detectVersion';
+import { resolveDidSucceed } from './resolveDidSucceed';
 import type { DraxPanEvent, DraxPanGesture, DraxPanGestureConfig } from './types';
 
 // Module-scope require — cached by the bundler, always the same reference.
@@ -27,16 +28,9 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
     onActivate: config.onActivate,
     onUpdate: config.onUpdate,
     onDeactivate: config.onDeactivate,
-    // RNGH 3.0.0-beta.3+ (incl. 3.x stable) reports the end flag as
-    // `event.canceled`; 3.0.0-beta.2 and earlier passed `success` as a second
-    // argument. Normalize to `didSucceed` so consumers stay version-agnostic.
-    // Without this, every normal drop finalizes as cancelled.
     onFinalize: (event: DraxPanEvent, success?: boolean) => {
       'worklet';
-      onFinalize(
-        event,
-        typeof success === 'boolean' ? success : event.canceled !== true
-      );
+      onFinalize(event, resolveDidSucceed(event, success));
     },
   };
   if (config.failOffsetX !== undefined) panConfig.failOffsetX = config.failOffsetX;
