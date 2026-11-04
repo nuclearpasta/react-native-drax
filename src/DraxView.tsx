@@ -355,7 +355,8 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     lockDragYPosition,
     dragBoundsSV,
     props.dragActivationFailOffset,
-    scrollHorizontal
+    scrollHorizontal,
+    dragHandle
   );
 
   // ── Animated styles ────────────────────────────────────────────────
