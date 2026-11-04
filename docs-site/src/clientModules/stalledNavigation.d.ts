@@ -25,4 +25,18 @@ export function createStalledNavigationWatcher<Timer>(options: {
   clearTimer: (timer: Timer | undefined) => void;
   getStorage: () => GuardStorage | undefined;
   reload: () => void;
+  /**
+   * Undefined when the route's components are loaded, else a promise that
+   * resolves once they are. The route only counts as rendered after that.
+   */
+  whenRouteLoaded?: (location: RouteLocation) => PromiseLike<unknown> | undefined;
 }): StalledNavigationWatcher;
+
+export function whenRouteComponentsLoaded<Route>(
+  routes: Route[],
+  matchRoutes: (
+    routes: Route[],
+    pathname: string,
+  ) => {route: {component?: unknown}}[],
+  pathname: string,
+): Promise<unknown[]>;

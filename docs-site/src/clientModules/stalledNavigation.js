@@ -43,10 +43,37 @@ function releaseStalledReload(storage, target) {
 }
 
 /**
+ * Resolves once every route component matched for `pathname` has loaded,
+ * matching routes exactly like Docusaurus' client preload.js. react-loadable's
+ * preload() returns its cached promise for a component that is loading or
+ * loaded, so this starts no extra chunk loads.
+ */
+function whenRouteComponentsLoaded(routes, matchRoutes, pathname) {
+  const pathnames = new Set([pathname]);
+  try {
+    pathnames.add(decodeURI(pathname));
+  } catch {
+    // A malformed escape only matches as written.
+  }
+  const matches = Array.from(pathnames).flatMap((p) => matchRoutes(routes, p));
+  return Promise.all(
+    matches.map((match) => match.route.component?.preload?.()),
+  );
+}
+
+/**
  * Tracks the route on screen and the one pending, and reloads a pending target
  * that has not rendered after `delayMs`. Docusaurus passes the previous ROUTER
  * location to onRouteUpdate, which may itself still be pending, so decisions
  * compare against the rendered route instead.
+ *
+ * onRouteDidUpdate alone does not prove a route rendered: PendingNavigation
+ * shares one `nextRouteHasLoaded` flag between navigations, so when an earlier
+ * target finishes preloading it renders the latest location even if that
+ * route's chunks are still loading (react-loadable shows a blank Loading
+ * component). `whenRouteLoaded(location)` returns undefined when the route is
+ * loaded, or a promise that resolves once its components have loaded; only
+ * then does the route count as on screen.
  */
 function createStalledNavigationWatcher({
   delayMs,
@@ -54,10 +81,14 @@ function createStalledNavigationWatcher({
   clearTimer,
   getStorage,
   reload,
+  whenRouteLoaded,
 }) {
+  // The route whose content is on screen (not merely committed blank).
   let renderedKey;
   let pendingKey;
   let timer;
+  // Only the latest routeDidUpdate may mark its route as rendered.
+  let renderSequence = 0;
 
   function cancel() {
     if (pendingKey !== undefined) {
@@ -99,14 +130,38 @@ function createStalledNavigationWatcher({
     }, delayMs);
   }
 
-  function routeDidUpdate(location) {
-    const key = routeKey(location);
+  function markRendered(key) {
     renderedKey = key;
     releaseStalledReload(getStorage(), key);
     // Only the pending target rendering ends its wait.
     if (key === pendingKey) {
       cancel();
     }
+  }
+
+  function routeDidUpdate(location) {
+    const key = routeKey(location);
+    const sequence = ++renderSequence;
+    let loaded;
+    try {
+      loaded = whenRouteLoaded?.(location);
+    } catch {
+      // Unknown load state: count the route as rendered, as Docusaurus does.
+      loaded = undefined;
+    }
+    if (loaded == null || typeof loaded.then !== 'function') {
+      markRendered(key);
+      return;
+    }
+    loaded.then(
+      () => {
+        if (sequence === renderSequence) {
+          markRendered(key);
+        }
+      },
+      // A failed chunk makes Docusaurus reload the page itself.
+      () => {},
+    );
   }
 
   return {routeUpdate, routeDidUpdate};
@@ -117,4 +172,5 @@ module.exports = {
   createStalledNavigationWatcher,
   releaseStalledReload,
   routeKey,
+  whenRouteComponentsLoaded,
 };

@@ -1,6 +1,11 @@
 import {useSyncExternalStore} from 'react';
 import type {ClientModule} from '@docusaurus/types';
-import {createStalledNavigationWatcher} from './stalledNavigation';
+import routes from '@generated/routes';
+import {matchRoutes} from 'react-router-config';
+import {
+  createStalledNavigationWatcher,
+  whenRouteComponentsLoaded,
+} from './stalledNavigation';
 
 type RouteArgs = Parameters<NonNullable<ClientModule['onRouteUpdate']>>[0];
 type RenderedLocation = RouteArgs['location'];
@@ -14,6 +19,10 @@ type RenderedLocation = RouteArgs['location'];
 // the reload, and is removed when that URL renders. If the reloaded page stalls
 // on the same URL again before rendering it, Docusaurus' own behaviour applies.
 // Without sessionStorage there is no record, so there is no reload either.
+//
+// A URL counts as rendered only once its route components have loaded:
+// PendingNavigation can commit the latest location while its chunks are still
+// loading (a blank page), and still fires onRouteDidUpdate for it.
 const STALLED_NAVIGATION_MS = 8000;
 
 let renderedLocation: RenderedLocation | undefined;
@@ -33,6 +42,8 @@ const stalledNavigation = createStalledNavigationWatcher({
   clearTimer: (timer) => window.clearTimeout(timer),
   getStorage: sessionStorageOrUndefined,
   reload: () => window.location.reload(),
+  whenRouteLoaded: (location) =>
+    whenRouteComponentsLoaded(routes, matchRoutes, location.pathname),
 });
 
 export function onRouteUpdate({previousLocation, location}: RouteArgs): void {
