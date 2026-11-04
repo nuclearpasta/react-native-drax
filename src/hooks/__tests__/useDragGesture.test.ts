@@ -12,6 +12,7 @@ jest.mock('../../compat', () => ({
     return {};
   },
 }));
+jest.mock('react-native-reanimated', () => ({ measure: jest.fn(() => null) }));
 jest.mock('react-native-worklets', () => ({
   runOnJS: (fn: (...args: unknown[]) => unknown) => fn,
 }));
