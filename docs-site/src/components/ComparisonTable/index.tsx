@@ -108,5 +108,5 @@ const rows: [string, string, string, string][] = [
   ['AI agent skills',                                  'No',                     'Yes',            'No'],
   ['Web support',                                      'Yes',                    'No',             'Partial'],
   ['Reanimated',                                       '\u2265 4',               '\u2265 4.2',     '\u2265 3'],
-  ['Gesture Handler',                                  '\u2265 2',               '\u2265 2.28',    '\u2265 2'],
+  ['Gesture Handler',                                  '\u2265 2.24',            '\u2265 2.28',    '\u2265 2'],
 ];
