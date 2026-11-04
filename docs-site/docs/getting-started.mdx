@@ -27,7 +27,7 @@ yarn add react-native-drax
 
 ### Peer Dependencies
 
-Drax requires Reanimated and Gesture Handler as peer dependencies. Reanimated 4 also needs `react-native-worklets`, so install it too:
+Drax requires Reanimated and Gesture Handler as peer dependencies. `react-native-worklets` is required by Reanimated 4, so install it alongside Reanimated:
 
 ```bash
 npm install react-native-reanimated react-native-worklets react-native-gesture-handler
@@ -43,7 +43,7 @@ npm install react-native-reanimated react-native-worklets react-native-gesture-h
 :::tip
 Gesture Handler v2 and v3 both work. Drax works best with v3; v2 is supported via a compatibility layer with reduced performance.
 
-Reanimated 4 requires the New Architecture and a matching `react-native-worklets` version (worklets is not a direct Drax peer, but Reanimated 4 requires it). Check the [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/) to pick versions for your React Native release.
+Reanimated 4 requires the New Architecture and a matching `react-native-worklets` version (Drax lists worklets as an optional peer, `>=0.3.0`, since Reanimated 4 already requires it). Check the [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/) to pick versions for your React Native release.
 :::
 
 ### Setup Reanimated

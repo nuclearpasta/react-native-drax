@@ -6,7 +6,7 @@ Drag-and-drop framework for React Native (iOS, Android, Web). Current package ve
 
 - **UI-thread-first**: spatial index worklet for hit-testing, SharedValues split by update frequency. We need to use the UI thread as much as possible.
 - **Reanimated 4 + react-native-worklets + Gesture Handler 3** (GH v2 also supported via `src/compat`)
-- Peer ranges: React >=19.0.0, React Native >=0.78.0 (New Architecture), Reanimated ^4.0.0, Gesture Handler >=2.0.0. `react-native-worklets` is not a direct peer (Reanimated 4 requires it) but is imported directly in `src` and documented in install instructions.
+- Peer ranges: React >=19.0.0, React Native >=0.78.0 (New Architecture), Reanimated ^4.0.0, Gesture Handler >=2.0.0, react-native-worklets >=0.3.0 (optional peer via `peerDependenciesMeta`: `src` imports `runOnJS`/`runOnUI` from it, and Reanimated 4 already requires it).
 - Single `HoverLayer`, per-view gesture handlers
 - Latest React features.
 
