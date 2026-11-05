@@ -9,7 +9,7 @@ sidebar_position: 1
 
 Drax is a declarative drag-and-drop framework for React Native, written in TypeScript. It supports free-form drag-and-drop, sortable lists and grids, cross-list reorder, drag handles, collision algorithms, and more.
 
-Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and [Gesture Handler 3](https://docs.swmansion.com/react-native-gesture-handler/) with a UI-thread-first architecture for smooth 60fps interactions.
+Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and [Gesture Handler 3](https://docs.swmansion.com/react-native-gesture-handler/) (v2 also supported) with a UI-thread-first architecture for smooth 60fps interactions.
 
 **Platforms:** iOS, Android, Web
 
@@ -27,21 +27,23 @@ yarn add react-native-drax
 
 ### Peer Dependencies
 
-Drax requires Reanimated and Gesture Handler as peer dependencies:
+Drax requires Reanimated and Gesture Handler as peer dependencies. `react-native-worklets` is required by Reanimated 4, so install it alongside Reanimated:
 
 ```bash
-npm install react-native-reanimated react-native-gesture-handler
+npm install react-native-reanimated react-native-worklets react-native-gesture-handler
 ```
 
 | Peer Dependency | Version |
 |---|---|
-| `react` | >= 18 |
-| `react-native` | >= 0.68 |
+| `react` | >= 19.0.0 |
+| `react-native` | >= 0.78.0 (New Architecture) |
 | `react-native-reanimated` | ^4.0.0 |
 | `react-native-gesture-handler` | >= 2.0.0 (v3 recommended) |
 
 :::tip
-Drax works best with Gesture Handler v3 (beta). v2 is supported via a compatibility layer with reduced performance.
+Gesture Handler v2 and v3 both work. Drax works best with v3; v2 is supported via a compatibility layer with reduced performance.
+
+Reanimated 4 requires the New Architecture and a matching `react-native-worklets` version (Drax lists worklets as an optional peer, `>=0.3.0`, since Reanimated 4 already requires it). Check the [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/) to pick versions for your React Native release.
 :::
 
 ### Setup Reanimated
