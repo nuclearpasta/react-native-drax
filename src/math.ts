@@ -21,6 +21,20 @@ export const getRelativePosition = (
   };
 };
 
+/**
+ * Grab offset (touch position within the DraxView) from a gesture event.
+ * `eventPos` is the touch relative to the view the GestureDetector wraps: the
+ * DraxView itself, or its DraxHandle. `handleOffset` is the handle's offset
+ * within the DraxView ({0, 0} when there is no handle).
+ */
+export const computeGrabOffsetWorklet = (
+  eventPos: Position,
+  handleOffset: Position
+): Position => {
+  'worklet';
+  return { x: eventPos.x + handleOffset.x, y: eventPos.y + handleOffset.y };
+};
+
 export const generateRandomId = () =>
   `${Math.random().toString(36).substring(2)}${Math.random().toString(36).substring(2)}`;
 
