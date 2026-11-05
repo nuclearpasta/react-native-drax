@@ -33,7 +33,9 @@ export interface DraxPanGestureConfig {
   failOffsetY?: number | [number, number];
   onActivate: (event: DraxPanEvent) => void;
   onUpdate: (event: DraxPanEvent) => void;
-  onDeactivate: (event: DraxPanEvent) => void;
+  /** Called when an active gesture ends. `didSucceed` is false when the
+   *  system cancelled it (e.g. the app went to the background mid-drag). */
+  onDeactivate: (event: DraxPanEvent, didSucceed: boolean) => void;
   /** `didSucceed` is normalized across RNGH versions by the compat layer; do not read `event.canceled` here (RNGH PR #3887: https://github.com/software-mansion/react-native-gesture-handler/pull/3887). */
   onFinalize: (event: DraxPanEvent, didSucceed: boolean) => void;
 }
