@@ -3,7 +3,16 @@
   "compilerOptions": {
     "lib": ["ESNext", "DOM"],
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    // nmHoistingLimits=workspaces installs a second, same-version copy of
+    // react-native and @types/react under example/node_modules. TypeScript
+    // dedupes them inconsistently (e.g. ComponentRef<typeof Reanimated.View>
+    // in ../src collapses to `never`), so pin both to a single copy.
+    "paths": {
+      "react-native-drax": ["../src/index"],
+      "react-native": ["./node_modules/react-native/types_generated/index.d.ts"],
+      "react": ["./node_modules/@types/react/index.d.ts"]
+    }
   },
   "include": ["app", "components", "screens"]
 }
