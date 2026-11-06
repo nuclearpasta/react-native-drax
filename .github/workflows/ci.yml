@@ -44,6 +44,9 @@ jobs:
       - name: Run unit tests
         run: yarn test --maxWorkers=2 --coverage
 
+      - name: Run docs-site checks
+        run: yarn test:docs-site
+
   build-library:
     runs-on: ubuntu-latest
 

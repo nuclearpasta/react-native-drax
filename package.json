@@ -39,6 +39,7 @@
     "typecheck": "tsc && tsc --project example/tsconfig.json",
     "lint": "eslint .",
     "test": "jest --passWithNoTests",
+    "test:docs-site": "node docs-site/scripts/check-not-found-route.cjs && node docs-site/scripts/check-docs-home-url.cjs && node docs-site/scripts/check-stalled-navigation.cjs",
     "release": "release-it"
   },
   "keywords": [
