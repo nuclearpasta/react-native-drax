@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Platform, Text, useColorScheme, View } from 'react-native';
+import { DemoIntro } from './DemoIntro';
 
 const isWeb = Platform.OS === 'web';
 // True only in the static-render bundle. The browser bundle evaluates this
@@ -8,7 +9,27 @@ const isWeb = Platform.OS === 'web';
 // render or React hydration fails (error #418).
 const isSSR = isWeb && typeof window === 'undefined';
 
-function Placeholder({ name }: { name: string }) {
+// Colours match the home screen theme so the intro does not shift on hydration.
+function IntroPlaceholder() {
+  const isDark = useColorScheme() === 'dark';
+  return (
+    <View style={{ flex: 1 }}>
+      <DemoIntro
+        color={isDark ? '#f5f5f0' : '#111111'}
+        muted={isDark ? '#afafa8' : '#5d5d5d'}
+      />
+    </View>
+  );
+}
+
+function Placeholder({ name, intro }: { name: string; intro?: boolean }) {
+  if (intro) {
+    return <IntroPlaceholder />;
+  }
+  return <ScreenPlaceholder name={name} />;
+}
+
+function ScreenPlaceholder({ name }: { name: string }) {
   const isDark = useColorScheme() === 'dark';
   const color = isDark ? '#e0e0e0' : '#000';
   return (
@@ -30,6 +51,7 @@ function Placeholder({ name }: { name: string }) {
 export function clientScreen(
   importFn: () => Promise<{ default: ComponentType }>,
   name: string,
+  options?: { intro?: boolean },
 ): ComponentType {
   const LazyScreen = isSSR ? null : lazy(importFn);
 
@@ -40,11 +62,11 @@ export function clientScreen(
     }, []);
 
     if (!mounted || !LazyScreen) {
-      return <Placeholder name={name} />;
+      return <Placeholder name={name} intro={options?.intro} />;
     }
 
     return (
-      <Suspense fallback={<Placeholder name={name} />}>
+      <Suspense fallback={<Placeholder name={name} intro={options?.intro} />}>
         <LazyScreen />
       </Suspense>
     );
