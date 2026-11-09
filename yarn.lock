@@ -12810,7 +12810,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo@npm:~58.0.23":
+"expo@npm:58.0.23":
   version: 58.0.23
   resolution: "expo@npm:58.0.23"
   dependencies:
@@ -21043,7 +21043,7 @@ __metadata:
     "@expo/vector-icons": "npm:^15.1.1"
     "@legendapp/list": "npm:^2.0.19"
     "@shopify/flash-list": "npm:2.3.2"
-    expo: "npm:~58.0.23"
+    expo: "npm:58.0.23"
     expo-constants: "npm:~58.0.15"
     expo-font: "npm:~58.0.11"
     expo-linking: "npm:~58.0.16"
@@ -21054,7 +21054,7 @@ __metadata:
     react-dom: "npm:19.3.0"
     react-native: "npm:0.88.1"
     react-native-builder-bob: "npm:^0.40.13"
-    react-native-gesture-handler: "npm:3.4.0"
+    react-native-gesture-handler: "npm:3.3.0"
     react-native-monorepo-config: "npm:^0.3.1"
     react-native-reanimated: "npm:4.7.1"
     react-native-safe-area-context: "npm:~5.11.1"
@@ -21102,7 +21102,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"react-native-gesture-handler@npm:3.4.0, react-native-gesture-handler@npm:^3.4.0":
+"react-native-gesture-handler@npm:3.3.0":
+  version: 3.3.0
+  resolution: "react-native-gesture-handler@npm:3.3.0"
+  dependencies:
+    "@types/react-test-renderer": "npm:^19.1.0"
+    invariant: "npm:^2.2.4"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/6a710722f59eca293e2ff30852cbaf8fb4705712068c9ebb4d1d9d737cda61f175b2b0b452c9fab322d9e14efae3b6d0ab7c884439125b7f5cfb57934f7a65f8
+  languageName: node
+  linkType: hard
+
+"react-native-gesture-handler@npm:^3.4.0":
   version: 3.4.0
   resolution: "react-native-gesture-handler@npm:3.4.0"
   dependencies:
