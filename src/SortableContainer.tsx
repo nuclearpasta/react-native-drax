@@ -287,6 +287,13 @@ export const SortableContainer = ({
     stopAutoScrollTimer(scrollTimerRef.current);
   };
 
+  // Stop auto-scrolling on unmount (a pending delay would otherwise start an
+  // interval on an unmounted list). The timer object is never replaced.
+  useEffect(() => {
+    const timer = scrollTimerRef.current;
+    return () => stopAutoScrollTimer(timer);
+  }, []);
+
   // ── Internal drag end handler ───────────────────────────────────────
 
   const handleInternalDragEnd = (
@@ -474,10 +481,15 @@ export const SortableContainer = ({
 
     // A foreign drag (a DraxView, or an item from another list) must not
     // auto-scroll this list or report position changes. The one exception is
-    // a board transfer targeting this column: it still auto-scrolls.
-    const isBoardTarget =
-      boardContext?.boardInternal.transferState.current?.targetId === id;
-    if (externalDrag && !isBoardTarget) {
+    // an item from another column of the same board: it may transfer here,
+    // so it still auto-scrolls. Checked from the drag itself, not from the
+    // board's transferState, which the board monitor may set later in the
+    // same dispatch.
+    const isBoardDrag =
+      !!draggedPayload &&
+      dragged.parentId !== undefined &&
+      !!boardContext?.boardInternal.columns.has(dragged.parentId);
+    if (externalDrag && !isBoardDrag) {
       scrollStateRef.current = AutoScrollDirection.None;
       stopScroll();
       return;
@@ -553,7 +565,11 @@ export const SortableContainer = ({
     }
 
     // Auto-scroll
-    if (!autoScrollEnabled) return;
+    if (!autoScrollEnabled) {
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
+      return;
+    }
     const ratio = horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y;
     if (ratio > autoScrollBackThreshold && ratio < autoScrollForwardThreshold) {
       scrollStateRef.current = AutoScrollDirection.None;

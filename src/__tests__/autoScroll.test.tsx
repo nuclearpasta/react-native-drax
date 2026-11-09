@@ -5,16 +5,31 @@ import { SortableContainer } from '../SortableContainer';
 import type { DraxMonitorEventData } from '../types';
 
 // The components are called as plain functions: React's hooks are stubbed so
-// refs persist in the returned closures, and the monitor handlers are read
-// off the returned DraxView element. Plain `{ value }` objects stand in for
-// SharedValues and runOnUI/runOnJS call through synchronously.
+// refs persist in the returned closures (and across re-renders, by call
+// order), and the monitor handlers are read off the returned DraxView element.
+// useEffect callbacks are collected so a test can mount and unmount them.
+// Plain `{ value }` objects stand in for SharedValues and runOnUI/runOnJS
+// call through synchronously.
+const mockHooks = {
+  refs: [] as { current: unknown }[],
+  refIndex: 0,
+  effects: [] as (() => void | (() => void))[],
+};
 jest.mock('react', () => ({
   ...jest.requireActual('react'),
-  useRef: (current: unknown) => ({ current }),
+  useRef: (current: unknown) =>
+    (mockHooks.refs[mockHooks.refIndex++] ??= { current }),
   useCallback: (fn: unknown) => fn,
-  useEffect: () => {},
+  useEffect: (fn: () => void | (() => void)) => {
+    mockHooks.effects.push(fn);
+  },
   useLayoutEffect: () => {},
 }));
+/** Run the collected effects as a mount, then return the unmount. */
+const mountEffects = () => {
+  const cleanups = mockHooks.effects.map((fn) => fn());
+  return () => cleanups.forEach((cleanup) => cleanup?.());
+};
 jest.mock('react-native-reanimated', () => ({
   __esModule: true,
   default: { ScrollView: 'ScrollView', View: 'View' },
@@ -116,16 +131,26 @@ const renderSortable = (options: Record<string, unknown> = {}) => {
     getSlotFromPosition: jest.fn(() => 0),
     ...options,
   };
-  const element = SortableContainer({
-    sortable: { _internal } as never,
-    scrollRef: { current: scroller },
-    children: null,
-  }) as ReactElement<MonitorHandlers>;
-  return { ...element.props, scroller, onDragPositionChange };
+  const render = (internal: typeof _internal) => {
+    mockHooks.refIndex = 0;
+    mockHooks.effects = [];
+    return SortableContainer({
+      sortable: { _internal: internal } as never,
+      scrollRef: { current: scroller },
+      children: null,
+    }) as ReactElement<MonitorHandlers>;
+  };
+  const element = render(_internal);
+  /** Re-render with changed options; returns the new handlers. */
+  const rerender = (next: Record<string, unknown>) =>
+    render({ ..._internal, ...next }).props;
+  return { ...element.props, scroller, onDragPositionChange, rerender };
 };
 
 const renderScrollView = (props: Record<string, unknown> = {}) => {
   const scroller = { scrollTo: jest.fn() };
+  mockHooks.refIndex = 0;
+  mockHooks.effects = [];
   const element = DraxScrollView(props) as ReactElement<
     MonitorHandlers & {
       onMeasure: (m: unknown) => void;
@@ -148,6 +173,8 @@ const renderScrollView = (props: Record<string, unknown> = {}) => {
 beforeEach(() => {
   jest.useFakeTimers();
   mockBoardContext = undefined;
+  mockHooks.refs = [];
+  mockHooks.effects = [];
 });
 afterEach(() => {
   jest.useRealTimers();
@@ -215,6 +242,27 @@ describe('SortableContainer auto-scroll', () => {
     expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
   });
 
+  it('stops scrolling when autoScrollEnabled flips to false mid-scroll', () => {
+    const list = renderSortable();
+    list.onMonitorDragStart(dragEvent(MIDDLE));
+    ownDragOver(list, BOTTOM);
+    expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(1);
+
+    list.rerender({ autoScrollEnabled: false }).onMonitorDragOver(dragEvent(BOTTOM));
+    jest.advanceTimersByTime(1000);
+    expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops scrolling on unmount, including a pending initial delay', () => {
+    const list = renderSortable({ autoScrollInitialDelay: 300 });
+    const unmount = mountEffects();
+    list.onMonitorDragStart(dragEvent(MIDDLE));
+    ownDragOver(list, BOTTOM);
+    unmount();
+    jest.advanceTimersByTime(1000);
+    expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
+  });
+
   it('ignores a foreign drag: no scroll, no onDragPositionChange', () => {
     const list = renderSortable();
     list.onMonitorDragStart(dragEvent(MIDDLE, 'other-list'));
@@ -225,16 +273,35 @@ describe('SortableContainer auto-scroll', () => {
     expect(list.onDragPositionChange).not.toHaveBeenCalled();
   });
 
-  it('still auto-scrolls as the target column of a board transfer', () => {
+  it('still auto-scrolls for an item from another column of the same board', () => {
     mockBoardContext = {
       registerColumn: () => {},
       unregisterColumn: () => {},
-      boardInternal: { transferState: { current: { targetId: 'list' } } },
+      // The board monitor has not set transferState yet (dispatch order).
+      boardInternal: {
+        columns: new Map([['other-list', {}]]),
+        transferState: { current: undefined },
+      },
     };
     const list = renderSortable();
     list.onMonitorDragOver(dragEvent(BOTTOM, 'other-list'));
     expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(1);
     expect(list.onDragPositionChange).not.toHaveBeenCalled();
+  });
+
+  it('ignores a drag from a list outside the board', () => {
+    mockBoardContext = {
+      registerColumn: () => {},
+      unregisterColumn: () => {},
+      boardInternal: {
+        columns: new Map([['other-list', {}]]),
+        transferState: { current: undefined },
+      },
+    };
+    const list = renderSortable();
+    list.onMonitorDragOver(dragEvent(BOTTOM, 'elsewhere'));
+    jest.advanceTimersByTime(1000);
+    expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
   });
 
   it('reports position changes for its own items', () => {
@@ -260,6 +327,18 @@ describe('DraxScrollView auto-scroll', () => {
     expect(view.scroller.scrollTo).toHaveBeenCalledWith({ x: 0, y: 80 });
     jest.advanceTimersByTime(100);
     expect(view.scroller.scrollTo).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops scrolling when autoScrollEnabled flips to false mid-scroll', () => {
+    const view = renderScrollView();
+    view.onMonitorDragOver(dragEvent(BOTTOM));
+    expect(view.scroller.scrollTo).toHaveBeenCalledTimes(1);
+
+    const next = renderScrollView({ autoScrollEnabled: false });
+    next.onMonitorDragOver(dragEvent(BOTTOM));
+    jest.advanceTimersByTime(1000);
+    expect(view.scroller.scrollTo).toHaveBeenCalledTimes(1);
+    expect(next.scroller.scrollTo).not.toHaveBeenCalled();
   });
 
   it('does not scroll when autoScrollEnabled is false', () => {

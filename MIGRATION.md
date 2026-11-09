@@ -158,7 +158,7 @@ import { DraxList } from 'react-native-drax';
 | `reorderable` | No prop. Lists are always reorderable. To lock rows, pass `itemDraxViewProps={{ draggable: false }}`, or use the composable API and `<SortableItem fixed>` for single rows. |
 | `centerShift` | No prop. Slots are now chosen from the hover position. `reorderStrategy` (`'insert'` \| `'swap'`) controls how items move. |
 | `keyExtractor` (optional) | `keyExtractor` (required) |
-| Autoscroll props (`autoScrollIntervalLength`, `autoScrollJumpRatio`, `autoScrollBackThreshold`, `autoScrollForwardThreshold`) | `DraxList` does not take them. `useSortableList` takes `autoScrollJumpRatio`, `autoScrollBackThreshold` and `autoScrollForwardThreshold`. `autoScrollIntervalLength` has no equivalent. |
+| Autoscroll props (`autoScrollIntervalLength`, `autoScrollJumpRatio`, `autoScrollBackThreshold`, `autoScrollForwardThreshold`) | Same names on `DraxList` and `useSortableList`. New: `autoScrollEnabled` and `autoScrollInitialDelay`. |
 | Reanimated `FlatList` props (`itemLayoutAnimation`, etc.) | The default list is React Native's `FlatList`. Pass `component={Animated.FlatList}` to keep Reanimated list props, or use `itemEntering` / `itemExiting` for row enter and exit animations. |
 | `data` items may not contain `index` / `originalIndex` keys | Same restriction in practice: `SortableItem` merges `{ index, originalIndex, item }` into the row payload. See [7](#7-behavior-changes). |
 
@@ -551,7 +551,9 @@ use the `hover*Style` props).
   toContainerId, toIndex }`). This API is experimental. Dropping a plain
   `DraxView` into a list at a given index is **no equivalent**. The closest
   option is `containerDraxViewProps.onMonitorDragDrop` plus your own index
-  math from `monitorOffset`.
+  math from `monitorOffset`. A foreign drag also does not auto-scroll the
+  list, fire `onDragPositionChange` or show the drop indicator. Board columns
+  still react to items from other columns of the same board.
 - **Row payloads.** `SortableItem` spreads your `payload` (only if it is an
   object) and then sets `index`, `originalIndex` and `item` on top. A
   non-object `payload` on a row is dropped, and your own `index`,
