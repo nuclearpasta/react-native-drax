@@ -51,13 +51,13 @@ describe('useDragGesture end callbacks', () => {
     mockConfig.onDeactivate(event, true);
     mockConfig.onFinalize(event, true);
     expect(mockHandleDragEnd).toHaveBeenCalledTimes(1);
-    expect(mockHandleDragEnd).toHaveBeenCalledWith('item', 'zone', false, []);
+    expect(mockHandleDragEnd).toHaveBeenCalledWith('item', 'zone', false, [], { x: 0, y: 0 });
   });
 
   it('only cancels, never drops, when the gesture is cancelled', () => {
     mockConfig.onDeactivate(event, false);
     mockConfig.onFinalize(event, false);
     expect(mockHandleDragEnd).toHaveBeenCalledTimes(1);
-    expect(mockHandleDragEnd).toHaveBeenCalledWith('item', 'zone', true, []);
+    expect(mockHandleDragEnd).toHaveBeenCalledWith('item', 'zone', true, [], { x: 0, y: 0 });
   });
 });
