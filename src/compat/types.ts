@@ -1,5 +1,3 @@
-import type { SharedValue } from 'react-native-reanimated';
-
 /**
  * Re-export PanGesture from RNGH — resolves to the correct type per installed version:
  * - v3: SingleGesture<PanHandlerData, PanGestureInternalProperties>
@@ -20,8 +18,10 @@ export interface DraxPanEvent {
 
 /** Config for the version-agnostic pan gesture hook. */
 export interface DraxPanGestureConfig {
-  enabledSV: SharedValue<boolean>;
-  longPressDelaySV: SharedValue<number>;
+  /** Plain values, not SharedValues: RNGH must see them in the render where
+   *  they change, so the first touch after a flip uses them (#267). */
+  enabled: boolean;
+  longPressDelay: number;
   maxPointers: number;
   shouldCancelWhenOutside: boolean;
   /** Web: CSS touch-action for the gesture view. Set to 'pan-y' or 'pan-x'
