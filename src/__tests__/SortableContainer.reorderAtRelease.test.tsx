@@ -199,6 +199,24 @@ describe('SortableContainer: onReorder fires at release, the visual commit at sn
     expect(shifts()).toEqual({});
   });
 
+  it('onReorder fires before the dragged row re-shows at snap end (Sequence flash)', () => {
+    const order: string[] = [];
+    const { onReorder } = setup();
+    onReorder.mockImplementation(() => order.push('onReorder'));
+    const { setHoverContent } = mockCtx;
+    mockCtx.setHoverContent = (content) => {
+      if (content == null) order.push('row re-shows'); // finalizeDrag's hover clear
+      setHoverContent(content);
+    };
+    try {
+      dragADownTwoAndRelease();
+      finishSnap();
+    } finally {
+      mockCtx.setHoverContent = setHoverContent;
+    }
+    expect(order).toEqual(['onReorder', 'row re-shows']);
+  });
+
   it('a parent that does not echo keeps the reorder as permanent shifts', () => {
     const { onReorder } = setup(false);
     dragADownTwoAndRelease();
