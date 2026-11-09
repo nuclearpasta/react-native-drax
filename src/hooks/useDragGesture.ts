@@ -34,6 +34,7 @@ export const useDragGesture = (
     receiverIdSV,
     rejectedReceiverIdSV,
     dragPhaseSV,
+    hoverReadySV,
     hoverPositionSV,
     dragAbsolutePositionSV,
     spatialIndexSV,
@@ -110,6 +111,14 @@ export const useDragGesture = (
         x: rootRelX - viewAbsPos.x,
         y: rootRelY - viewAbsPos.y,
       };
+
+      // A drag still snapping is superseded: handleDragStart finalizes it,
+      // and its deferred clear must leave this drag's state alone. Start
+      // from the idle state, like any drag (HoverLayer sets ready/dragging).
+      if (dragPhaseSV.value === 'releasing') {
+        dragPhaseSV.value = 'idle';
+        hoverReadySV.value = false;
+      }
 
       // Store shared state (all positions in root-relative space).
       // DO NOT set dragPhaseSV here — it's set by HoverLayer's useLayoutEffect

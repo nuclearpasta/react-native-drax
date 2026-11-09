@@ -183,11 +183,14 @@ export const SortableContainer = ({
           shiftsValidSV.value = true;
           shiftsRef.value = _shifts;
           draggedItem.value = -1;
+          // A newer drag already set these in onActivate (it ends 'releasing').
+          if (dragPhaseSV.value === 'releasing') {
+            draggedIdSV.value = '';
+            hoverPositionSV.value = { x: 0, y: 0 };
+            runOnJS(setHoverContent)(null);
+          }
           hoverReadySV.value = false;
           dragPhaseSV.value = 'idle';
-          draggedIdSV.value = '';
-          hoverPositionSV.value = { x: 0, y: 0 };
-          runOnJS(setHoverContent)(null);
         })(finalShifts);
 
         requestAnimationFrame(() => {
