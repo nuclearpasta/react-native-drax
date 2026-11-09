@@ -700,8 +700,8 @@ export const useSortableList = <T,>(
 
     if (pending.length === 0) {
       return {
-        x: containerMeasurements.x - scrollPosition.value.x,
-        y: containerMeasurements.y - scrollPosition.value.y,
+        x: containerMeasurements.x - scrollPositionJSRef.current.x,
+        y: containerMeasurements.y - scrollPositionJSRef.current.y,
       };
     }
 
@@ -719,8 +719,8 @@ export const useSortableList = <T,>(
           ? { x: cursor, y: startMeas.y }
           : { x: startMeas.x, y: cursor };
         return {
-          x: containerMeasurements.x + phantomPos.x - scrollPosition.value.x,
-          y: containerMeasurements.y + phantomPos.y - scrollPosition.value.y,
+          x: containerMeasurements.x + phantomPos.x - scrollPositionJSRef.current.x,
+          y: containerMeasurements.y + phantomPos.y - scrollPositionJSRef.current.y,
         };
       }
       const meas = getMeasForOrigIdx(pending[i]!);
@@ -734,8 +734,8 @@ export const useSortableList = <T,>(
       ? { x: cursor, y: startMeas.y }
       : { x: startMeas.x, y: cursor };
     return {
-      x: containerMeasurements.x + phantomPos.x - scrollPosition.value.x,
-      y: containerMeasurements.y + phantomPos.y - scrollPosition.value.y,
+      x: containerMeasurements.x + phantomPos.x - scrollPositionJSRef.current.x,
+      y: containerMeasurements.y + phantomPos.y - scrollPositionJSRef.current.y,
     };
   };
 
@@ -977,8 +977,8 @@ export const useSortableList = <T,>(
     }
 
     return {
-      x: containerMeasurements.x + targetPos.x - scrollPosition.value.x,
-      y: containerMeasurements.y + targetPos.y - scrollPosition.value.y,
+      x: containerMeasurements.x + targetPos.x - scrollPositionJSRef.current.x,
+      y: containerMeasurements.y + targetPos.y - scrollPositionJSRef.current.y,
     };
   };
 

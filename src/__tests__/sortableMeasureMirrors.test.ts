@@ -120,4 +120,17 @@ describe('SortableItem onMeasure reads JS-side state synchronously (#249)', () =
     expect(entry?.scrollAtMeasure).toEqual({ x: 0, y: 200 });
     expect(mockState.jsReads).toBe(0);
   });
+
+  it('computes the phantom snap target from the latest scroll event', () => {
+    const internal = sortable._internal;
+    internal.containerMeasurementsRef.current = { ...measured, x: 10, y: 20, height: 300 };
+    internal.phantomRef.current = { atDisplayIndex: 0, width: 50, height: 40 };
+    internal.pendingOrderRef.current = [];
+
+    // Scrolled by 200; the UI thread has not applied it yet.
+    sortable.onScroll({ nativeEvent: { contentOffset: { x: 0, y: 200 } } } as never);
+
+    expect(internal.getPhantomSnapTarget()).toEqual({ x: 10, y: 20 - 200 });
+    expect(mockState.jsReads).toBe(0);
+  });
 });
