@@ -24,7 +24,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 - Drag handles: the hover no longer lands one slot off when a `dragHandle` sortable item with permanent shifts is grabbed by its `DraxHandle`
 - Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover
-- Sortable lists: when `data` changes from outside while a row is dragged (for example a quick second drop), the drag is cancelled and the row snaps back, with no `onReorder`. Before, `onReorder` got the old order mapped onto the new data, so an item was lost.
+- Sortable lists: when `data` changes from outside while a row is dragged (for example a quick second drop), the row's pending move is dropped. The drag stays active, but its drop is a cancel: the row snaps back to its own slot, with no `onReorder`. Before, `onReorder` got the old order mapped onto the new data, so an item was lost. A new array with the same keys (a refetch) doesn't count as a change.
 
 
 ## [1.1.0] - 2026-03-23
