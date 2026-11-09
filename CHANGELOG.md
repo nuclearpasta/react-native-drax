@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
 
+## [Unreleased]
+
+### Changed
+
+- (BREAKING-TS) `DraxContextValue.rootViewRef` is now a Reanimated `AnimatedRef<View>` instead of `{ current: HostInstance | null }`, so the root view can be measured on the UI thread at drag start. `.current` still holds the host view.
+
+### Fixed
+
+- Drag handles: the hover no longer lands one slot off when a `dragHandle` sortable item with permanent shifts is grabbed by its `DraxHandle`
+- Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover
+
+
 ## [1.1.0] - 2026-03-23
 
 ### Added
