@@ -158,7 +158,7 @@ import { DraxList } from 'react-native-drax';
 | `reorderable` | No prop. Lists are always reorderable. To lock rows, pass `itemDraxViewProps={{ draggable: false }}`, or use the composable API and `<SortableItem fixed>` for single rows. |
 | `centerShift` | No prop. Slots are now chosen from the hover position. `reorderStrategy` (`'insert'` \| `'swap'`) controls how items move. |
 | `keyExtractor` (optional) | `keyExtractor` (required) |
-| Autoscroll props (`autoScrollIntervalLength`, `autoScrollJumpRatio`, `autoScrollBackThreshold`, `autoScrollForwardThreshold`) | Same names on `DraxList` and `useSortableList`. New: `autoScrollEnabled` and `autoScrollInitialDelay`. |
+| Autoscroll props | See [3.6](#36-auto-scroll-props). `DraxList` does not take or forward any of them. |
 | Reanimated `FlatList` props (`itemLayoutAnimation`, etc.) | The default list is React Native's `FlatList`. Pass `component={Animated.FlatList}` to keep Reanimated list props, or use `itemEntering` / `itemExiting` for row enter and exit animations. |
 | `data` items may not contain `index` / `originalIndex` keys | Same restriction in practice: `SortableItem` merges `{ index, originalIndex, item }` into the row payload. See [7](#7-behavior-changes). |
 
@@ -284,6 +284,48 @@ const [externalOver, setExternalOver] = useState(false);
 This re-renders the container on every enter and exit, just as the 0.11 prop
 did, which its docs described as "might be very expensive". This workaround
 hasn't been tested on a device.
+
+### 3.6 Auto-scroll props
+
+`DraxList` does not accept or forward auto-scroll props. Configure them on
+`useSortableList` (composable API) or on `DraxScrollView`.
+
+| Prop | Where | Type | Default |
+|---|---|---|---|
+| `autoScrollJumpRatio` | `useSortableList`, `DraxScrollView` | `number` | `0.2` |
+| `autoScrollBackThreshold` | `useSortableList`, `DraxScrollView` | `number` | `0.1` |
+| `autoScrollForwardThreshold` | `useSortableList`, `DraxScrollView` | `number` | `0.9` |
+| `autoScrollIntervalLength` | `DraxScrollView` (`DraxAutoScrollProps`) only | `number` | `250` (ms) |
+
+`autoScrollIntervalLength` is declared on `DraxScrollView` / `DraxAutoScrollProps`
+with a default of 250 ms. On current `main` the implementation still hardcodes
+that default and does not read the prop; pass it for forward compatibility.
+There is no `autoScrollEnabled` or `autoScrollInitialDelay` prop in 1.x.
+`SortableContainer` (and therefore `DraxList`) always uses the 250 ms default
+interval; it is not configurable.
+
+```tsx
+// composable API — thresholds and jump on useSortableList
+const sortable = useSortableList({
+  data: items,
+  keyExtractor: (item) => item.id,
+  onReorder: ({ data }) => setItems(data),
+  autoScrollJumpRatio: 0.25,
+  autoScrollBackThreshold: 0.15,
+  autoScrollForwardThreshold: 0.85,
+});
+
+// plain scroll container
+<DraxScrollView
+  autoScrollJumpRatio={0.25}
+  autoScrollBackThreshold={0.15}
+  autoScrollForwardThreshold={0.85}
+  autoScrollIntervalLength={200}
+>
+  {children}
+</DraxScrollView>
+```
+
 
 ## 4. List callbacks
 
@@ -412,8 +454,8 @@ Other places that used `protocol`:
 | 0.11 (on `dragged` / `receiver`) | 1.2 |
 |---|---|
 | `x.data.measurements` (relative to the Drax parent) | `x.measurements?: DraxViewMeasurements`. Same frame: relative to the Drax parent, or content-relative inside a scrollable parent. Optional. |
-| `x.data.absoluteMeasurements` | **No equivalent** field. See the workaround below. |
-| `x.data.hoverMeasurements` | **No equivalent.** See [6](#6-hover-views-and-measurements). |
+| `x.data.absoluteMeasurements` | **From 1.2.0** as `x.absoluteMeasurements?: DraxViewMeasurements` (lands with the event-data PR; not in earlier 1.x). Until then, derive a provider-root frame from offsets — see the workaround below and [5.3](#53-dragabsoluteposition-at-drop). |
+| `x.data.hoverMeasurements` | **From 1.2.0** as `x.hoverMeasurements?: DraxViewMeasurements`. In 1.2.0 this is the **dragged view's** measured size, not the hover copy's size. Not in earlier 1.x. See also [6.1](#61-updatehoverviewmeasurements). |
 | `x.data.parentId`, `x.data.scrollPosition` | `x.parentId`. Scroll position is not exposed. |
 
 `DraxViewMeasurements` gained a numeric `_transformDetected` field (1 when the
@@ -424,12 +466,17 @@ The offset fields on events are unchanged: `dragAbsolutePosition`,
 `dragTranslation`, and on `dragged` `dragTranslationRatio`, `dragOffset`,
 `grabOffset`, `grabOffsetRatio` and `hoverPosition`. On `receiver` they are
 `receiveOffset` and `receiveOffsetRatio`. On monitor events they are
-`monitorOffset` and `monitorOffsetRatio`. You can derive absolute positions
-from them:
+`monitorOffset` and `monitorOffsetRatio`.
+
+**Caveat:** `dragAbsolutePosition` is the hover **centre** during a drag, but
+the hover **top-left** in drop / end events. See [5.3](#53-dragabsoluteposition-at-drop).
+Until 1.2.0's `absoluteMeasurements` lands, you can still derive a
+provider-root frame during a drag:
 
 ```tsx
-onReceiveDragDrop={({ dragAbsolutePosition, receiver, dragged }) => {
-  // receiveOffset is relative to the receiver's absolute (provider-root) frame
+onReceiveDragOver={({ dragAbsolutePosition, receiver, dragged }) => {
+  // During a drag, dragAbsolutePosition is the hover centre.
+  // receiveOffset is relative to the receiver's absolute (provider-root) frame.
   const receiverAbsX = dragAbsolutePosition.x - receiver.receiveOffset.x;
   const receiverAbsY = dragAbsolutePosition.y - receiver.receiveOffset.y;
   const receiverSize = receiver.measurements; // width / height
@@ -442,7 +489,108 @@ To get a view's own measurements outside events, use `onMeasure` on the
 `DraxView` (relative to its parent) or `measureInWindow` on a ref (relative to
 the screen).
 
+### 5.3 dragAbsolutePosition at drop
+
+1.2 keeps this behaviour. During continuous drag callbacks (`onDrag`,
+`onDragOver`, `onReceiveDragOver`, `onMonitorDragOver`, …),
+`dragAbsolutePosition` is the centre of the hover view. In drop and end
+callbacks (`onDragDrop`, `onReceiveDragDrop`, `onDragEnd`,
+`onMonitorDragDrop`, `onMonitorDragEnd`, …) it is the hover view's
+**top-left** (`hoverPosition`). `receiveOffset` / `receiveOffsetRatio` are
+computed from that same point, so at drop they are off by half the dragged
+view's measured size compared to the last `onReceiveDragOver`.
+
+1.2.0 keeps this. Work around it by shifting drop positions by half the
+dragged view's size (or by reading `dragged.hoverPosition` when you want the
+top-left explicitly):
+
+```tsx
+onReceiveDragDrop={({ dragAbsolutePosition, receiver, dragged }) => {
+  const w = dragged.measurements?.width ?? 0;
+  const h = dragged.measurements?.height ?? 0;
+  // Restore the hover-centre convention used during the drag:
+  const dropCenter = {
+    x: dragAbsolutePosition.x + w / 2,
+    y: dragAbsolutePosition.y + h / 2,
+  };
+  const receiveOffsetCentered = {
+    x: receiver.receiveOffset.x + w / 2,
+    y: receiver.receiveOffset.y + h / 2,
+  };
+  // Or use the top-left directly:
+  const hoverTopLeft = dragged.hoverPosition; // same as dragAbsolutePosition at drop
+  placeDrop(dropCenter, receiveOffsetCentered, hoverTopLeft);
+}}
+```
+
+From 1.2.0, prefer `dragged.absoluteMeasurements` /
+`receiver.absoluteMeasurements` when the event-data PR has landed, instead of
+deriving them from offsets.
+
+### 5.4 New optional event fields (from 1.2.0)
+
+These fields land with the event-data PR and are part of 1.2.0. They are
+**not** in earlier 1.x releases.
+
+| Field | Where | Notes |
+|---|---|---|
+| `absoluteMeasurements` | on `dragged` / `receiver` in drag events | Provider-root frame of the view. |
+| `hoverMeasurements` | on `dragged` in drag events | The **dragged view's** measured size, not the hover copy's. |
+| `draggedParentId` | `dynamicReceptiveCallback` data | Alongside `targetId`, `targetMeasurements`, `draggedId`, `draggedPayload`. |
+| `grabOffset` | `onSnapEnd` / `onReceiveSnapEnd` (`DraxSnapEndEventData`) | Grab point within the dragged view. |
+
+```tsx
+// 1.2.0 API — not in earlier 1.x
+onReceiveDragDrop={({ dragged, receiver }) => {
+  const abs = dragged.absoluteMeasurements;
+  const hoverSize = dragged.hoverMeasurements; // dragged view size, not hover copy
+  placeAt(abs, hoverSize, receiver?.absoluteMeasurements);
+}}
+
+dynamicReceptiveCallback={({
+  targetId,
+  targetMeasurements,
+  draggedId,
+  draggedParentId, // from 1.2.0
+  draggedPayload,
+}) => {
+  return draggedParentId !== targetId && accepts(draggedPayload);
+}}
+
+onSnapEnd={({ dragged, grabOffset }) => {
+  // grabOffset on the snap-end event: from 1.2.0
+  rememberGrab(dragged.id, grabOffset);
+}}
+```
+
+### 5.5 viewState.releasedDragTracking.grabOffset
+
+**No equivalent.** 0.11 exposed `viewState.releasedDragTracking.grabOffset`
+after a drag. 1.x `DraxViewState` has no `releasedDragTracking`. `grabOffset`
+is still on drag events (`dragged.grabOffset`) and on the hover
+`renderContent` / `renderHoverContent` `viewState` while dragging.
+
+Workaround: keep `dragged.grabOffset` from `onDragEnd` (or `onDragDrop`) in a
+ref:
+
+```tsx
+const lastGrabOffsetRef = useRef<{ x: number; y: number } | null>(null);
+
+<DraxView
+  payload={card}
+  onDragEnd={({ dragged }) => {
+    lastGrabOffsetRef.current = dragged.grabOffset;
+  }}
+  onDragDrop={({ dragged }) => {
+    lastGrabOffsetRef.current = dragged.grabOffset;
+  }}
+>
+  <Text>{card.label}</Text>
+</DraxView>
+```
+
 ## 6. Hover views and measurements
+
 
 ### 6.1 updateHoverViewMeasurements
 
@@ -583,4 +731,6 @@ use the `hover*Style` props).
 | `useDraxContext().updateHoverViewMeasurements` | **No equivalent.** Measurement is automatic. Use `useDraxMethods().requestPositionUpdate()` to re-measure. |
 | `renderItem(info, itemProps)` | `renderItem(info)`, `useItemContext()`, or `SortableItem` props |
 | `x.data.protocol.payload` | `x.payload` |
-| `x.data.measurements` / `absoluteMeasurements` / `hoverMeasurements` | `x.measurements?` / **no equivalent** (derive from offsets) / **no equivalent** |
+| `x.data.measurements` / `absoluteMeasurements` / `hoverMeasurements` | `x.measurements?` / **from 1.2.0** `x.absoluteMeasurements?` (derive from offsets in earlier 1.x; see [5.3](#53-dragabsoluteposition-at-drop)) / **from 1.2.0** `x.hoverMeasurements?` (dragged view size) |
+| `viewState.releasedDragTracking.grabOffset` | **No equivalent.** Keep `dragged.grabOffset` from `onDragEnd` / `onDragDrop` in a ref. |
+| Autoscroll (`autoScrollIntervalLength`, jump/threshold props) | `DraxList` does not take them. `useSortableList` / `DraxScrollView`: `autoScrollJumpRatio`, `autoScrollBackThreshold`, `autoScrollForwardThreshold`. `autoScrollIntervalLength` on `DraxScrollView` only. |
