@@ -18,7 +18,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - (BREAKING-TS) `DraxContextValue.rootViewRef` is now a Reanimated `AnimatedRef<View>` instead of `{ current: HostInstance | null }`, so the root view can be measured on the UI thread at drag start. `.current` still holds the host view.
 - `autoScrollIntervalLength` is now honoured by `DraxScrollView` and sortable lists (it was ignored and the interval was fixed at 250 ms).
 - A foreign drag over a sortable list (a `DraxView`, or an item from a list outside its board) no longer auto-scrolls the list, tracks slots, fires `onDragPositionChange` or shows the drop indicator. Board columns still react to items from other columns of the same board.
-- (BREAKING) Sortable lists test the auto-scroll edge band at the finger, as 0.11 did, instead of at the hover's centre. Picking up a row that is cut off at the list edge by its visible part no longer starts auto-scrolling. `DraxScrollView` and the `monitorOffset` / `monitorOffsetRatio` event fields are unchanged.
+- (BREAKING) Sortable lists test the auto-scroll edge band at the finger, as 0.11 did, instead of at the hover's centre. Picking up a row that is cut off at the list edge by its visible part no longer starts auto-scrolling. The other way round, when the list is scrolled, grabbing a fully visible edge row near its outer edge now auto-scrolls once the finger moves 5 px, as 0.11 did. `DraxScrollView` and the `monitorOffset` / `monitorOffsetRatio` event fields are unchanged.
 
 ### Fixed
 
