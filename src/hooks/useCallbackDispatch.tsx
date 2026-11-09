@@ -498,7 +498,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     draggedId: string,
     receiverId: string,
     cancelled: boolean,
-    finalMonitorIds?: string[]
+    finalMonitorIds?: string[],
+    touchPosition?: Position
   ) => {
     // receiverIdSV is already cleared on the UI thread in onDeactivate/onFinalize,
     // so the receiver's animated style resets immediately.
@@ -550,6 +551,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       dragAbsolutePosition: absolutePosition,
       dragTranslation,
       dragged,
+      dragTouchPosition: touchPosition,
     };
 
     let snapTarget: DraxSnapbackTarget = DraxSnapbackTargetPreset.Default;
