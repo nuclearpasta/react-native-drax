@@ -126,7 +126,7 @@ const SortableItemInner = ({
     rawData,
     originalIndexes,
     scrollPosition,
-    onItemSnapEnd,
+    onItemSnapEndRef,
     fixedKeys,
   } = sortable._internal;
 
@@ -221,7 +221,7 @@ const SortableItemInner = ({
           draxViewProps.onDragDrop?.(event);
         }}
         onSnapEnd={(snapData) => {
-          onItemSnapEnd?.();
+          onItemSnapEndRef.current?.();
           draxViewProps.onSnapEnd?.(snapData);
         }}
         onMeasure={(measurements) => {

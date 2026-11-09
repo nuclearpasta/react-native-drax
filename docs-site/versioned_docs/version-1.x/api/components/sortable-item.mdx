@@ -102,7 +102,7 @@ Returns: `itemKey`, `index`, `isActive` (SharedValue), `activeItemId` (SharedVal
 - Shift values come from `shiftsRef` SharedValue (keyed by item key)
 - Visibility controlled by `hoverReadySV` + `draggedIdSV` — hidden when being dragged
 - Measures itself on layout and stores in `itemMeasurements` Map
-- Calls `onItemSnapEnd` when snap-back completes (triggers reorder finalization)
+- Calls `onItemSnapEndRef.current` when snap-back completes (triggers reorder finalization)
 - Respects reduced motion via `useReducedMotion()`
 
 ## Related

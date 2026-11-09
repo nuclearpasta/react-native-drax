@@ -121,6 +121,9 @@ export const useSortableList = <T,>(
   // ── Drag tracking (refs, no re-render) ────────────────────────────
   const draggedDisplayIndexRef = useRef<number | undefined>(undefined);
   const dragStartIndexRef = useRef<number | undefined>(undefined);
+  /** finalizeDrag, registered by SortableContainer. A ref because `_internal`
+   *  is rebuilt every render, so SortableItem must read it at call time. */
+  const onItemSnapEndRef = useRef<(() => void) | undefined>(undefined);
   /**
    * Pending reorder during drag. Tracks the desired display order
    * as indices into rawData. Updated by moveDraggedItem (ref, not state).
@@ -1023,7 +1026,7 @@ export const useSortableList = <T,>(
     getMeasurementByOriginalIndex,
     dropTargetPositionSV,
     dropTargetVisibleSV,
-    onItemSnapEnd: undefined as (() => void) | undefined,
+    onItemSnapEndRef,
     draggedDisplayIndexRef,
     dragStartIndexRef,
     shiftsRef,
