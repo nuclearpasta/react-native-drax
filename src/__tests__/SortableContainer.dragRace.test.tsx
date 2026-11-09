@@ -167,10 +167,12 @@ const mockCtx = {
 };
 jest.mock('../hooks/useDraxContext', () => ({ useDraxContext: () => mockCtx }));
 
-// The jest preset mocks RendererProxy, so load the renderer directly.
-const ReactNative = jest.requireActual(
-  'react-native/Libraries/Renderer/implementations/ReactNativeRenderer-dev'
-);
+import { create } from 'react-test-renderer';
+let mockRoot: ReturnType<typeof create> | undefined;
+const ReactNative = {
+  render: (el: ReactNode, _tag: number) => { mockRoot = create(el as never); },
+  unmountComponentAtNode: (_tag: number) => { mockRoot?.unmount(); mockRoot = undefined; },
+};
 
 const Leaf = () => null;
 let sortable: SortableListHandle<string>;
