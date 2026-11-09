@@ -20,6 +20,7 @@ jest.mock('../DraxView', () => ({
   DraxView: (props: DraxViewProps & { children?: ReactNode }) => {
     const payload = props.payload as { item?: string } | undefined;
     mockDraxProps.set(props.monitoring ? props.id ?? '' : payload?.item ?? props.id ?? '', props);
+    if (props.id) mockDraxProps.set(props.id, props); // index-keyed cells: the view id stays with the cell
     return props.children ?? null;
   },
 }));
@@ -67,9 +68,11 @@ const ROW = 50;
 const KEYS = ['A', 'B', 'C', 'D', 'E'];
 const entry = (id: string, parentIndex: number, x: number, y: number, w: number, h: number, monitor = false) =>
   ({ id, x, y, width: w, height: h, parentIndex, receptive: !monitor, monitoring: monitor, draggable: !monitor } as SpatialEntry);
+// Cell view ids: item keys, or `cell<i>` for index-keyed cells (as DraxList renders).
+let cellId = (key: string, _index: number) => key;
 const spatial = (keys: string[] = KEYS) => [
   entry('list', -1, 0, 0, 100, ROW * keys.length, true),
-  ...keys.map((k, i) => entry(k, 0, 0, i * ROW, 100, ROW)),
+  ...keys.map((k, i) => entry(cellId(k, i), 0, 0, i * ROW, 100, ROW)),
 ];
 const mockCtx = {
   hoverReadySV: sv(false), dragPhaseSV: sv<string>('idle'), draggedIdSV: sv(''), receiverIdSV: sv(''),
@@ -116,7 +119,7 @@ const List = ({ onReorder }: { onReorder: jest.Mock }) => {
   return (
     <SortableContainer sortable={handle} scrollRef={{ current: null }}>
       {handle.data.map((item, index) => (
-        <SortableItem key={item} sortable={handle} index={index}>{null}</SortableItem>
+        <SortableItem key={cellId(item, index)} id={cellId(item, index)} sortable={handle} index={index}>{null}</SortableItem>
       ))}
     </SortableContainer>
   );
@@ -141,7 +144,8 @@ const measureAll = (keys: string[]) => {
 };
 
 let root: ReturnType<typeof create> | undefined;
-const setup = () => {
+const setup = (indexKeyed = false) => {
+  cellId = indexKeyed ? (_key, index) => `cell${index}` : (key) => key;
   mockDraxProps.clear();
   const onReorder = jest.fn();
   act(() => { root = create(<><Dispatcher /><List onReorder={onReorder} /></>); });
@@ -214,6 +218,31 @@ describe('useSortableList: data changes from outside during a row drag', () => {
     move(slot(3), 'C');
     drop('A');
     expect(reorderData(onReorder)).toEqual([['X', 'B', 'C', 'A', 'D', 'E']]);
+  });
+
+  it('index-keyed cells (DraxList): X prepended mid-drag -> the cancelled drop snaps back to A, not to the row now in its cell', () => {
+    const { onReorder } = setup(true);
+    start('cell0', slot(0)); // A
+    move(slot(0), 'cell0');
+    const NEXT = ['X', ...KEYS];
+    act(() => setListData(NEXT));
+    measureAll(NEXT); // cell0 now renders X; A is in cell1 at slot 1
+    move(slot(1), 'cell1');
+    move(slot(2), 'cell2');
+    expect(drop('cell0')).toEqual({ x: 0, y: ROW }); // A's slot, not X's
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(sortable.data).toEqual(NEXT);
+  });
+
+  it('same keys in a new array mid-drag (a refetch) -> the drag still reorders', () => {
+    const { onReorder } = setup();
+    start('A', slot(0));
+    move(slot(0), 'A');
+    act(() => setListData([...KEYS]));
+    move(slot(1), 'B');
+    move(slot(2), 'C');
+    drop('A');
+    expect(reorderData(onReorder)).toEqual([['B', 'C', 'A', 'D', 'E']]);
   });
 
   it('data reordered mid-drag (same length), then A moved -> no onReorder', () => {
