@@ -96,10 +96,16 @@
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
-    "react": ">=18.0.0",
-    "react-native": ">=0.68.0",
+    "react": ">=19.0.0",
+    "react-native": ">=0.78.0",
     "react-native-gesture-handler": ">=2.0.0",
-    "react-native-reanimated": "^4.0.0"
+    "react-native-reanimated": "^4.0.0",
+    "react-native-worklets": ">=0.3.0"
+  },
+  "peerDependenciesMeta": {
+    "react-native-worklets": {
+      "optional": true
+    }
   },
   "workspaces": [
     "example",

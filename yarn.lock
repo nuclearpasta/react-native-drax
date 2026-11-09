@@ -4311,10 +4311,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@eslint-community/regexpp@npm:^4.12.1, @eslint-community/regexpp@npm:^4.12.2":
+"@eslint-community/regexpp@npm:^4.12.1":
   version: 4.12.2
   resolution: "@eslint-community/regexpp@npm:4.12.2"
   checksum: 10c0/fddcbc66851b308478d04e302a4d771d6917a0b3740dc351513c0da9ca2eab8a1adf99f5e0aa7ab8b13fa0df005c81adeee7e63a92f3effd7d367a163b721c2d
+  languageName: node
+  linkType: hard
+
+"@eslint-community/regexpp@npm:^4.12.2":
+  version: 4.12.3
+  resolution: "@eslint-community/regexpp@npm:4.12.3"
+  checksum: 10c0/9b123d7298be2935097a1dc620373b4e9b3861123ba542de86bc4e941428bfb10a0a8dd1ae236b853c5b704f263faf318f8b5e23563b9f70405c7a388fcdf42f
   languageName: node
   linkType: hard
 
@@ -6182,58 +6189,58 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noxcturnal/noxcturnal-darwin-arm64@npm:0.1.11":
-  version: 0.1.11
-  resolution: "@noxcturnal/noxcturnal-darwin-arm64@npm:0.1.11"
+"@noxcturnal/noxcturnal-darwin-arm64@npm:0.1.12":
+  version: 0.1.12
+  resolution: "@noxcturnal/noxcturnal-darwin-arm64@npm:0.1.12"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
-"@noxcturnal/noxcturnal-darwin-x64@npm:0.1.11":
-  version: 0.1.11
-  resolution: "@noxcturnal/noxcturnal-darwin-x64@npm:0.1.11"
+"@noxcturnal/noxcturnal-darwin-x64@npm:0.1.12":
+  version: 0.1.12
+  resolution: "@noxcturnal/noxcturnal-darwin-x64@npm:0.1.12"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
-"@noxcturnal/noxcturnal-linux-arm64-gnu@npm:0.1.11":
-  version: 0.1.11
-  resolution: "@noxcturnal/noxcturnal-linux-arm64-gnu@npm:0.1.11"
+"@noxcturnal/noxcturnal-linux-arm64-gnu@npm:0.1.12":
+  version: 0.1.12
+  resolution: "@noxcturnal/noxcturnal-linux-arm64-gnu@npm:0.1.12"
   conditions: os=linux & cpu=arm64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@noxcturnal/noxcturnal-linux-arm64-musl@npm:0.1.11":
-  version: 0.1.11
-  resolution: "@noxcturnal/noxcturnal-linux-arm64-musl@npm:0.1.11"
+"@noxcturnal/noxcturnal-linux-arm64-musl@npm:0.1.12":
+  version: 0.1.12
+  resolution: "@noxcturnal/noxcturnal-linux-arm64-musl@npm:0.1.12"
   conditions: os=linux & cpu=arm64 & libc=musl
   languageName: node
   linkType: hard
 
-"@noxcturnal/noxcturnal-linux-x64-gnu@npm:0.1.11":
-  version: 0.1.11
-  resolution: "@noxcturnal/noxcturnal-linux-x64-gnu@npm:0.1.11"
+"@noxcturnal/noxcturnal-linux-x64-gnu@npm:0.1.12":
+  version: 0.1.12
+  resolution: "@noxcturnal/noxcturnal-linux-x64-gnu@npm:0.1.12"
   conditions: os=linux & cpu=x64 & libc=glibc
   languageName: node
   linkType: hard
 
-"@noxcturnal/noxcturnal-linux-x64-musl@npm:0.1.11":
-  version: 0.1.11
-  resolution: "@noxcturnal/noxcturnal-linux-x64-musl@npm:0.1.11"
+"@noxcturnal/noxcturnal-linux-x64-musl@npm:0.1.12":
+  version: 0.1.12
+  resolution: "@noxcturnal/noxcturnal-linux-x64-musl@npm:0.1.12"
   conditions: os=linux & cpu=x64 & libc=musl
   languageName: node
   linkType: hard
 
-"@noxcturnal/noxcturnal-win32-arm64-msvc@npm:0.1.11":
-  version: 0.1.11
-  resolution: "@noxcturnal/noxcturnal-win32-arm64-msvc@npm:0.1.11"
+"@noxcturnal/noxcturnal-win32-arm64-msvc@npm:0.1.12":
+  version: 0.1.12
+  resolution: "@noxcturnal/noxcturnal-win32-arm64-msvc@npm:0.1.12"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
 
-"@noxcturnal/noxcturnal-win32-x64-msvc@npm:0.1.11":
-  version: 0.1.11
-  resolution: "@noxcturnal/noxcturnal-win32-x64-msvc@npm:0.1.11"
+"@noxcturnal/noxcturnal-win32-x64-msvc@npm:0.1.12":
+  version: 0.1.12
+  resolution: "@noxcturnal/noxcturnal-win32-x64-msvc@npm:0.1.12"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
@@ -13932,10 +13939,10 @@ __metadata:
   linkType: hard
 
 "handlebars@npm:^4.7.7":
-  version: 4.7.9
-  resolution: "handlebars@npm:4.7.9"
+  version: 4.7.10
+  resolution: "handlebars@npm:4.7.10"
   dependencies:
-    minimist: "npm:^1.2.5"
+    minimist: "npm:^1.2.8"
     neo-async: "npm:^2.6.2"
     source-map: "npm:^0.6.1"
     uglify-js: "npm:^3.1.4"
@@ -13945,7 +13952,7 @@ __metadata:
       optional: true
   bin:
     handlebars: bin/handlebars
-  checksum: 10c0/22f8105a7e68e81aff2662bb434edf05f757d21d850731d71cec886d69c10cd33d3c43e34b2892968ec62de8241611851d3d0674c8ef324ea3e01dc66262faa9
+  checksum: 10c0/9b5573584ae5836172ae3f1502d9819568ba1b92ee83b81b18223beeb4c07486595e7b0fa633102beabc66ed06fe6e7da1dd9a9ea8c7072b9550b9a88809165c
   languageName: node
   linkType: hard
 
@@ -18370,7 +18377,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimist@npm:^1.2.0, minimist@npm:^1.2.3, minimist@npm:^1.2.5, minimist@npm:^1.2.8":
+"minimist@npm:^1.2.0, minimist@npm:^1.2.3, minimist@npm:^1.2.8":
   version: 1.2.8
   resolution: "minimist@npm:1.2.8"
   checksum: 10c0/19d3fcdca050087b84c2029841a093691a91259a47def2f18222f41e7645a0b7c44ef4b40e88a1e58a40c84d2ef0ee6047c55594d298146d0eb3f6b737c20ce6
@@ -18731,18 +18738,18 @@ __metadata:
   linkType: hard
 
 "noxcturnal@npm:^0.1.11":
-  version: 0.1.11
-  resolution: "noxcturnal@npm:0.1.11"
+  version: 0.1.12
+  resolution: "noxcturnal@npm:0.1.12"
   dependencies:
     "@babel/code-frame": "npm:^7.20.0"
-    "@noxcturnal/noxcturnal-darwin-arm64": "npm:0.1.11"
-    "@noxcturnal/noxcturnal-darwin-x64": "npm:0.1.11"
-    "@noxcturnal/noxcturnal-linux-arm64-gnu": "npm:0.1.11"
-    "@noxcturnal/noxcturnal-linux-arm64-musl": "npm:0.1.11"
-    "@noxcturnal/noxcturnal-linux-x64-gnu": "npm:0.1.11"
-    "@noxcturnal/noxcturnal-linux-x64-musl": "npm:0.1.11"
-    "@noxcturnal/noxcturnal-win32-arm64-msvc": "npm:0.1.11"
-    "@noxcturnal/noxcturnal-win32-x64-msvc": "npm:0.1.11"
+    "@noxcturnal/noxcturnal-darwin-arm64": "npm:0.1.12"
+    "@noxcturnal/noxcturnal-darwin-x64": "npm:0.1.12"
+    "@noxcturnal/noxcturnal-linux-arm64-gnu": "npm:0.1.12"
+    "@noxcturnal/noxcturnal-linux-arm64-musl": "npm:0.1.12"
+    "@noxcturnal/noxcturnal-linux-x64-gnu": "npm:0.1.12"
+    "@noxcturnal/noxcturnal-linux-x64-musl": "npm:0.1.12"
+    "@noxcturnal/noxcturnal-win32-arm64-msvc": "npm:0.1.12"
+    "@noxcturnal/noxcturnal-win32-x64-msvc": "npm:0.1.12"
     "@oxc-project/types": "npm:0.154.0"
   dependenciesMeta:
     "@noxcturnal/noxcturnal-darwin-arm64":
@@ -18761,7 +18768,7 @@ __metadata:
       optional: true
     "@noxcturnal/noxcturnal-win32-x64-msvc":
       optional: true
-  checksum: 10c0/b27d3ffbd5d1b3af2be55db6c4cb9eff354afc41edbf383fb090231bd4452b807b140d90738b8aca77de92d22ad0b5b1f0a77e0e770d5c9bc4ebbe1eafc099ee
+  checksum: 10c0/e802c964bfb0d04600e0530a956e51bcf9b6c6249072c554d5a7489f1e4334af147c2a4a036036853f8859039da507922c878947496f663b226e0825ab61ba82
   languageName: node
   linkType: hard
 
@@ -21095,10 +21102,14 @@ __metadata:
     release-it: "npm:^19.0.4"
     typescript: "npm:^5.9.3"
   peerDependencies:
-    react: ">=18.0.0"
-    react-native: ">=0.68.0"
+    react: ">=19.0.0"
+    react-native: ">=0.78.0"
     react-native-gesture-handler: ">=2.0.0"
     react-native-reanimated: ^4.0.0
+    react-native-worklets: ">=0.3.0"
+  peerDependenciesMeta:
+    react-native-worklets:
+      optional: true
   languageName: unknown
   linkType: soft
 
