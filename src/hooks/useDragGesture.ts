@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { measure } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
-import { runOnJS } from 'react-native-worklets';
+import { runOnJS, runOnUI } from 'react-native-worklets';
 
 import { useDraxPanGesture } from '../compat';
 import { computeAbsolutePositionWorklet, computeGrabOffsetWorklet, hitTestWorklet } from '../math';
@@ -46,6 +46,7 @@ export const useDragGesture = (
     needsUpdatesSV,
     jsPendingSV,
     lastMonitorKeySV,
+    skippedSV,
     handleDragStart,
     handleReceiverChange,
     handleDragEnd,
@@ -64,6 +65,29 @@ export const useDragGesture = (
   const failOffset = dragActivationFailOffset !== undefined
     ? [-dragActivationFailOffset, dragActivationFailOffset] as [number, number]
     : undefined;
+
+  const continuousHop = (...args: Parameters<typeof handleReceiverChange>) => {
+    handleReceiverChange(...args);
+    runOnUI(endContinuousHop)();
+  };
+  // Ends a continuous hop on the UI thread: resend the latest state once if
+  // updates were skipped while it was in flight, else allow the next hop.
+  const endContinuousHop = () => {
+    'worklet';
+    if (skippedSV.value) {
+      skippedSV.value = false;
+      const receiverId = receiverIdSV.value;
+      const monitorKey = lastMonitorKeySV.value;
+      runOnJS(continuousHop)(
+        receiverId,
+        receiverId,
+        dragAbsolutePositionSV.value,
+        monitorKey ? monitorKey.split('|') : []
+      );
+    } else {
+      jsPendingSV.value = false;
+    }
+  };
 
   const gesture = useDraxPanGesture({
     enabledSV,
@@ -139,6 +163,7 @@ export const useDragGesture = (
       // Until JS answers, hop on every update as if continuous updates are needed.
       needsUpdatesSV.value = true;
       jsPendingSV.value = false;
+      skippedSV.value = false;
       lastMonitorKeySV.value = '';
 
       // Bounce to JS for callback dispatch + hover content setup
@@ -237,14 +262,18 @@ export const useDragGesture = (
           hitTestPos,
           result.monitorIds
         );
-      } else if (needsUpdatesSV.value && !jsPendingSV.value) {
-        jsPendingSV.value = true;
-        runOnJS(handleReceiverChange)(
-          oldReceiver,
-          candidateReceiverId,
-          hitTestPos,
-          result.monitorIds
-        );
+      } else if (needsUpdatesSV.value) {
+        if (jsPendingSV.value) {
+          skippedSV.value = true;
+        } else {
+          jsPendingSV.value = true;
+          runOnJS(continuousHop)(
+            oldReceiver,
+            candidateReceiverId,
+            hitTestPos,
+            result.monitorIds
+          );
+        }
       }
     },
     onDeactivate: (_event, didSucceed) => {
@@ -276,6 +305,17 @@ export const useDragGesture = (
       // re-evaluates immediately (receiver style clears instantly).
       dragPhaseSV.value = 'releasing';
       receiverIdSV.value = '';
+      skippedSV.value = false;
+
+      // Continuous callbacks see the release position before the drop (FIFO).
+      if (needsUpdatesSV.value) {
+        runOnJS(handleReceiverChange)(
+          currentReceiverId,
+          currentReceiverId,
+          dragAbsolutePositionSV.value,
+          finalHitResult.monitorIds
+        );
+      }
 
       // Bounce to JS for end callbacks + snap animation
       runOnJS(handleDragEnd)(currentDraggedId, currentReceiverId, false, finalHitResult.monitorIds);
@@ -304,6 +344,7 @@ export const useDragGesture = (
 
         dragPhaseSV.value = 'releasing';
         receiverIdSV.value = '';
+        skippedSV.value = false;
 
         runOnJS(handleDragEnd)(currentDraggedId, currentReceiverId, true, finalHitResult.monitorIds);
       }

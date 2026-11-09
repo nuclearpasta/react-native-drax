@@ -15,6 +15,7 @@
 // - user callbacks, React commits (Profiler) and setHoverContent calls.
 import { act, Profiler } from 'react';
 import type { ReactNode } from 'react';
+import { create } from 'react-test-renderer';
 
 import type { DraxPanGestureConfig } from '../../compat';
 import { useCallbackDispatch } from '../../hooks/useCallbackDispatch';
@@ -159,6 +160,7 @@ const mockCtx = {
   needsUpdatesSV: sv(true),
   jsPendingSV: sv(false),
   lastMonitorKeySV: sv(''),
+  skippedSV: sv(false),
   hoverClearDeferredRef: { current: false },
   hoverContent: null as ReactNode,
   setHoverContent: (content: ReactNode) => {
@@ -258,9 +260,16 @@ const Dispatcher = () => {
   return null;
 };
 
-const ReactNative = jest.requireActual(
-  'react-native/Libraries/Renderer/implementations/ReactNativeRenderer-dev'
-);
+let mockRoot: ReturnType<typeof create> | undefined;
+const ReactNative = {
+  render: (el: ReactNode, _tag: number) => {
+    mockRoot = create(el as never);
+  },
+  unmountComponentAtNode: (_tag: number) => {
+    mockRoot?.unmount();
+    mockRoot = undefined;
+  },
+};
 let commits = 0;
 const drainJS = () =>
   act(() => {
@@ -530,6 +539,19 @@ describe('124711 regression: dedupe receiver hops on the UI thread', () => {
     const m = burstThenRelease(g);
     // With coalescing (at most one continuous hop in flight) the drop is not
     // queued behind N stale over-events.
-    expect(m.queuedBeforeDragEnd).toBeLessThanOrEqual(2);
+    expect(m.queuedBeforeDragEnd).toBeLessThanOrEqual(3);
+  });
+
+  it('updates skipped while JS is busy: the last continuous dispatch sees the final position', () => {
+    const g = renderPlainScene({ monitor: true });
+    cb.onMonitorDragOver.mockClear();
+    for (const x of [100, 101, 140, 160, 180]) {
+      g.onUpdate!({ absoluteX: x, absoluteY: 300 } as never);
+      drainUI();
+    }
+    // JS catches up; the finger is now still, so no more pan updates.
+    settle();
+    const calls = cb.onMonitorDragOver.mock.calls;
+    expect(calls[calls.length - 1]![0].dragAbsolutePosition.x).toBe(180);
   });
 });

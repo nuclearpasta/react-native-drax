@@ -55,6 +55,7 @@ export const DraxProvider = ({
   const needsUpdatesSV = useSharedValue(true);
   const jsPendingSV = useSharedValue(false);
   const lastMonitorKeySV = useSharedValue('');
+  const skippedSV = useSharedValue(false);
 
   // ── Dropped items tracking ─────────────────────────────────────────
   const droppedItemsRef = useRef<Map<string, Set<string>>>(new Map());
@@ -99,7 +100,6 @@ export const DraxProvider = ({
       grabOffsetSV,
       startPositionSV,
       needsUpdatesSV,
-      jsPendingSV,
       setHoverContent,
       hoverReadySV,
       hoverClearDeferredRef,
@@ -145,6 +145,7 @@ export const DraxProvider = ({
       needsUpdatesSV,
       jsPendingSV,
       lastMonitorKeySV,
+      skippedSV,
 
       // Registry methods
       registerView,
@@ -186,6 +187,7 @@ export const DraxProvider = ({
       needsUpdatesSV,
       jsPendingSV,
       lastMonitorKeySV,
+      skippedSV,
       registerView,
       unregisterView,
       updateMeasurements,

@@ -15,6 +15,7 @@ jest.mock('../../compat', () => ({
 jest.mock('react-native-reanimated', () => ({ measure: jest.fn(() => null) }));
 jest.mock('react-native-worklets', () => ({
   runOnJS: (fn: (...args: unknown[]) => unknown) => fn,
+  runOnUI: (fn: (...args: unknown[]) => unknown) => fn,
 }));
 
 const sv = <T>(value: T) => ({ value });
@@ -31,6 +32,10 @@ const mockCtx = {
   grabOffsetSV: sv({ x: 0, y: 0 }),
   startPositionSV: sv({ x: 0, y: 0 }),
   rootOffsetSV: sv({ x: 0, y: 0 }),
+  needsUpdatesSV: sv(false),
+  jsPendingSV: sv(false),
+  lastMonitorKeySV: sv(''),
+  skippedSV: sv(false),
   handleDragStart: jest.fn(),
   handleReceiverChange: jest.fn(),
   handleDragEnd: mockHandleDragEnd,

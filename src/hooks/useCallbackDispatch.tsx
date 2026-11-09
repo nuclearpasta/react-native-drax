@@ -62,7 +62,6 @@ interface CallbackDispatchDeps {
   grabOffsetSV: SharedValue<Position>;
   startPositionSV: SharedValue<Position>;
   needsUpdatesSV: SharedValue<boolean>;
-  jsPendingSV: SharedValue<boolean>;
   setHoverContent: (content: ReactNode | null) => void;
   hoverReadySV: SharedValue<boolean>;
   hoverClearDeferredRef: { current: boolean };
@@ -92,7 +91,6 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     grabOffsetSV,
     startPositionSV,
     needsUpdatesSV,
-    jsPendingSV,
     setHoverContent,
     hoverReadySV,
     onProviderDragStart,
@@ -294,7 +292,6 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     absolutePosition: Position,
     monitorIds?: string[]
   ) => {
-    jsPendingSV.value = false;
     const draggedId = draggedIdSV.value;
 
     const newMonitorIds = monitorIds ?? [];
