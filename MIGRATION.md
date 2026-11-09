@@ -310,7 +310,7 @@ Because it defaults to `0`, autoscroll starts as soon as the drag enters
 the edge band, as in 1.1. A dwell delay is opt-in: set
 `autoScrollInitialDelay` (e.g. `300`) to wait that long in the band before
 the first jump. Switching `autoScrollEnabled` to `false` mid-drag also stops
-a scroll that is already running.
+a scroll that is already running, at the next drag move.
 
 ```tsx
 // from 1.2.0 — DraxList forwards DraxAutoScrollProps
