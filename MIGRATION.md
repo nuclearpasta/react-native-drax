@@ -6,8 +6,8 @@ rewrite, so most of the work is in the list API and in event data. `DraxView`
 callbacks and style props mostly carry over unchanged.
 
 Every 1.2 API named here is exported from `react-native-drax`. Type names and
-fields match `src/types.ts`, `src/DraxList.tsx` and `src/SortableItem.tsx` on
-`main`. The 0.11 names match the published `0.11.0-alpha.2` type definitions.
+fields match `src/types.ts`, `src/DraxList.tsx` and `src/SortableItem.tsx` in
+1.2. The 0.11 names match the published `0.11.0-alpha.2` type definitions.
 
 Items marked **No equivalent** have no 1.2 API that does the same thing. Each
 one lists a workaround where one exists.
@@ -158,7 +158,7 @@ import { DraxList } from 'react-native-drax';
 | `reorderable` | No prop. Lists are always reorderable. To lock rows, pass `itemDraxViewProps={{ draggable: false }}`, or use the composable API and `<SortableItem fixed>` for single rows. |
 | `centerShift` | No prop. Slots are now chosen from the hover position. `reorderStrategy` (`'insert'` \| `'swap'`) controls how items move. |
 | `keyExtractor` (optional) | `keyExtractor` (required) |
-| Autoscroll props | See [3.6](#36-auto-scroll-props). Jump/threshold props are on `main`; `autoScrollEnabled`, `autoScrollInitialDelay`, a real `autoScrollIntervalLength`, and `DraxList` forwarding are **from 1.2.0**. |
+| Autoscroll props | See [3.6](#36-auto-scroll-props). Jump/threshold props since 1.x (1.0+); `autoScrollEnabled`, `autoScrollInitialDelay`, a real `autoScrollIntervalLength`, and `DraxList` forwarding are **from 1.2.0**. |
 | Reanimated `FlatList` props (`itemLayoutAnimation`, etc.) | The default list is React Native's `FlatList`. Pass `component={Animated.FlatList}` to keep Reanimated list props, or use `itemEntering` / `itemExiting` for row enter and exit animations. |
 | `data` items may not contain `index` / `originalIndex` keys | Same restriction in practice: `SortableItem` merges `{ index, originalIndex, item }` into the row payload. See [7](#7-behavior-changes). |
 
@@ -288,19 +288,20 @@ hasn't been tested on a device.
 ### 3.6 Auto-scroll props
 
 `autoScrollJumpRatio`, `autoScrollBackThreshold` and
-`autoScrollForwardThreshold` are on `main` today (`useSortableList` and
-`DraxScrollView`). The rest of `DraxAutoScrollProps` lands in 1.2.0 with the
-autoscroll-config PR (#326): `autoScrollEnabled`, `autoScrollInitialDelay`, a
-real `autoScrollIntervalLength`, and `DraxList` forwarding.
+`autoScrollForwardThreshold` have been on `useSortableList` and
+`DraxScrollView` since 1.x (shipped in 1.0, still in 1.1). The rest of
+`DraxAutoScrollProps` is **from 1.2.0**: `autoScrollEnabled`,
+`autoScrollInitialDelay`, a real `autoScrollIntervalLength`, and `DraxList`
+forwarding.
 
-| Prop | Type | Default | On `main` | From 1.2.0 |
+| Prop | Type | Default | Since 1.x (1.0+) | From 1.2.0 |
 |---|---|---|---|---|
 | `autoScrollJumpRatio` | `number` | `0.2` | `useSortableList`, `DraxScrollView` | also `DraxList` |
 | `autoScrollBackThreshold` | `number` | `0.1` | `useSortableList`, `DraxScrollView` | also `DraxList` |
 | `autoScrollForwardThreshold` | `number` | `0.9` | `useSortableList`, `DraxScrollView` | also `DraxList` |
 | `autoScrollEnabled` | `boolean` | `true` | — | `DraxList`, `useSortableList`, `DraxScrollView` |
 | `autoScrollInitialDelay` | `number` (ms) | `0` | — | `DraxList`, `useSortableList`, `DraxScrollView` |
-| `autoScrollIntervalLength` | `number` (ms) | `250` | typed on `DraxScrollView` but ignored (hardcoded 250) | honoured on `DraxList`, `useSortableList`, `DraxScrollView` |
+| `autoScrollIntervalLength` | `number` (ms) | `250` | typed on `DraxScrollView` but ignored (hardcoded 250) through 1.1 | honoured on `DraxList`, `useSortableList`, `DraxScrollView` |
 
 From 1.2.0, `DraxListProps` and `UseSortableListOptions` extend
 `DraxAutoScrollProps`, and `DraxList` forwards every auto-scroll prop into
@@ -321,7 +322,7 @@ From 1.2.0, `DraxListProps` and `UseSortableListOptions` extend
   autoScrollForwardThreshold={0.85}
 />
 
-// composable API / plain scroll container (jump + thresholds also on main)
+// composable API / plain scroll container (jump + thresholds since 1.x / 1.0+)
 const sortable = useSortableList({
   data: items,
   keyExtractor: (item) => item.id,
@@ -473,7 +474,7 @@ Other places that used `protocol`:
 | 0.11 (on `dragged` / `receiver`) | 1.2 |
 |---|---|
 | `x.data.measurements` (relative to the Drax parent) | `x.measurements?: DraxViewMeasurements`. Same frame: relative to the Drax parent, or content-relative inside a scrollable parent. Optional. |
-| `x.data.absoluteMeasurements` | **From 1.2.0** as `x.absoluteMeasurements?: DraxViewMeasurements` on both `dragged` and `receiver` (event-data PR #328; not in earlier 1.x). Provider-root frame, same as `dragAbsolutePosition` / `hoverPosition`. On `dragged` it is the view's **layout** position, not the hover's. Until then, derive from offsets — see below and [5.3](#53-dragabsoluteposition-at-drop). |
+| `x.data.absoluteMeasurements` | **From 1.2.0** as `x.absoluteMeasurements?: DraxViewMeasurements` on both `dragged` and `receiver` (not in 1.0 / 1.1). Provider-root frame, same as `dragAbsolutePosition` / `hoverPosition`. On `dragged` it is the view's **layout** position, not the hover's. In earlier 1.x, derive from offsets — see below and [5.3](#53-dragabsoluteposition-at-drop). |
 | `dragged.data.hoverMeasurements` | **From 1.2.0** as `dragged.hoverMeasurements?: DraxViewMeasurements`: `hoverPosition` plus the dragged view's measured size (default hover / hit-test size). A `renderHoverContent` of a different size is not measured. Not in earlier 1.x. See also [6.1](#61-updatehoverviewmeasurements). |
 | `x.data.parentId`, `x.data.scrollPosition` | `x.parentId`. Scroll position is not exposed. |
 | `onSnapEnd` grab offset | **From 1.2.0** as `dragged.grabOffset?: Position` on `DraxSnapEndEventData` (and `onReceiveSnapEnd`). Not top-level on the event. |
@@ -544,16 +545,14 @@ onReceiveDragDrop={({ dragAbsolutePosition, receiver, dragged }) => {
 ```
 
 From 1.2.0, prefer `dragged.absoluteMeasurements` /
-`receiver.absoluteMeasurements` when the event-data PR has landed, instead of
-deriving them from offsets.
+`receiver.absoluteMeasurements` instead of deriving them from offsets.
 
 ### 5.4 New optional event fields (from 1.2.0)
 
-These fields land with the event-data PR (#328) and are part of 1.2.0. They are
-**not** in earlier 1.x releases. They ride on the existing event types
-(`DraxDragEventData`, `DraxDragWithReceiverEventData`, `DraxMonitorEventData`,
-…), so every drag / receive / monitor callback that already carries `dragged`
-or `receiver` gets them once #328 merges.
+These fields are **from 1.2.0** and are not in 1.0 / 1.1. They ride on the
+existing event types (`DraxDragEventData`, `DraxDragWithReceiverEventData`,
+`DraxMonitorEventData`, …), so every drag / receive / monitor callback that
+already carries `dragged` or `receiver` gets them in 1.2.0.
 
 | Field | Where | Optional | Notes |
 |---|---|---|---|
@@ -764,4 +763,4 @@ use the `hover*Style` props).
 | `x.data.protocol.payload` | `x.payload` |
 | `x.data.measurements` / `absoluteMeasurements` / `hoverMeasurements` | `x.measurements?` / **from 1.2.0** `x.absoluteMeasurements?` (layout position on `dragged`; derive from offsets in earlier 1.x; see [5.3](#53-dragabsoluteposition-at-drop)) / **from 1.2.0** `dragged.hoverMeasurements?` (`hoverPosition` + dragged view size) |
 | `viewState.releasedDragTracking.grabOffset` | **No equivalent** on `DraxViewState`. Keep `dragged.grabOffset` from `onDragEnd` / `onDragDrop` in a ref. **From 1.2.0:** also `dragged.grabOffset?` on `onSnapEnd` / `onReceiveSnapEnd`. |
-| Autoscroll | Jump/threshold on `main`. **From 1.2.0:** `autoScrollEnabled`, `autoScrollInitialDelay`, honoured `autoScrollIntervalLength`, and `DraxList` forwarding — see [3.6](#36-auto-scroll-props). |
+| Autoscroll | Jump/threshold since 1.x (1.0+). **From 1.2.0:** `autoScrollEnabled`, `autoScrollInitialDelay`, honoured `autoScrollIntervalLength`, and `DraxList` forwarding — see [3.6](#36-auto-scroll-props). |
