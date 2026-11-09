@@ -183,7 +183,8 @@ export const SortableContainer = ({
           shiftsValidSV.value = true;
           shiftsRef.value = _shifts;
           draggedItem.value = -1;
-          // A newer drag already set these in onActivate (it ends 'releasing').
+          // Only while this drag is still 'releasing'. A newer drag's
+          // onActivate resets the phase to 'idle' and owns these values.
           if (dragPhaseSV.value === 'releasing') {
             draggedIdSV.value = '';
             hoverPositionSV.value = { x: 0, y: 0 };

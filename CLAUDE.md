@@ -26,9 +26,9 @@ Drag-and-drop framework for React Native (iOS, Android, Web). Current package ve
 
 - A drag that activates while the previous one is still `releasing` (snap in flight, or snap ended but its JS callback not run yet) supersedes it. `onActivate` resets `dragPhaseSV` to `idle` and `hoverReadySV` to false.
 - The new `hoverPositionSV` write cancels the snap `withTiming`, so its `finished` callback never fires. `handleDragStart` runs the pending `onSnapComplete` (`pendingSnapCompleteRef`) first, so the previous drag's `finalizeDrag` commits before the new drag touches sortable state. `onSnapComplete` runs at most once.
-- The snap-end clear worklets reset `draggedIdSV`, `hoverPositionSV` and the hover content only while the phase is still `releasing`, so they never wipe the new drag.
+- The snap-end clear worklets (`performSnapback`, `finalizeDrag`, and `finalizeTransfer` step 2 on a board) reset `draggedIdSV`, `hoverPositionSV` and the hover content only while the phase is still `releasing`, so they never wipe the new drag. `finalizeTransfer`'s 3-rAF hover clear is skipped by `cleanupGenRef` once the new drag reaches the board monitor.
 - A controlled parent also needs #310's flush deferral. Main's `setTimeout(0)` `flushVisualOrder` would otherwise land mid drag 2 and scramble it.
-- Jest harness with explicit UI/JS FIFO queues, real dispatch + gesture worklets + sortable: `src/__tests__/SortableContainer.dragRace.test.tsx`.
+- Jest harness with explicit UI/JS FIFO queues, real dispatch + gesture worklets + sortable (list and two-column board): `src/__tests__/SortableContainer.dragRace.test.tsx`.
 
 ### Animation Customization
 

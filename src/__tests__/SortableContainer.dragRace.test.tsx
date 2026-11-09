@@ -5,7 +5,9 @@ import type { DraxPanGestureConfig } from '../compat';
 import { useCallbackDispatch } from '../hooks/useCallbackDispatch';
 // useDragGesture calls no React hooks, so it runs as a plain function here.
 import { useDragGesture as createDragGesture } from '../hooks/useDragGesture';
+import { useSortableBoard } from '../hooks/useSortableBoard';
 import { useSortableList } from '../hooks/useSortableList';
+import { SortableBoardContainer } from '../SortableBoardContainer';
 import { SortableContainer } from '../SortableContainer';
 import { SortableItem } from '../SortableItem';
 import type { DraxViewProps, SortableListHandle, SpatialEntry } from '../types';
@@ -14,14 +16,15 @@ import type { DraxViewProps, SortableListHandle, SpatialEntry } from '../types';
 // or in the same tick the snap ends. Renders the real useSortableList +
 // SortableContainer + SortableItem, the real callback dispatch (snap +
 // onSnapEnd) and the real gesture worklets. DraxView is a stub that records
-// its props. The UI and JS threads are two FIFO queues: runOnUI and runOnJS
-// enqueue, the test drains them, so the cross-thread ordering is explicit.
+// its props (monitors by id, rows by item). The UI and JS threads are two
+// FIFO queues: runOnUI and runOnJS enqueue, the test drains them, so the
+// cross-thread ordering is explicit.
 
 const mockDraxProps = new Map<string, DraxViewProps>();
 jest.mock('../DraxView', () => ({
   DraxView: (props: DraxViewProps & { children?: ReactNode }) => {
     const payload = props.payload as { item?: string } | undefined;
-    mockDraxProps.set(props.isParent ? 'container' : payload?.item ?? '', props);
+    mockDraxProps.set(props.monitoring ? props.id ?? 'board' : payload?.item ?? '', props);
     return props.children ?? null;
   },
 }));
@@ -106,17 +109,31 @@ const makeHoverPositionSV = () => {
 const sv = <T,>(value: T) => ({ value });
 const ROW = 50;
 const KEYS = ['A', 'B', 'C', 'D', 'E'];
-const spatialEntry = (id: string, i: number): SpatialEntry => ({
+/** A monitor (list/column/board) or a row, at x/y inside its parent. */
+const spatialEntry = (
+  id: string,
+  parentIndex: number,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  monitor = false
+): SpatialEntry => ({
   id,
-  x: 0,
-  y: i < 0 ? 0 : i * ROW,
-  width: 100,
-  height: i < 0 ? ROW * KEYS.length : ROW,
-  parentIndex: i < 0 ? -1 : 0,
-  receptive: i >= 0,
-  monitoring: i < 0,
-  draggable: i >= 0,
+  x,
+  y,
+  width,
+  height,
+  parentIndex,
+  receptive: !monitor,
+  monitoring: monitor,
+  draggable: !monitor,
 } as SpatialEntry);
+// Index 0 is the list (monitor); item rows follow.
+const listSpatialIndex = () => [
+  spatialEntry('list', -1, 0, 0, 100, ROW * KEYS.length, true),
+  ...KEYS.map((k, i) => spatialEntry(k, 0, 0, i * ROW, 100, ROW)),
+];
 const mockCtx = {
   hoverReadySV: sv(false),
   dragPhaseSV: sv<string>('idle'),
@@ -125,8 +142,8 @@ const mockCtx = {
   rejectedReceiverIdSV: sv(''),
   hoverPositionSV: makeHoverPositionSV(),
   dragAbsolutePositionSV: sv({ x: 0, y: 0 }),
-  // Index 0 is the container (monitor); item rows follow.
-  spatialIndexSV: sv([spatialEntry('container', -1), ...KEYS.map((k, i) => spatialEntry(k, i))]),
+  hoverDimsSV: sv({ x: 0, y: 0 }),
+  spatialIndexSV: sv(listSpatialIndex()),
   scrollOffsetsSV: sv([] as { x: number; y: number }[]),
   grabOffsetSV: sv({ x: 0, y: 0 }),
   startPositionSV: sv({ x: 0, y: 0 }),
@@ -157,12 +174,12 @@ const ReactNative = jest.requireActual(
 
 const Leaf = () => null;
 let sortable: SortableListHandle<string>;
-const rerenderCell: (() => void)[] = [];
+const rerenderCell = new Map<string, () => void>();
 
 /** Re-renders its item on its own, like a FlatList cell after layout. */
 const Cell = ({ handle, index }: { handle: SortableListHandle<string>; index: number }) => {
   const [, setTick] = useState(0);
-  rerenderCell[index] = () => setTick((t) => t + 1);
+  rerenderCell.set(handle.data[index]!, () => setTick((t) => t + 1));
   return (
     <SortableItem sortable={handle} index={index}>
       <Leaf />
@@ -178,11 +195,12 @@ const Dispatcher = () => {
     getViewEntry: (id: string) => {
       const props = mockDraxProps.get(id);
       if (!props) return undefined;
-      const index = id === 'container' ? 0 : KEYS.indexOf(id) + 1;
-      const e = mockCtx.spatialIndexSV.value[index]!;
+      const entries = mockCtx.spatialIndexSV.value;
+      const index = entries.findIndex((e) => e.id === id);
+      const e = entries[index]!;
       return {
         id,
-        parentId: id === 'container' ? undefined : 'list',
+        parentId: entries[e.parentIndex]?.id,
         spatialIndex: index,
         measurements: { x: e.x, y: e.y, width: e.width, height: e.height },
         props,
@@ -263,7 +281,7 @@ const activate = (key: string) => {
 /** JS thread: the first gesture update reaches the sortable container. */
 const monitorStart = (key: string, toSlot: number) =>
   act(() => {
-    mockDraxProps.get('container')!.onMonitorDragStart!({
+    mockDraxProps.get('list')!.onMonitorDragStart!({
       dragged: { parentId: 'list', payload: mockDraxProps.get(key)!.payload },
     } as never);
     sortable._internal.moveDraggedItem(toSlot);
@@ -332,6 +350,12 @@ const runRace = (secondDragStarts: 'during-snap' | 'same-tick-as-snap-end') => {
 
   monitorStart('E', 0);
   settle();
+  // Mid drag 2, after drag 1's deferred work ran: drag 2 is still dragged
+  // (its row stays hidden) and its hover is shown.
+  expect(mockCtx.draggedIdSV.value).toBe('E');
+  expect(mockCtx.hoverContent).not.toBeNull();
+  expect(mockCtx.hoverReadySV.value).toBe(true);
+  expect(mockCtx.dragPhaseSV.value).toBe('dragging');
   release('E', 0);
   mockCtx.hoverPositionSV.finishSnap();
   settle();
@@ -355,6 +379,8 @@ describe('second drag racing the first drag snap (#250)', () => {
     mockCtx.hoverReadySV.value = false;
     mockCtx.dragPhaseSV.value = 'idle';
     mockCtx.draggedIdSV.value = '';
+    mockCtx.spatialIndexSV.value = listSpatialIndex();
+    rerenderCell.clear();
   });
   afterEach(() => {
     act(() => ReactNative.unmountComponentAtNode(1));
@@ -387,4 +413,166 @@ describe('second drag racing the first drag snap (#250)', () => {
       expect(sortable._internal.pendingOrderRef.current).toEqual([]);
     }
   );
+});
+
+// Board: column 1 (A B C) at x 0, column 2 (X Y) at x 200.
+const COL1 = ['A', 'B', 'C'];
+const COL2 = ['X', 'Y'];
+const COL_HEIGHT = ROW * 5;
+const boardSpatialIndex = () => [
+  spatialEntry('board', -1, 0, 0, 300, COL_HEIGHT, true),
+  spatialEntry('col1', 0, 0, 0, 100, COL_HEIGHT, true),
+  spatialEntry('col2', 0, 200, 0, 100, COL_HEIGHT, true),
+  ...COL1.map((k, i) => spatialEntry(k, 1, 0, i * ROW, 100, ROW)),
+  ...COL2.map((k, i) => spatialEntry(k, 2, 0, i * ROW, 100, ROW)),
+];
+const columns: Record<string, SortableListHandle<string>> = {};
+
+const Column = ({ id, data, onReorder }: { id: string; data: string[]; onReorder: jest.Mock }) => {
+  const handle = useSortableList({ id, data, keyExtractor: (item) => item, onReorder });
+  useLayoutEffect(() => {
+    columns[id] = handle;
+  });
+  return (
+    <SortableContainer sortable={handle} scrollRef={{ current: null }}>
+      {handle.data.map((item, index) => (
+        <Cell key={item} handle={handle} index={index} />
+      ))}
+    </SortableContainer>
+  );
+};
+
+// Uncontrolled: onTransfer is only recorded, the columns keep their data.
+const Board = ({ onTransfer, onReorder }: { onTransfer: jest.Mock; onReorder: jest.Mock }) => {
+  const board = useSortableBoard<string>({ keyExtractor: (item) => item, onTransfer });
+  return (
+    <SortableBoardContainer board={board}>
+      <Column id="col1" data={COL1} onReorder={onReorder} />
+      <Column id="col2" data={COL2} onReorder={jest.fn()} />
+    </SortableBoardContainer>
+  );
+};
+
+describe('second drag racing a board transfer snap (#250)', () => {
+  beforeAll(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    jest.useFakeTimers();
+  });
+  beforeEach(() => {
+    mockDraxProps.clear();
+    mockUIQueue.length = 0;
+    mockJSQueue.length = 0;
+    Object.assign(mockCtx, {
+      hoverPositionSV: makeHoverPositionSV(),
+      hoverContent: null,
+    });
+    mockCtx.hoverReadySV.value = false;
+    mockCtx.dragPhaseSV.value = 'idle';
+    mockCtx.draggedIdSV.value = '';
+    mockCtx.spatialIndexSV.value = boardSpatialIndex();
+    rerenderCell.clear();
+  });
+  afterEach(() => {
+    act(() => ReactNative.unmountComponentAtNode(1));
+  });
+
+  const dragged = (key: string) => ({
+    parentId: 'col1',
+    payload: mockDraxProps.get(key)!.payload,
+    measurements: { x: 0, y: 0, width: 100, height: ROW },
+  });
+  const activateIn = (key: string, x: number, slot: number) =>
+    mockGestures.get(key)!.onActivate!({
+      x: 50,
+      y: ROW / 2,
+      absoluteX: x + 50,
+      absoluteY: slot * ROW + ROW / 2,
+    } as never);
+  const monitorStartInCol1 = (key: string) =>
+    act(() => {
+      mockDraxProps.get('board')!.onMonitorDragStart!({ dragged: dragged(key) } as never);
+      mockDraxProps.get('col1')!.onMonitorDragStart!({ dragged: dragged(key) } as never);
+    });
+
+  it('commits the transfer and keeps drag 2 when it starts in the source column mid-snap', () => {
+    const onTransfer = jest.fn();
+    const onReorder = jest.fn();
+    act(() =>
+      ReactNative.render(
+        <>
+          <Dispatcher />
+          <Board onTransfer={onTransfer} onReorder={onReorder} />
+        </>,
+        1
+      )
+    );
+    const entries = boardSpatialIndex();
+    for (const key of [...COL1, ...COL2]) {
+      mockGestureId = key;
+      const index = entries.findIndex((e) => e.id === key);
+      createDragGesture(key, sv(index) as never, sv(true) as never, sv(250) as never);
+    }
+    layout();
+    act(() => {
+      mockDraxProps.get('col1')!.onMeasure!({ x: 0, y: 0, width: 100, height: COL_HEIGHT } as never);
+      mockDraxProps.get('col2')!.onMeasure!({ x: 200, y: 0, width: 100, height: COL_HEIGHT } as never);
+      [COL1, COL2].forEach((col) =>
+        col.forEach((key, i) =>
+          mockDraxProps.get(key)!.onMeasure!({ x: 0, y: i * ROW, width: 100, height: ROW } as never)
+        )
+      );
+    });
+    settle();
+
+    // Drag 1: A from column 1 to the end of column 2, released there.
+    activateIn('A', 0, 0);
+    settle();
+    monitorStartInCol1('A');
+    const overCol2 = { x: 250, y: 2 * ROW + ROW / 2 };
+    act(() => {
+      mockDraxProps.get('board')!.onMonitorDragOver!({
+        dragged: dragged('A'),
+        dragAbsolutePosition: overCol2,
+      } as never);
+    });
+    mockCtx.dragAbsolutePositionSV.value = overCol2;
+    mockGestures.get('A')!.onDeactivate!({} as never, true);
+    drainJS();
+    expect(mockCtx.hoverPositionSV.snapping).toBe(true);
+
+    // Drag 2: B in column 1 activates while the transfer snap is in flight.
+    activateIn('B', 0, 1);
+    drainJS();
+    drainUI();
+    drainJS();
+    expect(mockCtx.draggedIdSV.value).toBe('B');
+    expect(mockCtx.hoverContent).not.toBeNull();
+
+    monitorStartInCol1('B');
+    act(() => columns.col1!._internal.moveDraggedItem(2));
+    settle();
+    // The transfer committed under drag 2, and drag 2 is intact.
+    expect(onTransfer).toHaveBeenCalledTimes(1);
+    expect(onTransfer.mock.calls[0][0]).toMatchObject({
+      item: 'A',
+      fromContainerId: 'col1',
+      toContainerId: 'col2',
+    });
+    expect(mockCtx.draggedIdSV.value).toBe('B');
+    expect(mockCtx.hoverContent).not.toBeNull();
+    expect(mockCtx.hoverReadySV.value).toBe(true);
+
+    // Drag 2 drops normally: its reorder commits in column 1.
+    mockCtx.dragAbsolutePositionSV.value = { x: 50, y: 2 * ROW + ROW / 2 };
+    mockGestures.get('B')!.onDeactivate!({} as never, true);
+    drainJS();
+    expect(mockCtx.hoverPositionSV.snapping).toBe(true);
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+
+    expect(onReorder).toHaveBeenCalledTimes(1);
+    expect(onReorder.mock.calls[0][0]).toMatchObject({ fromItem: 'B', toIndex: 2 });
+    expect(mockCtx.draggedIdSV.value).toBe('');
+    expect(mockCtx.hoverContent).toBeNull();
+  });
 });

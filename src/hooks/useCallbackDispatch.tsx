@@ -776,7 +776,8 @@ function performSnapback(
         _hoverPositionSV: typeof hoverPositionSV,
       ) => {
         'worklet';
-        // A newer drag already set these in onActivate (it ends 'releasing').
+        // Only while this drag is still 'releasing'. A newer drag's
+        // onActivate resets the phase to 'idle' and owns these values.
         if (_dragPhaseSV.value === 'releasing') {
           _draggedIdSV.value = '';
           _hoverPositionSV.value = { x: 0, y: 0 };
@@ -786,9 +787,8 @@ function performSnapback(
       })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
     } else {
-      // Do NOT call setHoverContent(null) here — the hover must remain visible
-      // until the FlatList re-renders. The deferred cleanup in useLayoutEffect
-      // will clear SharedValues, and setHoverContent(null) is called there too.
+      // Do NOT call setHoverContent(null) here: the sortable that deferred the
+      // clear (finalizeDrag / finalizeTransfer) clears the hover itself.
     }
   };
 
