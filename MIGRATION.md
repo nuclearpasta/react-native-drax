@@ -6,8 +6,8 @@ rewrite, so most of the work is in the list API and in event data. `DraxView`
 callbacks and style props mostly carry over unchanged.
 
 Every 1.2 API named here is exported from `react-native-drax`. Type names and
-fields match `src/types.ts`, `src/DraxList.tsx` and `src/SortableItem.tsx` in
-1.2.0. The 0.11 names match the published `0.11.0-alpha.2` type definitions.
+fields match `src/types.ts`, `src/DraxList.tsx` and `src/SortableItem.tsx` on
+`main`. The 0.11 names match the published `0.11.0-alpha.2` type definitions.
 
 Items marked **No equivalent** have no 1.2 API that does the same thing. Each
 one lists a workaround where one exists.

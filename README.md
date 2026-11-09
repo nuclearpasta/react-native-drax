@@ -86,9 +86,42 @@ npm install react-native-reanimated react-native-worklets react-native-gesture-h
 | `react-native-gesture-handler` | >= 2.0.0 (v3 recommended) |
 | `react-native-worklets` | >= 0.3.0 (optional peer; required by Reanimated 4) |
 
-Drax 1.2 supports Expo SDK 54-58. It is tested on SDK 58; SDK 54-57 are covered by the peer ranges but not tested. Each of those SDKs ships React Native >= 0.81 with the New Architecture, Reanimated 4 and `react-native-worklets`, so `npx expo install react-native-reanimated react-native-worklets react-native-gesture-handler` picks compatible versions. Outside Expo, use React Native >= 0.78 with the New Architecture enabled.
+Drax 1.2 supports Expo SDK 54-58. It is tested on SDK 58; SDK 54-57 are covered by the peer ranges but not tested. On SDK 54-57, `npx expo install` picks react-native-gesture-handler 2.x (2.28 to 2.32), which Drax supports (peer `>=2.0.0`). Each of those SDKs ships React Native >= 0.81 with the New Architecture, Reanimated 4 and `react-native-worklets`, so `npx expo install react-native-reanimated react-native-worklets react-native-gesture-handler` picks compatible versions. Outside Expo, use React Native >= 0.78 with the New Architecture enabled.
 
 Drax imports from `react-native-worklets` directly, so it is listed as an optional peer (`>=0.3.0`, the same range Reanimated 4.0.0 declares); it is optional only because Reanimated 4 already requires it. Install the version matching your Reanimated release (see the [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/)). Reanimated 4 also requires the New Architecture. Gesture Handler v2 and v3 both work; v3 is recommended, and v2 is supported via a compatibility layer with reduced performance.
+
+### 🌳 Gesture Handler root view
+
+Gesture Handler only recognizes gestures under a `GestureHandlerRootView`, so wrap your app root in one, with `DraxProvider` inside it:
+
+```tsx
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { DraxProvider } from 'react-native-drax';
+
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <DraxProvider>{/* your app */}</DraxProvider>
+    </GestureHandlerRootView>
+  );
+}
+```
+
+**Inside a React Native `Modal`:** the modal's content renders outside the app root's `GestureHandlerRootView`. Gesture Handler's setup docs list this under Android: modal content needs its own `GestureHandlerRootView`. Put the `DraxProvider` inside that root view too, so drags and their hover views stay in the modal. A `DraxProvider` outside the `Modal` has been reported to draw hover views behind the modal's content (#69). iOS behavior without the extra root view hasn't been verified, so wrap the modal content on every platform:
+
+```tsx
+import { Modal } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { DraxProvider, DraxView } from 'react-native-drax';
+
+<Modal visible={visible} onRequestClose={close}>
+  <GestureHandlerRootView style={{ flex: 1 }}>
+    <DraxProvider>
+      <DraxView payload="card" />
+    </DraxProvider>
+  </GestureHandlerRootView>
+</Modal>
+```
 
 ## 🚀 Quick Start
 
@@ -332,7 +365,6 @@ import {
   SortableContainer,
   SortableItem,
 } from 'react-native-drax';
-import type { SortableBoardHandle } from 'react-native-drax';
 
 type Card = { id: string; title: string };
 type Columns = Record<string, Card[]>;
@@ -361,7 +393,6 @@ function Board() {
         {Object.entries(columns).map(([columnId, cards]) => (
           <Column
             key={columnId}
-            board={board}
             columnId={columnId}
             cards={cards}
             onReorder={(data) => setColumns((prev) => ({ ...prev, [columnId]: data }))}
@@ -373,7 +404,6 @@ function Board() {
 }
 
 function Column({ columnId, cards, onReorder }: {
-  board: SortableBoardHandle<Card>;
   columnId: string;
   cards: Card[];
   onReorder: (data: Card[]) => void;
