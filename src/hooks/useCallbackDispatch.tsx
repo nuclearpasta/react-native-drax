@@ -244,6 +244,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
                 height: draggedEntry.measurements.height,
               }
             : undefined,
+          payload: dragged.payload,
         });
         setHoverContent(content);
       } else {
