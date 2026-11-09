@@ -180,5 +180,19 @@
       "release-it"
     ],
     "version": "0.56.0"
+  },
+  "resolutions": {
+    "@modelcontextprotocol/sdk@npm:^1.17.5": "1.32.0",
+    "@xmldom/xmldom@npm:^0.8.8": "0.8.15",
+    "react-devtools-core/shell-quote": "1.11.0",
+    "@expo/cli/ws": "8.21.0",
+    "expo-mcp/ws": "8.21.0",
+    "@expo/mcp-tunnel/ws": "8.21.0",
+    "eslint-plugin-react-hooks/zod": "4.6.6",
+    "@expo/metro-config/postcss": "8.5.18",
+    "body-parser@npm:^2.2.1": "2.4.0",
+    "path-to-regexp@npm:^8.0.0": "8.4.0",
+    "@expo/cli/picomatch": "4.0.4",
+    "@expo/metro-config/picomatch": "4.0.4"
   }
 }
