@@ -18,6 +18,7 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
   // Build config without undefined failOffset keys — RNGH v3 warns on
   // undefined keys that survive transformOffsetProp without deletion.
   // Spread is not allowed here (Reanimated workletizes hook arguments).
+  const onDeactivate = config.onDeactivate;
   const onFinalize = config.onFinalize;
   const panConfig: Record<string, unknown> = {
     enabled: config.enabledSV,
@@ -27,7 +28,15 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
     touchAction: config.touchAction,
     onActivate: config.onActivate,
     onUpdate: config.onUpdate,
-    onDeactivate: config.onDeactivate,
+    // Normalize the end flag to `didSucceed` so consumers stay
+    // version-agnostic (see resolveDidSucceed). RNGH 3.x also calls
+    // onDeactivate for an ACTIVE gesture that gets cancelled. Older 3.0
+    // betas that pass neither `canceled` nor `success` here resolve to true,
+    // i.e. the old drop-then-cancel behavior.
+    onDeactivate: (event: DraxPanEvent, success?: boolean) => {
+      'worklet';
+      onDeactivate(event, resolveDidSucceed(event, success));
+    },
     onFinalize: (event: DraxPanEvent, success?: boolean) => {
       'worklet';
       onFinalize(event, resolveDidSucceed(event, success));
@@ -92,9 +101,9 @@ function useDraxPanGestureV2(config: DraxPanGestureConfig): DraxPanGesture {
         'worklet';
         config.onUpdate(event);
       })
-      .onEnd((event: DraxPanEvent) => {
+      .onEnd((event: DraxPanEvent, success: boolean) => {
         'worklet';
-        config.onDeactivate(event);
+        config.onDeactivate(event, success);
       })
       .onFinalize((event: DraxPanEvent, success: boolean) => {
         'worklet';

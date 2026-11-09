@@ -1,11 +1,12 @@
 # react-native-drax
 
-Drag-and-drop framework for React Native (iOS, Android, Web). v1.0.0 — major rewrite.
+Drag-and-drop framework for React Native (iOS, Android, Web). Current package version 1.1.0 (the 1.x line is the Reanimated 4 rewrite of the old 0.x API).
 
 ## Architecture
 
 - **UI-thread-first**: spatial index worklet for hit-testing, SharedValues split by update frequency. We need to use the UI thread as much as possible.
-- **Reanimated 4 + Gesture Handler 3** (beta)
+- **Reanimated 4 + react-native-worklets + Gesture Handler 3** (GH v2 also supported via `src/compat`)
+- Peer ranges: React >=19.0.0, React Native >=0.78.0 (New Architecture), Reanimated ^4.0.0, Gesture Handler >=2.0.0, react-native-worklets >=0.3.0 (optional peer via `peerDependenciesMeta`: `src` imports `runOnJS`/`runOnUI` from it, and Reanimated 4 already requires it).
 - Single `HoverLayer`, per-view gesture handlers
 - Latest React features.
 
@@ -149,7 +150,7 @@ We compete with two libraries. Drax must match or exceed their DX while keeping 
 - 8 hooks for granular control: useDraggable, useDroppable, useSortable, useSortableList, useHorizontalSortable/List, useGridSortable/List
 - Drag styling: onStateChange callback with DraggableState enum (IDLE/DRAGGING/DROPPED) for manual styling. activeStyle on Droppable only. Sortable items have hardcoded shadow + grid scale (NOT configurable)
 - Custom animation via animationFunction worklet (no named presets — docs show copy-paste recipes only)
-- Still on Gesture Handler ≥2.28 (NOT v3 beta), no web support, New Architecture required (≥RN 0.80)
+- Still on Gesture Handler ≥2.28 (NOT v3), no web support, New Architecture required (≥RN 0.80)
 - No cross-container drag, no monitoring views, no UI-thread DnD collision (free-form collision on JS thread), no overlay/portal (items can clip behind siblings)
 - No built-in accessibility (components do NOT spread rest ViewProps — a11y must go on inner children), no reduced motion, no haptic feedback
 - No drop indicators, no named animation presets
@@ -230,6 +231,10 @@ Drax uses `longPressDelay` (default 250ms) before activating drag.
 - Fallback: `ui_swipe` with `duration=5` and `delta=1` via ios-simulator MCP for slow movement that triggers long-press then drag
 - `ui_tap` with duration does long-press but lifts finger — does NOT become a drag
 - For lists: vertical swipe may trigger FlatList scroll instead of drag — ask user if automated approach fails
+- System cancel (e.g. app backgrounded mid-drag) must not drop: RNGH 3.x calls `onDeactivate({canceled:true})` then `onFinalize`. The compat layer passes `didSucceed` to both; `useDragGesture.onDeactivate` returns early on cancel, and `SortableContainer` restores the start order when the end event is `cancelled`.
+- To reproduce a system cancel on the simulator: hold a drag (no Up), press Argent `button home`, wait ≥2s, then send Up. On the iOS 27 simulator, an Up sent less than ~1s after Home arrived before the app resigned active and RNGH reported a normal END (a real drop).
+- Before the cancel fix, a cancelled list drag committed the reorder when the app stayed active (drop and cancel both returned the reordered snap target). When the app was backgrounded at the cancel, the list reverted instead (cause not established). Test cancels in the foreground too, not only via Home.
+- In-app cancel without HID: call the item's `GestureDetector.props.gesture.detectorCallbacks.jsEventHandler` (via `debugger-evaluate`) with UNDETERMINED→BEGAN→ACTIVE, updates, then ACTIVE→CANCELLED. RNGH sets `canceled` from the CANCELLED/FAILED state.
 
 
 Other: 
