@@ -124,8 +124,9 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 
 ## Event Data
 
-- Built on JS in `useCallbackDispatch.tsx` (`buildDraggedViewData` / `buildReceiverViewData`); unit-tested by calling the hook as a plain function (`src/hooks/__tests__/useCallbackDispatch.test.tsx`).
+- Built on JS in `useCallbackDispatch.tsx` (`buildDraggedViewData` / `buildReceiverViewData`); unit-tested by calling the hook as a plain function (`src/hooks/__tests__/useCallbackDispatch.test.ts`).
 - `dragged`/`receiver` carry `absoluteMeasurements` (provider-root frame, from the spatial index walk); `dragged.hoverMeasurements` = `hoverPosition` + the dragged view's measured size (hover content is never measured). `dynamicReceptiveCallback` gets `draggedParentId`; `onSnapEnd` `dragged.grabOffset`.
+- `dragged.absoluteMeasurements` / `hoverMeasurements` are filled only when `buildDraggedViewData(..., withFrames)` is true: drag start, drag end, and `handleReceiverChange` frames where the receiver or the monitor set changed. Steady over/drag frames skip them (the spatial index read + parent walk would run every frame for every monitor, e.g. each sortable list).
 - `dragAbsolutePosition` is the hover centre during a drag (hit-test point) but the hover top-left in drop/end events (`handleDragEnd` uses `hoverPositionSV`), so `receiveOffset`/`dragOffset` at drop differ from the last over event.
 
 ## Namespace API

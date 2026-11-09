@@ -51,12 +51,10 @@ Data for `onSnapEnd` and `onReceiveSnapEnd`.
 
 ```tsx
 interface DraxSnapEndEventData {
-  dragged: { id: string; parentId?: string; payload: unknown; grabOffset?: Position };
+  dragged: { id: string; parentId?: string; payload: unknown };
   receiver?: { id: string; parentId?: string; payload: unknown };
 }
 ```
-
-`dragged.grabOffset` is the grab offset of the drag that just ended.
 
 ## SnapAlignment
 

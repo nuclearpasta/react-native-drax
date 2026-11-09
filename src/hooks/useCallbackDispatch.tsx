@@ -110,10 +110,14 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     _transformDetected: 0,
   });
 
-  /** Build dragged view event data from current state */
+  /** Build dragged view event data from current state.
+   *  `withFrames` adds `absoluteMeasurements` / `hoverMeasurements`. They cost
+   *  a spatial index read and a parent walk, so continuous (per-frame) events
+   *  leave them out. */
   const buildDraggedViewData = (
     draggedId: string,
-    absolutePosition: Position
+    absolutePosition: Position,
+    withFrames: boolean
   ): DraxEventDraggedViewData | undefined => {
     const entry = getViewEntry(draggedId);
     if (!entry) return undefined;
@@ -131,7 +135,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     const height = measurements?.height || 1;
     const hoverPosition = hoverPositionSV.value;
 
-    return {
+    const dragged: DraxEventDraggedViewData = {
       id: draggedId,
       parentId: entry.parentId,
       payload: entry.props.dragPayload ?? entry.props.payload,
@@ -150,14 +154,17 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
         y: grabOffset.y / height,
       },
       hoverPosition,
-      absoluteMeasurements: measurements && toAbsoluteMeasurements(entry.spatialIndex, measurements),
-      hoverMeasurements: measurements && {
+    };
+    if (withFrames && measurements) {
+      dragged.absoluteMeasurements = toAbsoluteMeasurements(entry.spatialIndex, measurements);
+      dragged.hoverMeasurements = {
         ...hoverPosition,
         width: measurements.width,
         height: measurements.height,
         _transformDetected: 0,
-      },
-    };
+      };
+    }
+    return dragged;
   };
 
   /** Build receiver view event data */
@@ -195,7 +202,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     const draggedEntry = getViewEntry(draggedId);
     if (!draggedEntry) return;
 
-    const dragged = buildDraggedViewData(draggedId, absolutePosition);
+    const dragged = buildDraggedViewData(draggedId, absolutePosition, true);
     if (!dragged) return;
 
     const startPos = startPositionSV.value;
@@ -302,7 +309,17 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       if (!hasOnDragOver && !hasOnReceiveDragOver && !hasOnDrag) return;
     }
 
-    const dragged = buildDraggedViewData(draggedId, absolutePosition);
+    // Frames only when an enter/exit/start event can fire this frame: the
+    // receiver or the monitor set changed. Steady over/drag frames skip them.
+    let monitorsChanged = newMonitorIds.length !== prevMonitorIds.length;
+    for (let i = 0; !monitorsChanged && i < newMonitorIds.length; i++) {
+      monitorsChanged = !prevMonitorIds.includes(newMonitorIds[i]!);
+    }
+    const dragged = buildDraggedViewData(
+      draggedId,
+      absolutePosition,
+      oldReceiverId !== newReceiverId || monitorsChanged
+    );
     if (!dragged) return;
 
     const draggedEntry = getViewEntry(draggedId);
@@ -533,7 +550,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     }
 
     const absolutePosition = { ...hoverPositionSV.value };
-    const dragged = buildDraggedViewData(draggedId, absolutePosition);
+    const dragged = buildDraggedViewData(draggedId, absolutePosition, true);
     if (!dragged) {
       runOnUI((
         _hoverReadySV: typeof hoverReadySV,
