@@ -99,11 +99,25 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
   // Track current monitor ids for exit events
   const currentMonitorIdsRef = useRef<string[]>([]);
 
+  /** A view's measurements in the provider root frame */
+  const toAbsoluteMeasurements = (
+    spatialIndex: number,
+    { width, height }: DraxViewMeasurements
+  ): DraxViewMeasurements => ({
+    ...computeAbsolutePositionWorklet(spatialIndex, spatialIndexSV.value, scrollOffsetsSV.value),
+    width,
+    height,
+    _transformDetected: 0,
+  });
 
-  /** Build dragged view event data from current state */
+  /** Build dragged view event data from current state.
+   *  `withFrames` adds `absoluteMeasurements` / `hoverMeasurements`. They cost
+   *  a spatial index read and a parent walk, so continuous (per-frame) events
+   *  leave them out. */
   const buildDraggedViewData = (
     draggedId: string,
-    absolutePosition: Position
+    absolutePosition: Position,
+    withFrames: boolean
   ): DraxEventDraggedViewData | undefined => {
     const entry = getViewEntry(draggedId);
     if (!entry) return undefined;
@@ -119,8 +133,9 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     // Use || instead of ?? intentionally: zero dimensions would cause division by zero below
     const width = measurements?.width || 1;
     const height = measurements?.height || 1;
+    const hoverPosition = hoverPositionSV.value;
 
-    return {
+    const dragged: DraxEventDraggedViewData = {
       id: draggedId,
       parentId: entry.parentId,
       payload: entry.props.dragPayload ?? entry.props.payload,
@@ -138,8 +153,18 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
         x: grabOffset.x / width,
         y: grabOffset.y / height,
       },
-      hoverPosition: hoverPositionSV.value,
+      hoverPosition,
     };
+    if (withFrames && measurements) {
+      dragged.absoluteMeasurements = toAbsoluteMeasurements(entry.spatialIndex, measurements);
+      dragged.hoverMeasurements = {
+        ...hoverPosition,
+        width: measurements.width,
+        height: measurements.height,
+        _transformDetected: 0,
+      };
+    }
+    return dragged;
   };
 
   /** Build receiver view event data */
@@ -150,21 +175,11 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     const entry = getViewEntry(receiverId);
     if (!entry?.measurements) return undefined;
 
-    // Compute absolute measurements of receiver
-    const idx = entry.spatialIndex;
-    const entries = spatialIndexSV.value;
-    const offsets = scrollOffsetsSV.value;
-    const absPos = computeAbsolutePositionWorklet(idx, entries, offsets);
-    const absMeasurements: DraxViewMeasurements = {
-      ...absPos,
-      width: entry.measurements.width,
-      height: entry.measurements.height,
-      _transformDetected: 0,
-    };
+    const absoluteMeasurements = toAbsoluteMeasurements(entry.spatialIndex, entry.measurements);
 
     const { relativePosition, relativePositionRatio } = getRelativePosition(
       absolutePosition,
-      absMeasurements
+      absoluteMeasurements
     );
 
     return {
@@ -174,6 +189,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       measurements: entry.measurements,
       receiveOffset: relativePosition,
       receiveOffsetRatio: relativePositionRatio,
+      absoluteMeasurements,
     };
   };
 
@@ -186,7 +202,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     const draggedEntry = getViewEntry(draggedId);
     if (!draggedEntry) return;
 
-    const dragged = buildDraggedViewData(draggedId, absolutePosition);
+    const dragged = buildDraggedViewData(draggedId, absolutePosition, true);
     if (!dragged) return;
 
     const startPos = startPositionSV.value;
@@ -293,7 +309,17 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       if (!hasOnDragOver && !hasOnReceiveDragOver && !hasOnDrag) return;
     }
 
-    const dragged = buildDraggedViewData(draggedId, absolutePosition);
+    // Frames only when an enter/exit/start event can fire this frame: the
+    // receiver or the monitor set changed. Steady over/drag frames skip them.
+    let monitorsChanged = newMonitorIds.length !== prevMonitorIds.length;
+    for (let i = 0; !monitorsChanged && i < newMonitorIds.length; i++) {
+      monitorsChanged = !prevMonitorIds.includes(newMonitorIds[i]!);
+    }
+    const dragged = buildDraggedViewData(
+      draggedId,
+      absolutePosition,
+      oldReceiverId !== newReceiverId || monitorsChanged
+    );
     if (!dragged) return;
 
     const draggedEntry = getViewEntry(draggedId);
@@ -339,6 +365,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
             targetMeasurements: newReceiverEntry.measurements,
             draggedId,
             draggedPayload,
+            draggedParentId: draggedEntry?.parentId,
           });
           if (!accepted) {
             acceptedReceiverId = '';
@@ -523,7 +550,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     }
 
     const absolutePosition = { ...hoverPositionSV.value };
-    const dragged = buildDraggedViewData(draggedId, absolutePosition);
+    const dragged = buildDraggedViewData(draggedId, absolutePosition, true);
     if (!dragged) {
       runOnUI((
         _hoverReadySV: typeof hoverReadySV,
@@ -681,6 +708,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       snapTarget,
       draggedEntry,
       receiverId ? getViewEntry(receiverId) : undefined,
+      dragged.grabOffset,
       hoverPositionSV,
       dragPhaseSV,
       draggedIdSV,
@@ -715,6 +743,7 @@ function performSnapback(
   target: DraxSnapbackTarget,
   draggedEntry: ViewRegistryEntry,
   receiverEntry: ViewRegistryEntry | undefined,
+  grabOffset: Position,
   hoverPositionSV: SharedValue<Position>,
   dragPhaseSV: SharedValue<DragPhase>,
   draggedIdSV: SharedValue<string>,
@@ -734,6 +763,7 @@ function performSnapback(
       id: draggedEntry.id,
       parentId: draggedEntry.parentId,
       payload: draggedEntry.props.dragPayload ?? draggedEntry.props.payload,
+      grabOffset,
     },
     receiver: receiverEntry
       ? {
