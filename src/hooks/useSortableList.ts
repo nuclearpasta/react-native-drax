@@ -179,23 +179,11 @@ export const useSortableList = <T,>(
       return rawData.length > 0 ? [...Array(rawData.length).keys()] : [];
     });
 
-    const committedKeys = committedKeyOrderRef.current;
-    if (committedKeys.length > 0 && committedKeys.length === rawData.length) {
-      // Check if new data order matches committed visual order by keys.
-      let matches = true;
-      for (let i = 0; i < rawData.length; i++) {
-        const item = rawData[i];
-        if (item === undefined || keyExtractor(item, i) !== committedKeys[i]) {
-          matches = false;
-          break;
-        }
-      }
-      if (matches) {
-        // Parent accepted our reorder — permanent shifts already show this
-        // order. Swap stableData now only if a flush was requested.
-        flushIfReady();
-        return;
-      }
+    if (committedKeyOrderRef.current.length > 0 && matchesCommittedKeys(rawData)) {
+      // Parent accepted our reorder — permanent shifts already show this
+      // order. Swap stableData now only if a flush was requested.
+      flushIfReady();
+      return;
     }
 
     // External data change or initial mount — update stableData and reset.
@@ -582,19 +570,40 @@ export const useSortableList = <T,>(
   const stableDataRef = useRef(stableData);
   stableDataRef.current = stableData;
 
+  /** Whether `data` is in the committed visual order, compared by key. */
+  const matchesCommittedKeys = (data: readonly T[]) => {
+    const committedKeys = committedKeyOrderRef.current;
+    if (committedKeys.length !== data.length) return false;
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      if (item === undefined || keyExtractor(item, i) !== committedKeys[i]) {
+        return false;
+      }
+    }
+    return true;
+  };
+
   /**
    * Flush permanent shifts: update stableData to match rawData and clear
    * shifts, so FlatList cells move to their real positions (touch hit
    * testing, renderItem indexes). Applied only once the parent has echoed
-   * the reorder (rawData differs from stableData). Uncontrolled parents
-   * never echo, so they keep the committed order and permanent shifts.
-   * Never applied during a drag: pendingOrderRef indexes into stableData.
+   * the latest reorder (rawData differs from stableData and is in the
+   * committed key order; an earlier echo is not enough). Uncontrolled
+   * parents never echo, so they keep the committed order and permanent
+   * shifts. Never applied during a drag: pendingOrderRef indexes into
+   * stableData.
    */
   const flushIfReady = () => {
     if (!flushRequestedRef.current) return;
     if (pendingOrderRef.current.length > 0) return;
     const currentRawData = rawDataRef.current;
     if (currentRawData === stableDataRef.current) return;
+    if (
+      committedKeyOrderRef.current.length > 0 &&
+      !matchesCommittedKeys(currentRawData)
+    ) {
+      return;
+    }
     flushRequestedRef.current = false;
     committedOrderRef.current = [];
     committedKeyOrderRef.current = [];
@@ -639,6 +648,9 @@ export const useSortableList = <T,>(
     draggedDisplayIndexRef.current = undefined;
     dragStartIndexRef.current = undefined;
     pendingOrderRef.current = [];
+    // A cancelled drag may have deferred a flush for an echo that
+    // arrived mid-drag; apply it now that the drag is over.
+    flushIfReady();
   };
 
   /**

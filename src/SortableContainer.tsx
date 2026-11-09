@@ -216,6 +216,7 @@ export const SortableContainer = ({
         requestAnimationFrame(() => {
           onReorder(reorderEvent);
           if (boardContext) {
+            // Board keeps the delay: the hover covers the transfer transition.
             setTimeout(() => {
               sortable._internal.flushVisualOrder();
             }, 300);
