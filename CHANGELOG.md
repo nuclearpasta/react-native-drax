@@ -14,6 +14,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - **Auto-scroll config**: `autoScrollEnabled` (default `true`) and `autoScrollInitialDelay` (ms in the edge band before the first jump, default `0`) on `DraxScrollView`, `useSortableList` and `DraxList`. `DraxList` now forwards all auto-scroll props to `useSortableList`.
 - (BREAKING-TS) `collisionAlgorithm: 'touch'` on receiving/monitoring `DraxView`s: hit-tests at the finger instead of the hover view's center, so the receiver under the touch point receives wherever the item was grabbed (the 0.x behavior). The default `'center'` is unchanged. `CollisionAlgorithm` gains a `'touch'` member, so an exhaustive `switch` over it needs a new case (#282)
 - `dragTouchPosition` on drag end event data (`onDragEnd`, `onDragDrop`, `onReceiveDragDrop`, `onMonitorDragEnd`, `onMonitorDragDrop`, cancelled `onReceiveDragExit`): the finger position at release, relative to the `DraxProvider` root view. `dragAbsolutePosition` is unchanged (#282)
+- **`draggedItemStyle`** on `DraxList` and `useSortableList`: style of the dragged row's in-list placeholder while its hover copy moves (default `{ opacity: 0 }`). Pass `{ opacity: 0.2 }` for a faint placeholder like 0.11. The placeholder stays at its pickup slot while the finger is down and moves to the target slot on release. Use visual props only (no layout props).
 
 ### Changed
 

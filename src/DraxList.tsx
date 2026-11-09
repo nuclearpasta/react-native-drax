@@ -48,6 +48,9 @@ export interface DraxListProps<T> extends DraxAutoScrollProps {
   /** Style applied to all non-dragged items while a drag is active.
    *  Use for dimming/scaling inactive items (e.g., `{ opacity: 0.5 }`). */
   inactiveItemStyle?: ViewStyle;
+  /** Style of the dragged item's in-list placeholder while its hover copy moves.
+   *  Replaces the default. Use `{ opacity: 0.2 }` for a faint placeholder. @default { opacity: 0 } */
+  draggedItemStyle?: StyleProp<ViewStyle>;
   /** Reanimated layout animation for items entering the list (e.g., `FadeIn`). */
   itemEntering?: EntryOrExitLayoutType;
   /** Reanimated layout animation for items exiting the list (e.g., `FadeOut`). */
@@ -105,6 +108,7 @@ export const DraxList = <T,>({
   autoScrollForwardThreshold,
   animationConfig,
   inactiveItemStyle,
+  draggedItemStyle,
   itemEntering,
   itemExiting,
   itemDraxViewProps,
@@ -140,6 +144,7 @@ export const DraxList = <T,>({
     autoScrollForwardThreshold,
     animationConfig,
     inactiveItemStyle,
+    draggedItemStyle,
     itemEntering,
     itemExiting,
     onDragStart,
