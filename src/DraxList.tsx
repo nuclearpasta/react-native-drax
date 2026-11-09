@@ -12,6 +12,7 @@ import { SortableContainer } from './SortableContainer';
 import { SortableItem } from './SortableItem';
 import type { EntryOrExitLayoutType } from 'react-native-reanimated';
 import type {
+  DraxAutoScrollProps,
   DraxViewProps,
   SortableAnimationConfig,
   SortableDragEndEvent,
@@ -21,7 +22,7 @@ import type {
   SortableReorderStrategy,
 } from './types';
 
-export interface DraxListProps<T> {
+export interface DraxListProps<T> extends DraxAutoScrollProps {
   /**
    * List component to render. Any component that accepts `data`, `renderItem`,
    * and `keyExtractor` props (FlatList, FlashList, LegendList, etc.).
@@ -93,6 +94,12 @@ export const DraxList = <T,>({
   reorderStrategy,
   longPressDelay,
   lockToMainAxis,
+  autoScrollEnabled,
+  autoScrollIntervalLength,
+  autoScrollInitialDelay,
+  autoScrollJumpRatio,
+  autoScrollBackThreshold,
+  autoScrollForwardThreshold,
   animationConfig,
   inactiveItemStyle,
   itemEntering,
@@ -121,6 +128,12 @@ export const DraxList = <T,>({
     reorderStrategy,
     longPressDelay,
     lockToMainAxis,
+    autoScrollEnabled,
+    autoScrollIntervalLength,
+    autoScrollInitialDelay,
+    autoScrollJumpRatio,
+    autoScrollBackThreshold,
+    autoScrollForwardThreshold,
     animationConfig,
     inactiveItemStyle,
     itemEntering,

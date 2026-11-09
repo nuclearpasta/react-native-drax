@@ -6,6 +6,8 @@ import { runOnUI } from 'react-native-worklets';
 import {
   defaultAutoScrollBackThreshold,
   defaultAutoScrollForwardThreshold,
+  defaultAutoScrollInitialDelay,
+  defaultAutoScrollIntervalLength,
   defaultAutoScrollJumpRatio,
   defaultListItemLongPressDelay,
 } from '../params';
@@ -49,6 +51,9 @@ export const useSortableList = <T,>(
     reorderStrategy = 'insert',
     longPressDelay = defaultListItemLongPressDelay,
     lockToMainAxis = false,
+    autoScrollEnabled = true,
+    autoScrollIntervalLength = defaultAutoScrollIntervalLength,
+    autoScrollInitialDelay = defaultAutoScrollInitialDelay,
     autoScrollJumpRatio = defaultAutoScrollJumpRatio,
     autoScrollBackThreshold = defaultAutoScrollBackThreshold,
     autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
@@ -1045,6 +1050,9 @@ export const useSortableList = <T,>(
     scrollPositionJSRef,
     containerMeasurementsRef,
     contentSizeRef,
+    autoScrollEnabled,
+    autoScrollIntervalLength,
+    autoScrollInitialDelay,
     autoScrollJumpRatio,
     autoScrollBackThreshold,
     autoScrollForwardThreshold,
