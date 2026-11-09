@@ -105,6 +105,43 @@ describe('useSortableList flushVisualOrder', () => {
     expect(handle._internal.committedOrderRef.current).toEqual([]);
   });
 
+  it('does not flush to a stale echo when a later drop has not been echoed yet', () => {
+    const update = render(items('ABCDEF'));
+    const first = drop([5, 4, 3, 2, 1, 0]); // F E D C B A
+
+    startDrag();
+    update(first); // async echo 1 lands mid-drag 2
+    const pre = handle.data;
+    expect(keysOf(pre)).toBe('ABCDEF');
+
+    // Drop 2 before its echo arrives.
+    const second = drop([5, 4, 2, 3, 1, 0]); // F E C D B A
+    expect(handle.data).toBe(pre);
+    expect(handle._internal.committedOrderRef.current).toEqual([5, 4, 2, 3, 1, 0]);
+
+    update(second); // echo 2
+    expect(handle.data).toBe(second);
+    expect(handle._internal.committedOrderRef.current).toEqual([]);
+  });
+
+  it('applies a mid-drag echo when that drag is cancelled', () => {
+    const update = render(items('ABC'));
+    const echoed = drop([2, 1, 0]);
+
+    startDrag();
+    update(echoed);
+    expect(keysOf(handle.data)).toBe('ABC');
+
+    // SortableContainer.finalizeDrag cancel branch.
+    act(() => {
+      handle._internal.cancelDrag();
+      handle._internal.resetDraggedItem();
+    });
+    expect(handle.data).toBe(echoed);
+    expect(handle._internal.committedOrderRef.current).toEqual([]);
+    expect(handle._internal.shiftsRef.value).toEqual({});
+  });
+
   it('keeps the committed order when the parent does not store data', () => {
     const data = items('ABC');
     const update = render(data);
