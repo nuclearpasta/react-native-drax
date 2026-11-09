@@ -234,6 +234,18 @@ describe('useSortableList: data changes from outside during a row drag', () => {
     expect(sortable.data).toEqual(NEXT);
   });
 
+  it('index-keyed cells: X prepended mid-drag, release without moving -> snaps back to A, not to X', () => {
+    const { onReorder } = setup(true);
+    start('cell0', slot(0)); // A
+    move(slot(0), 'cell0');
+    const NEXT = ['X', ...KEYS];
+    act(() => setListData(NEXT));
+    measureAll(NEXT); // cell0 now renders X; A is in cell1 at slot 1
+    expect(drop('cell0')).toEqual({ x: 0, y: ROW }); // A's slot, not X's
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(sortable.data).toEqual(NEXT);
+  });
+
   it('same keys in a new array mid-drag (a refetch) -> the drag still reorders', () => {
     const { onReorder } = setup();
     start('A', slot(0));
