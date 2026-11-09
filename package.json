@@ -179,5 +179,10 @@
       "release-it"
     ],
     "version": "0.56.0"
+  },
+  "resolutions": {
+    "@typescript-eslint/typescript-estree/tinyglobby": "0.2.17",
+    "release-it/tinyglobby": "0.2.17",
+    "picomatch@npm:^4.0.2": "4.0.7"
   }
 }
