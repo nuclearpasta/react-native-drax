@@ -177,6 +177,7 @@ const dragADownTwoAndRelease = () => {
   move(slot(0), 'A');
   move(slot(1), 'B');
   move(slot(2), 'C');
+  mockCtx.dragPhaseSV.value = 'releasing'; // set by useDragGesture before handleDragEnd
   act(() => mockCtx.handleDragEnd('A', receiver, false, ['list']));
   receiver = '';
   settle();
