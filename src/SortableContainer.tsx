@@ -85,6 +85,7 @@ export const SortableContainer = ({
     onDragStart: onDragStartCallback,
     onDragPositionChange: onDragPositionChangeCallback,
     onDragEnd: onDragEndCallback,
+    onExternalDrop,
     onReorder,
     getMeasurementByOriginalIndex,
     dropTargetPositionSV,
@@ -454,6 +455,26 @@ export const SortableContainer = ({
     }
   };
 
+  const updateAutoScroll = (monitorOffsetRatio: Position) => {
+    if (!autoScrollEnabled) {
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
+      return;
+    }
+    const ratio = horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y;
+    if (ratio > autoScrollBackThreshold && ratio < autoScrollForwardThreshold) {
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
+    } else {
+      if (ratio >= autoScrollForwardThreshold) {
+        scrollStateRef.current = AutoScrollDirection.Forward;
+      } else if (ratio <= autoScrollBackThreshold) {
+        scrollStateRef.current = AutoScrollDirection.Back;
+      }
+      startScroll();
+    }
+  };
+
   const onMonitorDragOver = (eventData: DraxMonitorEventData) => {
     const displacement = computeFingerDisplacement(eventData);
     if (!jitterExceededRef.current) {
@@ -494,8 +515,14 @@ export const SortableContainer = ({
       dragged.parentId !== undefined &&
       !!boardContext?.boardInternal.columns.has(dragged.parentId);
     if (externalDrag && !isBoardDrag) {
-      scrollStateRef.current = AutoScrollDirection.None;
-      stopScroll();
+      // A list that accepts foreign drops (onExternalDrop) still
+      // auto-scrolls, so any index is reachable. No slot tracking.
+      if (onExternalDrop) {
+        updateAutoScroll(monitorOffsetRatio);
+      } else {
+        scrollStateRef.current = AutoScrollDirection.None;
+        stopScroll();
+      }
       return;
     }
 
@@ -569,23 +596,7 @@ export const SortableContainer = ({
     }
 
     // Auto-scroll
-    if (!autoScrollEnabled) {
-      scrollStateRef.current = AutoScrollDirection.None;
-      stopScroll();
-      return;
-    }
-    const ratio = horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y;
-    if (ratio > autoScrollBackThreshold && ratio < autoScrollForwardThreshold) {
-      scrollStateRef.current = AutoScrollDirection.None;
-      stopScroll();
-    } else {
-      if (ratio >= autoScrollForwardThreshold) {
-        scrollStateRef.current = AutoScrollDirection.Forward;
-      } else if (ratio <= autoScrollBackThreshold) {
-        scrollStateRef.current = AutoScrollDirection.Back;
-      }
-      startScroll();
-    }
+    updateAutoScroll(monitorOffsetRatio);
   };
 
   const onMonitorDragExit = (eventData: DraxMonitorEventData) => {
