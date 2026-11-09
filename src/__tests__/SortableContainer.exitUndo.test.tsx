@@ -1,4 +1,4 @@
-import { act, useLayoutEffect } from 'react';
+import { act, useLayoutEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { create } from 'react-test-renderer';
 
@@ -120,8 +120,11 @@ const Dispatcher = () => {
 };
 
 let sortable: SortableListHandle<string>;
+let setListData: (update: (prev: string[]) => string[]) => void = () => {};
 const List = ({ onReorder, onDragEnd }: { onReorder: jest.Mock; onDragEnd: jest.Mock }) => {
-  const handle = useSortableList({ id: 'list', data: KEYS, keyExtractor: (i) => i, onReorder, onDragEnd });
+  const [data, setData] = useState(KEYS);
+  setListData = setData;
+  const handle = useSortableList({ id: 'list', data, keyExtractor: (i) => i, onReorder, onDragEnd });
   useLayoutEffect(() => { sortable = handle; });
   return (
     <SortableContainer sortable={handle} scrollRef={{ current: null }}>
@@ -228,6 +231,30 @@ describe('SortableContainer: a row that leaves the list undoes its pending move'
     expect(onNearCardDrop).toHaveBeenCalledTimes(1);
     expect(onReorder).not.toHaveBeenCalled();
     expect(onDragEnd).toHaveBeenCalledWith(expect.objectContaining({ index: 0, toIndex: 0 }));
+  });
+
+  it.each([
+    ['an outside receiver', 'card', CARD, [] as string[]],
+    ['a receiver inside the monitor padding', 'nearCard', { x: 50, y: ROW * KEYS.length + 35 }, ['list']],
+  ])('crossed the neighbour, dropped on %s that removes the row after the onReorder frame: no onReorder', (_label, card, pos, monitors) => {
+    const { onReorder } = setup();
+    start('A', row(0));
+    move(row(0), 'A', ['list']);
+    move(row(1), 'B', ['list']);
+    mockCtx.hoverPositionSV.value = pos;
+    act(() => mockCtx.handleReceiverChange(receiver, card, pos, monitors));
+    receiver = card;
+    act(() => { while (mockUIQueue.length || mockJSQueue.length) (mockUIQueue.shift() ?? mockJSQueue.shift())!(); });
+    end('A', monitors);
+    act(() => mockCtx.hoverPositionSV.finishSnap());
+    // Run drax's onReorder frame (rAF) before the receiver's write.
+    act(() => { while (mockUIQueue.length || mockJSQueue.length) (mockUIQueue.shift() ?? mockJSQueue.shift())!(); });
+    act(() => { jest.advanceTimersByTime(100); });
+    expect(onReorder).not.toHaveBeenCalled();
+    act(() => setListData((prev) => prev.filter((k) => k !== 'A')));
+    act(() => { jest.advanceTimersByTime(1000); });
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(sortable.data).toEqual(['B', 'C', 'D', 'E']);
   });
 
   it('crossed the neighbour, released over nothing: no onReorder, row back in its slot', () => {
