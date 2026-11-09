@@ -8,6 +8,7 @@ Drag-and-drop framework for React Native (iOS, Android, Web). Current package ve
 - **Reanimated 4 + react-native-worklets + Gesture Handler 3** (GH v2 also supported via `src/compat`)
 - Peer ranges: React >=19.0.0, React Native >=0.78.0 (New Architecture), Reanimated ^4.0.0, Gesture Handler >=2.0.0, react-native-worklets >=0.3.0 (optional peer via `peerDependenciesMeta`: `src` imports `runOnJS`/`runOnUI` from it, and Reanimated 4 already requires it).
 - Single `HoverLayer`, per-view gesture handlers
+- Pan `enabled` / `activateAfterLongPress` are passed to RNGH as plain values from the `draggable` / `longPressDelay` props, not SharedValues (#267). A SharedValue written in an effect is stale when RNGH's config effect reads it on the JS thread (Reanimated `getSync` runs before the async set lands), so the first touch after `draggable` false→true missed. RNGH resends the full config in the same commit when a plain value changes.
 - Latest React features.
 
 

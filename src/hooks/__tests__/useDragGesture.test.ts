@@ -44,7 +44,7 @@ describe('useDragGesture end callbacks', () => {
     mockHandleDragEnd.mockClear();
     mockCtx.draggedIdSV.value = 'item';
     mockCtx.receiverIdSV.value = 'zone';
-    useDragGesture('item', sv(0) as never, sv(true) as never, sv(250) as never);
+    useDragGesture('item', sv(0) as never, true, 250);
   });
 
   it('drops on a normal end', () => {

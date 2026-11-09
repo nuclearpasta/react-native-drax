@@ -17,6 +17,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 - Drag handles: the hover no longer lands one slot off when a `dragHandle` sortable item with permanent shifts is grabbed by its `DraxHandle`
 - Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover
+- Gesture Handler v3: the first long-press after `draggable` flips from `false` to `true` now starts a drag; `draggable` and `longPressDelay` changes reach the pan handler in the same render (#267)
 
 
 ## [1.1.0] - 2026-03-23
