@@ -169,7 +169,12 @@ New props with no 0.11 counterpart: `component`, `reorderStrategy`,
 
 While a row is dragged, its in-list placeholder gets `draggedItemStyle`
 (default `{ opacity: 0 }`, so it is hidden). Pass `{ opacity: 0.2 }` for a
-faint placeholder like in 0.11.
+faint placeholder like in 0.11. As in 0.11, the placeholder stays at the slot
+it was picked up from while the finger is down, and neighbours slide over it.
+On release it moves to the target slot, where the hover lands. Use visual
+props only (opacity, colors, transforms): layout props such as `borderWidth`,
+`margin` or `padding` re-lay out the row mid-drag. Pass a stable style (a
+constant or `StyleSheet.create`).
 
 ### 3.3 renderItem itemProps
 

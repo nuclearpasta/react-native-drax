@@ -67,12 +67,19 @@ const DATA = ['A'];
 const keyExtractor = (item: string) => item;
 const onReorder = () => {};
 
-const List = ({ draggedItemStyle }: { draggedItemStyle?: StyleProp<ViewStyle> }) => {
+const List = ({
+  draggedItemStyle,
+  inactiveItemStyle,
+}: {
+  draggedItemStyle?: StyleProp<ViewStyle>;
+  inactiveItemStyle?: ViewStyle;
+}) => {
   const sortable = useSortableList({
     data: DATA,
     keyExtractor,
     onReorder,
     draggedItemStyle,
+    inactiveItemStyle,
   });
   return (
     <SortableItem sortable={sortable} index={0}>
@@ -81,19 +88,34 @@ const List = ({ draggedItemStyle }: { draggedItemStyle?: StyleProp<ViewStyle> })
   );
 };
 
-/** Renders the list and runs the item's style worklet with the item dragged or not. */
-const itemStyle = (dragged: boolean, draggedItemStyle?: StyleProp<ViewStyle>) => {
+type DragState = 'dragged' | 'inactive' | 'idle';
+
+/**
+ * Renders the list and runs the item's style worklet once per state. Returns
+ * each style and the native view's props: Reanimated only sends the keys of
+ * each new style, so the native view is the merge of every applied style.
+ */
+const runStyles = (states: DragState[], props: Parameters<typeof List>[0] = {}) => {
   let root!: ReturnType<typeof create>;
   act(() => {
-    root = create(<List draggedItemStyle={draggedItemStyle} />);
+    root = create(<List {...props} />);
   });
   const worklet = mockWorklets.get(mockViewStyle!)!;
-  mockCtx.hoverReadySV.value = dragged;
-  mockCtx.draggedIdSV.value = dragged ? 'item-view' : '';
-  const style = worklet();
+  const native: Record<string, unknown> = {};
+  const styles = states.map((state) => {
+    mockCtx.hoverReadySV.value = state === 'dragged';
+    mockCtx.draggedIdSV.value =
+      state === 'dragged' ? 'item-view' : state === 'inactive' ? 'other-view' : '';
+    const style = worklet();
+    Object.assign(native, style);
+    return style;
+  });
   act(() => root.unmount());
-  return style;
+  return { styles, native };
 };
+
+const itemStyle = (dragged: boolean, draggedItemStyle?: StyleProp<ViewStyle>) =>
+  runStyles([dragged ? 'dragged' : 'idle'], { draggedItemStyle }).styles[0]!;
 
 describe('draggedItemStyle', () => {
   beforeAll(() => {
@@ -111,9 +133,32 @@ describe('draggedItemStyle', () => {
     });
   });
 
-  it('restores opacity 1 when the drag ends', () => {
-    const style = itemStyle(false, { opacity: 0.2, backgroundColor: 'red' });
-    expect(style.opacity).toBe(1);
-    expect(style.backgroundColor).toBeUndefined();
+  it('resets every custom key when the drag ends', () => {
+    expect(itemStyle(false, { opacity: 0.2, backgroundColor: 'red' })).toMatchObject({
+      opacity: 1,
+      backgroundColor: 'transparent',
+    });
+  });
+
+  it('clears custom keys on the native view after the drag (#344)', () => {
+    const { native } = runStyles(['dragged', 'idle'], {
+      draggedItemStyle: { opacity: 0.3, borderWidth: 2, borderColor: 'red' },
+    });
+    expect(native).toMatchObject({ opacity: 1, borderWidth: 0, borderColor: 'transparent' });
+  });
+
+  it('clears inactiveItemStyle keys on the native view after the drag', () => {
+    const { native } = runStyles(['inactive', 'idle'], {
+      inactiveItemStyle: { opacity: 0.5, borderWidth: 1 },
+    });
+    expect(native).toMatchObject({ opacity: 1, borderWidth: 0 });
+  });
+
+  it('appends user transforms after the shift translate', () => {
+    const { styles } = runStyles(['dragged', 'idle'], {
+      draggedItemStyle: { transform: [{ scale: 0.9 }] },
+    });
+    expect(styles[0]!.transform).toEqual([{ translateX: 0 }, { translateY: 0 }, { scale: 0.9 }]);
+    expect(styles[1]!.transform).toEqual([{ translateX: 0 }, { translateY: 0 }]);
   });
 });

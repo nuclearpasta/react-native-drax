@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { StyleSheet } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
@@ -493,13 +493,25 @@ export const useSortableList = <T,>(
     return newShifts;
   };
 
-  /** Compute and apply shifts during drag (skips the invisible dragged item). */
+  /**
+   * Compute and apply shifts during drag. The dragged item is skipped and
+   * keeps its drag-start (committed) shift, so its placeholder holds still
+   * at the slot it was picked up from.
+   */
   const computeShifts = () => {
-    const shifts = computeShiftsForOrder(
-      pendingOrderRef.current,
-      draggedDisplayIndexRef.current,
-      phantomRef.current ?? undefined,
-    );
+    const pending = pendingOrderRef.current;
+    const dragIdx = draggedDisplayIndexRef.current;
+    const shifts = computeShiftsForOrder(pending, dragIdx, phantomRef.current ?? undefined);
+    const origIdx = dragIdx !== undefined ? pending[dragIdx] : undefined;
+    const item = origIdx !== undefined ? stableData[origIdx] : undefined;
+    if (shifts && origIdx !== undefined && item !== undefined) {
+      const key = keyExtractor(item, origIdx);
+      const held = committedShiftsRef.current[key];
+      if (held) {
+        applyShifts({ ...shifts, [key]: held });
+        return;
+      }
+    }
     applyShifts(shifts);
   };
 
@@ -1025,6 +1037,11 @@ export const useSortableList = <T,>(
   };
 
   // ── Build the internal object ─────────────────────────────────────
+  const flatDraggedItemStyle = useMemo(
+    () => StyleSheet.flatten(draggedItemStyle) ?? undefined,
+    [draggedItemStyle],
+  );
+
   const internal: SortableListInternal<T> = {
     id,
     horizontal,
@@ -1035,7 +1052,7 @@ export const useSortableList = <T,>(
     animationConfig,
     getItemSpan,
     inactiveItemStyle,
-    draggedItemStyle: StyleSheet.flatten(draggedItemStyle) ?? undefined,
+    draggedItemStyle: flatDraggedItemStyle,
     itemEntering,
     itemExiting,
     fixedKeys,
