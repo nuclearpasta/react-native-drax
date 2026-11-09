@@ -7,7 +7,8 @@ import {
   useSharedValue,
 } from 'react-native-reanimated';
 
-import { defaultAutoScrollIntervalLength } from '../params';
+import type { AutoScrollTimer } from '../autoScrollTimer';
+import { startAutoScrollTimer, stopAutoScrollTimer } from '../autoScrollTimer';
 import type { DraxViewMeasurements, Position } from '../types';
 import { useDraxId } from './useDraxId';
 
@@ -20,6 +21,8 @@ type DraxScrollHandlerArgs<T extends ScrollableComponents> = {
   onScrollProp?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
   externalRef?: Ref<T>;
   doScroll: RefObject<() => void>;
+  autoScrollIntervalLength: number;
+  autoScrollInitialDelay: number;
 };
 
 export const useDraxScrollHandler = <T extends ScrollableComponents>({
@@ -28,15 +31,15 @@ export const useDraxScrollHandler = <T extends ScrollableComponents>({
   onScrollProp,
   externalRef,
   doScroll,
+  autoScrollIntervalLength,
+  autoScrollInitialDelay,
 }: DraxScrollHandlerArgs<T>) => {
   const scrollRef = useRef<T>(null);
   const id = useDraxId(idProp);
   const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(
     undefined
   );
-  const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(
-    undefined
-  );
+  const scrollTimerRef = useRef<AutoScrollTimer>({});
   const contentSizeRef = useRef<Position | undefined>(undefined);
 
   const scrollPosition = useSharedValue<Position>({ x: 0, y: 0 });
@@ -76,25 +79,21 @@ export const useDraxScrollHandler = <T extends ScrollableComponents>({
   };
 
   const startScroll = useCallback(() => {
-    if (scrollIntervalRef.current) {
-      return;
-    }
-    doScroll.current();
-    scrollIntervalRef.current = setInterval(
+    startAutoScrollTimer(
+      scrollTimerRef.current,
       () => doScroll.current(),
-      defaultAutoScrollIntervalLength
+      autoScrollIntervalLength,
+      autoScrollInitialDelay
     );
-  }, [doScroll]);
+  }, [doScroll, autoScrollIntervalLength, autoScrollInitialDelay]);
 
   const stopScroll = useCallback(() => {
-    if (scrollIntervalRef.current) {
-      clearInterval(scrollIntervalRef.current);
-      scrollIntervalRef.current = undefined;
-    }
+    stopAutoScrollTimer(scrollTimerRef.current);
   }, []);
 
   useEffect(() => {
-    if (scrollIntervalRef.current) {
+    const { delay, interval } = scrollTimerRef.current;
+    if (delay !== undefined || interval !== undefined) {
       stopScroll();
       startScroll();
     }

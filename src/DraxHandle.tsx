@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { use } from 'react';
+import type { ComponentRef, ReactNode } from 'react';
+import { use, useLayoutEffect, useRef } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Reanimated from 'react-native-reanimated';
@@ -30,6 +30,23 @@ export interface DraxHandleProps {
  */
 export function DraxHandle({ children, style }: DraxHandleProps) {
   const ctx = use(DraxHandleContext);
+  const handleRef = useRef<ComponentRef<typeof Reanimated.View>>(null);
+
+  // The gesture event reports the touch relative to this handle. Store the
+  // handle's offset within the DraxView so the drag can compute the grab offset.
+  const measureHandle = () => {
+    const handle = handleRef.current;
+    const view = ctx?.viewRef.current;
+    if (!handle || !view) return;
+    handle.measureLayout(
+      view,
+      (x, y) => {
+        ctx.handleOffsetSV.value = { x, y };
+      },
+      () => {}
+    );
+  };
+  useLayoutEffect(measureHandle);
 
   if (!ctx) {
     // No context = either misconfigured, or rendering inside hover overlay
@@ -44,7 +61,7 @@ export function DraxHandle({ children, style }: DraxHandleProps) {
 
   return (
     <GestureDetector gesture={ctx.gesture}>
-      <Reanimated.View style={style}>
+      <Reanimated.View ref={handleRef} style={style} onLayout={measureHandle} collapsable={false}>
         {children}
       </Reanimated.View>
     </GestureDetector>
