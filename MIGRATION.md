@@ -291,14 +291,17 @@ hover:
 
 - Cancelled while still over the list: `onMonitorDragEnd({ cancelled: true })`
   (no Drop).
-- Finger leaves the list first: `onMonitorDragExit` (no End on that monitor).
+- The drag leaves the list first (hover centre more than 100 pt outside it):
+  `onMonitorDragExit` (no End on that monitor).
 - Cancelled over a receptive view: that receiver also gets
   `onReceiveDragExit({ cancelled: true })`.
 
 Enter sets the highlight; Exit, End and Drop clear it. That covers normal
 cancels. An edge case (monitor entered, then gone from under a still finger
-with no move in between) can skip both Exit and End — see
-[Coming in 1.2.0-rc.2 (opt-in)](#coming-in-120-rc2-opt-in).
+with no move in between) can skip both Exit and End — there is no workaround
+yet. A later release candidate is planned to send Exit to monitors that are
+missing at release. Separately, if the dragged view unmounts mid-drag, every
+monitor callback is skipped.
 
 ## 4. List callbacks
 
@@ -561,7 +564,8 @@ use the `hover*Style` props).
   never reports an external item. The list monitor does **not** force a
   snap-back for a foreign drag: it returns no snap target
   (`SortableContainer` `handleInternalDragEnd`). What you see depends on the
-  hit under the finger at release:
+  receiver hit at release (under the dragged view's centre by default; see
+  `collisionAlgorithm`):
   - Over a receptive row or container, the default snap is that receiver's
     centre (`useCallbackDispatch`).
   - Over nothing receptive, there is no Drop. `onMonitorDragDrop` is **not**
@@ -612,22 +616,8 @@ use the `hover*Style` props).
 
 ### Coming in 1.2.0-rc.2 (opt-in)
 
-Planned opt-ins. All are optional and additive, and the names may still change
-before 1.2.0-rc.2 ships:
-
-- `draggedItemStyle?: StyleProp<ViewStyle>` on `DraxList` and `useSortableList`:
-  the style of the dragged row's slot while the hover is out. The default stays
-  `{ opacity: 0 }`; pass e.g. `{ opacity: 0.3 }` for a faded in-place row.
-- `autoScrollForeignDrags?: boolean` on `DraxList` and `SortableContainer`
-  (default `false`): when `true`, drags from another list auto-scroll this list
-  even without `onExternalDrop`.
-- `renderItemHoverContent?: (props) => ReactNode` on `DraxList`: a per-row hover
-  that gets the usual `DraxRenderHoverContentProps` plus `{ item, index }`. It
-  falls back to `itemDraxViewProps.renderHoverContent`, then the default hover.
-- `hoverContentMeasurements?: { x, y, width, height }` on the dragged view's
-  event data: the hover's own measured frame (relative to the provider root),
-  so it fits custom hover content. `hoverMeasurements` keeps its current meaning
-  (the dragged view's size).
+1.2.0-rc.2 adds a few opt-in list props; they'll be documented here when they
+ship.
 
 ## 8. Quick reference
 
