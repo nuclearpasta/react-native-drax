@@ -16,6 +16,7 @@ import type {
   DraxViewProps,
   SortableAnimationConfig,
   SortableDragEndEvent,
+  SortableExternalDropEvent,
   SortableDragPositionChangeEvent,
   SortableDragStartEvent,
   SortableReorderEvent,
@@ -69,6 +70,8 @@ export interface DraxListProps<T> extends DraxAutoScrollProps {
   onDragPositionChange?: (event: SortableDragPositionChangeEvent<T>) => void;
   /** Callback when drag ends */
   onDragEnd?: (event: SortableDragEndEvent<T>) => void;
+  /** Opt-in. Called when a foreign view is dropped inside the list. See `useSortableList`. */
+  onExternalDrop?: (event: SortableExternalDropEvent) => void;
 }
 
 /**
@@ -110,6 +113,7 @@ export const DraxList = <T,>({
   onDragStart,
   onDragPositionChange,
   onDragEnd,
+  onExternalDrop,
   style,
   horizontal,
   numColumns,
@@ -141,6 +145,7 @@ export const DraxList = <T,>({
     onDragStart,
     onDragPositionChange,
     onDragEnd,
+    onExternalDrop,
   });
 
   const listRef = useRef<FlatList<T>>(null);
