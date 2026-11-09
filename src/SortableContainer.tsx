@@ -214,7 +214,12 @@ export const SortableContainer = ({
   // calls the latest version, even if it has a stale _internal reference
   // (e.g., after MATCH path skips FlatList re-render).
   useLayoutEffect(() => {
-    sortable._internal.onItemSnapEnd = finalizeDrag;
+    const ref = sortable._internal.onItemSnapEndRef;
+    ref.current = finalizeDrag;
+    return () => {
+      // Only clear our own registration: a newer render may already own it.
+      if (ref.current === finalizeDrag) ref.current = undefined;
+    };
   }, [sortable._internal, finalizeDrag]);
 
   // ── Auto-scroll ─────────────────────────────────────────────────────
