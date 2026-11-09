@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { useAnimatedRef, useSharedValue } from 'react-native-reanimated';
 
 import { DebugOverlay } from './DebugOverlay';
+import type { DraxInternalContextValue } from './DraxContext';
 import { DraxContext } from './DraxContext';
 import type { FlattenedHoverStyles } from './HoverLayer';
 import { HoverLayer } from './HoverLayer';
@@ -11,7 +12,6 @@ import { useCallbackDispatch } from './hooks/useCallbackDispatch';
 import { useSpatialIndex } from './hooks/useSpatialIndex';
 import type {
   DragPhase,
-  DraxContextValue,
   DraxProviderProps,
   Position,
 } from './types';
@@ -51,6 +51,10 @@ export const DraxProvider = ({
   // Animated dimensions for hover content during cross-container transfer.
   // x = width, y = height. {0,0} = no constraint (natural size).
   const hoverDimsSV = useSharedValue<Position>({ x: 0, y: 0 });
+  // Receiver-hop dedupe + backpressure (see useDragGesture onUpdate).
+  const needsUpdatesSV = useSharedValue(true);
+  const jsPendingSV = useSharedValue(false);
+  const lastMonitorKeySV = useSharedValue('');
 
   // ── Dropped items tracking ─────────────────────────────────────────
   const droppedItemsRef = useRef<Map<string, Set<string>>>(new Map());
@@ -94,6 +98,8 @@ export const DraxProvider = ({
       hoverPositionSV,
       grabOffsetSV,
       startPositionSV,
+      needsUpdatesSV,
+      jsPendingSV,
       setHoverContent,
       hoverReadySV,
       hoverClearDeferredRef,
@@ -119,7 +125,7 @@ export const DraxProvider = ({
   }, [rootOffsetSV, rootViewRef]);
 
   // ── Stable context value ───────────────────────────────────────────
-  const contextValue = useMemo<DraxContextValue>(
+  const contextValue = useMemo<DraxInternalContextValue>(
     () => ({
       // SharedValues
       draggedIdSV,
@@ -136,6 +142,9 @@ export const DraxProvider = ({
       hoverReadySV,
       hoverClearDeferredRef,
       hoverDimsSV,
+      needsUpdatesSV,
+      jsPendingSV,
+      lastMonitorKeySV,
 
       // Registry methods
       registerView,
@@ -174,6 +183,9 @@ export const DraxProvider = ({
       hoverReadySV,
       hoverClearDeferredRef,
       hoverDimsSV,
+      needsUpdatesSV,
+      jsPendingSV,
+      lastMonitorKeySV,
       registerView,
       unregisterView,
       updateMeasurements,

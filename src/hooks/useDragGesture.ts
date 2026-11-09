@@ -6,12 +6,13 @@ import { runOnJS } from 'react-native-worklets';
 import { useDraxPanGesture } from '../compat';
 import { computeAbsolutePositionWorklet, computeGrabOffsetWorklet, hitTestWorklet } from '../math';
 import type { Position } from '../types';
-import { useDraxContext } from './useDraxContext';
+import { useDraxInternalContext } from './useDraxContext';
 
 /**
  * Creates a Pan gesture for a draggable DraxView.
- * Hit-testing runs entirely on the UI thread — zero runOnJS per frame
- * unless the receiver changes.
+ * Hit-testing runs entirely on the UI thread. It hops to JS when the receiver
+ * or the monitor set changes. Otherwise it hops only while JS reports that
+ * continuous updates are needed, with at most one such hop in flight.
  *
  * On RNGH v3, `enabledSV` and `longPressDelaySV` are SharedValues that
  * reconfigure the native gesture handler on the UI thread — zero JS bridge.
@@ -42,10 +43,13 @@ export const useDragGesture = (
     startPositionSV,
     rootOffsetSV,
     rootViewRef,
+    needsUpdatesSV,
+    jsPendingSV,
+    lastMonitorKeySV,
     handleDragStart,
     handleReceiverChange,
     handleDragEnd,
-  } = useDraxContext();
+  } = useDraxInternalContext();
 
   // On web, RNGH defaults touch-action to 'none' which blocks native scroll.
   // Allow the scroll direction so users can scroll before long-press activates.
@@ -132,6 +136,10 @@ export const useDragGesture = (
       // Reset receiver and rejection cache
       receiverIdSV.value = '';
       rejectedReceiverIdSV.value = '';
+      // Until JS answers, hop on every update as if continuous updates are needed.
+      needsUpdatesSV.value = true;
+      jsPendingSV.value = false;
+      lastMonitorKeySV.value = '';
 
       // Bounce to JS for callback dispatch + hover content setup
       runOnJS(handleDragStart)(
@@ -207,21 +215,37 @@ export const useDragGesture = (
         rejectedReceiverIdSV.value = '';
       }
 
-      // Always bounce to JS for callback dispatch.
-      // handleReceiverChange safely handles same-receiver calls (skips exit/enter)
-      // and dispatches continuous callbacks (onDrag, onDragOver, onReceiveDragOver)
-      // plus monitor position updates for slot detection.
+      // Bounce to JS for callback dispatch. A receiver or monitor set change always
+      // hops (enter/exit). Otherwise hop only if JS said the current state needs
+      // continuous callbacks (onDrag, onDragOver, onReceiveDragOver, monitors), and
+      // only if the previous such hop has run, so the JS queue stays bounded and a
+      // drop is never queued behind a backlog of stale updates.
       const oldReceiver = receiverIdSV.value;
       const receiverChanged = candidateReceiverId !== oldReceiver;
       if (receiverChanged) {
         receiverIdSV.value = candidateReceiverId;
       }
-      runOnJS(handleReceiverChange)(
-        oldReceiver,
-        candidateReceiverId,
-        hitTestPos,
-        result.monitorIds
-      );
+      const monitorKey = result.monitorIds.join('|');
+      const monitorsChanged = monitorKey !== lastMonitorKeySV.value;
+      if (monitorsChanged) {
+        lastMonitorKeySV.value = monitorKey;
+      }
+      if (receiverChanged || monitorsChanged) {
+        runOnJS(handleReceiverChange)(
+          oldReceiver,
+          candidateReceiverId,
+          hitTestPos,
+          result.monitorIds
+        );
+      } else if (needsUpdatesSV.value && !jsPendingSV.value) {
+        jsPendingSV.value = true;
+        runOnJS(handleReceiverChange)(
+          oldReceiver,
+          candidateReceiverId,
+          hitTestPos,
+          result.monitorIds
+        );
+      }
     },
     onDeactivate: (_event, didSucceed) => {
       'worklet';

@@ -35,7 +35,7 @@ const mockCtx = {
   handleReceiverChange: jest.fn(),
   handleDragEnd: mockHandleDragEnd,
 };
-jest.mock('../useDraxContext', () => ({ useDraxContext: () => mockCtx }));
+jest.mock('../useDraxContext', () => ({ useDraxInternalContext: () => mockCtx }));
 
 const event = { x: 0, y: 0, absoluteX: 0, absoluteY: 0 };
 

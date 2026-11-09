@@ -61,6 +61,8 @@ interface CallbackDispatchDeps {
   hoverPositionSV: SharedValue<Position>;
   grabOffsetSV: SharedValue<Position>;
   startPositionSV: SharedValue<Position>;
+  needsUpdatesSV: SharedValue<boolean>;
+  jsPendingSV: SharedValue<boolean>;
   setHoverContent: (content: ReactNode | null) => void;
   hoverReadySV: SharedValue<boolean>;
   hoverClearDeferredRef: { current: boolean };
@@ -75,8 +77,9 @@ interface CallbackDispatchDeps {
 
 /**
  * Provides JS-thread callback dispatch functions that are invoked via runOnJS
- * from gesture worklets. These handle ~5 calls per drag (start, receiver changes, end),
- * NOT per frame.
+ * from gesture worklets. Start and end run once per drag. handleReceiverChange
+ * runs on every receiver or monitor set change, plus at most one in-flight
+ * continuous update while continuous callbacks or monitors need one.
  */
 export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
   const {
@@ -88,6 +91,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     hoverPositionSV,
     grabOffsetSV,
     startPositionSV,
+    needsUpdatesSV,
+    jsPendingSV,
     setHoverContent,
     hoverReadySV,
     onProviderDragStart,
@@ -264,7 +269,23 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     currentMonitorIdsRef.current = [];
   };
 
-  /** Called via runOnJS on every gesture update for callback dispatch.
+  /** Whether an unchanged receiver + monitor set still needs per-update dispatch:
+   *  monitors, onDragOver/onReceiveDragOver (over a receiver), or onDrag/provider
+   *  onDrag (no receiver). */
+  const needsContinuousUpdates = (
+    draggedId: string,
+    receiverId: string,
+    monitorCount: number
+  ) => {
+    if (monitorCount > 0) return true;
+    const draggedEntry = getViewEntry(draggedId);
+    if (!draggedEntry) return false;
+    if (!receiverId) return !!(draggedEntry.props.onDrag || onProviderDrag);
+    return !!(draggedEntry.props.onDragOver || getViewEntry(receiverId)?.props.onReceiveDragOver);
+  };
+
+  /** Called via runOnJS from the drag worklet on every receiver or monitor set change,
+   *  and on updates while needsUpdatesSV is true (at most one in flight).
    *  Handles: enter/exit (on receiver change), onDragOver/onReceiveDragOver
    *  (continuous, same receiver), onDrag (continuous, no receiver), and monitors. */
   const handleReceiverChange = (
@@ -273,24 +294,18 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     absolutePosition: Position,
     monitorIds?: string[]
   ) => {
+    jsPendingSV.value = false;
     const draggedId = draggedIdSV.value;
+
+    const newMonitorIds = monitorIds ?? [];
+    const prevMonitorIds = currentMonitorIdsRef.current;
+    const needsUpdates = needsContinuousUpdates(draggedId, newReceiverId, newMonitorIds.length);
+    if (needsUpdatesSV.value !== needsUpdates) needsUpdatesSV.value = needsUpdates;
 
     // Fast path: receiver unchanged, no monitors (now AND previously),
     // and no continuous callbacks → skip event data construction entirely.
-    const newMonitorIds = monitorIds ?? [];
-    const prevMonitorIds = currentMonitorIdsRef.current;
-    if (
-      oldReceiverId === newReceiverId &&
-      newMonitorIds.length === 0 &&
-      prevMonitorIds.length === 0
-    ) {
-      const draggedEntry = getViewEntry(draggedId);
-      if (!draggedEntry) return;
-      const hasOnDragOver = newReceiverId && draggedEntry.props.onDragOver;
-      const receiverEntry = newReceiverId ? getViewEntry(newReceiverId) : undefined;
-      const hasOnReceiveDragOver = newReceiverId && receiverEntry?.props.onReceiveDragOver;
-      const hasOnDrag = !newReceiverId && (draggedEntry.props.onDrag || onProviderDrag);
-      if (!hasOnDragOver && !hasOnReceiveDragOver && !hasOnDrag) return;
+    if (oldReceiverId === newReceiverId && prevMonitorIds.length === 0 && !needsUpdates) {
+      return;
     }
 
     const dragged = buildDraggedViewData(draggedId, absolutePosition);
@@ -349,6 +364,9 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       // If rejected, tell the gesture worklet to skip this receiver on future frames.
       // Also clear receiverIdSV so animated styles don't flash the receiving state.
       if (!acceptedReceiverId) {
+        // The worklet now sees no receiver: decide continuous updates for that state.
+        const needsUpdatesRejected = needsContinuousUpdates(draggedId, '', newMonitorIds.length);
+        if (needsUpdates !== needsUpdatesRejected) needsUpdatesSV.value = needsUpdatesRejected;
         runOnUI((
           _receiverIdSV: typeof deps.receiverIdSV,
           _rejectedReceiverIdSV: typeof deps.rejectedReceiverIdSV,
