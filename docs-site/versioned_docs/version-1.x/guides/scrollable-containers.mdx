@@ -33,7 +33,9 @@ Control the auto-scroll behavior:
 
 ```tsx
 <DraxScrollView
-  autoScrollIntervalLength={200}     // ms between scroll jumps (default: 200)
+  autoScrollEnabled={true}           // set false to turn auto-scroll off
+  autoScrollInitialDelay={0}         // ms to stay in the edge band before the first jump (default: 0)
+  autoScrollIntervalLength={250}     // ms between scroll jumps (default: 250)
   autoScrollJumpRatio={0.2}          // scroll jump as fraction of container (default: 0.2)
   autoScrollBackThreshold={0.1}      // start back-scrolling at 10% from top
   autoScrollForwardThreshold={0.9}   // start forward-scrolling at 90% from bottom
@@ -54,18 +56,21 @@ Control the auto-scroll behavior:
 />
 ```
 
-You can customize auto-scroll thresholds in `useSortableList`:
+You can customize auto-scroll in `useSortableList`, or pass the same options to `DraxList`:
 
 ```tsx
 const sortable = useSortableList({
   data: items,
   keyExtractor: (item) => item.id,
   onReorder: ({ data }) => setItems(data),
+  autoScrollInitialDelay: 600, // a drag passing through the edge band doesn't scroll
   autoScrollJumpRatio: 0.15,
   autoScrollBackThreshold: 0.1,
   autoScrollForwardThreshold: 0.9,
 });
 ```
+
+A sortable list auto-scrolls only for its own items. A drag from outside the list (a `DraxView`, or an item from another list) doesn't scroll it, except for the target column of a `SortableBoardContainer` transfer.
 
 ## Next Steps
 

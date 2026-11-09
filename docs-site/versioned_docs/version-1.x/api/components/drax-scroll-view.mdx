@@ -36,8 +36,10 @@ Extends all `ScrollViewProps` plus:
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `id` | `string` | auto-generated | DraxView id |
-| `autoScrollIntervalLength` | `number` | `200` | ms between auto-scroll jumps |
-| `autoScrollJumpRatio` | `number` | `0.2` | Jump distance as fraction of container |
+| `autoScrollEnabled` | `boolean` | `true` | Auto-scroll when a drag nears an edge |
+| `autoScrollIntervalLength` | `number` | `250` | ms between auto-scroll jumps |
+| `autoScrollInitialDelay` | `number` | `0` | ms a drag must stay in the edge band before the first jump. Leaving the band resets it |
+| `autoScrollJumpRatio` | `number` | `0.2` | Jump distance as fraction of the container (viewport) size |
 | `autoScrollBackThreshold` | `number` | `0.1` | Start back-scroll at this ratio |
 | `autoScrollForwardThreshold` | `number` | `0.9` | Start forward-scroll at this ratio |
 

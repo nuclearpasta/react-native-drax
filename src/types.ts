@@ -598,9 +598,18 @@ export interface AutoScrollState {
 
 /** Props for auto-scroll options */
 export interface DraxAutoScrollProps {
+  /** Auto-scroll when a drag nears the container's edge. @default true */
+  autoScrollEnabled?: boolean;
+  /** Time in ms between auto-scroll jumps. @default 250 */
   autoScrollIntervalLength?: number;
+  /** Time in ms a drag must stay in the edge band before the first jump.
+   *  Leaving the band resets it. @default 0 */
+  autoScrollInitialDelay?: number;
+  /** Auto-scroll jump distance as fraction of container size. @default 0.2 */
   autoScrollJumpRatio?: number;
+  /** Drag position threshold for back auto-scroll. @default 0.1 */
   autoScrollBackThreshold?: number;
+  /** Drag position threshold for forward auto-scroll. @default 0.9 */
   autoScrollForwardThreshold?: number;
 }
 
@@ -709,7 +718,7 @@ export interface DropIndicatorProps {
 }
 
 /** Options for useSortableList hook */
-export interface UseSortableListOptions<T> {
+export interface UseSortableListOptions<T> extends DraxAutoScrollProps {
   /** Optional explicit DraxView id for the container */
   id?: string;
   data: T[];
@@ -725,12 +734,6 @@ export interface UseSortableListOptions<T> {
   longPressDelay?: number;
   /** Lock item drags to the list's main axis. @default false */
   lockToMainAxis?: boolean;
-  /** Auto-scroll jump distance as fraction of container size. @default 0.2 */
-  autoScrollJumpRatio?: number;
-  /** Drag position threshold for back auto-scroll. @default 0.1 */
-  autoScrollBackThreshold?: number;
-  /** Drag position threshold for forward auto-scroll. @default 0.9 */
-  autoScrollForwardThreshold?: number;
   /** Animation config for item shift animations. @default 'default' */
   animationConfig?: SortableAnimationConfig;
   /** Returns the grid span for an item. Enables non-uniform grid layout
@@ -797,6 +800,9 @@ export interface SortableListInternal<T> {
   scrollPosition: SharedValue<Position>;
   containerMeasurementsRef: RefObject<DraxViewMeasurements | undefined>;
   contentSizeRef: RefObject<Position | undefined>;
+  autoScrollEnabled: boolean;
+  autoScrollIntervalLength: number;
+  autoScrollInitialDelay: number;
   autoScrollJumpRatio: number;
   autoScrollBackThreshold: number;
   autoScrollForwardThreshold: number;

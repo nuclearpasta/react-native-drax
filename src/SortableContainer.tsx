@@ -8,7 +8,9 @@ import { runOnJS, runOnUI } from 'react-native-worklets';
 import { DraxView } from './DraxView';
 import { useDraxContext } from './hooks/useDraxContext';
 import { useWebScrollFreeze } from './hooks/useWebScrollFreeze';
-import { defaultAutoScrollIntervalLength, ITEM_SHIFT_ANIMATION_DURATION } from './params';
+import type { AutoScrollTimer } from './autoScrollTimer';
+import { startAutoScrollTimer, stopAutoScrollTimer } from './autoScrollTimer';
+import { ITEM_SHIFT_ANIMATION_DURATION } from './params';
 import { useSortableBoardContext } from './SortableBoardContext';
 import type {
   DropIndicatorProps,
@@ -73,6 +75,9 @@ export const SortableContainer = ({
     scrollPosition,
     containerMeasurementsRef,
     contentSizeRef,
+    autoScrollEnabled,
+    autoScrollIntervalLength,
+    autoScrollInitialDelay,
     autoScrollJumpRatio,
     autoScrollBackThreshold,
     autoScrollForwardThreshold,
@@ -118,9 +123,7 @@ export const SortableContainer = ({
 
   const itemCount = rawData.length;
   const scrollStateRef = useRef(AutoScrollDirection.None);
-  const scrollIntervalRef = useRef<ReturnType<typeof setInterval> | undefined>(
-    undefined
-  );
+  const scrollTimerRef = useRef<AutoScrollTimer>({});
   const draggedToIndex = useRef<number | undefined>(undefined);
   const jitterExceededRef = useRef(false);
   // Track last receiver that triggered a reorder to prevent oscillation.
@@ -272,19 +275,16 @@ export const SortableContainer = ({
   };
 
   const startScroll = () => {
-    if (scrollIntervalRef.current) return;
-    doScroll();
-    scrollIntervalRef.current = setInterval(
+    startAutoScrollTimer(
+      scrollTimerRef.current,
       doScroll,
-      defaultAutoScrollIntervalLength
+      autoScrollIntervalLength,
+      autoScrollInitialDelay
     );
   };
 
   const stopScroll = () => {
-    if (scrollIntervalRef.current) {
-      clearInterval(scrollIntervalRef.current);
-      scrollIntervalRef.current = undefined;
-    }
+    stopAutoScrollTimer(scrollTimerRef.current);
   };
 
   // ── Internal drag end handler ───────────────────────────────────────
@@ -540,6 +540,7 @@ export const SortableContainer = ({
     }
 
     // Auto-scroll
+    if (!autoScrollEnabled) return;
     const ratio = horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y;
     if (ratio > autoScrollBackThreshold && ratio < autoScrollForwardThreshold) {
       scrollStateRef.current = AutoScrollDirection.None;
@@ -556,10 +557,6 @@ export const SortableContainer = ({
 
   const onMonitorDragExit = (eventData: DraxMonitorEventData) => {
     stopScroll();
-    if (scrollIntervalRef.current) {
-      draxViewProps?.onMonitorDragExit?.(eventData);
-      return;
-    }
     handleInternalDragEnd(eventData, false);
     draxViewProps?.onMonitorDragExit?.(eventData);
   };

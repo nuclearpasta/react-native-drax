@@ -70,6 +70,13 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - No ghost shifts, no effectiveData bypass — both columns reset naturally via useLayoutEffect when parent updates data
 - `SortableContainer` has minimal board awareness: auto-registration + finalizeDrag delegation + drag end guards
 
+## Auto-Scroll
+
+- Props (`DraxAutoScrollProps`, shared by `DraxScrollView`, `useSortableList`, `DraxList`): `autoScrollEnabled` (true), `autoScrollIntervalLength` (250), `autoScrollInitialDelay` (0), `autoScrollJumpRatio` (0.2 of the container/viewport), `autoScrollBackThreshold`/`ForwardThreshold` (0.1/0.9). `DraxList` forwards them to `useSortableList`.
+- Timing lives in `src/autoScrollTimer.ts` (`startAutoScrollTimer`/`stopAutoScrollTimer`): dwell `initialDelay`, then jump and repeat every `intervalLength`. Leaving the band calls stop, so the dwell restarts.
+- `SortableContainer` auto-scrolls and fires `onDragPositionChange` only for its own items. A foreign drag returns early, except a board transfer targeting this column (`transferState.targetId === id`), which still auto-scrolls.
+- Jest: `src/__tests__/autoScroll.test.tsx` calls `SortableContainer`/`DraxScrollView` as plain functions with React hooks stubbed and reads the monitor handlers off the returned `DraxView` element.
+
 ## Drag Handles
 
 - `DraxView` accepts `dragHandle` prop — when true, the gesture is NOT attached to the view's GestureDetector
