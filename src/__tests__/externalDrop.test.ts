@@ -8,7 +8,8 @@ import type {
   SortableItemMeasurement,
 } from '../types';
 
-// No React renderer is installed, so the hook and the container run as plain
+// No React renderer is a devDependency on this branch's base (main adds
+// react-test-renderer in #310), so the hook and the container run as plain
 // functions on a minimal hook store: hooks keep their value by call order,
 // effects run after each pass, and a setState triggers another pass.
 let mockSlots: { v: unknown }[] = [];
@@ -81,7 +82,11 @@ const LIST_ID = 'list';
 const ITEMS = ['A', 'B', 'C'];
 
 // Three 50pt rows with 10pt gaps: A 0-50, B 60-110, C 120-170.
-function renderList(onExternalDrop?: jest.Mock) {
+function renderList(
+  onExternalDrop?: jest.Mock,
+  items = ITEMS,
+  isMeasured = (_index: number) => true
+) {
   mockSlots = [];
   let props = {} as Props;
   for (let pass = 0; pass < 10; pass++) {
@@ -90,12 +95,13 @@ function renderList(onExternalDrop?: jest.Mock) {
     // eslint-disable-next-line react-hooks/rules-of-hooks -- runs on the mock hook store
     const sortable = useSortableList({
       id: LIST_ID,
-      data: ITEMS,
+      data: items,
       keyExtractor: (item: string) => item,
       onReorder: () => {},
       onExternalDrop,
     });
-    ITEMS.forEach((key, index) => {
+    items.forEach((key, index) => {
+      if (!isMeasured(index)) return;
       sortable._internal.itemMeasurements.current.set(key, {
         key,
         index,
@@ -191,6 +197,29 @@ describe('onExternalDrop', () => {
       .boardInternal.transferState.current = { targetId: LIST_ID };
     dropAt(props, 100);
     expect(onExternalDrop).not.toHaveBeenCalled();
+  });
+
+  // A virtualized list only measures the rows it has mounted.
+  describe('with unmeasured rows (20 rows)', () => {
+    const LONG = Array.from({ length: 20 }, (_, i) => `R${i}`);
+
+    it.each([
+      ['top half of row 10', 10 * 60 + 10, 10],
+      ['bottom half of row 10', 10 * 60 + 40, 11],
+      ['gap after row 10', 10 * 60 + 55, 11],
+      ['bottom half of the last row', 19 * 60 + 40, 20],
+    ])('fires with the index of the measured row for a drop on the %s', (_, y, toIndex) => {
+      const onExternalDrop = jest.fn();
+      dropAt(renderList(onExternalDrop, LONG, (i) => i !== 0), y, { ratioY: 0.5 });
+      expect(onExternalDrop).toHaveBeenCalledTimes(1);
+      expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(toIndex);
+    });
+
+    it('does not fire when no measured row is under the drop', () => {
+      const onExternalDrop = jest.fn();
+      dropAt(renderList(onExternalDrop, LONG, (i) => i >= 10), 2 * 60 + 10, { ratioY: 0.5 });
+      expect(onExternalDrop).not.toHaveBeenCalled();
+    });
   });
 
   it('does not fire for a drop outside the list bounds', () => {

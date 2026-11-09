@@ -762,7 +762,11 @@ export interface UseSortableListOptions<T> {
   onDragEnd?: (event: SortableDragEndEvent<T>) => void;
   /** Opt-in. Called when a view that is not one of this list's items (and not
    *  a SortableBoard transfer) is dropped inside the list. The library does
-   *  not change the data or shift items: insert the item at `toIndex` yourself. */
+   *  not change the data or shift items: insert the item at `toIndex` yourself.
+   *  While some rows are unmeasured (not mounted by a virtualized list), the
+   *  index is known only for a drop on a measured row (in a single-column
+   *  list, also in its gap to a measured next row, or before a measured first
+   *  row / after a measured last row); any other drop is not reported. */
   onExternalDrop?: (event: SortableExternalDropEvent) => void;
 }
 
