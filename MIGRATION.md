@@ -306,6 +306,10 @@ forwarding.
 From 1.2.0, `DraxListProps` and `UseSortableListOptions` extend
 `DraxAutoScrollProps`, and `DraxList` forwards every auto-scroll prop into
 `useSortableList`. Leaving the edge band resets `autoScrollInitialDelay`.
+Because it defaults to `0`, autoscroll starts as soon as the drag enters
+the edge band, as in 1.1. A dwell delay is opt-in: set
+`autoScrollInitialDelay` (e.g. `300`) to wait that long in the band before
+the first jump.
 
 ```tsx
 // from 1.2.0 — DraxList forwards DraxAutoScrollProps
@@ -763,4 +767,4 @@ use the `hover*Style` props).
 | `x.data.protocol.payload` | `x.payload` |
 | `x.data.measurements` / `absoluteMeasurements` / `hoverMeasurements` | `x.measurements?` / **from 1.2.0** `x.absoluteMeasurements?` (layout position on `dragged`; derive from offsets in earlier 1.x; see [5.3](#53-dragabsoluteposition-at-drop)) / **from 1.2.0** `dragged.hoverMeasurements?` (`hoverPosition` + dragged view size) |
 | `viewState.releasedDragTracking.grabOffset` | **No equivalent** on `DraxViewState`. Keep `dragged.grabOffset` from `onDragEnd` / `onDragDrop` in a ref. **From 1.2.0:** also `dragged.grabOffset?` on `onSnapEnd` / `onReceiveSnapEnd`. |
-| Autoscroll | Jump/threshold since 1.x (1.0+). **From 1.2.0:** `autoScrollEnabled`, `autoScrollInitialDelay`, honoured `autoScrollIntervalLength`, and `DraxList` forwarding — see [3.6](#36-auto-scroll-props). |
+| Autoscroll | Jump/threshold since 1.x (1.0+). **From 1.2.0:** `autoScrollEnabled`, `autoScrollInitialDelay`, honoured `autoScrollIntervalLength`, and `DraxList` forwarding. `autoScrollInitialDelay` defaults to `0` (no dwell; opt in with e.g. `300`) — see [3.6](#36-auto-scroll-props). |
