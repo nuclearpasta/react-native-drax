@@ -297,6 +297,22 @@ export const SortableContainer = ({
     return () => stopAutoScrollTimer(timer);
   }, []);
 
+  // ── Undo the pending move ───────────────────────────────────────────
+
+  /** Puts the dragged item back at its start slot and neighbours back at
+   *  their committed shifts, so finalizeDrag commits nothing. */
+  const restoreStartOrder = () => {
+    if (dragStartIndexRef.current === undefined) return;
+    initPendingOrder();
+    draggedDisplayIndexRef.current = dragStartIndexRef.current;
+    shiftsJSRef.current = committedShiftsRef.current;
+    shiftsRef.value = committedShiftsRef.current;
+    // Forget the last move, so the oscillation guard in onMonitorDragOver
+    // does not block a move back in after re-entry.
+    lastMoveReceiverRef.current = undefined;
+    lastMoveDirectionRef.current = 0;
+  };
+
   // ── Internal drag end handler ───────────────────────────────────────
 
   const handleInternalDragEnd = (
@@ -318,12 +334,7 @@ export const SortableContainer = ({
     // and finalizeDrag commits nothing. Neighbours animate back to their
     // committed slots with the snap (initPendingOrder keeps instantClearSV
     // false); finalizeDrag clears the drag state once the snap ends.
-    if (cancelled && totalDragEnd && dragStartIndexRef.current !== undefined) {
-      initPendingOrder();
-      draggedDisplayIndexRef.current = dragStartIndexRef.current;
-      shiftsJSRef.current = committedShiftsRef.current;
-      shiftsRef.value = committedShiftsRef.current;
-    }
+    if (cancelled && totalDragEnd) restoreStartOrder();
 
     const { dragged, receiver } = eventData;
     const draggedPayload = isSortableItemPayload(dragged.payload)
@@ -591,6 +602,10 @@ export const SortableContainer = ({
   const onMonitorDragExit = (eventData: DraxMonitorEventData) => {
     stopScroll();
     handleInternalDragEnd(eventData, false);
+    // Our own item left the list: undo its pending move, so a drop outside
+    // (or over nothing) does not reorder. Re-entering recomputes the slot on
+    // the next drag-over. Board columns transfer items through exit.
+    if (eventData.dragged.parentId === id && !boardContext) restoreStartOrder();
     draxViewProps?.onMonitorDragExit?.(eventData);
   };
 
