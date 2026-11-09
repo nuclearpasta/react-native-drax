@@ -23,7 +23,7 @@ Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and
 
 **Platforms:** iOS, Android, Web
 
-**Supports (1.2):** Expo SDK 54 to 58, or bare React Native >= 0.78 with the New Architecture · React >= 19 · Reanimated 4 + `react-native-worklets` · Gesture Handler >= 2. See [Peer Dependencies](#-peer-dependencies).
+**Supports (1.2):** Expo 54-58 (tested on 58; 54-57 by peer ranges), or bare React Native >= 0.78 with the New Architecture · React >= 19 · Reanimated 4 + `react-native-worklets` · Gesture Handler >= 2. See [Peer Dependencies](#-peer-dependencies).
 
 ### ✨ Highlights
 
@@ -86,7 +86,7 @@ npm install react-native-reanimated react-native-worklets react-native-gesture-h
 | `react-native-gesture-handler` | >= 2.0.0 (v3 recommended) |
 | `react-native-worklets` | >= 0.3.0 (optional peer; required by Reanimated 4) |
 
-Drax 1.2 works with Expo SDK 54 through 58. Each of those SDKs ships React Native >= 0.81 with the New Architecture, Reanimated 4 and `react-native-worklets`, so `npx expo install react-native-reanimated react-native-worklets react-native-gesture-handler` picks compatible versions. Outside Expo, use React Native >= 0.78 with the New Architecture enabled.
+Drax 1.2 supports Expo SDK 54-58. It is tested on SDK 58; SDK 54-57 are covered by the peer ranges but not tested. Each of those SDKs ships React Native >= 0.81 with the New Architecture, Reanimated 4 and `react-native-worklets`, so `npx expo install react-native-reanimated react-native-worklets react-native-gesture-handler` picks compatible versions. Outside Expo, use React Native >= 0.78 with the New Architecture enabled.
 
 Drax imports from `react-native-worklets` directly, so it is listed as an optional peer (`>=0.3.0`, the same range Reanimated 4.0.0 declares); it is optional only because Reanimated 4 already requires it. Install the version matching your Reanimated release (see the [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/)). Reanimated 4 also requires the New Architecture. Gesture Handler v2 and v3 both work; v3 is recommended, and v2 is supported via a compatibility layer with reduced performance.
 
