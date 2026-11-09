@@ -72,11 +72,12 @@
     "@eslint/compat": "^2.0.2",
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
-    "@react-native/babel-preset": "0.83.1",
-    "@react-native/eslint-config": "0.83.1",
+    "@react-native/babel-preset": "0.88.1",
+    "@react-native/eslint-config": "0.88.1",
+    "@react-native/jest-preset": "0.88.1",
     "@release-it/conventional-changelog": "^10.0.4",
     "@types/jest": "^30.0.0",
-    "@types/react": "^19.2.10",
+    "@types/react": "^19.3.0",
     "@types/react-test-renderer": "^19",
     "commitlint": "^20.4.1",
     "del-cli": "^7.0.0",
@@ -86,13 +87,13 @@
     "jest": "^30.2.0",
     "lefthook": "^2.0.16",
     "prettier": "^3.8.1",
-    "react": "19.2.4",
-    "react-native": "0.83.1",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
     "react-native-builder-bob": "^0.40.13",
-    "react-native-gesture-handler": "^3.4.0",
-    "react-native-reanimated": "^4.3.0-rc.0",
-    "react-native-worklets": "^0.8.0-rc.0",
-    "react-test-renderer": "19.2.4",
+    "react-native-gesture-handler": "3.3.0",
+    "react-native-reanimated": "^4.7.1",
+    "react-native-worklets": "0.13.0",
+    "react-test-renderer": "19.3.0",
     "release-it": "^19.0.4",
     "typescript": "^5.9.3"
   },
@@ -139,7 +140,7 @@
     "useTabs": false
   },
   "jest": {
-    "preset": "react-native",
+    "preset": "@react-native/jest-preset",
     "modulePathIgnorePatterns": [
       "<rootDir>/example/node_modules",
       "<rootDir>/lib/"
@@ -179,5 +180,12 @@
       "release-it"
     ],
     "version": "0.56.0"
+  },
+  "resolutions": {
+    "@expo/cli/picomatch": "4.0.7",
+    "@expo/metro-config/picomatch": "4.0.7",
+    "@typescript-eslint/typescript-estree/tinyglobby": "0.2.17",
+    "picomatch@npm:^4.0.2": "4.0.7",
+    "release-it/tinyglobby": "0.2.17"
   }
 }
