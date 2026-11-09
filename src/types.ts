@@ -728,6 +728,16 @@ export interface SortableReorderEvent<T> {
   isExternalDrag: boolean;
 }
 
+/** Event data for a foreign drag dropped on a sortable list */
+export interface SortableExternalDropEvent {
+  /** Insertion index in the list's data, from 0 to data.length */
+  toIndex: number;
+  /** Payload of the dropped view */
+  payload: unknown;
+  /** Data about the dropped view */
+  dragged: DraxEventDraggedViewData;
+}
+
 /** Props for rendering a drop indicator in a sortable container */
 export interface DropIndicatorProps {
   /** Whether the indicator should be visible */
@@ -831,6 +841,7 @@ export interface SortableListInternal<T> {
   onDragStart?: (event: SortableDragStartEvent<T>) => void;
   onDragPositionChange?: (event: SortableDragPositionChangeEvent<T>) => void;
   onDragEnd?: (event: SortableDragEndEvent<T>) => void;
+  onExternalDrop?: (event: SortableExternalDropEvent) => void;
   onReorder: (event: SortableReorderEvent<T>) => void;
   getMeasurementByOriginalIndex: (originalIndex: number) => SortableItemMeasurement | undefined;
   /** Position of the drop indicator (animated) */
