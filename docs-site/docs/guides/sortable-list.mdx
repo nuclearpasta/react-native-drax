@@ -81,6 +81,8 @@ The `onReorder` callback receives detailed information:
 
 :::info Data Ownership
 Drax commits reorders internally. `onReorder` is a **notification** — you update your state, and when Drax detects the data matches what it already committed, it skips re-rendering (no double render).
+
+`onReorder` fires when the finger is released, before the snap animation (as in 0.11). The rows keep their shifted positions until the snap ends, and the list then renders your new data. Until then, `renderItem`'s `index` is still the row's position before the drag.
 :::
 
 ## Reorder Strategies

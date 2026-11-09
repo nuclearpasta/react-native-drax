@@ -148,7 +148,7 @@ export default function ReorderableList() {
           onReorder={({ data }) => {
             setAlphaData(data);
           }}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const tweaks = getItemStyleTweaks(item);
             return (
             <View
@@ -159,7 +159,7 @@ export default function ReorderableList() {
                 { backgroundColor: itemColor(tweaks.backgroundColor, isDark) },
               ]}
             >
-              <Text style={[styles.alphaText, { color: isDark ? '#e0e0e0' : '#333' }]}>{item}</Text>
+              <Text style={[styles.alphaText, { color: isDark ? '#e0e0e0' : '#333' }]}>{index + 1}. {item}</Text>
             </View>
             );
           }}
