@@ -407,6 +407,8 @@ v1.0.0 is a complete rewrite. Key changes:
 - **Reanimated 4 + Gesture Handler** — required peer dependencies (Reanimated 4 also needs `react-native-worklets`). Gesture Handler v2 and v3 both work; v3 is recommended, v2 is supported via a compat layer with reduced performance. See [Peer Dependencies](#-peer-dependencies) for exact ranges.
 - **New Architecture (Fabric)** compatible.
 
+For a step-by-step guide with before/after code (including the `0.11.0-alpha` `DraxList` / `DraxListItem` API), see [MIGRATION.md](MIGRATION.md).
+
 ## 📋 Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for a full list of changes.
