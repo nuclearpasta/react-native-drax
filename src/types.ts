@@ -135,12 +135,16 @@ export interface DraxEventDraggedViewData extends DraxEventViewData {
   hoverPosition: Position;
   /** The view's measurements in the DraxProvider root frame (the frame of
    *  `dragAbsolutePosition` and `hoverPosition`). This is the view's layout
-   *  position, not the hover's. Undefined if the view is not measured yet. */
+   *  position, not the hover's. Undefined if the view is not measured yet.
+   *  Set on start, enter, exit, drop and end events. Continuous over/drag
+   *  events only have it in a frame where an enter/exit also fires
+   *  (computing it every frame is costly). */
   absoluteMeasurements?: DraxViewMeasurements;
   /** The hover view's frame in the DraxProvider root frame: `hoverPosition`
    *  plus the dragged view's measured size. That is the size of the default
    *  hover copy and the size used for hit-testing. A `renderHoverContent` of
-   *  a different size is not measured. Undefined if the view is not measured yet. */
+   *  a different size is not measured. Undefined if the view is not measured yet.
+   *  Set on the same events as `absoluteMeasurements`. */
   hoverMeasurements?: DraxViewMeasurements;
 }
 

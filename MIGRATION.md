@@ -493,6 +493,11 @@ Other places that used `protocol`:
 | `x.data.parentId`, `x.data.scrollPosition` | `x.parentId`. Scroll position is not exposed. |
 | `onSnapEnd` grab offset | **From 1.2.0** as `dragged.grabOffset?: Position` on `DraxSnapEndEventData` (and `onReceiveSnapEnd`). Not top-level on the event. |
 
+On `dragged`, `absoluteMeasurements` and `hoverMeasurements` are set on start,
+enter, exit, drop and end events. Don't rely on them in continuous events
+(`onDrag`, `onDragOver`, `onReceiveDragOver`, `onMonitorDragOver`): there they
+are only set in a frame where an enter or exit also fires.
+
 `DraxViewMeasurements` gained a numeric `_transformDetected` field (1 when the
 view is positioned by transforms, as in LegendList). If you build
 `DraxViewMeasurements` objects yourself, add `_transformDetected: 0`.
