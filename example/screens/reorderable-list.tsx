@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DraxProvider, DraxList } from 'react-native-drax';
+import { DraxProvider, DraxList, DraxView } from 'react-native-drax';
 import type { SortableAnimationPreset } from 'react-native-drax';
 import { useTheme, itemColor } from '../components/ThemeContext';
 import { ExampleLinks } from '../components/ExampleLinks';
@@ -45,6 +45,13 @@ const getHeight = (alphaIndex: number) => {
   }
   return height;
 };
+
+/** Letter of a dropped list row (DraxList item payloads carry the item). */
+const getDroppedItem = (payload: unknown) =>
+  typeof payload === 'object' && payload !== null && 'item' in payload
+    && typeof payload.item === 'string'
+    ? payload.item
+    : undefined;
 
 const getItemStyleTweaks = (alphaItem: string) => {
   const alphaIndex = alphabet.indexOf(alphaItem);
@@ -145,6 +152,25 @@ export default function ReorderableList() {
             );
           }}
         />
+        <DraxView
+          testID="remove-zone"
+          style={[
+            styles.removeZone,
+            {
+              borderColor: theme.lineStrong,
+              backgroundColor: theme.surface,
+              marginBottom: insets.bottom + 8,
+            },
+          ]}
+          receivingStyle={styles.removeZoneReceiving}
+          onReceiveDragDrop={({ dragged }) => {
+            const item = getDroppedItem(dragged.payload);
+            if (item === undefined) return;
+            setAlphaData((data) => data.filter((d) => d !== item));
+          }}
+        >
+          <Text style={[styles.removeZoneText, { color: theme.muted }]}>Drop here to remove</Text>
+        </DraxView>
       </View>
     </DraxProvider>
   );
@@ -195,5 +221,20 @@ const styles = StyleSheet.create({
   },
   alphaText: {
     fontSize: 28,
+  },
+  removeZone: {
+    margin: 8,
+    paddingVertical: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+  },
+  removeZoneReceiving: {
+    borderColor: '#ef4444',
+  },
+  removeZoneText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
