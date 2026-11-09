@@ -374,7 +374,10 @@ export const SortableContainer = ({
       toPayload !== undefined &&
       computeFingerDisplacement(eventData) < FINGER_JITTER_THRESHOLD
     ) {
-      return undefined;
+      // The data changed mid-drag (the drag's indices were cleared): the
+      // dragged cell may now show another row, so snap back by the row's key.
+      const dataChanged = !externalDrag && dragStartIndexRef.current === undefined;
+      return dataChanged ? getDraggedRowSnapTarget(fromOriginalIndex) : undefined;
     }
 
     // Reorder happened — return snap target. Don't commit yet;
@@ -400,6 +403,13 @@ export const SortableContainer = ({
     }
 
     // No receiver — snap back to the dragged item's current position
+    return getDraggedRowSnapTarget(fromOriginalIndex);
+  };
+
+  /** Absolute position of the dragged row, found by its key (cells may be
+   *  keyed by index, so the dragged cell can show another row after a data
+   *  change). */
+  const getDraggedRowSnapTarget = (fromOriginalIndex: number) => {
     const containerMeasurements = containerMeasurementsRef.current;
     const fromMeas = draggedKeyRef.current !== undefined
       ? itemMeasurements.current.get(draggedKeyRef.current)
