@@ -139,6 +139,7 @@ export const SortableBoardContainer = <TItem,>({
     runOnUI((
       _srcDraggedItem: typeof source.draggedItem,
       _draggedIdSV: typeof draggedIdSV,
+      _dragPhaseSV: typeof dragPhaseSV,
       _shiftsRef: typeof source.shiftsRef,
       _key: string,
     ) => {
@@ -146,8 +147,12 @@ export const SortableBoardContainer = <TItem,>({
       const current = _shiftsRef.value;
       _shiftsRef.value = { ...current, [_key]: { x: -9999, y: -9999 } };
       _srcDraggedItem.value = -1;
-      _draggedIdSV.value = '';
-    })(source.draggedItem, draggedIdSV, source.shiftsRef, sourceItemKey);
+      // Only while this drag is still 'releasing'. A newer drag's onActivate
+      // resets the phase to 'idle' and owns draggedIdSV.
+      if (_dragPhaseSV.value === 'releasing') {
+        _draggedIdSV.value = '';
+      }
+    })(source.draggedItem, draggedIdSV, dragPhaseSV, source.shiftsRef, sourceItemKey);
 
     // 3. rAF → onTransfer → parent setState
     const gen = ++cleanupGenRef.current;
@@ -181,6 +186,9 @@ export const SortableBoardContainer = <TItem,>({
             _setHoverContent: typeof setHoverContent,
           ) => {
             'worklet';
+            // Only while this drag is still 'releasing'. A newer drag, even
+            // one outside this board (cleanupGenRef not bumped), owns these.
+            if (_dragPhaseSV.value !== 'releasing') return;
             _hoverReadySV.value = false;
             _dragPhaseSV.value = 'idle';
             _draggedIdSV.value = '';
