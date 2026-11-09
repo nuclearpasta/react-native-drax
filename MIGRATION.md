@@ -21,7 +21,7 @@ one lists a workaround where one exists.
 - [5. Event data](#5-event-data)
 - [6. Hover views and measurements](#6-hover-views-and-measurements)
 - [7. Behavior changes](#7-behavior-changes)
-  - [Coming in 1.2.0-rc.2 (opt-in)](#coming-in-120-rc2-opt-in)
+  - [More opt-ins](#more-opt-ins)
 - [8. Quick reference](#8-quick-reference)
 
 ## 1. Dependencies
@@ -614,10 +614,9 @@ use the `hover*Style` props).
   `scrollHorizontal` (web), `dragHandle` with `DraxHandle`, `dragBoundsRef`,
   `collisionAlgorithm`, `acceptsDrag`, `capacity` and `rejectOwnChildren`.
 
-### Coming in 1.2.0-rc.2 (opt-in)
+### More opt-ins
 
-1.2.0-rc.2 adds a few opt-in list props; they'll be documented here when they
-ship.
+More opt-in list props may come in a later release candidate.
 
 ## 8. Quick reference
 
