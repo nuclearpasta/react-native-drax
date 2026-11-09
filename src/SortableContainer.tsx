@@ -71,6 +71,7 @@ export const SortableContainer = ({
     setDraggedItem,
     resetDraggedItem,
     scrollPosition,
+    scrollPositionJSRef,
     containerMeasurementsRef,
     contentSizeRef,
     autoScrollJumpRatio,
@@ -93,6 +94,7 @@ export const SortableContainer = ({
     committedShiftsRef,
     cancelDrag,
     shiftsRef,
+    shiftsJSRef,
     instantClearSV,
     shiftsValidSV,
     getSlotFromPosition,
@@ -177,6 +179,7 @@ export const SortableContainer = ({
         pendingOrderRef.current = [];
 
         hoverClearDeferredRef.current = true;
+        shiftsJSRef.current = finalShifts;
         runOnUI((_shifts: Record<string, Position>) => {
           'worklet';
           instantClearSV.value = true;
@@ -235,11 +238,11 @@ export const SortableContainer = ({
     if (horizontal) {
       containerLength = containerMeasurements.width;
       contentLength = contentSize.x;
-      prevOffset = scrollPosition.value.x;
+      prevOffset = scrollPositionJSRef.current.x;
     } else {
       containerLength = containerMeasurements.height;
       contentLength = contentSize.y;
-      prevOffset = scrollPosition.value.y;
+      prevOffset = scrollPositionJSRef.current.y;
     }
 
     const jumpLength = containerLength * autoScrollJumpRatio;
@@ -311,6 +314,7 @@ export const SortableContainer = ({
     if (cancelled && totalDragEnd && dragStartIndexRef.current !== undefined) {
       initPendingOrder();
       draggedDisplayIndexRef.current = dragStartIndexRef.current;
+      shiftsJSRef.current = committedShiftsRef.current;
       shiftsRef.value = committedShiftsRef.current;
     }
 
@@ -388,8 +392,8 @@ export const SortableContainer = ({
     const fromMeas = getMeasurementByOriginalIndex(fromOriginalIndex);
     if (fromMeas && containerMeasurements) {
       return {
-        x: containerMeasurements.x + fromMeas.x - scrollPosition.value.x,
-        y: containerMeasurements.y + fromMeas.y - scrollPosition.value.y,
+        x: containerMeasurements.x + fromMeas.x - scrollPositionJSRef.current.x,
+        y: containerMeasurements.y + fromMeas.y - scrollPositionJSRef.current.y,
       };
     }
     return undefined;
@@ -476,8 +480,8 @@ export const SortableContainer = ({
     // Use the hover center's content position. Slot boundaries are based
     // on original layout positions (stable, never shift during drag).
     const contentPos = {
-      x: monitorOffset.x + scrollPosition.value.x,
-      y: monitorOffset.y + scrollPosition.value.y,
+      x: monitorOffset.x + scrollPositionJSRef.current.x,
+      y: monitorOffset.y + scrollPositionJSRef.current.y,
     };
     const targetSlot = getSlotFromPosition(contentPos);
 
