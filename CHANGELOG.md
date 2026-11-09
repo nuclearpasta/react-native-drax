@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
 
+## [Unreleased]
+
+### Added
+
+- **Auto-scroll config**: `autoScrollEnabled` (default `true`) and `autoScrollInitialDelay` (ms in the edge band before the first jump, default `0`) on `DraxScrollView`, `useSortableList` and `DraxList`. `DraxList` now forwards all auto-scroll props to `useSortableList`.
+
+### Changed
+
+- (BREAKING-TS) `DraxContextValue.rootViewRef` is now a Reanimated `AnimatedRef<View>` instead of `{ current: HostInstance | null }`, so the root view can be measured on the UI thread at drag start. `.current` still holds the host view.
+- `autoScrollIntervalLength` is now honoured by `DraxScrollView` and sortable lists (it was ignored and the interval was fixed at 250 ms).
+- A foreign drag over a sortable list (a `DraxView`, or an item from a list outside its board) no longer auto-scrolls the list, tracks slots, fires `onDragPositionChange` or shows the drop indicator. Board columns still react to items from other columns of the same board.
+
+### Fixed
+
+- Drag handles: the hover no longer lands one slot off when a `dragHandle` sortable item with permanent shifts is grabbed by its `DraxHandle`
+- Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover
+
+
 ## [1.1.0] - 2026-03-23
 
 ### Added
