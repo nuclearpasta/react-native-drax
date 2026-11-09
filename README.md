@@ -107,7 +107,7 @@ export default function App() {
 }
 ```
 
-**Inside a React Native `Modal`:** the modal's content renders outside the app root's `GestureHandlerRootView`. Gesture Handler's setup docs list this under Android: modal content needs its own `GestureHandlerRootView`. Put the `DraxProvider` inside that root view too, so drags and their hover views stay in the modal. A `DraxProvider` outside the `Modal` has been reported to draw hover views behind the modal's content (#69). iOS behavior without the extra root view hasn't been verified, so wrap the modal content on every platform:
+**Inside a React Native `Modal`:** the modal's content renders outside the app root's `GestureHandlerRootView`. Gesture Handler's setup docs list this under Android: modal content needs its own `GestureHandlerRootView`. Put the `DraxProvider` inside that root view too, so drags and their hover views stay in the modal. A `DraxProvider` outside the `Modal` has been reported to draw hover views behind the modal's content ([issue #69](https://github.com/nuclearpasta/react-native-drax/issues/69)). iOS behavior without the extra root view hasn't been verified, so wrap the modal content on every platform:
 
 ```tsx
 import { Modal } from 'react-native';
