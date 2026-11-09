@@ -351,6 +351,12 @@ export const SortableContainer = ({
       : undefined;
     const toPayload =
       receiver?.parentId === id ? receiverPayload : undefined;
+    // Our own row dropped on a receiver outside the list while the list is
+    // still a monitor (within the hit-test padding): not a reorder.
+    const droppedOutside = totalDragEnd && !cancelled && !boardContext
+      && dragged.parentId === id && !!receiver
+      && receiver.id !== id && receiver.parentId !== id;
+    if (droppedOutside) restoreStartOrder();
 
     if (totalDragEnd) {
       onDragEndCallback?.({
@@ -373,6 +379,8 @@ export const SortableContainer = ({
       }
       draggedToIndex.current = undefined;
     }
+
+    if (droppedOutside) return undefined;
 
     // User hasn't moved — skip reorder, snap back to origin.
     // Don't clean up here — finalizeDrag handles it after snap completes.

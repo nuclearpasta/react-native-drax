@@ -81,6 +81,7 @@ const spatial = () => [
   entry('list', -1, 0, 0, 100, ROW * KEYS.length, true),
   ...KEYS.map((k, i) => entry(k, 0, 0, i * ROW, 100, ROW)),
   entry('card', -1, 300, 0, 100, ROW),
+  entry('nearCard', -1, 0, ROW * KEYS.length + 10, 100, ROW), // inside the list's monitor padding
 ];
 const mockCtx = {
   hoverReadySV: sv(false), dragPhaseSV: sv<string>('idle'), draggedIdSV: sv(''), receiverIdSV: sv(''),
@@ -119,8 +120,8 @@ const Dispatcher = () => {
 };
 
 let sortable: SortableListHandle<string>;
-const List = ({ onReorder }: { onReorder: jest.Mock }) => {
-  const handle = useSortableList({ id: 'list', data: KEYS, keyExtractor: (i) => i, onReorder });
+const List = ({ onReorder, onDragEnd }: { onReorder: jest.Mock; onDragEnd: jest.Mock }) => {
+  const handle = useSortableList({ id: 'list', data: KEYS, keyExtractor: (i) => i, onReorder, onDragEnd });
   useLayoutEffect(() => { sortable = handle; });
   return (
     <SortableContainer sortable={handle} scrollRef={{ current: null }}>
@@ -146,19 +147,22 @@ const setup = () => {
   mockDraxProps.clear();
   mockCtx.spatialIndexSV.value = spatial();
   const onReorder = jest.fn();
+  const onDragEnd = jest.fn();
+  const onNearCardDrop = jest.fn();
   act(() => {
     root = create(
       <>
         <Dispatcher />
-        <List onReorder={onReorder} />
+        <List onReorder={onReorder} onDragEnd={onDragEnd} />
         <DraxView id="card" payload={{ card: true }} />
+        <DraxView id="nearCard" payload={{ card: true }} onReceiveDragDrop={onNearCardDrop} />
       </>
     );
   });
   act(() => KEYS.forEach((k, i) => mockDraxProps.get(k)!.onMeasure!({ x: 0, y: i * ROW, width: 100, height: ROW } as never)));
   act(() => mockDraxProps.get('list')!.onMeasure!({ x: 0, y: 0, width: 100, height: ROW * KEYS.length } as never));
   settle();
-  return { onReorder };
+  return { onReorder, onDragEnd, onNearCardDrop };
 };
 beforeAll(() => { jest.useFakeTimers(); });
 afterEach(() => { act(() => root?.unmount()); root = undefined; });
@@ -172,6 +176,7 @@ let receiver = '';
 const start = (id: string, pos: { x: number; y: number }) => {
   receiver = '';
   mockCtx.draggedIdSV.value = id;
+  mockCtx.grabOffsetSV.value = { x: 50, y: ROW / 2 };
   mockCtx.startPositionSV.value = pos;
   mockCtx.hoverPositionSV.value = pos;
   act(() => mockCtx.handleDragStart(id, pos, { x: 0, y: 0 }));
@@ -203,6 +208,26 @@ describe('SortableContainer: a row that leaves the list undoes its pending move'
     expect(mockCtx.hoverPositionSV.snapTarget).toEqual({ x: 300, y: 0 }); // snaps to the card
     finishSnap();
     expect(onReorder).not.toHaveBeenCalled();
+  });
+
+  it('crossed the neighbour, dropped on a receiver inside the monitor padding: no onReorder', () => {
+    const { onReorder, onDragEnd, onNearCardDrop } = setup();
+    start('A', row(0));
+    move(row(0), 'A', ['list']);
+    move(row(1), 'B', ['list']);
+    // Still a list monitor. The finger is past the list's bottom edge, so
+    // auto-scroll ticks forever here: drain the queues but not the timers.
+    const pos = { x: 50, y: ROW * KEYS.length + 35 };
+    mockCtx.hoverPositionSV.value = pos;
+    act(() => mockCtx.handleReceiverChange(receiver, 'nearCard', pos, ['list']));
+    receiver = 'nearCard';
+    act(() => { while (mockUIQueue.length || mockJSQueue.length) (mockUIQueue.shift() ?? mockJSQueue.shift())!(); });
+    end('A', ['list']);
+    expect(mockCtx.hoverPositionSV.snapTarget).toEqual({ x: 0, y: ROW * KEYS.length + 10 });
+    finishSnap();
+    expect(onNearCardDrop).toHaveBeenCalledTimes(1);
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(onDragEnd).toHaveBeenCalledWith(expect.objectContaining({ index: 0, toIndex: 0 }));
   });
 
   it('crossed the neighbour, released over nothing: no onReorder, row back in its slot', () => {
