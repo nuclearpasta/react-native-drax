@@ -17,6 +17,7 @@ jest.mock('../../compat', () => ({
 jest.mock('react-native-reanimated', () => ({ measure: jest.fn(() => null) }));
 jest.mock('react-native-worklets', () => ({
   runOnJS: (fn: (...args: unknown[]) => unknown) => fn,
+  runOnUI: (fn: (...args: unknown[]) => unknown) => fn,
 }));
 
 const sv = <T>(value: T) => ({ value });
@@ -35,7 +36,7 @@ const mockHandleDragEnd = jest.fn();
 const mockCtx = {
   draggedIdSV: sv(''),
   receiverIdSV: sv(''),
-  rejectedReceiverIdSV: sv(''),
+  rejectedReceiverIdSV: sv(''), needsUpdatesSV: sv(true), jsPendingSV: sv(false), lastMonitorKeySV: sv(''), skippedSV: sv(false),
   dragPhaseSV: sv('idle'),
   hoverPositionSV: sv({ x: 0, y: 0 }),
   dragAbsolutePositionSV: sv({ x: 0, y: 0 }),
@@ -49,7 +50,7 @@ const mockCtx = {
   handleReceiverChange: mockHandleReceiverChange,
   handleDragEnd: mockHandleDragEnd,
 };
-jest.mock('../useDraxContext', () => ({ useDraxContext: () => mockCtx }));
+jest.mock('../useDraxContext', () => ({ useDraxContext: () => mockCtx, useDraxInternalContext: () => mockCtx }));
 
 /** Grab at x=grabX inside the item, move the finger to x=toX; return the receiver. */
 const dragTo = (algo: CollisionAlgorithm, grabX: number, toX: number) => {

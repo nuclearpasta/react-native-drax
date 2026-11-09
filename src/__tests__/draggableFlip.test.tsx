@@ -82,7 +82,7 @@ jest.mock('../hooks', () => ({
   useDraxContext: () => mockCtx,
   useDraxId: (id?: string) => id ?? 'view',
 }));
-jest.mock('../hooks/useDraxContext', () => ({ useDraxContext: () => mockCtx }));
+jest.mock('../hooks/useDraxContext', () => ({ useDraxContext: () => mockCtx, useDraxInternalContext: () => mockCtx }));
 jest.mock('../hooks/useViewStyles', () => ({
   useViewStyles: () => ({ animatedDragStyle: {} }),
 }));
