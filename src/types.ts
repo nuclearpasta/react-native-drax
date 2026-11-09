@@ -126,12 +126,28 @@ export interface DraxEventDraggedViewData extends DraxEventViewData {
   grabOffset: Position;
   grabOffsetRatio: Position;
   hoverPosition: Position;
+  /** The view's measurements in the DraxProvider root frame (the frame of
+   *  `dragAbsolutePosition` and `hoverPosition`). This is the view's layout
+   *  position, not the hover's. Undefined if the view is not measured yet.
+   *  Set on start, enter, exit, drop and end events. Continuous over/drag
+   *  events only have it in a frame where an enter/exit also fires
+   *  (computing it every frame is costly). */
+  absoluteMeasurements?: DraxViewMeasurements;
+  /** The hover view's frame in the DraxProvider root frame: `hoverPosition`
+   *  plus the dragged view's measured size. That is the size of the default
+   *  hover copy and the size used for hit-testing. A `renderHoverContent` of
+   *  a different size is not measured. Undefined if the view is not measured yet.
+   *  Set on the same events as `absoluteMeasurements`. */
+  hoverMeasurements?: DraxViewMeasurements;
 }
 
 /** Data about a receiver view involved in a Drax event */
 export interface DraxEventReceiverViewData extends DraxEventViewData {
   receiveOffset: Position;
   receiveOffsetRatio: Position;
+  /** The receiver's measurements in the DraxProvider root frame (the frame of
+   *  `dragAbsolutePosition`). */
+  absoluteMeasurements?: DraxViewMeasurements;
 }
 
 /** Data about a Drax drag event */
@@ -208,7 +224,8 @@ export interface DraxSnapData {
 
 /** Data passed to onSnapEnd and onReceiveSnapEnd callbacks */
 export interface DraxSnapEndEventData {
-  dragged: { id: string; parentId?: string; payload: unknown };
+  /** `grabOffset` is the dragged view's grab offset for the drag that just ended. */
+  dragged: { id: string; parentId?: string; payload: unknown; grabOffset?: Position };
   receiver?: { id: string; parentId?: string; payload: unknown };
 }
 
@@ -335,6 +352,8 @@ export interface DraxViewProps
     targetMeasurements: DraxViewMeasurements;
     draggedId: string;
     draggedPayload: unknown;
+    /** Id of the dragged view's Drax parent view, if any */
+    draggedParentId?: string;
   }) => boolean;
 
   /** Simpler convenience prop for conditional drop acceptance based on payload */
