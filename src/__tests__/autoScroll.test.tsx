@@ -97,6 +97,8 @@ const renderSortable = (options: Record<string, unknown> = {}) => {
     horizontal: false,
     draggedItem: sv(-1),
     rawData: ['a', 'b', 'c'],
+    keyExtractor: (item: string) => item,
+    itemMeasurements: { current: new Map() },
     moveDraggedItem: jest.fn(),
     getSnapbackTarget: jest.fn(),
     setDraggedItem: jest.fn(),

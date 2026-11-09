@@ -199,9 +199,14 @@ export const useSortableList = <T,>(
     }
 
     // A row drag in progress holds indices into the old data. If the data
-    // really changed, drop its pending move, so finalizeDrag cancels instead
-    // of sending onReorder with the old order mapped onto the new data.
-    if (dragStartIndexRef.current !== undefined && rawData !== stableDataRef.current) {
+    // really changed (its keys, not just the array's identity), drop its
+    // pending move, so finalizeDrag cancels instead of sending onReorder with
+    // the old order mapped onto the new data.
+    const previous = stableDataRef.current;
+    const sameKeys = rawData.length === previous.length && rawData.every(
+      (item, i) => keyExtractor(item, i) === keyExtractor(previous[i]!, i)
+    );
+    if (dragStartIndexRef.current !== undefined && !sameKeys) {
       pendingOrderRef.current = [];
       dragStartIndexRef.current = undefined;
       draggedDisplayIndexRef.current = undefined;
