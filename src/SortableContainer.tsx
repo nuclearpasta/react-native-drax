@@ -155,40 +155,47 @@ export const SortableContainer = ({
 
   const { freeze: freezeScroll, unfreeze: unfreezeScroll } = useWebScrollFreeze(scrollRef);
 
+  /** Set when handleInternalDragEnd sent onReorder at release. */
+  const reorderSentAtReleaseRef = useRef(false);
+
+  /** The reorder the current drag makes, or undefined if it made none. */
+  const getReorderEvent = () => {
+    const startIdx = dragStartIndexRef.current;
+    const endIdx = draggedDisplayIndexRef.current;
+    const pending = pendingOrderRef.current;
+    if (startIdx === undefined || endIdx === undefined
+      || startIdx === endIdx || pending.length === 0) return undefined;
+    const draggedOrigIdx = pending[endIdx];
+    const displacedOrigIdx = pending[startIdx];
+    return {
+      data: pending
+        .map((idx) => rawData[idx])
+        .filter((item): item is any => item !== undefined),
+      fromIndex: startIdx,
+      toIndex: endIdx,
+      fromItem: draggedOrigIdx !== undefined ? rawData[draggedOrigIdx] as any : undefined as any,
+      toItem: displacedOrigIdx !== undefined ? rawData[displacedOrigIdx] as any : undefined as any,
+      isExternalDrag: false,
+    };
+  };
+
   // ── Finalize drag (called after snap animation completes) ──────────
 
   const finalizeDrag = () => {
     unfreezeScroll();
+    const sentAtRelease = reorderSentAtReleaseRef.current;
+    reorderSentAtReleaseRef.current = false;
 
     if (boardContext?.boardInternal.transferState.current?.targetId) {
       boardContext.boardInternal.finalizeTransfer?.();
       return;
     }
 
-    const startIdx = dragStartIndexRef.current;
-    const endIdx = draggedDisplayIndexRef.current;
+    // Build final data BEFORE clearing refs
+    const reorderEvent = getReorderEvent();
 
-    const pending = pendingOrderRef.current;
-    const didReorder = startIdx !== undefined && endIdx !== undefined
-      && startIdx !== endIdx && pending.length > 0;
-
-    if (didReorder) {
-      // Build final data BEFORE clearing refs
-      const finalData = pending
-        .map((idx) => rawData[idx])
-        .filter((item): item is any => item !== undefined);
-      const draggedOrigIdx = pending[endIdx];
-      const displacedOrigIdx = pending[startIdx];
-
-      const reorderEvent = {
-        data: finalData,
-        fromIndex: startIdx,
-        toIndex: endIdx,
-        fromItem: draggedOrigIdx !== undefined ? rawData[draggedOrigIdx] as any : undefined as any,
-        toItem: displacedOrigIdx !== undefined ? rawData[displacedOrigIdx] as any : undefined as any,
-        isExternalDrag: false,
-      };
-
+    if (reorderEvent) {
+      const pending = pendingOrderRef.current;
       {
         // ── PERMANENT SHIFTS: blink-free for all contexts ──
         const finalShifts = computeShiftsForOrder(pending) ?? {};
@@ -219,7 +226,7 @@ export const SortableContainer = ({
         })(finalShifts);
 
         requestAnimationFrame(() => {
-          onReorder(reorderEvent);
+          if (!sentAtRelease) onReorder(reorderEvent);
           if (boardContext) {
             setTimeout(() => {
               sortable._internal.flushVisualOrder();
@@ -411,6 +418,15 @@ export const SortableContainer = ({
         shiftsRef.value = targetShifts;
       }
       const snapbackTarget = getSnapbackTarget();
+      // Report the reorder at release, as 0.11 did (boards still report at
+      // snap end). Committing the order now makes the parent's echo match
+      // it, so the echo waits for finalizeDrag instead of resetting the drag.
+      const reorderEvent = boardContext ? undefined : getReorderEvent();
+      if (reorderEvent) {
+        commitVisualOrder();
+        reorderSentAtReleaseRef.current = true;
+        onReorder(reorderEvent);
+      }
       return snapbackTarget;
     }
 
