@@ -33,8 +33,15 @@ interface DraxEventDraggedViewData extends DraxEventViewData {
   grabOffset: Position;
   grabOffsetRatio: Position;
   hoverPosition: Position;
+  absoluteMeasurements?: DraxViewMeasurements;
+  hoverMeasurements?: DraxViewMeasurements;
 }
 ```
+
+- `absoluteMeasurements`: the dragged view's position and size in the DraxProvider root frame, the same frame as `dragAbsolutePosition` and `hoverPosition`. It is the view's layout position, not where the hover is.
+- `hoverMeasurements`: `hoverPosition` plus the dragged view's measured size. That is the size of the default hover copy and the size used for hit-testing. If `renderHoverContent` renders a different size, that size is not measured.
+
+Both are `undefined` until the view is measured.
 
 ## DraxEventReceiverViewData
 
@@ -44,8 +51,11 @@ Extended data about the receiver view.
 interface DraxEventReceiverViewData extends DraxEventViewData {
   receiveOffset: Position;
   receiveOffsetRatio: Position;
+  absoluteMeasurements?: DraxViewMeasurements;
 }
 ```
+
+`absoluteMeasurements` is the receiver's position and size in the DraxProvider root frame. `receiveOffset` is relative to this frame.
 
 ## DraxDragEventData
 

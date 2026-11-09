@@ -122,6 +122,12 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - `onReceiveDragOver` — fires continuously on the receiver while being dragged over
 - All dispatched from `handleReceiverChange` which now fires on every gesture update frame
 
+## Event Data
+
+- Built on JS in `useCallbackDispatch.tsx` (`buildDraggedViewData` / `buildReceiverViewData`); unit-tested by calling the hook as a plain function (`src/hooks/__tests__/useCallbackDispatch.test.tsx`).
+- `dragged`/`receiver` carry `absoluteMeasurements` (provider-root frame, from the spatial index walk); `dragged.hoverMeasurements` = `hoverPosition` + the dragged view's measured size (hover content is never measured). `dynamicReceptiveCallback` gets `draggedParentId`; `onSnapEnd` `dragged.grabOffset`.
+- `dragAbsolutePosition` is the hover centre during a drag (hit-test point) but the hover top-left in drop/end events (`handleDragEnd` uses `hoverPositionSV`), so `receiveOffset`/`dragOffset` at drop differ from the last over event.
+
 ## Namespace API
 
 - `import { Drax } from 'react-native-drax'` for `Drax.View`, `Drax.Provider`, `Drax.Handle`, etc.

@@ -405,16 +405,17 @@ Other places that used `protocol`:
 |---|---|
 | `dragged.data.protocol.<callback or flag>` | **No equivalent.** Other views' props are not exposed in events. Keep what you need in the payload. |
 | `viewState.data.protocol.payload` in `renderContent` | **No equivalent** on `DraxViewState`. Use the value from your render scope. You already pass it as `payload`. |
-| `dynamicReceptiveCallback({ foundView, excludedView })` with `foundView.data.protocol.payload` | `dynamicReceptiveCallback({ targetId, targetMeasurements, draggedId, draggedPayload })`. The receiver's own payload is in your closure. For simple payload checks, use `acceptsDrag(draggedPayload)`. |
+| `dynamicReceptiveCallback({ foundView, excludedView })` with `foundView.data.protocol.payload` | `dynamicReceptiveCallback({ targetId, targetMeasurements, draggedId, draggedPayload, draggedParentId })`. `excludedView.parentId` is `draggedParentId`. The receiver's own payload is in your closure. For simple payload checks, use `acceptsDrag(draggedPayload)`. |
 
 ### 5.2 Event measurements
 
 | 0.11 (on `dragged` / `receiver`) | 1.2 |
 |---|---|
 | `x.data.measurements` (relative to the Drax parent) | `x.measurements?: DraxViewMeasurements`. Same frame: relative to the Drax parent, or content-relative inside a scrollable parent. Optional. |
-| `x.data.absoluteMeasurements` | **No equivalent** field. See the workaround below. |
-| `x.data.hoverMeasurements` | **No equivalent.** See [6](#6-hover-views-and-measurements). |
+| `x.data.absoluteMeasurements` | `x.absoluteMeasurements?` on `dragged` and `receiver`. Relative to the DraxProvider root, the same frame as `dragAbsolutePosition` and `hoverPosition`. For `dragged` it is the view's layout position, not the hover's. |
+| `dragged.data.hoverMeasurements` | `dragged.hoverMeasurements?`: `hoverPosition` plus the dragged view's measured size. A `renderHoverContent` of a different size is not measured. See [6](#6-hover-views-and-measurements). |
 | `x.data.parentId`, `x.data.scrollPosition` | `x.parentId`. Scroll position is not exposed. |
+| `onSnapEnd` `dragged.grabOffset` | `dragged.grabOffset?` on `DraxSnapEndEventData`. |
 
 `DraxViewMeasurements` gained a numeric `_transformDetected` field (1 when the
 view is positioned by transforms, as in LegendList). If you build
@@ -424,17 +425,14 @@ The offset fields on events are unchanged: `dragAbsolutePosition`,
 `dragTranslation`, and on `dragged` `dragTranslationRatio`, `dragOffset`,
 `grabOffset`, `grabOffsetRatio` and `hoverPosition`. On `receiver` they are
 `receiveOffset` and `receiveOffsetRatio`. On monitor events they are
-`monitorOffset` and `monitorOffsetRatio`. You can derive absolute positions
-from them:
+`monitorOffset` and `monitorOffsetRatio`. For example, to snap the hover to the centre of the receiver:
 
 ```tsx
-onReceiveDragDrop={({ dragAbsolutePosition, receiver, dragged }) => {
-  // receiveOffset is relative to the receiver's absolute (provider-root) frame
-  const receiverAbsX = dragAbsolutePosition.x - receiver.receiveOffset.x;
-  const receiverAbsY = dragAbsolutePosition.y - receiver.receiveOffset.y;
-  const receiverSize = receiver.measurements; // width / height
-  // top-left of the dragged view's hover copy, provider-relative
-  const hoverTopLeft = dragged.hoverPosition;
+onDragDrop={({ dragged, receiver }) => {
+  const r = receiver.absoluteMeasurements; // provider-root frame
+  const h = dragged.hoverMeasurements;
+  if (!r || !h) return undefined;
+  return { x: r.x + (r.width - h.width) / 2, y: r.y + (r.height - h.height) / 2 };
 }}
 ```
 
@@ -581,4 +579,4 @@ use the `hover*Style` props).
 | `useDraxContext().updateHoverViewMeasurements` | **No equivalent.** Measurement is automatic. Use `useDraxMethods().requestPositionUpdate()` to re-measure. |
 | `renderItem(info, itemProps)` | `renderItem(info)`, `useItemContext()`, or `SortableItem` props |
 | `x.data.protocol.payload` | `x.payload` |
-| `x.data.measurements` / `absoluteMeasurements` / `hoverMeasurements` | `x.measurements?` / **no equivalent** (derive from offsets) / **no equivalent** |
+| `x.data.measurements` / `absoluteMeasurements` / `hoverMeasurements` | `x.measurements?` / `x.absoluteMeasurements?` / `dragged.hoverMeasurements?` |
