@@ -55,6 +55,16 @@ interface SortableDragEndEvent<T> {
 }
 ```
 
+## SortableExternalDropEvent
+
+```tsx
+interface SortableExternalDropEvent {
+  toIndex: number; // 0 to data.length
+  payload: unknown; // payload of the dropped view
+  dragged: DraxEventDraggedViewData;
+}
+```
+
 ## SortableReorderStrategy
 
 ```tsx

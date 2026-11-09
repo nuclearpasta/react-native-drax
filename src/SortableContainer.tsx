@@ -64,6 +64,7 @@ export const SortableContainer = ({
   const {
     id,
     horizontal,
+    numColumns,
     draggedItem,
     rawData,
     moveDraggedItem,
@@ -79,6 +80,7 @@ export const SortableContainer = ({
     onDragStart: onDragStartCallback,
     onDragPositionChange: onDragPositionChangeCallback,
     onDragEnd: onDragEndCallback,
+    onExternalDrop,
     onReorder,
     getMeasurementByOriginalIndex,
     dropTargetPositionSV,
@@ -329,6 +331,35 @@ export const SortableContainer = ({
       : undefined;
     const toPayload =
       receiver?.parentId === id ? receiverPayload : undefined;
+
+    // Opt-in: a foreign view (not a board column item) dropped inside the list.
+    // toIndex comes from the drop position, not from drag-over state.
+    const ratio = eventData.monitorOffsetRatio;
+    if (
+      onExternalDrop &&
+      totalDragEnd &&
+      !cancelled &&
+      externalDrag &&
+      !boardContext?.boardInternal.columns.has(dragged.parentId ?? '') &&
+      ratio.x >= 0 && ratio.x <= 1 && ratio.y >= 0 && ratio.y <= 1
+    ) {
+      const pos = {
+        x: eventData.monitorOffset.x + scrollPosition.value.x,
+        y: eventData.monitorOffset.y + scrollPosition.value.y,
+      };
+      const slot = getSlotFromPosition(pos, itemCount);
+      const meas = getMeasurementByOriginalIndex(slot);
+      const after =
+        meas !== undefined &&
+        (horizontal || numColumns > 1
+          ? pos.x > meas.x + meas.width / 2
+          : pos.y > meas.y + meas.height / 2);
+      onExternalDrop({
+        toIndex: slot + (after ? 1 : 0),
+        payload: dragged.payload,
+        dragged,
+      });
+    }
 
     if (totalDragEnd) {
       onDragEndCallback?.({

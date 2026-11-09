@@ -308,9 +308,9 @@ onItemReorder={({ fromIndex, toIndex }) => {
 onReorder={({ data }) => setItems(data)}
 ```
 
-`isExternalDrag` is always `false` in 1.2. A single list no longer accepts
-items dragged in from outside. For moving items between lists, see
-[7](#7-behavior-changes).
+`isExternalDrag` is always `false` in 1.2, and `onReorder` never reports an
+item dragged in from outside. For those drops, use `onExternalDrop` (see
+[7](#7-behavior-changes)).
 
 ### 4.2 onItemDragStart → onDragStart
 
@@ -548,10 +548,26 @@ use the `hover*Style` props).
   `SortableBoardContainer` with `useSortableBoard({ keyExtractor, onTransfer })`.
   Each `SortableContainer` inside registers itself as a column. `onTransfer`
   receives `SortableBoardTransferEvent` (`{ item, fromContainerId, fromIndex,
-  toContainerId, toIndex }`). This API is experimental. Dropping a plain
-  `DraxView` into a list at a given index is **no equivalent**. The closest
-  option is `containerDraxViewProps.onMonitorDragDrop` plus your own index
-  math from `monitorOffset`.
+  toContainerId, toIndex }`). This API is experimental. To drop a plain
+  `DraxView` (or an item of a list outside the board) into a list at a given
+  index, pass `onExternalDrop` to `DraxList` / `useSortableList`. It receives
+  `SortableExternalDropEvent` (`{ toIndex, payload, dragged }`), where `toIndex`
+  is the insertion index (`0` to `data.length`). Insert the item yourself: the
+  library does not change `data`, items don't shift while the drag is over the
+  list, and the dropped view snaps back unless you return a snap target from
+  `containerDraxViewProps.onMonitorDragDrop`.
+
+  ```tsx
+  // 0.11: onItemReorder with isExternalDrag: true
+  // 1.2
+  onExternalDrop={({ toIndex, payload }) => {
+    setItems((prev) => [
+      ...prev.slice(0, toIndex),
+      itemFromPayload(payload),
+      ...prev.slice(toIndex),
+    ]);
+  }}
+  ```
 - **Row payloads.** `SortableItem` spreads your `payload` (only if it is an
   object) and then sets `index`, `originalIndex` and `item` on top. A
   non-object `payload` on a row is dropped, and your own `index`,
@@ -574,6 +590,7 @@ use the `hover*Style` props).
 |---|---|
 | `DraxListItem` | `SortableItem`. `DraxList` adds it for you. |
 | `onItemReorder({ fromIndex, toIndex })` | `onReorder({ data, fromIndex, toIndex, fromItem, toItem })` |
+| `onItemReorder` with `isExternalDrag: true` | `onExternalDrop({ toIndex, payload, dragged })`. Insert the item yourself. |
 | `onItemDragStart` | `onDragStart({ index, item })`. For drag data, add `itemDraxViewProps.onDragStart`. |
 | `parentDraxViewProps` | `containerDraxViewProps`, `containerStyle` and `id` |
 | `onItemDragPositionChange` | `onDragPositionChange({ index, item, toIndex, previousIndex })`. For monitor data, add `containerDraxViewProps.onMonitorDragOver`. |

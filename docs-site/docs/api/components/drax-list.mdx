@@ -53,6 +53,7 @@ import { DraxList } from 'react-native-drax';
 | `onDragStart` | `(event: SortableDragStartEvent<T>) => void` | — | Drag started |
 | `onDragPositionChange` | `(event: SortableDragPositionChangeEvent<T>) => void` | — | Position changed |
 | `onDragEnd` | `(event: SortableDragEndEvent<T>) => void` | — | Drag ended |
+| `onExternalDrop` | `(event: SortableExternalDropEvent) => void` | — | Opt-in (1.2+). A foreign view is dropped inside the list. Insert the item at `toIndex` yourself. See [useSortableList](/api/hooks/use-sortable-list#external-drops). |
 
 Extra props are forwarded to the underlying list component (e.g., `estimatedItemSize` for FlashList).
 

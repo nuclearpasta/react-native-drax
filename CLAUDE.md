@@ -70,6 +70,13 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - No ghost shifts, no effectiveData bypass — both columns reset naturally via useLayoutEffect when parent updates data
 - `SortableContainer` has minimal board awareness: auto-registration + finalizeDrag delegation + drag end guards
 
+## External Drops (single list)
+
+- Opt-in `onExternalDrop` on `useSortableList` / `DraxList`: fires in `SortableContainer.handleInternalDragEnd` when a foreign view (not this list's item, not a board column item, no active board transfer) is dropped inside the container bounds (`monitorOffsetRatio` in [0,1]). Not on cancel.
+- `toIndex` is computed at drop time from `monitorOffset` + scroll: `getSlotFromPosition(pos, itemCount)` (explicit slot count, because `pendingOrderRef` is empty for foreign drags), then +1 if past the slot item's midpoint (main axis for lists, x for grids). Range 0..data.length.
+- No phantom slot, no shifts, no data mutation; the foreign view snaps back by default. Drag-over behaviour for foreign drags is unchanged.
+- Tests: `src/__tests__/externalDrop.test.ts` runs the hook + container as plain functions on a mock hook store (no React renderer is installed).
+
 ## Drag Handles
 
 - `DraxView` accepts `dragHandle` prop — when true, the gesture is NOT attached to the view's GestureDetector

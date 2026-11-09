@@ -49,6 +49,7 @@ const sortable = useSortableList({
 | `onDragStart` | `(event: SortableDragStartEvent<T>) => void` | — | Drag started |
 | `onDragPositionChange` | `(event: SortableDragPositionChangeEvent<T>) => void` | — | Position changed |
 | `onDragEnd` | `(event: SortableDragEndEvent<T>) => void` | — | Drag ended |
+| `onExternalDrop` | `(event: SortableExternalDropEvent) => void` | — | Opt-in (1.2+). A view that is not one of this list's items is dropped inside the list. `toIndex` is the insertion index (`0` to `data.length`). The library does not change `data` or shift items, and the dropped view snaps back: insert the item yourself. Board transfers don't call it. |
 
 ## Return Value: `SortableListHandle<T>`
 
@@ -80,6 +81,23 @@ const sortable = useSortableList({ data, keyExtractor, onReorder });
   />
 </SortableContainer>
 ```
+
+## External drops
+
+Pass `onExternalDrop` to accept a drop from a `DraxView` that is not one of this list's items. The callback gets the insertion index computed from the drop position. While the drag is over the list, items don't shift and no gap opens.
+
+```tsx
+const sortable = useSortableList({
+  data,
+  keyExtractor,
+  onReorder: ({ data }) => setData(data),
+  onExternalDrop: ({ toIndex, payload }) => {
+    setData((prev) => [...prev.slice(0, toIndex), itemFromPayload(payload), ...prev.slice(toIndex)]);
+  },
+});
+```
+
+To move the dropped view somewhere other than its origin, return a snap target from `containerDraxViewProps.onMonitorDragDrop`.
 
 ## Related
 
