@@ -21,6 +21,7 @@ one lists a workaround where one exists.
 - [5. Event data](#5-event-data)
 - [6. Hover views and measurements](#6-hover-views-and-measurements)
 - [7. Behavior changes](#7-behavior-changes)
+  - [More opt-ins](#more-opt-ins)
 - [8. Quick reference](#8-quick-reference)
 
 ## 1. Dependencies
@@ -285,6 +286,23 @@ This re-renders the container on every enter and exit, just as the 0.11 prop
 did, which its docs described as "might be very expensive". This workaround
 hasn't been tested on a device.
 
+**Cancel callbacks.** Clear the highlight from every path that can end the
+hover:
+
+- Cancelled while still over the list: `onMonitorDragEnd({ cancelled: true })`
+  (no Drop).
+- The drag leaves the list first (hover centre more than 100 pt outside it):
+  `onMonitorDragExit` (no End on that monitor).
+- Cancelled over a receptive view: that receiver also gets
+  `onReceiveDragExit({ cancelled: true })`.
+
+Enter sets the highlight; Exit, End and Drop clear it. That covers normal
+cancels. An edge case (monitor entered, then gone from under a still finger
+with no move in between) can skip both Exit and End — there is no workaround
+yet. A later release candidate is planned to send Exit to monitors that are
+missing at release. Separately, if the dragged view unmounts mid-drag, every
+monitor callback is skipped.
+
 ## 4. List callbacks
 
 ### 4.1 onItemReorder → onReorder
@@ -542,18 +560,32 @@ use the `hover*Style` props).
 ## 7. Behavior changes
 
 - **Items dragged in from outside a list.** 0.11 `DraxList` accepted external
-  items and reported them with `isExternalDrag: true`. In 1.2, a drag from
-  outside a `SortableContainer` snaps back, and `onReorder` never reports an
-  external item. To move items between sortable lists, wrap them in
+  items and reported them with `isExternalDrag: true`. In 1.2, `onReorder`
+  never reports an external item. The list monitor does **not** force a
+  snap-back for a foreign drag: it returns no snap target
+  (`SortableContainer` `handleInternalDragEnd`). What you see depends on the
+  receiver hit at release (under the dragged view's centre by default; see
+  `collisionAlgorithm`):
+  - Over a receptive row or container, the default snap is that receiver's
+    centre (`useCallbackDispatch`).
+  - Over nothing receptive, there is no Drop. `onMonitorDragDrop` is **not**
+    called; `onMonitorDragEnd` is. A snap target returned from
+    `containerDraxViewProps.onMonitorDragEnd` is honoured. Without one, the
+    hover snaps back to the dragged view's origin.
+  To move items between sortable lists, wrap them in
   `SortableBoardContainer` with `useSortableBoard({ keyExtractor, onTransfer })`.
   Each `SortableContainer` inside registers itself as a column. `onTransfer`
   receives `SortableBoardTransferEvent` (`{ item, fromContainerId, fromIndex,
   toContainerId, toIndex }`). This API is experimental. Dropping a plain
-  `DraxView` into a list at a given index is **no equivalent**. The closest
-  option is `containerDraxViewProps.onMonitorDragDrop` plus your own index
-  math from `monitorOffset`. A foreign drag also does not auto-scroll the
-  list, fire `onDragPositionChange` or show the drop indicator. Board columns
-  still react to items from other columns of the same board.
+  `DraxView` into a list and inserting it into `data` is app-side: listen on
+  a receptive container (or row) and update state. Prefer inserting in
+  `onReceiveSnapEnd` so the new row appears as the hover clears. Inserting at
+  release (for example from a Drop callback) leaves about 350 ms of double
+  image while the snap still runs. The list's `onDragEnd` also fires for
+  foreign drops, with `item` undefined — guard on `item`. A foreign drag also
+  does not auto-scroll the list, fire `onDragPositionChange` or show the drop
+  indicator. Board columns still react to items from other columns of the
+  same board.
 - **Row payloads.** `SortableItem` spreads your `payload` (only if it is an
   object) and then sets `index`, `originalIndex` and `item` on top. A
   non-object `payload` on a row is dropped, and your own `index`,
@@ -561,14 +593,30 @@ use the `hover*Style` props).
 - **Cancelled drags.** A drag cancelled by the system (for example, the app goes
   to the background mid-drag) is not a drop. It calls `onDragEnd` with
   `cancelled: true`, and lists put the item back in its start position without
-  calling `onReorder`.
+  calling `onReorder`. For the monitor cancel paths used by the
+  `monitoringExternalDragStyle` workaround, see [3.5](#35-monitoringexternaldragstyle).
 - **When `onReorder` fires.** It fires after the snap animation, not at
-  release. If you showed the new order at release, move that code into
-  `onReorder`.
+  release, by design (so the hover covers the list re-render). Keep writing
+  list `data` from `onReorder`. The release-time signal is the list's
+  `onDragEnd({ index, toIndex, cancelled })`. Use it for Formik or analytics;
+  when `!cancelled && toIndex !== undefined && toIndex !== index`, the move is
+  `index → toIndex`. Do not write list `data` from `onDragEnd` mid-snap.
+- **Auto-scroll thresholds.** `autoScrollBackThreshold` and
+  `autoScrollForwardThreshold` are fractions of the visible list length (not
+  pixels). Defaults are `0.1` and `0.9`. Jump distance is
+  `autoScrollJumpRatio` × that length (default `0.2`). Leaving the edge band
+  (or the list) calls `stopScroll`, which cancels a pending initial delay; re-
+  entering waits the full `autoScrollInitialDelay` again. 1.2 defaults:
+  delay `0` (first jump immediate), interval `250`. For 0.11 parity use delay
+  `250`, interval `250`, jump `0.2`.
 - **Gesture config.** `longPressDelay` still defaults to 0 on `DraxView` and 250
   on list items. New `DraxView` props: `dragActivationFailOffset`,
   `scrollHorizontal` (web), `dragHandle` with `DraxHandle`, `dragBoundsRef`,
   `collisionAlgorithm`, `acceptsDrag`, `capacity` and `rejectOwnChildren`.
+
+### More opt-ins
+
+More opt-in list props may come in a later release candidate.
 
 ## 8. Quick reference
 
