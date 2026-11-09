@@ -102,6 +102,7 @@ const renderSortable = (options: Record<string, unknown> = {}) => {
     setDraggedItem: jest.fn(),
     resetDraggedItem: jest.fn(),
     scrollPosition: sv({ x: 0, y: 0 }),
+    scrollPositionJSRef: { current: { x: 0, y: 0 } },
     containerMeasurementsRef: {
       current: { x: 0, y: 0, width: 100, height: 400 },
     },
