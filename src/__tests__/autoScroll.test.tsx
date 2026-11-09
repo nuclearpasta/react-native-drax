@@ -145,7 +145,8 @@ const renderSortable = (options: Record<string, unknown> = {}) => {
   /** Re-render with changed options; returns the new handlers. */
   const rerender = (next: Record<string, unknown>) =>
     render({ ..._internal, ...next }).props;
-  return { ...element.props, scroller, onDragPositionChange, rerender };
+  const { moveDraggedItem } = _internal;
+  return { ...element.props, scroller, onDragPositionChange, moveDraggedItem, rerender };
 };
 
 const renderScrollView = (props: Record<string, unknown> = {}) => {
@@ -330,6 +331,62 @@ describe('SortableContainer auto-scroll', () => {
     expect(list.onDragPositionChange).toHaveBeenCalledWith(
       expect.objectContaining({ item: 'a', toIndex: 0 })
     );
+  });
+});
+
+/**
+ * A drag of a 120pt row that starts at y=330 in the 400pt container, so its
+ * bottom 50pt are cut off. Grabbed `grabY` below the row's top, finger moved
+ * `moveY` since pickup. Monitor offsets are at the hover centre, as dispatched.
+ */
+const rowEvent = (grabY: number, moveY: number): DraxMonitorEventData => {
+  const fingerStartY = 330 + grabY;
+  const centreY = fingerStartY + moveY - grabY + 60;
+  return {
+    dragged: {
+      id: 'dragged',
+      parentId: 'list',
+      payload: { index: 0, originalIndex: 0 },
+      grabOffset: { x: 50, y: grabY },
+      measurements: { x: 0, y: 330, width: 100, height: 120 },
+    },
+    dragAbsolutePosition: { x: 50, y: centreY },
+    dragTranslation: { x: 0, y: centreY - fingerStartY },
+    monitorOffset: { x: 50, y: centreY },
+    monitorOffsetRatio: { x: 0.5, y: centreY / 400 },
+  } as unknown as DraxMonitorEventData;
+};
+
+describe('SortableContainer pickup of a row cut off at the edge', () => {
+  it('does not scroll while the finger holds still on its visible part', () => {
+    const list = renderSortable();
+    // Finger at y=350 (ratio 0.875); hover centre at y=390 (ratio 0.975).
+    list.onMonitorDragStart(rowEvent(20, 0));
+    list.onMonitorDragOver(rowEvent(20, 0));
+    // A few points of drift clear the jitter guard but stay out of the band.
+    list.onMonitorDragOver(rowEvent(20, 6));
+    jest.advanceTimersByTime(1000);
+    expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
+  });
+
+  it('still scrolls once the finger is dragged into the edge band', () => {
+    const list = renderSortable();
+    list.onMonitorDragStart(rowEvent(20, 0));
+    list.onMonitorDragOver(rowEvent(20, 15)); // finger at y=365 (0.9125)
+    expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores under 5px of finger movement on an off-centre grab', () => {
+    const list = renderSortable({
+      draggedDisplayIndexRef: { current: 0 },
+      getSlotFromPosition: jest.fn(() => 1),
+    });
+    // Grabbed 55pt above the centre: the guard must measure the finger.
+    list.onMonitorDragStart(rowEvent(5, 0));
+    list.onMonitorDragOver(rowEvent(5, 4));
+    expect(list.moveDraggedItem).not.toHaveBeenCalled();
+    list.onMonitorDragOver(rowEvent(5, 6));
+    expect(list.moveDraggedItem).toHaveBeenCalledWith(1);
   });
 });
 
