@@ -12,6 +12,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ### Added
 
 - **Auto-scroll config**: `autoScrollEnabled` (default `true`) and `autoScrollInitialDelay` (ms in the edge band before the first jump, default `0`) on `DraxScrollView`, `useSortableList` and `DraxList`. `DraxList` now forwards all auto-scroll props to `useSortableList`.
+- **Render payload**: `DraxRenderContentProps.payload` (`dragPayload ?? payload`, the value drag events carry as `dragged.payload`) is passed to `renderContent` and `renderHoverContent`. Sortable rows include `item`, `index` and `originalIndex`.
 
 ### Changed
 

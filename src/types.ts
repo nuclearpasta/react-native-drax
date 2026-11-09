@@ -243,6 +243,8 @@ export interface DraxRenderContentProps {
   hover: boolean;
   children: ReactNode;
   dimensions?: ViewDimensions;
+  /** The view's drag payload (`dragPayload ?? payload`), the same value drag events carry as `dragged.payload` */
+  payload?: unknown;
 }
 
 /** Props provided to a render function for a hovering copy of a Drax view */

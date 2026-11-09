@@ -69,8 +69,11 @@ interface DraxRenderContentProps {
   hover: boolean;        // true in hover layer copy
   children: ReactNode;
   dimensions?: ViewDimensions;
+  payload?: unknown;     // dragPayload ?? payload, same as dragged.payload in events
 }
 ```
+
+`DraxList` / `SortableItem` rows merge `item`, `index` and `originalIndex` into the payload, so a row's `renderHoverContent` can read `props.payload.item`.
 
 ## DraxStyleProp
 

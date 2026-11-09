@@ -404,7 +404,7 @@ Other places that used `protocol`:
 | 0.11 | 1.2 |
 |---|---|
 | `dragged.data.protocol.<callback or flag>` | **No equivalent.** Other views' props are not exposed in events. Keep what you need in the payload. |
-| `viewState.data.protocol.payload` in `renderContent` | **No equivalent** on `DraxViewState`. Use the value from your render scope. You already pass it as `payload`. |
+| `viewState.data.protocol.payload` in `renderContent` / `renderHoverContent` | `props.payload` (`dragPayload ?? payload`). Sortable list rows include `item`, `index` and `originalIndex`, so a row's hover can reach its item. |
 | `dynamicReceptiveCallback({ foundView, excludedView })` with `foundView.data.protocol.payload` | `dynamicReceptiveCallback({ targetId, targetMeasurements, draggedId, draggedPayload })`. The receiver's own payload is in your closure. For simple payload checks, use `acceptsDrag(draggedPayload)`. |
 
 ### 5.2 Event measurements
