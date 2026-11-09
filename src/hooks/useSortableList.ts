@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { runOnUI } from 'react-native-worklets';
 
@@ -60,6 +61,7 @@ export const useSortableList = <T,>(
     animationConfig = 'default',
     getItemSpan,
     inactiveItemStyle,
+    draggedItemStyle,
     itemEntering,
     itemExiting,
     onDragStart,
@@ -1033,6 +1035,7 @@ export const useSortableList = <T,>(
     animationConfig,
     getItemSpan,
     inactiveItemStyle,
+    draggedItemStyle: StyleSheet.flatten(draggedItemStyle) ?? undefined,
     itemEntering,
     itemExiting,
     fixedKeys,

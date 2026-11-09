@@ -42,6 +42,7 @@ function useSortableItemStyle(
   animConfig: ResolvedAnimationConfig,
   reducedMotion: boolean,
   inactiveItemStyle?: ViewStyle,
+  draggedItemStyle?: ViewStyle,
 ) {
   return useAnimatedStyle(() => {
     // Guard: viewIdSV starts as '' before DraxView registers. Without the
@@ -84,12 +85,13 @@ function useSortableItemStyle(
     const isInactive = dragActive && !isDragged;
 
     return {
-      opacity: isDragged ? 0 : 1,
+      opacity: 1,
       transform: [
         { translateX },
         { translateY },
       ] as const,
       ...(isInactive && inactiveItemStyle ? inactiveItemStyle : {}),
+      ...(isDragged ? draggedItemStyle ?? { opacity: 0 } : {}),
     };
   });
 }
@@ -116,6 +118,7 @@ const SortableItemInner = ({
     longPressDelay,
     animationConfig,
     inactiveItemStyle,
+    draggedItemStyle,
     itemEntering,
     itemExiting,
     shiftsRef,
@@ -165,7 +168,7 @@ const SortableItemInner = ({
   const itemStyle = useSortableItemStyle(
     hoverReadySV, draggedIdSV, viewIdSV,
     shiftsValidSV, shiftsRef, instantClearSV, itemKey,
-    resolvedAnimConfig, reducedMotion, inactiveItemStyle,
+    resolvedAnimConfig, reducedMotion, inactiveItemStyle, draggedItemStyle,
   );
 
   // Derive isActive SharedValue for useItemContext consumers
