@@ -341,7 +341,7 @@ export const SortableContainer = ({
 
     // Reset drag position tracking
     if (draggedToIndex.current !== undefined) {
-      if (!totalDragEnd) {
+      if (!totalDragEnd && !externalDrag) {
         onDragPositionChangeCallback?.({
           index: fromIndex,
           item: fromItem as any,
@@ -472,6 +472,17 @@ export const SortableContainer = ({
       setDraggedItem(itemCount);
     }
 
+    // A foreign drag (a DraxView, or an item from another list) must not
+    // auto-scroll this list or report position changes. The one exception is
+    // a board transfer targeting this column: it still auto-scrolls.
+    const isBoardTarget =
+      boardContext?.boardInternal.transferState.current?.targetId === id;
+    if (externalDrag && !isBoardTarget) {
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
+      return;
+    }
+
     // ── Position-based slot detection ──────────────────────────────────
     // Use the hover center's content position. Slot boundaries are based
     // on original layout positions (stable, never shift during drag).
@@ -483,12 +494,14 @@ export const SortableContainer = ({
 
     // Track drag position changes (log only on slot change to avoid per-frame noise)
     if (targetSlot !== draggedToIndex.current) {
-      onDragPositionChangeCallback?.({
-        toIndex: targetSlot,
-        index: fromIndex,
-        item: fromItem as any,
-        previousIndex: draggedToIndex.current,
-      });
+      if (!externalDrag) {
+        onDragPositionChangeCallback?.({
+          toIndex: targetSlot,
+          index: fromIndex,
+          item: fromItem as any,
+          previousIndex: draggedToIndex.current,
+        });
+      }
       draggedToIndex.current = targetSlot;
 
       // Update drop indicator

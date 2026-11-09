@@ -45,8 +45,9 @@ jest.mock('../hooks/useDraxContext', () => ({
     setHoverContent: () => {},
   }),
 }));
+let mockBoardContext: unknown;
 jest.mock('../SortableBoardContext', () => ({
-  useSortableBoardContext: () => undefined,
+  useSortableBoardContext: () => mockBoardContext,
 }));
 
 type MonitorHandlers = {
@@ -146,6 +147,7 @@ const renderScrollView = (props: Record<string, unknown> = {}) => {
 
 beforeEach(() => {
   jest.useFakeTimers();
+  mockBoardContext = undefined;
 });
 afterEach(() => {
   jest.useRealTimers();
@@ -211,6 +213,28 @@ describe('SortableContainer auto-scroll', () => {
     ownDragOver(list, BOTTOM);
     jest.advanceTimersByTime(1000);
     expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
+  });
+
+  it('ignores a foreign drag: no scroll, no onDragPositionChange', () => {
+    const list = renderSortable();
+    list.onMonitorDragStart(dragEvent(MIDDLE, 'other-list'));
+    list.onMonitorDragOver(dragEvent(MIDDLE, 'other-list'));
+    list.onMonitorDragOver(dragEvent(BOTTOM, 'other-list'));
+    jest.advanceTimersByTime(1000);
+    expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
+    expect(list.onDragPositionChange).not.toHaveBeenCalled();
+  });
+
+  it('still auto-scrolls as the target column of a board transfer', () => {
+    mockBoardContext = {
+      registerColumn: () => {},
+      unregisterColumn: () => {},
+      boardInternal: { transferState: { current: { targetId: 'list' } } },
+    };
+    const list = renderSortable();
+    list.onMonitorDragOver(dragEvent(BOTTOM, 'other-list'));
+    expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(1);
+    expect(list.onDragPositionChange).not.toHaveBeenCalled();
   });
 
   it('reports position changes for its own items', () => {
