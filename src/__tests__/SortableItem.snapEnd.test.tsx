@@ -1,5 +1,6 @@
-import { act, useLayoutEffect, useState } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { act, create } from 'react-test-renderer';
 
 import { SortableContainer } from '../SortableContainer';
 import { SortableItem } from '../SortableItem';
@@ -7,10 +8,9 @@ import { useSortableList } from '../hooks/useSortableList';
 import type { DraxViewProps, SortableListHandle } from '../types';
 
 // Renders the real useSortableList + SortableContainer + SortableItem with
-// React Native's renderer. DraxView is replaced by a stub that records its
+// react-test-renderer. DraxView is replaced by a stub that records its
 // props, so the test can fire the container's drag-start monitor callback and
 // the item's onSnapEnd (which DraxView calls when the snap animation ends).
-// The tree has no host components, so no native view configs are needed.
 const mockDraxProps = new Map<string, DraxViewProps>();
 jest.mock('../DraxView', () => ({
   DraxView: (props: DraxViewProps & { children?: ReactNode }) => {
@@ -51,11 +51,6 @@ const mockCtx = {
 };
 jest.mock('../hooks/useDraxContext', () => ({ useDraxContext: () => mockCtx }));
 
-// The jest preset mocks RendererProxy, so load the renderer directly.
-const ReactNative = jest.requireActual(
-  'react-native/Libraries/Renderer/implementations/ReactNativeRenderer-dev'
-);
-
 const DATA = ['A', 'B', 'C'];
 const Leaf = () => null;
 
@@ -75,7 +70,13 @@ const Cell = ({ sortable: handle, index }: { sortable: SortableListHandle<string
   );
 };
 
-const List = ({ onReorder }: { onReorder: jest.Mock }) => {
+const List = ({
+  onReorder,
+  withContainer = true,
+}: {
+  onReorder: jest.Mock;
+  withContainer?: boolean;
+}) => {
   const [, setTick] = useState(0);
   rerenderOwner = () => setTick((t) => t + 1);
   const handle = useSortableList({
@@ -87,6 +88,7 @@ const List = ({ onReorder }: { onReorder: jest.Mock }) => {
   useLayoutEffect(() => {
     sortable = handle;
   });
+  if (!withContainer) return null;
   return (
     <SortableContainer sortable={handle} scrollRef={{ current: null }}>
       {handle.data.map((item, index) => (
@@ -98,7 +100,10 @@ const List = ({ onReorder }: { onReorder: jest.Mock }) => {
 
 const dragAToEndAndDrop = (ownerRerendersMidDrag: boolean) => {
   const onReorder = jest.fn();
-  act(() => ReactNative.render(<List onReorder={onReorder} />, 1));
+  let root!: ReturnType<typeof create>;
+  act(() => {
+    root = create(<List onReorder={onReorder} />);
+  });
   act(() => rerenderCell.forEach((rerender) => rerender()));
 
   act(() => {
@@ -113,7 +118,7 @@ const dragAToEndAndDrop = (ownerRerendersMidDrag: boolean) => {
     mockDraxProps.get('A')!.onSnapEnd!({} as never);
     jest.runAllTimers();
   });
-  act(() => ReactNative.unmountComponentAtNode(1));
+  act(() => root.unmount());
   return onReorder;
 };
 
@@ -136,5 +141,19 @@ describe('SortableItem onSnapEnd', () => {
     const onReorder = dragAToEndAndDrop(true);
     expect(onReorder).toHaveBeenCalledTimes(1);
     expect(onReorder.mock.calls[0][0]).toMatchObject({ fromIndex: 0, toIndex: 2, data: ['B', 'C', 'A'] });
+  });
+
+  it('clears its finalizeDrag registration when the container unmounts', () => {
+    const onReorder = jest.fn();
+    let root!: ReturnType<typeof create>;
+    act(() => {
+      root = create(<List onReorder={onReorder} />);
+    });
+    expect(sortable._internal.onItemSnapEndRef.current).toBeInstanceOf(Function);
+
+    // The list owner stays mounted; only the container goes away.
+    act(() => root.update(<List onReorder={onReorder} withContainer={false} />));
+    expect(sortable._internal.onItemSnapEndRef.current).toBeUndefined();
+    act(() => root.unmount());
   });
 });
