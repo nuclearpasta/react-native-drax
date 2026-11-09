@@ -612,15 +612,22 @@ use the `hover*Style` props).
 
 ### Coming in 1.2.0-rc.2 (opt-in)
 
-Planned opt-ins (names tentative — finalize when they land):
+Planned opt-ins. All are optional and additive, and the names may still change
+before 1.2.0-rc.2 ships:
 
-- `draggedItemStyle` — show a faded in-place row while dragging (today the row
-  is forced to `opacity: 0`).
-- `autoScrollForeignDrags` — auto-scroll a list under a foreign drag (today
-  only same-board column transfers scroll).
-- A per-item hover callback receiving `{ item, index }`.
-- Measured hover dimensions (a new optional field next to today's
-  `hoverMeasurements`, which stay the dragged view's size).
+- `draggedItemStyle?: StyleProp<ViewStyle>` on `DraxList` and `useSortableList`:
+  the style of the dragged row's slot while the hover is out. The default stays
+  `{ opacity: 0 }`; pass e.g. `{ opacity: 0.3 }` for a faded in-place row.
+- `autoScrollForeignDrags?: boolean` on `DraxList` and `SortableContainer`
+  (default `false`): when `true`, drags from another list auto-scroll this list
+  even without `onExternalDrop`.
+- `renderItemHoverContent?: (props) => ReactNode` on `DraxList`: a per-row hover
+  that gets the usual `DraxRenderHoverContentProps` plus `{ item, index }`. It
+  falls back to `itemDraxViewProps.renderHoverContent`, then the default hover.
+- `hoverContentMeasurements?: { x, y, width, height }` on the dragged view's
+  event data: the hover's own measured frame (relative to the provider root),
+  so it fits custom hover content. `hoverMeasurements` keeps its current meaning
+  (the dragged view's size).
 
 ## 8. Quick reference
 
