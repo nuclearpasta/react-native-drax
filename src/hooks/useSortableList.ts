@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { StyleSheet } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
@@ -1037,11 +1037,8 @@ export const useSortableList = <T,>(
   };
 
   // ── Build the internal object ─────────────────────────────────────
-  const flatDraggedItemStyle = useMemo(
-    () => StyleSheet.flatten(draggedItemStyle) ?? undefined,
-    [draggedItemStyle],
-  );
-
+  // Flatten once per render (not memoized): RC1's externalDrop mock has no
+  // useMemo dispatcher. Docs tell callers to pass a stable style.
   const internal: SortableListInternal<T> = {
     id,
     horizontal,
@@ -1052,7 +1049,7 @@ export const useSortableList = <T,>(
     animationConfig,
     getItemSpan,
     inactiveItemStyle,
-    draggedItemStyle: flatDraggedItemStyle,
+    draggedItemStyle: StyleSheet.flatten(draggedItemStyle) ?? undefined,
     itemEntering,
     itemExiting,
     fixedKeys,
