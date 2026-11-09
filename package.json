@@ -78,6 +78,7 @@
     "@release-it/conventional-changelog": "^10.0.4",
     "@types/jest": "^30.0.0",
     "@types/react": "^19.3.0",
+    "@types/react-test-renderer": "^19",
     "commitlint": "^20.4.1",
     "del-cli": "^7.0.0",
     "eslint": "^9.39.2",
@@ -92,6 +93,7 @@
     "react-native-gesture-handler": "3.3.0",
     "react-native-reanimated": "^4.7.1",
     "react-native-worklets": "0.13.0",
+    "react-test-renderer": "19.3.0",
     "release-it": "^19.0.4",
     "typescript": "^5.9.3"
   },
