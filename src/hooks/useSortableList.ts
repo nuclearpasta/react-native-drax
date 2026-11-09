@@ -177,9 +177,9 @@ export const useSortableList = <T,>(
         }
       }
       if (matches) {
-        // Parent accepted our reorder — stableData stays unchanged.
-        // FlatList keeps rendering the original data order; permanent shifts
-        // handle the visual reorder. No Fabric commit → no race → no blink.
+        // Parent accepted our reorder — permanent shifts already show this
+        // order. Swap stableData now only if a flush was requested.
+        flushIfReady();
         return;
       }
     }
@@ -549,18 +549,27 @@ export const useSortableList = <T,>(
     committedShiftsRef.current = finalShifts ?? {};
   };
 
-  /**
-   * Flush permanent shifts: update stableData to match rawData and clear
-   * shifts. Called after a delay so both the Fabric commit and the shift
-   * clearing are processed on the same UI frame — no visual blink because
-   * items are already at the correct visual positions via permanent shifts.
-   * Restores touch hit testing (FlatList cells at correct Yoga positions).
-   */
   /** Flag: next stableData change should clear shifts via runOnUI */
   const pendingShiftFlushRef = useRef(false);
+  /** Flag: flushVisualOrder was called and has not been applied yet */
+  const flushRequestedRef = useRef(false);
+  const stableDataRef = useRef(stableData);
+  stableDataRef.current = stableData;
 
-  const flushVisualOrder = () => {
+  /**
+   * Flush permanent shifts: update stableData to match rawData and clear
+   * shifts, so FlatList cells move to their real positions (touch hit
+   * testing, renderItem indexes). Applied only once the parent has echoed
+   * the reorder (rawData differs from stableData). Uncontrolled parents
+   * never echo, so they keep the committed order and permanent shifts.
+   * Never applied during a drag: pendingOrderRef indexes into stableData.
+   */
+  const flushIfReady = () => {
+    if (!flushRequestedRef.current) return;
+    if (pendingOrderRef.current.length > 0) return;
     const currentRawData = rawDataRef.current;
+    if (currentRawData === stableDataRef.current) return;
+    flushRequestedRef.current = false;
     committedOrderRef.current = [];
     committedKeyOrderRef.current = [];
     committedShiftsRef.current = {};
@@ -569,6 +578,11 @@ export const useSortableList = <T,>(
     // Shift clearing happens in the useLayoutEffect below — NOT here.
     // This ensures it's queued during the same React commit as the
     // Fabric update, so both land on the same UI frame.
+  };
+
+  const flushVisualOrder = () => {
+    flushRequestedRef.current = true;
+    flushIfReady();
   };
 
   // When flushVisualOrder updates stableData, clear shifts during the

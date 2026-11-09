@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Reanimated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
@@ -199,15 +199,10 @@ export const SortableContainer = ({
             setTimeout(() => {
               sortable._internal.flushVisualOrder();
             }, 300);
-          } else if (Platform.OS === 'web') {
-            // On web, flush synchronously after onReorder so FlatList cells
-            // move to correct positions immediately. The delayed flush caused
-            // races when the user grabbed another item before it fired.
-            sortable._internal.flushVisualOrder();
           } else {
-            setTimeout(() => {
-              sortable._internal.flushVisualOrder();
-            }, 0);
+            // Request the flush synchronously; it is applied when the
+            // parent's echoed data renders, never under an active drag.
+            sortable._internal.flushVisualOrder();
           }
         });
       }
