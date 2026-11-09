@@ -77,6 +77,13 @@ export const useSortableList = <T,>(
    * Written from JS thread during drag, read on UI thread via useAnimatedStyle.
    */
   const shiftsRef = useSharedValue<Record<string, Position>>({});
+  /**
+   * JS-thread mirror of shiftsRef, set next to every JS-side shifts write.
+   * JS reads use this instead of `shiftsRef.value`: a JS `.value =` write is
+   * applied on the UI thread asynchronously, so a JS read can return the
+   * previous value (and warns when it happens during a React render).
+   */
+  const shiftsJSRef = useRef<Record<string, Position>>({});
 
   /**
    * When true, SortableItem applies shifts with duration 0 (instant).
@@ -117,6 +124,8 @@ export const useSortableList = <T,>(
   );
   const contentSizeRef = useRef<Position | undefined>(undefined);
   const scrollPosition = useSharedValue<Position>({ x: 0, y: 0 });
+  /** JS-thread mirror of scrollPosition (see shiftsJSRef). */
+  const scrollPositionJSRef = useRef<Position>({ x: 0, y: 0 });
 
   // ── Drag tracking (refs, no re-render) ────────────────────────────
   const draggedDisplayIndexRef = useRef<number | undefined>(undefined);
@@ -189,11 +198,13 @@ export const useSortableList = <T,>(
       // Board-path reorder: hover covers the transition.
       skipShiftsInvalidationRef.current = false;
       instantClearSV.value = true;
+      shiftsJSRef.current = {};
       shiftsRef.value = {};
     } else {
       // External data change: invalidate shifts immediately so the animated
       // style reads zero shifts in the same frame as the Fabric commit.
       shiftsValidSV.value = false;
+      shiftsJSRef.current = {};
       runOnUI(() => {
         'worklet';
         instantClearSV.value = true;
@@ -325,11 +336,9 @@ export const useSortableList = <T,>(
   const applyShifts = (shifts: Record<string, Position> | undefined) => {
     if (!shifts) return;
     const ghosts = ghostShiftsRef.current;
-    if (Object.keys(ghosts).length > 0) {
-      shiftsRef.value = { ...shifts, ...ghosts };
-    } else {
-      shiftsRef.value = shifts;
-    }
+    const next = Object.keys(ghosts).length > 0 ? { ...shifts, ...ghosts } : shifts;
+    shiftsJSRef.current = next;
+    shiftsRef.value = next;
   };
 
   // ── Shift computation ─────────────────────────────────────────────
@@ -574,6 +583,7 @@ export const useSortableList = <T,>(
   useLayoutEffect(() => {
     if (pendingShiftFlushRef.current) {
       pendingShiftFlushRef.current = false;
+      shiftsJSRef.current = {};
       runOnUI(() => {
         'worklet';
         instantClearSV.value = true;
@@ -616,6 +626,7 @@ export const useSortableList = <T,>(
     instantClearSV.value = true;
     // Revert to committed shifts from the previous drag (if any).
     // If no previous drag, clears to empty (identity positions).
+    shiftsJSRef.current = committedShiftsRef.current;
     shiftsRef.value = committedShiftsRef.current;
   };
 
@@ -645,6 +656,7 @@ export const useSortableList = <T,>(
     if (shifts !== undefined) {
       applyShifts(shifts);
     } else {
+      shiftsJSRef.current = committedShiftsRef.current;
       shiftsRef.value = committedShiftsRef.current;
     }
     pendingOrderRef.current = [];
@@ -973,6 +985,8 @@ export const useSortableList = <T,>(
   // ── Scroll event handlers ─────────────────────────────────────────
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { x, y } = event.nativeEvent.contentOffset;
+    scrollPositionJSRef.current = { x, y };
     runOnUI((_event: NativeScrollEvent) => {
       'worklet';
       scrollPosition.value = {
@@ -1011,6 +1025,7 @@ export const useSortableList = <T,>(
     setDraggedItem,
     resetDraggedItem,
     scrollPosition,
+    scrollPositionJSRef,
     containerMeasurementsRef,
     contentSizeRef,
     autoScrollJumpRatio,
@@ -1027,6 +1042,7 @@ export const useSortableList = <T,>(
     draggedDisplayIndexRef,
     dragStartIndexRef,
     shiftsRef,
+    shiftsJSRef,
     instantClearSV,
     shiftsValidSV,
     initPendingOrder,

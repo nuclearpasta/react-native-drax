@@ -131,6 +131,10 @@ export const SortableBoardContainer = <TItem,>({
 
     // 2. Clear source draggedItem AND draggedIdSV on UI thread.
     const sourceItemKey = transfer.itemKey;
+    source.shiftsJSRef.current = {
+      ...source.shiftsJSRef.current,
+      [sourceItemKey]: { x: -9999, y: -9999 },
+    };
 
     runOnUI((
       _srcDraggedItem: typeof source.draggedItem,

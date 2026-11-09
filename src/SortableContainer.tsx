@@ -93,6 +93,7 @@ export const SortableContainer = ({
     committedShiftsRef,
     cancelDrag,
     shiftsRef,
+    shiftsJSRef,
     instantClearSV,
     shiftsValidSV,
     getSlotFromPosition,
@@ -177,6 +178,7 @@ export const SortableContainer = ({
         pendingOrderRef.current = [];
 
         hoverClearDeferredRef.current = true;
+        shiftsJSRef.current = finalShifts;
         runOnUI((_shifts: Record<string, Position>) => {
           'worklet';
           instantClearSV.value = true;
@@ -311,6 +313,7 @@ export const SortableContainer = ({
     if (cancelled && totalDragEnd && dragStartIndexRef.current !== undefined) {
       initPendingOrder();
       draggedDisplayIndexRef.current = dragStartIndexRef.current;
+      shiftsJSRef.current = committedShiftsRef.current;
       shiftsRef.value = committedShiftsRef.current;
     }
 
