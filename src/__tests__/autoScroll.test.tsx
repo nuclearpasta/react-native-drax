@@ -274,6 +274,24 @@ describe('SortableContainer auto-scroll', () => {
     expect(list.onDragPositionChange).not.toHaveBeenCalled();
   });
 
+  it('auto-scrolls a foreign drag when the list has onExternalDrop, nothing else', () => {
+    // No slot tracking: no getSlotFromPosition, so no moves or drop indicator.
+    const getSlotFromPosition = jest.fn(() => 0);
+    const list = renderSortable({
+      onExternalDrop: jest.fn(),
+      getSlotFromPosition,
+    });
+    list.onMonitorDragStart(dragEvent(MIDDLE, 'other-list'));
+    list.onMonitorDragOver(dragEvent(MIDDLE, 'other-list'));
+    expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
+    list.onMonitorDragOver(dragEvent(BOTTOM, 'other-list'));
+    expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(1);
+    jest.advanceTimersByTime(250);
+    expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(2);
+    expect(list.onDragPositionChange).not.toHaveBeenCalled();
+    expect(getSlotFromPosition).not.toHaveBeenCalled();
+  });
+
   it('still auto-scrolls for an item from another column of the same board', () => {
     mockBoardContext = {
       registerColumn: () => {},
