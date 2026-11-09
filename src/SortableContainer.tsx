@@ -21,6 +21,7 @@ import type {
   DraxMonitorEventData,
   DraxProtocolDragEndResponse,
   DraxViewProps,
+  SortableItemMeasurement,
   SortableListHandle,
 } from './types';
 import {
@@ -66,6 +67,7 @@ export const SortableContainer = ({
   const {
     id,
     horizontal,
+    numColumns,
     draggedItem,
     rawData,
     moveDraggedItem,
@@ -303,6 +305,53 @@ export const SortableContainer = ({
     return () => stopAutoScrollTimer(timer);
   }, []);
 
+  /**
+   * Insertion index (0 to itemCount) for a foreign drop at a content position,
+   * or undefined when no measured row decides it. A virtualized list only
+   * measures its mounted rows, and getSlotFromPosition gives up (slot 0) when
+   * any row is unmeasured. Then only the measured row under the drop counts
+   * (for a list, its gap to a measured next row too; before the first row and
+   * after the last row count when those rows are measured).
+   */
+  const getExternalDropIndex = (pos: Position): number | undefined => {
+    const grid = numColumns > 1;
+    const isAfter = (meas: SortableItemMeasurement) =>
+      horizontal || grid
+        ? pos.x > meas.x + meas.width / 2
+        : pos.y > meas.y + meas.height / 2;
+    const measurements = Array.from({ length: itemCount }, (_, i) =>
+      getMeasurementByOriginalIndex(i)
+    );
+    if (measurements.every((meas) => meas !== undefined)) {
+      const slot = getSlotFromPosition(pos, itemCount);
+      const meas = measurements[slot];
+      return slot + (meas && isAfter(meas) ? 1 : 0);
+    }
+    const main = (p: { x: number; y: number }) => (horizontal ? p.x : p.y);
+    for (let i = 0; i < itemCount; i++) {
+      const meas = measurements[i];
+      if (!meas) continue;
+      let hit: boolean;
+      if (grid) {
+        hit =
+          pos.x >= meas.x && pos.x <= meas.x + meas.width &&
+          pos.y >= meas.y && pos.y <= meas.y + meas.height;
+      } else {
+        const start = main(meas);
+        const next = measurements[i + 1];
+        const end =
+          i === itemCount - 1
+            ? Infinity
+            : next
+              ? main(next)
+              : start + (horizontal ? meas.width : meas.height);
+        hit = (i === 0 || main(pos) >= start) && main(pos) < end;
+      }
+      if (hit) return i + (isAfter(meas) ? 1 : 0);
+    }
+    return undefined;
+  };
+
   // ── Internal drag end handler ───────────────────────────────────────
 
   const handleInternalDragEnd = (
@@ -346,6 +395,27 @@ export const SortableContainer = ({
       : undefined;
     const toPayload =
       receiver?.parentId === id ? receiverPayload : undefined;
+
+    // Opt-in: a foreign view (not a board column item) dropped inside the list.
+    // toIndex comes from the drop position, not from drag-over state.
+    const ratio = eventData.monitorOffsetRatio;
+    if (
+      onExternalDrop &&
+      totalDragEnd &&
+      !cancelled &&
+      externalDrag &&
+      !boardContext?.boardInternal.columns.has(dragged.parentId ?? '') &&
+      ratio.x >= 0 && ratio.x <= 1 && ratio.y >= 0 && ratio.y <= 1
+    ) {
+      const pos = {
+        x: eventData.monitorOffset.x + scrollPosition.value.x,
+        y: eventData.monitorOffset.y + scrollPosition.value.y,
+      };
+      const toIndex = getExternalDropIndex(pos);
+      if (toIndex !== undefined) {
+        onExternalDrop({ toIndex, payload: dragged.payload, dragged });
+      }
+    }
 
     if (totalDragEnd) {
       onDragEndCallback?.({

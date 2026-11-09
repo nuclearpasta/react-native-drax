@@ -103,6 +103,15 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - Both checked in `handleReceiverChange` (JS thread). If rejected, receiver is cleared and enter callbacks skipped.
 - Use for max capacity: `acceptsDrag={() => items.length < 5}`
 
+## External Drops (single list)
+
+- Opt-in `onExternalDrop` on `useSortableList` / `DraxList`: fires in `SortableContainer.handleInternalDragEnd` when a foreign view (not this list's item, not a board column item, no active board transfer) is dropped inside the container bounds (`monitorOffsetRatio` in [0,1]). Not on cancel.
+- `toIndex` is computed at drop time from `monitorOffset` + scroll by `SortableContainer.getExternalDropIndex`. All rows measured: `getSlotFromPosition(pos, itemCount)` (explicit slot count, because `pendingOrderRef` is empty for foreign drags), then +1 if past the slot item's midpoint (main axis for lists, x for grids). Range 0..data.length.
+- Some rows unmeasured (a virtualized list only measures mounted rows; `getSlotFromPosition` then bails out to slot 0): only a measured row under the drop decides (lists: also its gap to a measured next row, before a measured first row, after a measured last row). No such row → `onExternalDrop` is not called, rather than reporting a wrong index. Own-drag reorder keeps `getSlotFromPosition`'s bail-out (no move).
+- No phantom slot, no shifts, no data mutation; the foreign view snaps back by default.
+- Drag-over for foreign drags: onMonitorDragOver returns early for them (#326), but a list with onExternalDrop still auto-scrolls them through updateAutoScroll (#337), with no onDragPositionChange, moveDraggedItem or drop indicator.
+- Tests: `src/__tests__/externalDrop.test.ts` runs the hook + container as plain functions on a mock hook store. The harness predates `react-test-renderer`, which is a devDependency on main since #310 but not on this branch's base.
+
 ## Collision Algorithms
 
 - `DraxView` accepts `collisionAlgorithm` prop: `'center'` (default), `'intersect'`, or `'contain'`
