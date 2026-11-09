@@ -798,6 +798,8 @@ export interface SortableListInternal<T> {
   setDraggedItem: (index: number) => void;
   resetDraggedItem: () => void;
   scrollPosition: SharedValue<Position>;
+  /** JS-thread mirror of scrollPosition, for synchronous JS reads */
+  scrollPositionJSRef: RefObject<Position>;
   containerMeasurementsRef: RefObject<DraxViewMeasurements | undefined>;
   contentSizeRef: RefObject<Position | undefined>;
   autoScrollEnabled: boolean;
@@ -819,13 +821,15 @@ export interface SortableListInternal<T> {
   /** Called by SortableItem's onSnapEnd to finalize the drag.
    *  Stored as a ref so the latest finalizeDrag is always called,
    *  even if SortableItem has a stale _internal reference. */
-  onItemSnapEnd?: () => void;
+  onItemSnapEndRef: RefObject<(() => void) | undefined>;
   /** Current display index of the dragged item (updated during live reorder) */
   draggedDisplayIndexRef: RefObject<number | undefined>;
   /** Original display index where the drag started */
   dragStartIndexRef: RefObject<number | undefined>;
   /** Per-item shift transforms keyed by item key (UI thread) */
   shiftsRef: SharedValue<Record<string, Position>>;
+  /** JS-thread mirror of shiftsRef, for synchronous JS reads */
+  shiftsJSRef: RefObject<Record<string, Position>>;
   /** When true, SortableItem clears shift transforms instantly (no animation) */
   instantClearSV: SharedValue<boolean>;
   /** When false, SortableItem ignores shifts entirely (treats as 0).

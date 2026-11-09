@@ -119,14 +119,15 @@ const SortableItemInner = ({
     itemEntering,
     itemExiting,
     shiftsRef,
+    shiftsJSRef,
     instantClearSV,
     shiftsValidSV,
     itemMeasurements,
     keyExtractor,
     rawData,
     originalIndexes,
-    scrollPosition,
-    onItemSnapEnd,
+    scrollPositionJSRef,
+    onItemSnapEndRef,
     fixedKeys,
   } = sortable._internal;
 
@@ -221,7 +222,7 @@ const SortableItemInner = ({
           draxViewProps.onDragDrop?.(event);
         }}
         onSnapEnd={(snapData) => {
-          onItemSnapEnd?.();
+          onItemSnapEndRef.current?.();
           draxViewProps.onSnapEnd?.(snapData);
         }}
         onMeasure={(measurements) => {
@@ -235,7 +236,7 @@ const SortableItemInner = ({
             let adjX = measurements.x;
             let adjY = measurements.y;
             if (Platform.OS === 'web' || measurements._transformDetected) {
-              const currentShift = shiftsRef.value[itemKey];
+              const currentShift = shiftsJSRef.current[itemKey];
               if (currentShift) {
                 adjX -= currentShift.x;
                 adjY -= currentShift.y;
@@ -248,7 +249,7 @@ const SortableItemInner = ({
               height: measurements.height,
               key: itemKey,
               index,
-              scrollAtMeasure: { x: scrollPosition.value.x, y: scrollPosition.value.y },
+              scrollAtMeasure: { ...scrollPositionJSRef.current },
             };
             itemMeasurements.current.set(itemKey, entry);
           }

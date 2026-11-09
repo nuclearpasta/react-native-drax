@@ -20,7 +20,10 @@ Drag-and-drop framework for React Native (iOS, Android, Web). Current package ve
 - Map-based measurements (keyed by item key) instead of array-indexed
 - Supports insert + swap reorder strategies
 - Drop indicator support: `SortableContainer` tracks target position via SharedValues, renders indicator at insertion point
+- **JS mirrors**: `shiftsJSRef` / `scrollPositionJSRef` in `_internal` mirror `shiftsRef` / `scrollPosition` for JS-thread reads (e.g. `SortableItem` `onMeasure`). A JS `.value =` write reaches the UI thread asynchronously, so a JS `.value` read can be stale and warns during render (#249). Set the mirror next to every JS-side shifts write, including before `runOnUI` blocks.
 - **Data ownership**: Library commits reorders internally via `commitReorder`. `onReorder` is a notification — parent stores data but library already committed it. When parent echoes data back, useLayoutEffect detects the match and skips (no double-render).
+- `finalizeDrag` reaches `SortableItem` through `_internal.onItemSnapEndRef` (stable ref, read at call time). `_internal` is rebuilt every render, so a plain property captured at render goes stale when the list owner re-renders mid-drag (#236/#296).
+- Jest can render the real sortable hook/container/item with `react-test-renderer`: stub `DraxView`, Reanimated, worklets, and `useDraxContext`. See `src/__tests__/SortableItem.snapEnd.test.tsx`.
 
 ### Animation Customization
 
