@@ -15,12 +15,15 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - (BREAKING-TS) `collisionAlgorithm: 'touch'` on receiving/monitoring `DraxView`s: hit-tests at the finger instead of the hover view's center, so the receiver under the touch point receives wherever the item was grabbed (the 0.x behavior). The default `'center'` is unchanged. `CollisionAlgorithm` gains a `'touch'` member, so an exhaustive `switch` over it needs a new case (#282)
 - `dragTouchPosition` on drag end event data (`onDragEnd`, `onDragDrop`, `onReceiveDragDrop`, `onMonitorDragEnd`, `onMonitorDragDrop`, cancelled `onReceiveDragExit`): the finger position at release, relative to the `DraxProvider` root view. `dragAbsolutePosition` is unchanged (#282)
 - **`draggedItemStyle`** on `DraxList` and `useSortableList`: style of the dragged row's in-list placeholder while its hover copy moves (default `{ opacity: 0 }`). Pass `{ opacity: 0.2 }` for a faint placeholder like 0.11. The placeholder stays at its pickup slot while the finger is down and moves to the target slot on release. Use visual props only (no layout props).
+- **`autoScrollForeignDrags`** on `DraxList` and `useSortableList` (default `true`): a foreign drag hovering near a list's edge auto-scrolls it, as in 0.11. Set `false` (for example on a bank that only gives items away) to auto-scroll only for the list's own rows and board transfers.
 
 ### Changed
 
 - (BREAKING-TS) `DraxContextValue.rootViewRef` is now a Reanimated `AnimatedRef<View>` instead of `{ current: HostInstance | null }`, so the root view can be measured on the UI thread at drag start. `.current` still holds the host view.
 - `autoScrollIntervalLength` is now honoured by `DraxScrollView` and sortable lists (it was ignored and the interval was fixed at 250 ms).
-- A foreign drag over a sortable list (a `DraxView`, or an item from a list outside its board) no longer auto-scrolls the list, tracks slots, fires `onDragPositionChange` or shows the drop indicator. Board columns still react to items from other columns of the same board.
+- A foreign drag over a sortable list (a `DraxView`, or an item from a list outside its board) no longer tracks slots, fires `onDragPositionChange` or shows the drop indicator. It still auto-scrolls the list, as in 0.11, unless `autoScrollForeignDrags` is `false`. Board columns still react to items from other columns of the same board.
+- A foreign drag over a sortable list that has `onExternalDrop` opens a gap where it would drop, as 0.11 did: the rows from that index on slide aside by the dragged view's size. The gap index is the `toIndex` that `onExternalDrop` gets: an index into the `data` array, hidden (zero-size) rows included, so `data.splice(toIndex, 0, item)` lands where the gap was. It opens only while one of the list's rows is the receiver, so rows that refuse the drag (`receptive`, `dynamicReceptiveCallback`) open none. Lists only, not grids. The gap closes on exit, release and cancel.
+- Sortable lists decide auto-scroll before the 5 px jitter guard, so an edge drag scrolls without waiting for a 5 px move, as in 0.11. The guard still holds back reorders.
 
 ### Fixed
 

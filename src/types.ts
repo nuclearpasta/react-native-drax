@@ -780,6 +780,11 @@ export interface UseSortableListOptions<T> extends DraxAutoScrollProps {
   longPressDelay?: number;
   /** Lock item drags to the list's main axis. @default false */
   lockToMainAxis?: boolean;
+  /** Auto-scroll the list while a foreign drag (a `DraxView`, or an item from
+   *  a list outside this list's board) hovers near its edge, as 0.11 did. Set
+   *  `false` to auto-scroll only for the list's own rows and board transfers.
+   *  Has no effect when `autoScrollEnabled` is `false`. @default true */
+  autoScrollForeignDrags?: boolean;
   /** Animation config for item shift animations. @default 'default' */
   animationConfig?: SortableAnimationConfig;
   /** Returns the grid span for an item. Enables non-uniform grid layout
@@ -803,8 +808,10 @@ export interface UseSortableListOptions<T> extends DraxAutoScrollProps {
   /** Callback when drag ends */
   onDragEnd?: (event: SortableDragEndEvent<T>) => void;
   /** Opt-in. Called when a view that is not one of this list's items (and not
-   *  a SortableBoard transfer) is dropped inside the list. The library does
-   *  not change the data or shift items: insert the item at `toIndex` yourself.
+   *  a SortableBoard transfer) is dropped inside the list. While the drag is
+   *  over a row, the rows from `toIndex` on slide aside to open a gap (lists
+   *  only). The library does not change the data: insert the item at `toIndex`
+   *  yourself. `toIndex` indexes the `data` array, hidden rows included.
    *  While some rows are unmeasured (not mounted by a virtualized list), the
    *  index is known only for a drop on a measured row (in a single-column
    *  list, also in its gap to a measured next row, or before a measured first
@@ -867,6 +874,7 @@ export interface SortableListInternal<T> {
   autoScrollJumpRatio: number;
   autoScrollBackThreshold: number;
   autoScrollForwardThreshold: number;
+  autoScrollForeignDrags: boolean;
   /** Callbacks from options, stored for SortableContainer to invoke */
   onDragStart?: (event: SortableDragStartEvent<T>) => void;
   onDragPositionChange?: (event: SortableDragPositionChangeEvent<T>) => void;
