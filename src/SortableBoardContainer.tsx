@@ -83,8 +83,8 @@ export const SortableBoardContainer = <TItem,>({
     const bounds = col.containerMeasurementsRef.current;
     if (!bounds) return { x: 0, y: 0 };
     return {
-      x: absolutePos.x - bounds.x + col.scrollPosition.value.x,
-      y: absolutePos.y - bounds.y + col.scrollPosition.value.y,
+      x: absolutePos.x - bounds.x + col.scrollPositionJSRef.current.x,
+      y: absolutePos.y - bounds.y + col.scrollPositionJSRef.current.y,
     };
   };
 
@@ -131,6 +131,10 @@ export const SortableBoardContainer = <TItem,>({
 
     // 2. Clear source draggedItem AND draggedIdSV on UI thread.
     const sourceItemKey = transfer.itemKey;
+    source.shiftsJSRef.current = {
+      ...source.shiftsJSRef.current,
+      [sourceItemKey]: { x: -9999, y: -9999 },
+    };
 
     runOnUI((
       _srcDraggedItem: typeof source.draggedItem,

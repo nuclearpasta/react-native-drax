@@ -7,11 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1a1a1a"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "drax.example"
@@ -21,7 +16,6 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1a1a1a"
       },
-      "edgeToEdgeEnabled": true,
       "package": "drax.example"
     },
     "web": {
@@ -32,6 +26,17 @@
     "experiments": {
       "baseUrl": "/react-native-drax/example"
     },
-    "plugins": ["expo-font", "expo-router"]
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#1a1a1a"
+        }
+      ]
+    ]
   }
 }

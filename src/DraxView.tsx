@@ -346,6 +346,9 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     }
   }, [dragBoundsRef, rootViewRef, dragBoundsSV]);
 
+  // Offset of the DraxHandle within this view (written by DraxHandle).
+  const handleOffsetSV = useSharedValue<Position>({ x: 0, y: 0 });
+
   const gesture = useDragGesture(
     id,
     spatialIndexSV,
@@ -356,7 +359,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
     dragBoundsSV,
     props.dragActivationFailOffset,
     scrollHorizontal,
-    dragHandle
+    dragHandle ? handleOffsetSV : undefined
   );
 
   // ── Animated styles ────────────────────────────────────────────────
@@ -398,7 +401,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
   // When dragHandle is true, provide the gesture via context so DraxHandle can attach it
   if (dragHandle) {
     renderedContent = (
-      <DraxHandleContext.Provider value={{ gesture }}>
+      <DraxHandleContext.Provider value={{ gesture, viewRef, handleOffsetSV }}>
         {renderedContent}
       </DraxHandleContext.Provider>
     );

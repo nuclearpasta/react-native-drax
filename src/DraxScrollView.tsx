@@ -10,6 +10,8 @@ import { useWebScrollFreeze } from './hooks/useWebScrollFreeze';
 import {
   defaultAutoScrollBackThreshold,
   defaultAutoScrollForwardThreshold,
+  defaultAutoScrollInitialDelay,
+  defaultAutoScrollIntervalLength,
   defaultAutoScrollJumpRatio,
   defaultScrollEventThrottle,
 } from './params';
@@ -29,6 +31,9 @@ export const DraxScrollView = (
     style,
     onContentSizeChange: onContentSizeChangeProp,
     scrollEventThrottle = defaultScrollEventThrottle,
+    autoScrollEnabled = true,
+    autoScrollIntervalLength = defaultAutoScrollIntervalLength,
+    autoScrollInitialDelay = defaultAutoScrollInitialDelay,
     autoScrollJumpRatio = defaultAutoScrollJumpRatio,
     autoScrollBackThreshold = defaultAutoScrollBackThreshold,
     autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
@@ -63,6 +68,8 @@ export const DraxScrollView = (
     onScrollProp: props?.onScroll,
     externalRef: ref,
     doScroll: doScrollRef,
+    autoScrollIntervalLength,
+    autoScrollInitialDelay,
   });
 
   // Assign doScroll implementation now that we have scrollRef, measurements, etc.
@@ -126,8 +133,14 @@ export const DraxScrollView = (
 
   // Monitor drag-over events to react with auto-scrolling.
   const onMonitorDragOver = (event: DraxMonitorEventData) => {
-    const { monitorOffsetRatio } = event;
     const autoScrollState = autoScrollStateRef.current;
+    if (!autoScrollEnabled) {
+      autoScrollState.x = AutoScrollDirection.None;
+      autoScrollState.y = AutoScrollDirection.None;
+      stopScroll();
+      return;
+    }
+    const { monitorOffsetRatio } = event;
     if (monitorOffsetRatio.x >= autoScrollForwardThreshold) {
       autoScrollState.x = AutoScrollDirection.Forward;
     } else if (monitorOffsetRatio.x <= autoScrollBackThreshold) {

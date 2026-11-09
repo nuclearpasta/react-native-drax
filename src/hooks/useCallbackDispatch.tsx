@@ -617,6 +617,17 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       });
       if (dragEndResponse !== undefined)
         snapTarget = dragEndResponse as DraxSnapbackTarget;
+
+      // Cancelled over a receiver: it gets no drop, so it gets its exit
+      const receiverData =
+        receiverId && buildReceiverViewData(receiverId, absolutePosition);
+      if (receiverData) {
+        getViewEntry(receiverId)?.props.onReceiveDragExit?.({
+          ...baseEventData,
+          receiver: receiverData,
+          cancelled: true,
+        });
+      }
     }
 
     // Fire monitor end events — use final hit-test monitors from onDeactivate
