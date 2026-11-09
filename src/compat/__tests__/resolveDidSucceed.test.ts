@@ -8,6 +8,8 @@ describe('resolveDidSucceed', () => {
     [{ canceled: true }, undefined, false],
     [{}, false, false],
     [{}, true, true],
+    [{ canceled: true }, true, true],
+    [{}, undefined, true],
   ])('(%o, %p) -> %p', (event, success, expected) => {
     expect(resolveDidSucceed({ ...base, ...event }, success)).toBe(expected);
   });
