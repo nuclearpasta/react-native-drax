@@ -381,18 +381,20 @@ read `dragged.data.protocol.payload`.
 
 ```tsx
 // 0.11
-onReceiveDragDrop={({ dragged }) => use(dragged.data.protocol.payload)}
+onReceiveDragDrop={({ dragged }) => handlePayload(dragged.data.protocol.payload)}
 onSnapEnd={({ dragged, receiver }) => {
-  use(dragged.data.protocol.payload, receiver?.data.protocol.payload);
+  handlePayload(dragged.data.protocol.payload, receiver?.data.protocol.payload);
 }}
 
 // 1.2
-onReceiveDragDrop={({ dragged }) => use(dragged.payload)}
+onReceiveDragDrop={({ dragged }) => handlePayload(dragged.payload)}
 onSnapEnd={({ dragged, receiver }) => {
   // DraxSnapEndEventData: { dragged: { id, parentId?, payload }, receiver?: { id, parentId?, payload } }
-  use(dragged.payload, receiver?.payload);
+  handlePayload(dragged.payload, receiver?.payload);
 }}
 ```
+
+`handlePayload` stands for your own code.
 
 `payload` is now typed `unknown`, not `any`. Narrow it with a type guard or a
 cast.
@@ -480,6 +482,62 @@ The style props kept their names: `dragInactiveStyle`, `draggingStyle`,
   animated styles. The `hover*Style` props still accept animated styles.
 - Hover content drops `position`, `left`, `top`, `right`, `bottom` and margins
   from the view's style, so absolutely positioned items aren't offset twice.
+
+### 6.3 renderContent and dragStatus
+
+In 1.x, `renderContent` for the in-place view always gets
+`viewState.dragStatus === DraxViewDragStatus.Inactive` and
+`viewState.receiveStatus === DraxViewReceiveStatus.Inactive`. These values
+are hard-coded and stay the same on every render. Only the hover copy gets
+`dragStatus: Dragging` (from `renderHoverContent`, or from `renderContent` when
+there's no `renderHoverContent`, with `hover: true`).
+
+0.11 code that styled the in-place view by branching on `dragStatus` or
+`receiveStatus` in `renderContent` must move to the style props. They are
+applied on the UI thread:
+
+| State | Style prop |
+|---|---|
+| not dragged / released | `dragInactiveStyle` / `dragReleasedStyle` |
+| being dragged | `draggingStyle` |
+| being dragged over / not over a receiver | `draggingWithReceiverStyle` / `draggingWithoutReceiverStyle` |
+| receiving / not receiving | `receivingStyle` / `receiverInactiveStyle` |
+| another view is dragged (over / not over a receiver) | `otherDraggingStyle` (`otherDraggingWithReceiverStyle` / `otherDraggingWithoutReceiverStyle`) |
+
+Before (0.11):
+
+```tsx
+<DraxView
+  payload={card}
+  renderContent={({ viewState }) => (
+    <View
+      style={[
+        styles.card,
+        viewState?.dragStatus === DraxViewDragStatus.Dragging && styles.cardDragging,
+        viewState?.receiveStatus === DraxViewReceiveStatus.Receiving && styles.cardReceiving,
+      ]}
+    >
+      <Text>{card.label}</Text>
+    </View>
+  )}
+/>
+```
+
+After (1.2):
+
+```tsx
+<DraxView
+  payload={card}
+  style={styles.card}
+  draggingStyle={styles.cardDragging}
+  receivingStyle={styles.cardReceiving}
+>
+  <Text>{card.label}</Text>
+</DraxView>
+```
+
+To change the hover copy instead, keep branching in `renderHoverContent` (or
+use the `hover*Style` props).
 
 ## 7. Behavior changes
 
