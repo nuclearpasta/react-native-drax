@@ -182,6 +182,9 @@ export const SortableBoardContainer = <TItem,>({
             _setHoverContent: typeof setHoverContent,
           ) => {
             'worklet';
+            // Only while this drag is still 'releasing'. A newer drag, even
+            // one outside this board (cleanupGenRef not bumped), owns these.
+            if (_dragPhaseSV.value !== 'releasing') return;
             _hoverReadySV.value = false;
             _dragPhaseSV.value = 'idle';
             _draggedIdSV.value = '';

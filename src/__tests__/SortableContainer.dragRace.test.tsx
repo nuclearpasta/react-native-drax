@@ -575,4 +575,169 @@ describe('second drag racing a board transfer snap (#250)', () => {
     expect(mockCtx.draggedIdSV.value).toBe('');
     expect(mockCtx.hoverContent).toBeNull();
   });
+
+  it('keeps drag 2 when it starts OUTSIDE the board mid-transfer-snap', () => {
+    const onTransfer = jest.fn();
+    const onReorder = jest.fn();
+    act(() =>
+      ReactNative.render(
+        <>
+          <Dispatcher />
+          <Board onTransfer={onTransfer} onReorder={onReorder} />
+        </>,
+        1
+      )
+    );
+    // A plain DraxView 'Z' outside the board (no board/column monitor).
+    mockCtx.spatialIndexSV.value = [
+      ...boardSpatialIndex(),
+      spatialEntry('Z', -1, 400, 0, 100, ROW),
+    ];
+    mockDraxProps.set('Z', { id: 'Z', payload: { item: 'Z' } } as never);
+    const entries = mockCtx.spatialIndexSV.value;
+    for (const key of [...COL1, ...COL2, 'Z']) {
+      mockGestureId = key;
+      const index = entries.findIndex((e) => e.id === key);
+      createDragGesture(key, sv(index) as never, sv(true) as never, sv(250) as never);
+    }
+    layout();
+    act(() => {
+      mockDraxProps.get('col1')!.onMeasure!({ x: 0, y: 0, width: 100, height: COL_HEIGHT } as never);
+      mockDraxProps.get('col2')!.onMeasure!({ x: 200, y: 0, width: 100, height: COL_HEIGHT } as never);
+      [COL1, COL2].forEach((col) =>
+        col.forEach((key, i) =>
+          mockDraxProps.get(key)!.onMeasure!({ x: 0, y: i * ROW, width: 100, height: ROW } as never)
+        )
+      );
+    });
+    settle();
+
+    activateIn('A', 0, 0);
+    settle();
+    monitorStartInCol1('A');
+    const overCol2 = { x: 250, y: 2 * ROW + ROW / 2 };
+    act(() => {
+      mockDraxProps.get('board')!.onMonitorDragOver!({
+        dragged: dragged('A'),
+        dragAbsolutePosition: overCol2,
+      } as never);
+    });
+    mockCtx.dragAbsolutePositionSV.value = overCol2;
+    mockGestures.get('A')!.onDeactivate!({} as never, true);
+    drainJS();
+    expect(mockCtx.hoverPositionSV.snapping).toBe(true);
+
+    // Drag 2 on Z (outside the board) while the transfer snap is in flight.
+    mockGestures.get('Z')!.onActivate!({ x: 50, y: ROW / 2, absoluteX: 450, absoluteY: ROW / 2 } as never);
+    drainJS();
+    drainUI();
+    drainJS();
+    expect(mockCtx.draggedIdSV.value).toBe('Z');
+    settle(); // runs finalizeTransfer's 3 rAFs
+    expect(onTransfer).toHaveBeenCalledTimes(1);
+    expect(mockCtx.draggedIdSV.value).toBe('Z');
+    expect(mockCtx.hoverContent).not.toBeNull();
+    expect(mockCtx.hoverReadySV.value).toBe(true);
+    expect(mockCtx.dragPhaseSV.value).toBe('dragging');
+  });
+
+  // Known issue (#329 review 329-N2), tracked for 1.2.1: an external data
+  // change mid-drag (useSortableList's "external data change" path) swaps
+  // stableData without rebasing drag 2's refs, so its drop is lost.
+  it.failing('controlled board: commits the transfer and keeps drag 2 when onTransfer re-renders col1 under drag 2', () => {
+    const onTransferSpy = jest.fn();
+    const onReorder = jest.fn();
+    const ControlledBoard = () => {
+      const [cols, setCols] = useState<Record<string, string[]>>({ col1: COL1, col2: COL2 });
+      const board = useSortableBoard<string>({
+        keyExtractor: (item) => item,
+        onTransfer: (e) => {
+          onTransferSpy(e);
+          setCols((prev) => {
+            const from = prev[e.fromContainerId]!.filter((k) => k !== e.item);
+            const to = [...prev[e.toContainerId]!];
+            to.splice(e.toIndex, 0, e.item);
+            return { ...prev, [e.fromContainerId]: from, [e.toContainerId]: to };
+          });
+        },
+      });
+      return (
+        <SortableBoardContainer board={board}>
+          <Column id="col1" data={cols.col1!} onReorder={jest.fn((e: { data: string[] }) => {
+            onReorder(e);
+            setCols((prev) => ({ ...prev, col1: e.data }));
+          })} />
+          <Column id="col2" data={cols.col2!} onReorder={jest.fn()} />
+        </SortableBoardContainer>
+      );
+    };
+    act(() =>
+      ReactNative.render(
+        <>
+          <Dispatcher />
+          <ControlledBoard />
+        </>,
+        1
+      )
+    );
+    const entries = boardSpatialIndex();
+    for (const key of [...COL1, ...COL2]) {
+      mockGestureId = key;
+      const index = entries.findIndex((e) => e.id === key);
+      createDragGesture(key, sv(index) as never, sv(true) as never, sv(250) as never);
+    }
+    layout();
+    act(() => {
+      mockDraxProps.get('col1')!.onMeasure!({ x: 0, y: 0, width: 100, height: COL_HEIGHT } as never);
+      mockDraxProps.get('col2')!.onMeasure!({ x: 200, y: 0, width: 100, height: COL_HEIGHT } as never);
+      [COL1, COL2].forEach((col) =>
+        col.forEach((key, i) =>
+          mockDraxProps.get(key)!.onMeasure!({ x: 0, y: i * ROW, width: 100, height: ROW } as never)
+        )
+      );
+    });
+    settle();
+
+    activateIn('A', 0, 0);
+    settle();
+    monitorStartInCol1('A');
+    const overCol2 = { x: 250, y: 2 * ROW + ROW / 2 };
+    act(() => {
+      mockDraxProps.get('board')!.onMonitorDragOver!({
+        dragged: dragged('A'),
+        dragAbsolutePosition: overCol2,
+      } as never);
+    });
+    mockCtx.dragAbsolutePositionSV.value = overCol2;
+    mockGestures.get('A')!.onDeactivate!({} as never, true);
+    drainJS();
+    expect(mockCtx.hoverPositionSV.snapping).toBe(true);
+
+    // Drag 2: B (col1 slot 1) activates mid-snap.
+    activateIn('B', 0, 1);
+    drainJS();
+    drainUI();
+    drainJS();
+    monitorStartInCol1('B');
+    settle(); // finalizeTransfer rAFs: onTransfer -> parent removes A from col1 under drag 2
+    expect(onTransferSpy).toHaveBeenCalledTimes(1);
+    expect(columns.col1!.data).toEqual(['B', 'C']);
+    expect([...columns.col2!.data].sort()).toEqual(['A', 'X', 'Y']);
+    expect(mockCtx.draggedIdSV.value).toBe('B');
+    expect(mockCtx.hoverContent).not.toBeNull();
+    expect(mockCtx.hoverReadySV.value).toBe(true);
+
+    // Drag 2 drops B at the end of col1 (now B C): expect C B.
+    act(() => columns.col1!._internal.moveDraggedItem(1));
+    mockCtx.dragAbsolutePositionSV.value = { x: 50, y: 1 * ROW + ROW / 2 };
+    mockGestures.get('B')!.onDeactivate!({} as never, true);
+    drainJS();
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+    expect(onReorder).toHaveBeenCalledTimes(1);
+    expect(onReorder.mock.calls[0][0]).toMatchObject({ fromItem: 'B', data: ['C', 'B'] });
+    expect(columns.col1!.data).toEqual(['C', 'B']);
+    expect(mockCtx.draggedIdSV.value).toBe('');
+    expect(mockCtx.hoverContent).toBeNull();
+  });
 });
