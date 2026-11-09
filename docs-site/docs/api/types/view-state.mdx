@@ -75,6 +75,9 @@ interface DraxRenderContentProps {
 
 `DraxList` / `SortableItem` rows merge `item`, `index` and `originalIndex` into the payload, so a row's `renderHoverContent` can read `props.payload.item`.
 
+- The hover's `payload` is a snapshot taken at drag start. The hover doesn't re-render when the payload changes during the drag.
+- A row that sets its own `dragPayload` gets that value as `payload`, without `item` and `index` (`dragPayload` wins over the merged `payload`).
+
 ## DraxStyleProp
 
 ```tsx
