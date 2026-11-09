@@ -73,6 +73,8 @@ export interface DraxListProps<T> extends DraxAutoScrollProps {
   onDragPositionChange?: (event: SortableDragPositionChangeEvent<T>) => void;
   /** Callback when drag ends */
   onDragEnd?: (event: SortableDragEndEvent<T>) => void;
+  /** Auto-scroll for foreign drags. See `useSortableList`. @default true */
+  autoScrollForeignDrags?: boolean;
   /** Opt-in. Called when a foreign view is dropped inside the list. See `useSortableList`. */
   onExternalDrop?: (event: SortableExternalDropEvent) => void;
 }
@@ -106,6 +108,7 @@ export const DraxList = <T,>({
   autoScrollJumpRatio,
   autoScrollBackThreshold,
   autoScrollForwardThreshold,
+  autoScrollForeignDrags,
   animationConfig,
   inactiveItemStyle,
   draggedItemStyle,
@@ -142,6 +145,7 @@ export const DraxList = <T,>({
     autoScrollJumpRatio,
     autoScrollBackThreshold,
     autoScrollForwardThreshold,
+    autoScrollForeignDrags,
     animationConfig,
     inactiveItemStyle,
     draggedItemStyle,
