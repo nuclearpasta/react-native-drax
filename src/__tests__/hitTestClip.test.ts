@@ -48,3 +48,43 @@ describe('hitTestWorklet clips receivers to their ancestors', () => {
     expect(at(740, 100, intersect).receiverId).toBe('rowBelow');
   });
 });
+
+// Sortable list inside an outer DraxScrollView. Outer is scrolled so the list
+// is half off-screen (list abs -150..150 in an outer viewport 0..600).
+const outer = entry({ id: 'outer', height: 600, monitoring: true });
+const nestedList = entry({ id: 'nestedList', y: 100, height: 300, parentIndex: 0, monitoring: true });
+const nestZone = entry({ id: 'nestZone', y: 200, receptive: true });
+const rowOuterHidden = entry({
+  id: 'rowOuterHidden', y: 50, parentIndex: 1, receptive: true, draggable: true,
+});
+const rowVisible = entry({
+  id: 'rowVisible', y: 200, parentIndex: 1, receptive: true, draggable: true,
+});
+const rowInnerHidden = entry({
+  id: 'rowInnerHidden', y: 400, parentIndex: 1, receptive: true, draggable: true,
+});
+const nestDragged = entry({ id: 'nestDragged', parentIndex: 1, receptive: true, draggable: true });
+const nestEntries = [
+  outer, nestedList, nestZone, rowOuterHidden, rowVisible, rowInnerHidden, nestDragged,
+];
+const nestScroll = (outerY: number, listY: number) => [
+  { x: 0, y: outerY }, { x: 0, y: listY },
+  { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 },
+];
+const nestAt = (y: number, outerY: number, listY: number) =>
+  hitTestWorklet(
+    { x: 200, y }, nestEntries, nestScroll(outerY, listY), 'nestDragged',
+    { width: 400, height: 63 },
+  );
+
+describe('hitTestWorklet clips receivers hidden by a grandparent scroll view', () => {
+  it('misses a row hidden by the outer scroll, hits a visible row, and still clips inner overflow', () => {
+    // Outer scrolled 250: list abs -150..150. rowOuterHidden abs -100..-37 (above outer).
+    expect(nestAt(-70, 250, 0).receiverId).toBe('');
+    // rowVisible abs 50..113, inside the outer/list overlap.
+    expect(nestAt(80, 250, 0).receiverId).toBe('rowVisible');
+    // Inner scrolled 50: rowInnerHidden abs 200..263, below the list but inside the outer.
+    // Without ancestor clip it would beat nestZone; with clip, nestZone wins.
+    expect(nestAt(220, 250, 50).receiverId).toBe('nestZone');
+  });
+});
