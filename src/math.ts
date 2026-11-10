@@ -128,10 +128,35 @@ export const hitTestWorklet = (
     // Compute absolute position by walking parent chain
     const absPos = computeAbsolutePositionWorklet(i, entries, scrollOffsets);
 
-    const recLeft = absPos.x;
-    const recTop = absPos.y;
-    const recRight = recLeft + entry.width;
-    const recBottom = recTop + entry.height;
+    // A receiver only counts where its ancestors show it, e.g. a row only
+    // inside its list's viewport. Monitors keep their full (padded) bounds.
+    let recLeft = absPos.x;
+    let recTop = absPos.y;
+    let recRight = recLeft + entry.width;
+    let recBottom = recTop + entry.height;
+    if (!entry.monitoring && entry.parentIndex >= 0) {
+      // Walk up once, accumulating each ancestor's absolute origin from the
+      // child's: child abs = parent abs + child.x - parentScroll.
+      let childAbsX = absPos.x;
+      let childAbsY = absPos.y;
+      let child = entry;
+      let pIdx = entry.parentIndex;
+      while (pIdx >= 0) {
+        const parent = entries[pIdx];
+        if (!parent) break;
+        const ps = scrollOffsets[pIdx];
+        const px = childAbsX - child.x + (ps ? ps.x : 0);
+        const py = childAbsY - child.y + (ps ? ps.y : 0);
+        if (parent.width > 0 && parent.height > 0) {
+          if (px > recLeft) recLeft = px;
+          if (py > recTop) recTop = py;
+          if (px + parent.width < recRight) recRight = px + parent.width;
+          if (py + parent.height < recBottom) recBottom = py + parent.height;
+        }
+        childAbsX = px; childAbsY = py; child = parent; pIdx = parent.parentIndex;
+      }
+    }
+    if (recRight <= recLeft || recBottom <= recTop) continue; // clipped away
 
     let isHit: boolean;
     const algo = entry.collisionAlgorithm;
