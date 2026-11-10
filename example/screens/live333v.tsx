@@ -2,6 +2,8 @@
 // 200-row DraxList that reorders itself AND takes foreign drops from the palette.
 // mode full: every row mounted, so every row is measured (own-list reorder works).
 // mode virt: stock FlatList windowing (what the old L333 screen had; own reorder bails).
+// mode small: real 50 pt rows, windowSize 1 and 1-row batches, so only the viewport's rows
+//   stay mounted for the whole drag (rows below never measure; no timing dependence).
 // mode hole: getItemLayout claims 200 pt rows (real rows are 50 pt) and windowSize 1, so
 //   only rows 0-3 mount; the rest of the viewport is blank with no mounted row (scenario 9).
 // onExternalDrop is passed through DraxList's open props so this file also typechecks on main.
@@ -13,7 +15,7 @@ const TAG = '[L333v]';
 const ROW_H = 50;
 const HOLE_H = 200;
 const ROWS = Array.from({ length: 200 }, (_, i) => `R${String(i).padStart(3, '0')}`);
-const MODES = ['full', 'virt', 'hole'] as const;
+const MODES = ['full', 'virt', 'small', 'hole'] as const;
 type Mode = (typeof MODES)[number];
 
 interface ExternalDrop {
@@ -23,6 +25,9 @@ interface ExternalDrop {
 
 const modeProps = (mode: Mode, count: number) => {
   if (mode === 'full') return { initialNumToRender: count, windowSize: 1000 };
+  if (mode === 'small') {
+    return { initialNumToRender: 12, windowSize: 1, maxToRenderPerBatch: 1 };
+  }
   if (mode === 'hole') {
     return {
       initialNumToRender: 4,
