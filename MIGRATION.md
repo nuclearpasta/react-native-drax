@@ -577,7 +577,9 @@ use the `hover*Style` props).
   never takes a visual slot of its own. Insert the item yourself: the library
   does not change `data`. While the drag is over one of the list's rows, the
   rows from `toIndex` on slide aside to open a gap, as in 0.11 (lists only, not
-  grids). The dropped view snaps back unless you return a snap target from
+  grids). At release the gap closes and the dropped view snaps onto the
+  receiving row's centre (not into the gap); insert in `onReceiveSnapEnd` so
+  the item appears when the snap ends. You can still return a snap target from
   `containerDraxViewProps.onMonitorDragDrop`.
   A foreign drag never fires `onDragPositionChange` or shows the drop
   indicator. It auto-scrolls the list, as 0.11 did, so any index is reachable.

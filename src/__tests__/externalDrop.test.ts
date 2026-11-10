@@ -336,4 +336,91 @@ describe('foreign drag gap (0.11 parity, #10)', () => {
     const expected = Object.fromEntries(LONG.slice(10).map((k) => [k, down(60)]));
     expect(shifts()).toEqual(expected);
   });
+
+  // Several hidden zero-size rows between A and B: the fast getSlotFromPosition
+  // path used to add a row gap after each hidden row and land one visible slot
+  // early. Drops in the upper/lower halves of B and C must agree with splice.
+  it.each([
+    ['top half of B', 70, 'B', 7, ['A', 'X', 'B', 'C']],
+    ['bottom half of B', 100, 'B', 8, ['A', 'B', 'X', 'C']],
+    ['top half of C', 130, 'C', 8, ['A', 'B', 'X', 'C']],
+    ['bottom half of C', 160, 'C', 9, ['A', 'B', 'C', 'X']],
+  ])(
+    'several hidden rows between A and B: %s → toIndex and gap agree for splice',
+    (_, y, receiver, toIndex, visible) => {
+      // A 0-50, six hidden at 60, B 60-110, C 120-170 (50pt rows, 10pt gaps).
+      const data = ['A', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'B', 'C'];
+      const ys = [
+        { y: 0, height: 50 },
+        { y: 60, height: 0 },
+        { y: 60, height: 0 },
+        { y: 60, height: 0 },
+        { y: 60, height: 0 },
+        { y: 60, height: 0 },
+        { y: 60, height: 0 },
+        { y: 60, height: 50 },
+        { y: 120, height: 50 },
+      ];
+      const onExternalDrop = jest.fn();
+      const props = renderList(onExternalDrop, data, () => true, (i) => ys[i]!);
+      hoverAt(props, y, receiver);
+      // Gap shifts every visible row from the insert point on by 50+10.
+      // After the last row (toIndex === data.length) nobody shifts.
+      const shiftedFrom =
+        toIndex <= 7
+          ? { B: down(60), C: down(60) }
+          : toIndex === 8
+            ? { C: down(60) }
+            : {};
+      expect(shifts()).toEqual(shiftedFrom);
+      dropAt(props, y);
+      expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(toIndex);
+      const next = [...data];
+      next.splice(toIndex, 0, 'X');
+      expect(next.filter((k) => !k.startsWith('H'))).toEqual(visible);
+    }
+  );
+
+  it('uses the gap between successive visible rows when no neighbours are both visible', () => {
+    // A then six hidden then B: adjacent-index loop finds no pair; fallback
+    // must still pick the 10pt gap so the shift is 60, not 50.
+    const data = ['A', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'B'];
+    const ys = [
+      { y: 0, height: 50 },
+      { y: 60, height: 0 },
+      { y: 60, height: 0 },
+      { y: 60, height: 0 },
+      { y: 60, height: 0 },
+      { y: 60, height: 0 },
+      { y: 60, height: 0 },
+      { y: 60, height: 50 },
+    ];
+    const props = renderList(jest.fn(), data, () => true, (i) => ys[i]!);
+    hoverAt(props, 70, 'B'); // top half of B → gap before B
+    expect(shifts()).toEqual({ B: down(60) });
+  });
+
+  it('opens the gap before the data toIndex item after an unrechoed reorder', () => {
+    // A was moved 0→2 with no parent echo: visual order B, C, A.
+    // Hovering the top half of B (data toIndex 1) must open the gap before
+    // visual B, not before visual C.
+    const props = renderList(jest.fn());
+    lastSortable._internal.committedOrderRef.current = [1, 2, 0];
+    lastSortable._internal.committedShiftsRef.current = {
+      B: { x: 0, y: -60 },
+      C: { x: 0, y: -60 },
+      A: { x: 0, y: 120 },
+    };
+    hoverAt(props, 70, 'B');
+    expect(shifts()).toEqual({
+      B: down(0), // -60 + 60
+      C: down(0),
+      A: down(180), // 120 + 60
+    });
+  });
+
+  it('defaults autoScrollForeignDrags to true when the prop is omitted', () => {
+    renderList(jest.fn());
+    expect(lastSortable._internal.autoScrollForeignDrags).toBe(true);
+  });
 });
