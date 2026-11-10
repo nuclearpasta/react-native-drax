@@ -65,6 +65,8 @@ export default function ReorderableList() {
   const [alphaData, setAlphaData] = useState(alphabet);
   const [animPreset, setAnimPreset] =
     useState<SortableAnimationPreset>('spring');
+  const [showFarZone, setShowFarZone] = useState(false);
+  const [farZoneItem, setFarZoneItem] = useState<string>();
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
 
@@ -105,6 +107,25 @@ export default function ReorderableList() {
               </Text>
             </Pressable>
           ))}
+          <Pressable
+            testID="toggle-far-zone"
+            onPress={() => setShowFarZone((v) => !v)}
+            style={[
+              styles.presetButton,
+              { backgroundColor: theme.lineStrong },
+              showFarZone && styles.presetButtonActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.presetButtonText,
+                { color: theme.muted },
+                showFarZone && styles.presetButtonTextActive,
+              ]}
+            >
+              Far zone
+            </Text>
+          </Pressable>
         </View>
         <ExampleLinks slug="reorderable-list" />
         <DraxList
@@ -159,7 +180,7 @@ export default function ReorderableList() {
             {
               borderColor: theme.lineStrong,
               backgroundColor: theme.surface,
-              marginBottom: insets.bottom + 8,
+              marginBottom: showFarZone ? 8 : insets.bottom + 8,
             },
           ]}
           receivingStyle={styles.removeZoneReceiving}
@@ -171,6 +192,33 @@ export default function ReorderableList() {
         >
           <Text style={[styles.removeZoneText, { color: theme.muted }]}>Drop here to remove</Text>
         </DraxView>
+        {showFarZone && (
+          // A second receiver more than 100 pt below the list (beyond the
+          // list's monitor hit-test padding, MONITOR_HIT_TEST_PADDING in
+          // src/math.ts). A drop here leaves the list order unchanged.
+          <DraxView
+            testID="far-zone"
+            style={[
+              styles.removeZone,
+              styles.farZone,
+              {
+                borderColor: theme.lineStrong,
+                backgroundColor: theme.surface,
+                marginBottom: insets.bottom + 8,
+              },
+            ]}
+            receivingStyle={styles.farZoneReceiving}
+            onReceiveDragDrop={({ dragged }) => {
+              setFarZoneItem(getDroppedItem(dragged.payload));
+            }}
+          >
+            <Text style={[styles.removeZoneText, { color: theme.muted }]}>
+              {farZoneItem === undefined
+                ? 'Far zone (keeps the order)'
+                : `Far zone received ${farZoneItem}`}
+            </Text>
+          </DraxView>
+        )}
       </View>
     </DraxProvider>
   );
@@ -232,6 +280,14 @@ const styles = StyleSheet.create({
   },
   removeZoneReceiving: {
     borderColor: '#ef4444',
+  },
+  farZone: {
+    // The remove zone plus its margins is about 70 pt tall, so this puts the
+    // far zone's top edge about 125 pt below the list.
+    marginTop: 56,
+  },
+  farZoneReceiving: {
+    borderColor: '#3b82f6',
   },
   removeZoneText: {
     fontSize: 14,

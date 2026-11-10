@@ -369,7 +369,11 @@ export const SortableContainer = ({
     const toPayload =
       receiver?.parentId === id ? receiverPayload : undefined;
     // Our own row dropped on a receiver outside the list while the list is
-    // still a monitor (within the hit-test padding): not a reorder.
+    // still a monitor (within the hit-test padding): not a reorder. Only the
+    // list itself and its rows (parentId === id) count as inside, so a
+    // receptive view nested inside a row (its parent is the row's DraxView)
+    // counts as outside the list. A release over nothing within the padding
+    // has no receiver and still reorders to the last hovered slot.
     const droppedOutside = totalDragEnd && !cancelled && !boardContext
       && dragged.parentId === id && !!receiver
       && receiver.id !== id && receiver.parentId !== id;

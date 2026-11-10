@@ -760,11 +760,23 @@ use the `hover*Style` props).
   `cancelled: true`, and lists put the item back in its start position without
   calling `onReorder`.
 - **Leaving the list mid-drag.** As in 0.11, when a row leaves its list the
-  list undoes the row's pending move and the neighbours slide back. Released
-  outside the list (over nothing or on another receiver), it does not call
-  `onReorder`. Brought back in, the row moves from its start slot again.
-  Board columns still transfer items when they leave a column.
-  As in 0.11, the list's `onDragEnd` doesn't fire for a drag released outside it.
+  list undoes the row's pending move and the neighbours slide back. The list
+  keeps monitoring a drag until the dragged row's centre is more than 100 pt
+  outside its edges (the monitor hit-test padding, `MONITOR_HIT_TEST_PADDING`
+  in `src/math.ts`), so "leaving" means going past that padding.
+  - Released on another receiver (anywhere, including within the padding), the
+    row does not reorder the list and `onReorder` is not called. Within the
+    padding the list's `onDragEnd` still fires, with `toIndex` set to the
+    row's start index.
+  - Released over nothing more than 100 pt outside the list, `onReorder` is not
+    called and, as in 0.11, the list's `onDragEnd` doesn't fire.
+  - Released over nothing within the 100 pt padding, it still counts as a drop
+    in the list: the row takes the slot it last hovered (for example the last
+    slot, just below the list), `onDragEnd` reports that `toIndex` and
+    `onReorder` fires, as before this change.
+  Brought back in, the row moves from its start slot again. A receptive view
+  nested inside a row counts as outside the list. Board columns still transfer
+  items when they leave a column.
 - **When `onReorder` fires.** It fires after the snap animation, not at
   release. If you showed the new order at release, move that code into
   `onReorder`.
