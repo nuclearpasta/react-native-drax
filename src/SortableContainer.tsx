@@ -36,14 +36,27 @@ import {
  */
 const FINGER_JITTER_THRESHOLD = 5;
 
-function computeFingerDisplacement(eventData: DraxDragEventData): number {
+/** Offset from the hover centre (where drag events are measured) to the finger. */
+function fingerFromCentre(eventData: DraxDragEventData) {
   const { grabOffset, measurements } = eventData.dragged;
-  if (!measurements) return Infinity;
-  const dx =
-    grabOffset.x - measurements.width / 2 + eventData.dragTranslation.x;
-  const dy =
-    grabOffset.y - measurements.height / 2 + eventData.dragTranslation.y;
-  return Math.abs(dx) + Math.abs(dy);
+  if (!measurements) return undefined;
+  return {
+    x: grabOffset.x - measurements.width / 2,
+    y: grabOffset.y - measurements.height / 2,
+  };
+}
+
+/**
+ * How far the finger has moved since pickup (L1). `dragTranslation` runs from
+ * the finger's start to the hover centre, so shift it back onto the finger.
+ */
+function computeFingerDisplacement(eventData: DraxDragEventData): number {
+  const shift = fingerFromCentre(eventData);
+  if (!shift) return Infinity;
+  return (
+    Math.abs(eventData.dragTranslation.x + shift.x) +
+    Math.abs(eventData.dragTranslation.y + shift.y)
+  );
 }
 
 export interface SortableContainerProps {
@@ -378,6 +391,13 @@ export const SortableContainer = ({
     if (totalDragEnd && draggedDisplayIndexRef.current !== undefined) {
       // Shifts stay active during snap animation — items remain at their
       // shifted positions. finalizeDrag will set permanent shifts after snap.
+      // The dragged item's placeholder moves to its target slot, where the
+      // hover lands; finalizeDrag writes the same shifts, so nothing jumps.
+      const targetShifts = computeShiftsForOrder(pendingOrderRef.current);
+      if (targetShifts) {
+        shiftsJSRef.current = targetShifts;
+        shiftsRef.value = targetShifts;
+      }
       const snapbackTarget = getSnapbackTarget();
       return snapbackTarget;
     }
@@ -574,7 +594,17 @@ export const SortableContainer = ({
       stopScroll();
       return;
     }
-    const ratio = horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y;
+    // Test the edge band at the finger, as 0.11 did, not at the hover centre:
+    // a row cut off at the edge, held by its visible part, must not scroll.
+    const shift = fingerFromCentre(eventData);
+    const containerLength = horizontal
+      ? containerMeasurementsRef.current?.width
+      : containerMeasurementsRef.current?.height;
+    const ratio =
+      shift && containerLength
+        ? ((horizontal ? monitorOffset.x + shift.x : monitorOffset.y + shift.y) /
+          containerLength)
+        : horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y;
     if (ratio > autoScrollBackThreshold && ratio < autoScrollForwardThreshold) {
       scrollStateRef.current = AutoScrollDirection.None;
       stopScroll();
