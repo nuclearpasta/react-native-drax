@@ -360,6 +360,48 @@ export const SortableContainer = ({
 
   // ── Foreign-drag gap ────────────────────────────────────────────────
 
+  /** Display slot of data index `index` (a splice point) in the committed order. */
+  const getGapSlot = (index: number) => {
+    const order = committedOrderRef.current.length > 0
+      ? committedOrderRef.current
+      : rawData.map((_, i) => i);
+    // `index` is a data-array toIndex (splice point). Map it to the display
+    // slot of that data index in `order` so the gap opens where
+    // data.splice(toIndex, 0, item) will land when the parent has not echoed
+    // onReorder (committedOrder !== identity). Append (toIndex === length)
+    // has no entry in `order` → open at the end.
+    const pos = order.indexOf(index);
+    return { order, displayIndex: pos >= 0 ? pos : order.length };
+  };
+
+  /**
+   * The row gap, from the first two adjacent rendered rows; if none (hidden
+   * rows between every visible pair), from any two successive visible rows
+   * by position.
+   */
+  const getRowGap = (): number => {
+    for (let i = 0; i + 1 < itemCount; i++) {
+      const a = getMeasurementByOriginalIndex(i);
+      const b = getMeasurementByOriginalIndex(i + 1);
+      if (a && b && a.width > 0 && a.height > 0 && b.width > 0 && b.height > 0) {
+        return Math.max(0, horizontal ? b.x - a.x - a.width : b.y - a.y - a.height);
+      }
+    }
+    const visible: SortableItemMeasurement[] = [];
+    for (let i = 0; i < itemCount; i++) {
+      const m = getMeasurementByOriginalIndex(i);
+      if (m && m.width > 0 && m.height > 0) visible.push(m);
+    }
+    visible.sort((a, b) => (horizontal ? a.x - b.x : a.y - b.y));
+    for (let i = 0; i + 1 < visible.length; i++) {
+      const a = visible[i]!;
+      const b = visible[i + 1]!;
+      const g = horizontal ? b.x - a.x - a.width : b.y - a.y - a.height;
+      if (g > 0) return g;
+    }
+    return 0;
+  };
+
   /**
    * Open a gap at data-array `index` (`toIndex`) for a foreign drag, as 0.11
    * did: every display row from the matching slot on shifts by the dragged
@@ -371,45 +413,8 @@ export const SortableContainer = ({
     const gap = foreignGapRef.current;
     if (gap && gap.index === index && gap.base === base && gap.data === rawData) return;
     foreignGapRef.current = { index, base, data: rawData };
-    const order = committedOrderRef.current.length > 0
-      ? committedOrderRef.current
-      : rawData.map((_, i) => i);
-    // `index` is a data-array toIndex (splice point). Map it to the display
-    // slot of that data index in `order` so the gap opens where
-    // data.splice(toIndex, 0, item) will land when the parent has not echoed
-    // onReorder (committedOrder !== identity). Append (toIndex === length)
-    // has no entry in `order` → open at the end.
-    const pos = order.indexOf(index);
-    const displayIndex = pos >= 0 ? pos : order.length;
-    // The row gap, from the first two adjacent rendered rows; if none (hidden
-    // rows between every visible pair), fall back to any two successive
-    // visible rows by position.
-    let rowGap = 0;
-    for (let i = 0; i + 1 < itemCount; i++) {
-      const a = getMeasurementByOriginalIndex(i);
-      const b = getMeasurementByOriginalIndex(i + 1);
-      if (a && b && a.width > 0 && a.height > 0 && b.width > 0 && b.height > 0) {
-        rowGap = Math.max(0, horizontal ? b.x - a.x - a.width : b.y - a.y - a.height);
-        break;
-      }
-    }
-    if (rowGap === 0) {
-      const visible: SortableItemMeasurement[] = [];
-      for (let i = 0; i < itemCount; i++) {
-        const m = getMeasurementByOriginalIndex(i);
-        if (m && m.width > 0 && m.height > 0) visible.push(m);
-      }
-      visible.sort((a, b) => (horizontal ? a.x - b.x : a.y - b.y));
-      for (let i = 0; i + 1 < visible.length; i++) {
-        const a = visible[i]!;
-        const b = visible[i + 1]!;
-        const g = horizontal ? b.x - a.x - a.width : b.y - a.y - a.height;
-        if (g > 0) {
-          rowGap = g;
-          break;
-        }
-      }
-    }
+    const { order, displayIndex } = getGapSlot(index);
+    const rowGap = getRowGap();
     const delta = size + rowGap;
     const shifts = { ...base };
     for (let d = displayIndex; d < order.length; d++) {
@@ -425,6 +430,51 @@ export const SortableContainer = ({
     instantClearSV.value = false;
     shiftsJSRef.current = shifts;
     shiftsRef.value = shifts;
+  };
+
+  /**
+   * Root position where a foreign drop at data index `index` lands: the gap,
+   * as in 0.11 (DraxList.js:298-313 snaps to the receiving row's unshifted
+   * top-left, the slot the gap opened at). That is the committed position of
+   * the first visible row at or after the gap slot, or, at the end, the
+   * position after the last visible row before it. Undefined when no
+   * measured row decides it.
+   */
+  const getForeignGapSnapTarget = (index: number): Position | undefined => {
+    const container = containerMeasurementsRef.current;
+    if (!container) return undefined;
+    const { order, displayIndex } = getGapSlot(index);
+    const base = committedShiftsRef.current;
+    /** Committed (visual) rect of the row at display slot `d`, if measured. */
+    const rowAt = (d: number) => {
+      const origIdx = order[d]!;
+      const item = rawData[origIdx];
+      const meas = getMeasurementByOriginalIndex(origIdx);
+      if (item === undefined || !meas) return undefined;
+      const held = base[keyExtractor(item, origIdx)] ?? { x: 0, y: 0 };
+      return { ...meas, x: meas.x + held.x, y: meas.y + held.y };
+    };
+    let pos: Position | undefined;
+    for (let d = displayIndex; d < order.length && !pos; d++) {
+      const row = rowAt(d);
+      if (!row) break;
+      if (row.width > 0 && row.height > 0) pos = { x: row.x, y: row.y };
+    }
+    for (let d = displayIndex - 1; d >= 0 && !pos; d--) {
+      const row = rowAt(d);
+      if (!row) break;
+      if (row.width > 0 && row.height > 0) {
+        const rowGap = getRowGap();
+        pos = horizontal
+          ? { x: row.x + row.width + rowGap, y: row.y }
+          : { x: row.x, y: row.y + row.height + rowGap };
+      }
+    }
+    if (!pos) return undefined;
+    return {
+      x: container.x + pos.x - scrollPositionJSRef.current.x,
+      y: container.y + pos.y - scrollPositionJSRef.current.y,
+    };
   };
 
   const closeForeignGap = () => {
@@ -483,6 +533,7 @@ export const SortableContainer = ({
     // Opt-in: a foreign view (not a board column item) dropped inside the list.
     // toIndex comes from the drop position, not from drag-over state.
     const ratio = eventData.monitorOffsetRatio;
+    let externalSnapTarget: Position | undefined;
     if (
       onExternalDrop &&
       totalDragEnd &&
@@ -498,6 +549,10 @@ export const SortableContainer = ({
       const toIndex = getExternalDropIndex(pos);
       if (toIndex !== undefined) {
         onExternalDrop({ toIndex, payload: dragged.payload, dragged });
+        // Over a row the gap was open: land in it, not on the row's centre.
+        if (numColumns <= 1 && receiver?.parentId === id) {
+          externalSnapTarget = getForeignGapSnapTarget(toIndex);
+        }
       }
     }
 
@@ -522,6 +577,8 @@ export const SortableContainer = ({
       }
       draggedToIndex.current = undefined;
     }
+
+    if (externalSnapTarget) return externalSnapTarget;
 
     // User hasn't moved — skip reorder, snap back to origin.
     // Don't clean up here — finalizeDrag handles it after snap completes.

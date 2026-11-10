@@ -27,6 +27,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 ### Fixed
 
+- Foreign drops land in the open gap again, as in 0.11: a view dropped over a row of a list with `onExternalDrop` snaps into the gap at `toIndex` instead of onto the receiving row's centre
 - Foreign-drop `toIndex` and gap on a single-column list with hidden (zero-size) rows: use each row's measured position instead of the uniform-slot path, so a drop after several hidden rows no longer lands one visible slot early
 - Foreign gap after an unechoed `onReorder`: map the data `toIndex` through `committedOrder` (`order.indexOf(toIndex)`) so the gap opens where the insert will land, not at the raw display index
 - Foreign gap height when no two neighbouring data rows are both visible: fall back to the gap between successive visible rows by position
