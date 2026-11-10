@@ -68,35 +68,6 @@ export const computeAbsolutePositionWorklet = (
 };
 
 /**
- * Clip an absolute rect to the visible part of each measured ancestor, as 0.11
- * did. A list row scrolled out of its list must not receive a drop aimed at a
- * view next to the list.
- */
-const clipToAncestorsWorklet = (
-  rect: { left: number; top: number; right: number; bottom: number },
-  entryIndex: number,
-  entries: SpatialEntry[],
-  scrollOffsets: Position[]
-) => {
-  'worklet';
-  let { left, top, right, bottom } = rect;
-  let parentIdx = entries[entryIndex]?.parentIndex ?? -1;
-  while (parentIdx >= 0) {
-    const parent = entries[parentIdx];
-    if (!parent) break;
-    if (parent.width > 0 && parent.height > 0) {
-      const p = computeAbsolutePositionWorklet(parentIdx, entries, scrollOffsets);
-      left = Math.max(left, p.x);
-      top = Math.max(top, p.y);
-      right = Math.min(right, p.x + parent.width);
-      bottom = Math.min(bottom, p.y + parent.height);
-    }
-    parentIdx = parent.parentIndex;
-  }
-  return { left, top, right, bottom };
-};
-
-/**
  * Extra padding (in points) applied to monitoring views during hit-testing.
  * During auto-scroll the hover center can drift outside the container's visible
  * bounds. This padding prevents false monitor exits that would prematurely end
@@ -159,16 +130,32 @@ export const hitTestWorklet = (
 
     // A receiver only counts where its ancestors show it, e.g. a row only
     // inside its list's viewport. Monitors keep their full (padded) bounds.
-    const rect = {
-      left: absPos.x,
-      top: absPos.y,
-      right: absPos.x + entry.width,
-      bottom: absPos.y + entry.height,
-    };
-    const { left: recLeft, top: recTop, right: recRight, bottom: recBottom } =
-      !entry.monitoring && entry.parentIndex >= 0
-        ? clipToAncestorsWorklet(rect, i, entries, scrollOffsets)
-        : rect;
+    let recLeft = absPos.x;
+    let recTop = absPos.y;
+    let recRight = recLeft + entry.width;
+    let recBottom = recTop + entry.height;
+    if (!entry.monitoring && entry.parentIndex >= 0) {
+      // Walk up once, accumulating each ancestor's absolute origin from the
+      // child's: child abs = parent abs + child.x - parentScroll.
+      let childAbsX = absPos.x;
+      let childAbsY = absPos.y;
+      let child = entry;
+      let pIdx = entry.parentIndex;
+      while (pIdx >= 0) {
+        const parent = entries[pIdx];
+        if (!parent) break;
+        const ps = scrollOffsets[pIdx];
+        const px = childAbsX - child.x + (ps ? ps.x : 0);
+        const py = childAbsY - child.y + (ps ? ps.y : 0);
+        if (parent.width > 0 && parent.height > 0) {
+          if (px > recLeft) recLeft = px;
+          if (py > recTop) recTop = py;
+          if (px + parent.width < recRight) recRight = px + parent.width;
+          if (py + parent.height < recBottom) recBottom = py + parent.height;
+        }
+        childAbsX = px; childAbsY = py; child = parent; pIdx = parent.parentIndex;
+      }
+    }
     if (recRight <= recLeft || recBottom <= recTop) continue; // clipped away
 
     let isHit: boolean;
