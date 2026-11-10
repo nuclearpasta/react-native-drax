@@ -71,11 +71,18 @@ export default function Live333v() {
     console.log(`${TAG} reset t=${Date.now()} mode=${nextMode}`);
   };
 
+  // scrollToOffset alone stops at the rendered content's end in windowed modes, so
+  // jump by index and retry until FlatList has rendered far enough.
   const jump = () => {
-    const offset = jumped ? 0 : 150 * ROW_H;
-    listRef.current?.scrollToOffset({ offset, animated: false });
+    const index = jumped ? 0 : 150;
+    listRef.current?.scrollToIndex({ index, animated: false });
     setJumped(!jumped);
-    console.log(`${TAG} jump t=${Date.now()} offset=${offset}`);
+    console.log(`${TAG} jump t=${Date.now()} index=${index}`);
+  };
+  const onScrollToIndexFailed = (info: { index: number; averageItemLength: number }) => {
+    listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
+    console.log(`${TAG} jump retry t=${Date.now()} index=${info.index}`);
+    setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, animated: false }), 50);
   };
 
   const nextMode = MODES[(MODES.indexOf(mode) + 1) % MODES.length] ?? 'full';
@@ -126,6 +133,7 @@ export default function Live333v() {
           containerStyle={styles.flex}
           style={styles.flex}
           scrollEventThrottle={16}
+          onScrollToIndexFailed={onScrollToIndexFailed}
           renderItem={({ item }: { item: string }) => (
             <View accessibilityLabel={`row ${item}`} style={[styles.row, item.startsWith('X') ? styles.rowNew : Number(item.slice(1)) % 2 ? styles.rowOdd : styles.rowEven]}>
               <Text style={styles.rowText}>{item}</Text>
@@ -148,7 +156,7 @@ function Btn({ label, text, onPress }: { label: string; text?: string; onPress: 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   bar: { flexDirection: 'row', gap: 8, paddingHorizontal: 6, paddingVertical: 4, alignItems: 'center' },
-  btn: { backgroundColor: '#333', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 8 },
+  btn: { backgroundColor: '#333', borderRadius: 6, paddingVertical: 8, width: 100, alignItems: 'center' },
   btnText: { color: 'white', fontSize: 14 },
   status: { fontSize: 14, flex: 1 },
   palette: { width: 60, height: 44, borderRadius: 8, backgroundColor: 'tomato', justifyContent: 'center', alignItems: 'center' },
