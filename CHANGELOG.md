@@ -12,6 +12,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ### Added
 
 - **Auto-scroll config**: `autoScrollEnabled` (default `true`) and `autoScrollInitialDelay` (ms in the edge band before the first jump, default `0`) on `DraxScrollView`, `useSortableList` and `DraxList`. `DraxList` now forwards all auto-scroll props to `useSortableList`.
+- **`draggedItemStyle`** on `DraxList` and `useSortableList`: style of the dragged row's in-list placeholder while its hover copy moves (default `{ opacity: 0 }`). Pass `{ opacity: 0.2 }` for a faint placeholder like 0.11. The placeholder stays at its pickup slot while the finger is down and moves to the target slot on release. Use visual props only (no layout props).
 
 ### Changed
 

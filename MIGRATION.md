@@ -163,9 +163,18 @@ import { DraxList } from 'react-native-drax';
 | `data` items may not contain `index` / `originalIndex` keys | Same restriction in practice: `SortableItem` merges `{ index, originalIndex, item }` into the row payload. See [7](#7-behavior-changes). |
 
 New props with no 0.11 counterpart: `component`, `reorderStrategy`,
-`animationConfig`, `inactiveItemStyle`, `itemEntering`, `itemExiting`,
-`numColumns` (grids), and, on `useSortableList` only, `getItemSpan`. Any other
-prop is passed to the list component.
+`animationConfig`, `inactiveItemStyle`, `draggedItemStyle`, `itemEntering`,
+`itemExiting`, `numColumns` (grids), and, on `useSortableList` only,
+`getItemSpan`. Any other prop is passed to the list component.
+
+While a row is dragged, its in-list placeholder gets `draggedItemStyle`
+(default `{ opacity: 0 }`, so it is hidden). Pass `{ opacity: 0.2 }` for a
+faint placeholder like in 0.11. As in 0.11, the placeholder stays at the slot
+it was picked up from while the finger is down, and neighbours slide over it.
+On release it moves to the target slot, where the hover lands. Use visual
+props only (opacity, colors, transforms): layout props such as `borderWidth`,
+`margin` or `padding` re-lay out the row mid-drag. Pass a stable style (a
+constant or `StyleSheet.create`).
 
 ### 3.3 renderItem itemProps
 

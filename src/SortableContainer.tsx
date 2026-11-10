@@ -391,6 +391,13 @@ export const SortableContainer = ({
     if (totalDragEnd && draggedDisplayIndexRef.current !== undefined) {
       // Shifts stay active during snap animation — items remain at their
       // shifted positions. finalizeDrag will set permanent shifts after snap.
+      // The dragged item's placeholder moves to its target slot, where the
+      // hover lands; finalizeDrag writes the same shifts, so nothing jumps.
+      const targetShifts = computeShiftsForOrder(pendingOrderRef.current);
+      if (targetShifts) {
+        shiftsJSRef.current = targetShifts;
+        shiftsRef.value = targetShifts;
+      }
       const snapbackTarget = getSnapbackTarget();
       return snapbackTarget;
     }
