@@ -400,7 +400,7 @@ describe('foreign drag gap (0.11 parity, #10)', () => {
     expect(shifts()).toEqual({ B: down(60) });
   });
 
-  it('opens the gap before the data toIndex item after an unrechoed reorder', () => {
+  it('opens the gap before the data toIndex item after an unechoed reorder', () => {
     // A was moved 0→2 with no parent echo: visual order B, C, A.
     // Hovering the top half of B (data toIndex 1) must open the gap before
     // visual B, not before visual C.
@@ -416,6 +416,26 @@ describe('foreign drag gap (0.11 parity, #10)', () => {
       B: down(0), // -60 + 60
       C: down(0),
       A: down(180), // 120 + 60
+    });
+  });
+
+  it('maps toIndex through order.indexOf after an unechoed reorder (not first order[d] >= toIndex)', () => {
+    // C was moved to front with no parent echo: visual order C, A, B ([2,0,1]).
+    // Hovering the top half of B yields data toIndex 1; splice(1,0,X) lands
+    // before B. The gap must open before visual B (order.indexOf(1) === 2),
+    // not before visual C (the buggy first order[d] >= 1 walk).
+    const props = renderList(jest.fn());
+    lastSortable._internal.committedOrderRef.current = [2, 0, 1];
+    lastSortable._internal.committedShiftsRef.current = {
+      C: { x: 0, y: -120 },
+      A: { x: 0, y: 60 },
+      B: { x: 0, y: 60 },
+    };
+    hoverAt(props, 70, 'B');
+    expect(shifts()).toEqual({
+      C: down(-120), // unchanged: before the insert slot
+      A: down(60), // unchanged
+      B: down(120), // 60 + 60: opens the gap before B
     });
   });
 

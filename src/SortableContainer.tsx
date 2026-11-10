@@ -374,16 +374,13 @@ export const SortableContainer = ({
     const order = committedOrderRef.current.length > 0
       ? committedOrderRef.current
       : rawData.map((_, i) => i);
-    // `index` is a data-array toIndex (splice point). Map it to a display
-    // slot in `order` so the gap matches that insert when the parent has not
-    // echoed onReorder (committedOrder !== identity).
-    let displayIndex = order.length;
-    for (let d = 0; d < order.length; d++) {
-      if ((order[d] as number) >= index) {
-        displayIndex = d;
-        break;
-      }
-    }
+    // `index` is a data-array toIndex (splice point). Map it to the display
+    // slot of that data index in `order` so the gap opens where
+    // data.splice(toIndex, 0, item) will land when the parent has not echoed
+    // onReorder (committedOrder !== identity). Append (toIndex === length)
+    // has no entry in `order` → open at the end.
+    const pos = order.indexOf(index);
+    const displayIndex = pos >= 0 ? pos : order.length;
     // The row gap, from the first two adjacent rendered rows; if none (hidden
     // rows between every visible pair), fall back to any two successive
     // visible rows by position.
