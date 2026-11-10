@@ -106,6 +106,30 @@ const EXAMPLES: Example[] = [
     sourceFile: 'stress-test.tsx',
     docsSlug: 'stress-test',
   },
+  {
+    route: '/live333v',
+    title: 'L333v temp',
+    subtitle: 'temporary #333 vertical foreign drop + reorder screen',
+    icon: 'format-list-bulleted',
+    sourceFile: 'live333v.tsx',
+    docsSlug: 'reorderable-list',
+  },
+  {
+    route: '/live333g',
+    title: 'L333g temp',
+    subtitle: 'temporary #333 grid / horizontal foreign drop screen',
+    icon: 'format-list-bulleted',
+    sourceFile: 'live333g.tsx',
+    docsSlug: 'reorderable-list',
+  },
+  {
+    route: '/live337j',
+    title: 'L337j temp',
+    subtitle: 'temporary #337 jitter screen (thin rows)',
+    icon: 'format-list-bulleted',
+    sourceFile: 'live337j.tsx',
+    docsSlug: 'reorderable-list',
+  },
 ];
 
 function ExampleCard({ example }: { example: Example }) {
