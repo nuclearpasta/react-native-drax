@@ -101,6 +101,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
 
   // Track current monitor ids for exit events
   const currentMonitorIdsRef = useRef<string[]>([]);
+  // Completion of the snap animation still in flight, if any.
+  const pendingSnapCompleteRef = useRef<(() => void) | null>(null);
 
 
   /** Build dragged view event data from current state */
@@ -186,6 +188,11 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     absolutePosition: Position,
     _grabOffset: Position
   ) => {
+    // A new drag cancels the previous drag's snap animation (onActivate writes
+    // hoverPositionSV), so its completion callback never fires. Finalize the
+    // previous drag now, before this drag touches any sortable state.
+    pendingSnapCompleteRef.current?.();
+
     const draggedEntry = getViewEntry(draggedId);
     if (!draggedEntry) return;
 
@@ -701,7 +708,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       draggedIdSV,
       hoverReadySV,
       setHoverContent,
-      deps.hoverClearDeferredRef
+      deps.hoverClearDeferredRef,
+      pendingSnapCompleteRef
     );
 
     // Fire provider-level onDragEnd (use last known hover position)
@@ -735,7 +743,8 @@ function performSnapback(
   draggedIdSV: SharedValue<string>,
   hoverReadySV: SharedValue<boolean>,
   setHoverContent: (content: ReactNode | null) => void,
-  hoverClearDeferredRef: { current: boolean }
+  hoverClearDeferredRef: { current: boolean },
+  pendingSnapCompleteRef: { current: (() => void) | null }
 ) {
   const animateSnap = draggedEntry.props.animateSnap ?? true;
   const snapDelay = draggedEntry.props.snapDelay ?? defaultSnapbackDelay;
@@ -771,6 +780,9 @@ function performSnapback(
    *   Then hover clears on next UI frame. Items at visual positions. No blink.
    */
   const onSnapComplete = () => {
+    // Runs once: from the animation callback, or from the next handleDragStart.
+    if (pendingSnapCompleteRef.current !== onSnapComplete) return;
+    pendingSnapCompleteRef.current = null;
 
     // Reset the deferred flag before firing callbacks.
     // finalizeDrag (called via onSnapEnd) may set it to true for reorder.
@@ -790,18 +802,23 @@ function performSnapback(
         _hoverPositionSV: typeof hoverPositionSV,
       ) => {
         'worklet';
+        // Only while this drag is still 'releasing'. A newer drag's
+        // onActivate resets the phase to 'idle' and owns these values.
+        if (_dragPhaseSV.value === 'releasing') {
+          _draggedIdSV.value = '';
+          _hoverPositionSV.value = { x: 0, y: 0 };
+        }
         _hoverReadySV.value = false;
         _dragPhaseSV.value = 'idle';
-        _draggedIdSV.value = '';
-        _hoverPositionSV.value = { x: 0, y: 0 };
       })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
     } else {
-      // Do NOT call setHoverContent(null) here — the hover must remain visible
-      // until the FlatList re-renders. The deferred cleanup in useLayoutEffect
-      // will clear SharedValues, and setHoverContent(null) is called there too.
+      // Do NOT call setHoverContent(null) here: the sortable that deferred the
+      // clear (finalizeDrag / finalizeTransfer) clears the hover itself.
     }
   };
+
+  pendingSnapCompleteRef.current = onSnapComplete;
 
   if (target === DraxSnapbackTargetPreset.None || !animateSnap) {
     // No snap animation — run cleanup immediately
