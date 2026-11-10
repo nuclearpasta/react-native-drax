@@ -29,6 +29,9 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 ### Fixed
 
+- Foreign-drop `toIndex` and gap on a single-column list with hidden (zero-size) rows: use each row's measured position instead of the uniform-slot path, so a drop after several hidden rows no longer lands one visible slot early
+- Foreign gap after an unrechoed `onReorder`: map the data `toIndex` through `committedOrder` so the gap opens where the insert will land, not at the raw display index
+- Foreign gap height when no two neighbouring data rows are both visible: fall back to the gap between successive visible rows by position
 - Drag handles: the hover no longer lands one slot off when a `dragHandle` sortable item with permanent shifts is grabbed by its `DraxHandle`
 - Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover
 - Repeated drags no longer freeze the UI for seconds: drag updates only reach the JS thread when the receiver or monitors change or a continuous callback needs them, and a drop no longer waits behind a backlog of drag-over work

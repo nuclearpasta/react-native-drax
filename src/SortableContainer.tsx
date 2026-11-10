@@ -343,9 +343,13 @@ export const SortableContainer = ({
         ...measurements.map((m) => main(m) + (horizontal ? m.width : m.height))
       );
       if (main(pos) > farEdge) return itemCount;
-      const slot = getSlotFromPosition(pos, itemCount);
-      const meas = measurements[slot];
-      return slot + (meas && isAfter(meas) ? 1 : 0);
+      // A list indexes through the per-row loop below, which skips hidden
+      // (zero-size) rows; only a grid uses the uniform slots.
+      if (grid) {
+        const slot = getSlotFromPosition(pos, itemCount);
+        const meas = measurements[slot];
+        return slot + (meas && isAfter(meas) ? 1 : 0);
+      }
     }
     for (let i = 0; i < itemCount; i++) {
       const meas = measurements[i];
@@ -396,10 +400,10 @@ export const SortableContainer = ({
   // ── Foreign-drag gap ────────────────────────────────────────────────
 
   /**
-   * Open a gap at `index` (in the order on screen) for a foreign drag, as 0.11
-   * did: every row from there on shifts by the dragged view's size plus the
-   * row gap. Only rows are shifted, so unmeasured (unrendered) rows don't
-   * matter. Lists only, not grids.
+   * Open a gap at data-array `index` (`toIndex`) for a foreign drag, as 0.11
+   * did: every display row from the matching slot on shifts by the dragged
+   * view's size plus the row gap. Only rows are shifted, so unmeasured
+   * (unrendered) rows don't matter. Lists only, not grids.
    */
   const openForeignGap = (index: number, size: number) => {
     const base = committedShiftsRef.current;
@@ -409,7 +413,19 @@ export const SortableContainer = ({
     const order = committedOrderRef.current.length > 0
       ? committedOrderRef.current
       : rawData.map((_, i) => i);
-    // The row gap, from the first two adjacent rendered rows.
+    // `index` is a data-array toIndex (splice point). Map it to a display
+    // slot in `order` so the gap matches that insert when the parent has not
+    // echoed onReorder (committedOrder !== identity).
+    let displayIndex = order.length;
+    for (let d = 0; d < order.length; d++) {
+      if ((order[d] as number) >= index) {
+        displayIndex = d;
+        break;
+      }
+    }
+    // The row gap, from the first two adjacent rendered rows; if none (hidden
+    // rows between every visible pair), fall back to any two successive
+    // visible rows by position.
     let rowGap = 0;
     for (let i = 0; i + 1 < itemCount; i++) {
       const a = getMeasurementByOriginalIndex(i);
@@ -419,9 +435,26 @@ export const SortableContainer = ({
         break;
       }
     }
+    if (rowGap === 0) {
+      const visible: SortableItemMeasurement[] = [];
+      for (let i = 0; i < itemCount; i++) {
+        const m = getMeasurementByOriginalIndex(i);
+        if (m && m.width > 0 && m.height > 0) visible.push(m);
+      }
+      visible.sort((a, b) => (horizontal ? a.x - b.x : a.y - b.y));
+      for (let i = 0; i + 1 < visible.length; i++) {
+        const a = visible[i]!;
+        const b = visible[i + 1]!;
+        const g = horizontal ? b.x - a.x - a.width : b.y - a.y - a.height;
+        if (g > 0) {
+          rowGap = g;
+          break;
+        }
+      }
+    }
     const delta = size + rowGap;
     const shifts = { ...base };
-    for (let d = index; d < order.length; d++) {
+    for (let d = displayIndex; d < order.length; d++) {
       const origIdx = order[d]!;
       const item = rawData[origIdx];
       if (item === undefined) continue;
