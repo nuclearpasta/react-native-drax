@@ -1,17 +1,18 @@
 import { Platform } from 'react-native';
 import { measure } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
-import { runOnJS } from 'react-native-worklets';
+import { runOnJS, runOnUI } from 'react-native-worklets';
 
 import { useDraxPanGesture } from '../compat';
 import { computeAbsolutePositionWorklet, computeGrabOffsetWorklet, hitTestWorklet } from '../math';
 import type { Position } from '../types';
-import { useDraxContext } from './useDraxContext';
+import { useDraxInternalContext } from './useDraxContext';
 
 /**
  * Creates a Pan gesture for a draggable DraxView.
- * Hit-testing runs entirely on the UI thread — zero runOnJS per frame
- * unless the receiver changes.
+ * Hit-testing runs entirely on the UI thread. It hops to JS when the receiver
+ * or the monitor set changes. Otherwise it hops only while JS reports that
+ * continuous updates are needed, with at most one such hop in flight.
  *
  * On RNGH v3, `enabledSV` and `longPressDelaySV` are SharedValues that
  * reconfigure the native gesture handler on the UI thread — zero JS bridge.
@@ -34,6 +35,7 @@ export const useDragGesture = (
     receiverIdSV,
     rejectedReceiverIdSV,
     dragPhaseSV,
+    hoverReadySV,
     hoverPositionSV,
     dragAbsolutePositionSV,
     spatialIndexSV,
@@ -42,10 +44,14 @@ export const useDragGesture = (
     startPositionSV,
     rootOffsetSV,
     rootViewRef,
+    needsUpdatesSV,
+    jsPendingSV,
+    lastMonitorKeySV,
+    skippedSV,
     handleDragStart,
     handleReceiverChange,
     handleDragEnd,
-  } = useDraxContext();
+  } = useDraxInternalContext();
 
   // On web, RNGH defaults touch-action to 'none' which blocks native scroll.
   // Allow the scroll direction so users can scroll before long-press activates.
@@ -60,6 +66,29 @@ export const useDragGesture = (
   const failOffset = dragActivationFailOffset !== undefined
     ? [-dragActivationFailOffset, dragActivationFailOffset] as [number, number]
     : undefined;
+
+  const continuousHop = (...args: Parameters<typeof handleReceiverChange>) => {
+    handleReceiverChange(...args);
+    runOnUI(endContinuousHop)();
+  };
+  // Ends a continuous hop on the UI thread: resend the latest state once if
+  // updates were skipped while it was in flight, else allow the next hop.
+  const endContinuousHop = () => {
+    'worklet';
+    if (skippedSV.value) {
+      skippedSV.value = false;
+      const receiverId = receiverIdSV.value;
+      const monitorKey = lastMonitorKeySV.value;
+      runOnJS(continuousHop)(
+        receiverId,
+        receiverId,
+        dragAbsolutePositionSV.value,
+        monitorKey ? monitorKey.split('|') : []
+      );
+    } else {
+      jsPendingSV.value = false;
+    }
+  };
 
   const gesture = useDraxPanGesture({
     enabledSV,
@@ -104,6 +133,14 @@ export const useDragGesture = (
       const spatialIndex = viewSpatialIndexSV.value;
       const entries = spatialIndexSV.value;
 
+      // A drag still snapping is superseded: handleDragStart finalizes it,
+      // and its deferred clear must leave this drag's state alone. Start
+      // from the idle state, like any drag (HoverLayer sets ready/dragging).
+      if (dragPhaseSV.value === 'releasing') {
+        dragPhaseSV.value = 'idle';
+        hoverReadySV.value = false;
+      }
+
       // Store shared state (all positions in root-relative space).
       // DO NOT set dragPhaseSV here — it's set by HoverLayer's useLayoutEffect
       // AFTER hover content is committed to the DOM. This prevents the grab blink
@@ -132,6 +169,11 @@ export const useDragGesture = (
       // Reset receiver and rejection cache
       receiverIdSV.value = '';
       rejectedReceiverIdSV.value = '';
+      // Until JS answers, hop on every update as if continuous updates are needed.
+      needsUpdatesSV.value = true;
+      jsPendingSV.value = false;
+      skippedSV.value = false;
+      lastMonitorKeySV.value = '';
 
       // Bounce to JS for callback dispatch + hover content setup
       runOnJS(handleDragStart)(
@@ -207,21 +249,41 @@ export const useDragGesture = (
         rejectedReceiverIdSV.value = '';
       }
 
-      // Always bounce to JS for callback dispatch.
-      // handleReceiverChange safely handles same-receiver calls (skips exit/enter)
-      // and dispatches continuous callbacks (onDrag, onDragOver, onReceiveDragOver)
-      // plus monitor position updates for slot detection.
+      // Bounce to JS for callback dispatch. A receiver or monitor set change always
+      // hops (enter/exit). Otherwise hop only if JS said the current state needs
+      // continuous callbacks (onDrag, onDragOver, onReceiveDragOver, monitors), and
+      // only if the previous such hop has run, so the JS queue stays bounded and a
+      // drop is never queued behind a backlog of stale updates.
       const oldReceiver = receiverIdSV.value;
       const receiverChanged = candidateReceiverId !== oldReceiver;
       if (receiverChanged) {
         receiverIdSV.value = candidateReceiverId;
       }
-      runOnJS(handleReceiverChange)(
-        oldReceiver,
-        candidateReceiverId,
-        hitTestPos,
-        result.monitorIds
-      );
+      const monitorKey = result.monitorIds.join('|');
+      const monitorsChanged = monitorKey !== lastMonitorKeySV.value;
+      if (monitorsChanged) {
+        lastMonitorKeySV.value = monitorKey;
+      }
+      if (receiverChanged || monitorsChanged) {
+        runOnJS(handleReceiverChange)(
+          oldReceiver,
+          candidateReceiverId,
+          hitTestPos,
+          result.monitorIds
+        );
+      } else if (needsUpdatesSV.value) {
+        if (jsPendingSV.value) {
+          skippedSV.value = true;
+        } else {
+          jsPendingSV.value = true;
+          runOnJS(continuousHop)(
+            oldReceiver,
+            candidateReceiverId,
+            hitTestPos,
+            result.monitorIds
+          );
+        }
+      }
     },
     onDeactivate: (_event, didSucceed) => {
       'worklet';
@@ -252,6 +314,17 @@ export const useDragGesture = (
       // re-evaluates immediately (receiver style clears instantly).
       dragPhaseSV.value = 'releasing';
       receiverIdSV.value = '';
+      skippedSV.value = false;
+
+      // Continuous callbacks see the release position before the drop (FIFO).
+      if (needsUpdatesSV.value) {
+        runOnJS(handleReceiverChange)(
+          currentReceiverId,
+          currentReceiverId,
+          dragAbsolutePositionSV.value,
+          finalHitResult.monitorIds
+        );
+      }
 
       // Bounce to JS for end callbacks + snap animation
       runOnJS(handleDragEnd)(currentDraggedId, currentReceiverId, false, finalHitResult.monitorIds);
@@ -280,6 +353,7 @@ export const useDragGesture = (
 
         dragPhaseSV.value = 'releasing';
         receiverIdSV.value = '';
+        skippedSV.value = false;
 
         runOnJS(handleDragEnd)(currentDraggedId, currentReceiverId, true, finalHitResult.monitorIds);
       }
