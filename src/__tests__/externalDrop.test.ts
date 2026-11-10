@@ -410,6 +410,19 @@ describe('foreign drag gap (0.11 parity, #10)', () => {
     expect(shifts()).toEqual({ B: down(60) });
   });
 
+  it('uses the gap between successive visible rows when the first adjacent pair has gap 0', () => {
+    // A at 0, B at 50, C at 120 (height 50): A–B abut (gap 0), B–C gap 20.
+    // The first-adjacent loop must fall through so the shift is 50+20=70, not 50.
+    const ys = [
+      { y: 0, height: 50 },
+      { y: 50, height: 50 },
+      { y: 120, height: 50 },
+    ];
+    const props = renderList(jest.fn(), ['A', 'B', 'C'], () => true, (i) => ys[i]!);
+    hoverAt(props, 60, 'B'); // top half of B → gap before B
+    expect(shifts()).toEqual({ B: down(70), C: down(70) });
+  });
+
   it('opens the gap before the data toIndex item after an unechoed reorder', () => {
     // A was moved 0→2 with no parent echo: visual order B, C, A.
     // Hovering the top half of B (data toIndex 1) must open the gap before

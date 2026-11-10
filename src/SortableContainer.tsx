@@ -384,7 +384,11 @@ export const SortableContainer = ({
       const a = getMeasurementByOriginalIndex(i);
       const b = getMeasurementByOriginalIndex(i + 1);
       if (a && b && a.width > 0 && a.height > 0 && b.width > 0 && b.height > 0) {
-        return Math.max(0, horizontal ? b.x - a.x - a.width : b.y - a.y - a.height);
+        // Zero or overlapping first adjacent pair: fall through to successive
+        // visible rows by position (same as the pre-extract inline logic).
+        const g = horizontal ? b.x - a.x - a.width : b.y - a.y - a.height;
+        if (g > 0) return g;
+        break;
       }
     }
     const visible: SortableItemMeasurement[] = [];
