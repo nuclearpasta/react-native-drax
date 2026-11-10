@@ -61,6 +61,7 @@ interface CallbackDispatchDeps {
   hoverPositionSV: SharedValue<Position>;
   grabOffsetSV: SharedValue<Position>;
   startPositionSV: SharedValue<Position>;
+  needsUpdatesSV: SharedValue<boolean>;
   setHoverContent: (content: ReactNode | null) => void;
   hoverReadySV: SharedValue<boolean>;
   hoverClearDeferredRef: { current: boolean };
@@ -75,8 +76,9 @@ interface CallbackDispatchDeps {
 
 /**
  * Provides JS-thread callback dispatch functions that are invoked via runOnJS
- * from gesture worklets. These handle ~5 calls per drag (start, receiver changes, end),
- * NOT per frame.
+ * from gesture worklets. Start and end run once per drag. handleReceiverChange
+ * runs on every receiver or monitor set change, plus at most one in-flight
+ * continuous update while continuous callbacks or monitors need one.
  */
 export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
   const {
@@ -88,6 +90,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     hoverPositionSV,
     grabOffsetSV,
     startPositionSV,
+    needsUpdatesSV,
     setHoverContent,
     hoverReadySV,
     onProviderDragStart,
@@ -98,6 +101,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
 
   // Track current monitor ids for exit events
   const currentMonitorIdsRef = useRef<string[]>([]);
+  // Completion of the snap animation still in flight, if any.
+  const pendingSnapCompleteRef = useRef<(() => void) | null>(null);
 
 
   /** Build dragged view event data from current state */
@@ -183,6 +188,11 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     absolutePosition: Position,
     _grabOffset: Position
   ) => {
+    // A new drag cancels the previous drag's snap animation (onActivate writes
+    // hoverPositionSV), so its completion callback never fires. Finalize the
+    // previous drag now, before this drag touches any sortable state.
+    pendingSnapCompleteRef.current?.();
+
     const draggedEntry = getViewEntry(draggedId);
     if (!draggedEntry) return;
 
@@ -264,7 +274,23 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     currentMonitorIdsRef.current = [];
   };
 
-  /** Called via runOnJS on every gesture update for callback dispatch.
+  /** Whether an unchanged receiver + monitor set still needs per-update dispatch:
+   *  monitors, onDragOver/onReceiveDragOver (over a receiver), or onDrag/provider
+   *  onDrag (no receiver). */
+  const needsContinuousUpdates = (
+    draggedId: string,
+    receiverId: string,
+    monitorCount: number
+  ) => {
+    if (monitorCount > 0) return true;
+    const draggedEntry = getViewEntry(draggedId);
+    if (!draggedEntry) return false;
+    if (!receiverId) return !!(draggedEntry.props.onDrag || onProviderDrag);
+    return !!(draggedEntry.props.onDragOver || getViewEntry(receiverId)?.props.onReceiveDragOver);
+  };
+
+  /** Called via runOnJS from the drag worklet on every receiver or monitor set change,
+   *  and on updates while needsUpdatesSV is true (at most one in flight).
    *  Handles: enter/exit (on receiver change), onDragOver/onReceiveDragOver
    *  (continuous, same receiver), onDrag (continuous, no receiver), and monitors. */
   const handleReceiverChange = (
@@ -275,22 +301,15 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
   ) => {
     const draggedId = draggedIdSV.value;
 
-    // Fast path: receiver unchanged, no monitors (now AND previously),
-    // and no continuous callbacks → skip event data construction entirely.
     const newMonitorIds = monitorIds ?? [];
     const prevMonitorIds = currentMonitorIdsRef.current;
-    if (
-      oldReceiverId === newReceiverId &&
-      newMonitorIds.length === 0 &&
-      prevMonitorIds.length === 0
-    ) {
-      const draggedEntry = getViewEntry(draggedId);
-      if (!draggedEntry) return;
-      const hasOnDragOver = newReceiverId && draggedEntry.props.onDragOver;
-      const receiverEntry = newReceiverId ? getViewEntry(newReceiverId) : undefined;
-      const hasOnReceiveDragOver = newReceiverId && receiverEntry?.props.onReceiveDragOver;
-      const hasOnDrag = !newReceiverId && (draggedEntry.props.onDrag || onProviderDrag);
-      if (!hasOnDragOver && !hasOnReceiveDragOver && !hasOnDrag) return;
+    const needsUpdates = needsContinuousUpdates(draggedId, newReceiverId, newMonitorIds.length);
+    if (needsUpdatesSV.value !== needsUpdates) needsUpdatesSV.value = needsUpdates;
+
+    // Fast path: receiver unchanged, no monitors (now AND previously),
+    // and no continuous callbacks → skip event data construction entirely.
+    if (oldReceiverId === newReceiverId && prevMonitorIds.length === 0 && !needsUpdates) {
+      return;
     }
 
     const dragged = buildDraggedViewData(draggedId, absolutePosition);
@@ -349,6 +368,9 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       // If rejected, tell the gesture worklet to skip this receiver on future frames.
       // Also clear receiverIdSV so animated styles don't flash the receiving state.
       if (!acceptedReceiverId) {
+        // The worklet now sees no receiver: decide continuous updates for that state.
+        const needsUpdatesRejected = needsContinuousUpdates(draggedId, '', newMonitorIds.length);
+        if (needsUpdates !== needsUpdatesRejected) needsUpdatesSV.value = needsUpdatesRejected;
         runOnUI((
           _receiverIdSV: typeof deps.receiverIdSV,
           _rejectedReceiverIdSV: typeof deps.rejectedReceiverIdSV,
@@ -688,7 +710,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
       draggedIdSV,
       hoverReadySV,
       setHoverContent,
-      deps.hoverClearDeferredRef
+      deps.hoverClearDeferredRef,
+      pendingSnapCompleteRef
     );
 
     // Fire provider-level onDragEnd (use last known hover position)
@@ -722,7 +745,8 @@ function performSnapback(
   draggedIdSV: SharedValue<string>,
   hoverReadySV: SharedValue<boolean>,
   setHoverContent: (content: ReactNode | null) => void,
-  hoverClearDeferredRef: { current: boolean }
+  hoverClearDeferredRef: { current: boolean },
+  pendingSnapCompleteRef: { current: (() => void) | null }
 ) {
   const animateSnap = draggedEntry.props.animateSnap ?? true;
   const snapDelay = draggedEntry.props.snapDelay ?? defaultSnapbackDelay;
@@ -758,6 +782,9 @@ function performSnapback(
    *   Then hover clears on next UI frame. Items at visual positions. No blink.
    */
   const onSnapComplete = () => {
+    // Runs once: from the animation callback, or from the next handleDragStart.
+    if (pendingSnapCompleteRef.current !== onSnapComplete) return;
+    pendingSnapCompleteRef.current = null;
 
     // Reset the deferred flag before firing callbacks.
     // finalizeDrag (called via onSnapEnd) may set it to true for reorder.
@@ -777,18 +804,23 @@ function performSnapback(
         _hoverPositionSV: typeof hoverPositionSV,
       ) => {
         'worklet';
+        // Only while this drag is still 'releasing'. A newer drag's
+        // onActivate resets the phase to 'idle' and owns these values.
+        if (_dragPhaseSV.value === 'releasing') {
+          _draggedIdSV.value = '';
+          _hoverPositionSV.value = { x: 0, y: 0 };
+        }
         _hoverReadySV.value = false;
         _dragPhaseSV.value = 'idle';
-        _draggedIdSV.value = '';
-        _hoverPositionSV.value = { x: 0, y: 0 };
       })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
     } else {
-      // Do NOT call setHoverContent(null) here — the hover must remain visible
-      // until the FlatList re-renders. The deferred cleanup in useLayoutEffect
-      // will clear SharedValues, and setHoverContent(null) is called there too.
+      // Do NOT call setHoverContent(null) here: the sortable that deferred the
+      // clear (finalizeDrag / finalizeTransfer) clears the hover itself.
     }
   };
+
+  pendingSnapCompleteRef.current = onSnapComplete;
 
   if (target === DraxSnapbackTargetPreset.None || !animateSnap) {
     // No snap animation — run cleanup immediately

@@ -23,6 +23,8 @@ Built on [Reanimated 4](https://docs.swmansion.com/react-native-reanimated/) and
 
 **Platforms:** iOS, Android, Web
 
+**Supports (1.2):** Expo 54-58 (tested on 58; 54-57 by peer ranges), or bare React Native >= 0.78 with the New Architecture · React >= 19 · Reanimated 4 + `react-native-worklets` · Gesture Handler >= 2. See [Peer Dependencies](#-peer-dependencies).
+
 ### ✨ Highlights
 
 - 📋 **List-agnostic sortable** — works with FlatList, FlashList, LegendList, or any list component
@@ -82,8 +84,44 @@ npm install react-native-reanimated react-native-worklets react-native-gesture-h
 | `react-native` | >= 0.78.0 (New Architecture) |
 | `react-native-reanimated` | ^4.0.0 |
 | `react-native-gesture-handler` | >= 2.0.0 (v3 recommended) |
+| `react-native-worklets` | >= 0.3.0 (optional peer; required by Reanimated 4) |
+
+Drax 1.2 supports Expo SDK 54-58. It is tested on SDK 58; SDK 54-57 are covered by the peer ranges but not tested. On SDK 54-57, `npx expo install` picks react-native-gesture-handler 2.x (2.28 to 2.32), which Drax supports (peer `>=2.0.0`). Each of those SDKs ships React Native >= 0.81 with the New Architecture, Reanimated 4 and `react-native-worklets`, so `npx expo install react-native-reanimated react-native-worklets react-native-gesture-handler` picks compatible versions. Outside Expo, use React Native >= 0.78 with the New Architecture enabled.
 
 Drax imports from `react-native-worklets` directly, so it is listed as an optional peer (`>=0.3.0`, the same range Reanimated 4.0.0 declares); it is optional only because Reanimated 4 already requires it. Install the version matching your Reanimated release (see the [Reanimated compatibility table](https://docs.swmansion.com/react-native-reanimated/docs/guides/compatibility/)). Reanimated 4 also requires the New Architecture. Gesture Handler v2 and v3 both work; v3 is recommended, and v2 is supported via a compatibility layer with reduced performance.
+
+### 🌳 Gesture Handler root view
+
+Gesture Handler only recognizes gestures under a `GestureHandlerRootView`, so wrap your app root in one, with `DraxProvider` inside it:
+
+```tsx
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { DraxProvider } from 'react-native-drax';
+
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <DraxProvider>{/* your app */}</DraxProvider>
+    </GestureHandlerRootView>
+  );
+}
+```
+
+**Inside a React Native `Modal`:** the modal's content renders outside the app root's `GestureHandlerRootView`. Gesture Handler's setup docs list this under Android: modal content needs its own `GestureHandlerRootView`. Put the `DraxProvider` inside that root view too, so drags and their hover views stay in the modal. A `DraxProvider` outside the `Modal` has been reported to draw hover views behind the modal's content ([issue #69](https://github.com/nuclearpasta/react-native-drax/issues/69)). iOS behavior without the extra root view hasn't been verified, so wrap the modal content on every platform:
+
+```tsx
+import { Modal } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { DraxProvider, DraxView } from 'react-native-drax';
+
+<Modal visible={visible} onRequestClose={close}>
+  <GestureHandlerRootView style={{ flex: 1 }}>
+    <DraxProvider>
+      <DraxView payload="card" />
+    </DraxProvider>
+  </GestureHandlerRootView>
+</Modal>
+```
 
 ## 🚀 Quick Start
 
@@ -140,7 +178,7 @@ function App() {
 }
 ```
 
-`DraxList` is list-agnostic — pass any list component via the `component` prop:
+`DraxList` is list-agnostic — pass any list component via the `component` prop. Props that `DraxList` doesn't define are passed to that component:
 
 ```tsx
 import { FlashList } from '@shopify/flash-list';
@@ -151,7 +189,6 @@ import { FlashList } from '@shopify/flash-list';
   keyExtractor={(item) => item.id}
   onReorder={({ data }) => setItems(data)}
   renderItem={({ item }) => <ItemCard item={item} />}
-  estimatedItemSize={60}
 />
 ```
 
@@ -160,17 +197,18 @@ import { FlashList } from '@shopify/flash-list';
 For full control, use the composable primitives directly:
 
 ```tsx
+import { useRef, useState } from 'react';
+import { FlatList, Text } from 'react-native';
 import {
   DraxProvider,
   useSortableList,
   SortableContainer,
   SortableItem,
 } from 'react-native-drax';
-import { FlatList } from 'react-native';
 
 function App() {
   const [items, setItems] = useState(['A', 'B', 'C', 'D', 'E']);
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<FlatList<string>>(null);
 
   const sortable = useSortableList({
     data: items,
@@ -275,7 +313,9 @@ import { snapToAlignment } from 'react-native-drax';
 
 <DraxView
   onReceiveDragDrop={({ dragged, receiver }) =>
-    snapToAlignment(receiver, dragged, 'top-left', { x: 8, y: 8 })
+    receiver.measurements
+      ? snapToAlignment(receiver.measurements, dragged.measurements, 'top-left', { x: 8, y: 8 })
+      : undefined
   }
 />
 ```
@@ -312,10 +352,13 @@ Device reduced motion settings are respected automatically.
 
 ### 🔀 Cross-Container Sortable (Experimental)
 
-Move items between lists (cross-list reorder):
+Move items between lists (cross-list reorder). Each `SortableContainer` inside a `SortableBoardContainer` registers itself as a column, under the `id` you pass to its `useSortableList`:
 
 ```tsx
+import { useRef, useState } from 'react';
+import { FlatList, Text } from 'react-native';
 import {
+  DraxProvider,
   useSortableBoard,
   SortableBoardContainer,
   useSortableList,
@@ -323,17 +366,73 @@ import {
   SortableItem,
 } from 'react-native-drax';
 
-const board = useSortableBoard({
-  onTransfer: ({ fromColumnId, toColumnId, fromIndex, toIndex, item }) => {
-    // Move item between columns
-  },
-});
+type Card = { id: string; title: string };
+type Columns = Record<string, Card[]>;
 
-<SortableBoardContainer board={board}>
-  {columns.map((column) => (
-    <Column key={column.id} board={board} column={column} />
-  ))}
-</SortableBoardContainer>
+function Board() {
+  const [columns, setColumns] = useState<Columns>({
+    todo: [{ id: '1', title: 'Write tests' }],
+    done: [{ id: '2', title: 'Setup project' }],
+  });
+
+  const board = useSortableBoard<Card>({
+    keyExtractor: (card) => card.id, // required
+    onTransfer: ({ item, fromContainerId, toContainerId, toIndex }) => {
+      setColumns((prev) => {
+        const from = (prev[fromContainerId] ?? []).filter((c) => c.id !== item.id);
+        const to = [...(prev[toContainerId] ?? [])];
+        to.splice(toIndex, 0, item);
+        return { ...prev, [fromContainerId]: from, [toContainerId]: to };
+      });
+    },
+  });
+
+  return (
+    <DraxProvider>
+      <SortableBoardContainer board={board}>
+        {Object.entries(columns).map(([columnId, cards]) => (
+          <Column
+            key={columnId}
+            columnId={columnId}
+            cards={cards}
+            onReorder={(data) => setColumns((prev) => ({ ...prev, [columnId]: data }))}
+          />
+        ))}
+      </SortableBoardContainer>
+    </DraxProvider>
+  );
+}
+
+function Column({ columnId, cards, onReorder }: {
+  columnId: string;
+  cards: Card[];
+  onReorder: (data: Card[]) => void;
+}) {
+  const listRef = useRef<FlatList<Card>>(null);
+  const sortable = useSortableList({
+    id: columnId, // becomes fromContainerId / toContainerId in onTransfer
+    data: cards,
+    keyExtractor: (card) => card.id,
+    onReorder: ({ data }) => onReorder(data),
+  });
+
+  return (
+    <SortableContainer sortable={sortable} scrollRef={listRef}>
+      <FlatList
+        ref={listRef}
+        data={sortable.data}
+        keyExtractor={sortable.stableKeyExtractor}
+        onScroll={sortable.onScroll}
+        onContentSizeChange={sortable.onContentSizeChange}
+        renderItem={({ item, index }) => (
+          <SortableItem sortable={sortable} index={index}>
+            <Text>{item.title}</Text>
+          </SortableItem>
+        )}
+      />
+    </SortableContainer>
+  );
+}
 ```
 
 > **Note:** Cross-container drag is experimental. The API may change in future versions.
@@ -371,8 +470,17 @@ import { Drax } from 'react-native-drax';
 |---|---|
 | `useSortableList` | List-agnostic reorder state management |
 | `useSortableBoard` | Cross-container board coordinator (experimental) |
-| `useDraxContext` | Access the Drax context |
+| `useItemContext` | Per-item state inside a `SortableItem` (`isActive`, `activeItemId`, `itemKey`, `index`) |
+| `useDraxMethods` | Imperative helpers: `requestPositionUpdate`, `isDragging`, `getDraggedId`, `getDroppedItems`, `clearDroppedItems` |
+| `useDraxContext` | Access the Drax context (low-level; its shape is internal) |
 | `useDraxId` | Generate a unique Drax view ID |
+
+## 🧰 Utilities
+
+| Utility | Description |
+|---|---|
+| `snapToAlignment` | Compute a snap target at one of 9 alignment points inside a receiver |
+| `packGrid` | Bin-pack mixed-size items into a grid (use with `getItemSpan`) |
 
 ## 💡 Examples
 
@@ -392,15 +500,16 @@ The `example/` directory contains an Expo Router app with 11 screens demonstrati
 | Scrolling | Drag from scroll view to drop zone |
 | Stress Test | 100 items in a sortable list |
 
-To run the example app:
+To run it:
 
 ```bash
-cd example && yarn start
+yarn install
+yarn example start
 ```
 
 ## 🔄 Migration from v0.x
 
-v1.0.0 is a complete rewrite. Key changes:
+1.x (since 1.0.0) is a complete rewrite. Key changes:
 
 - **`DraxList` is new** — list-agnostic convenience wrapper using the new sortable architecture. The old `DraxList` / `DraxListItem` API from v0.10.x and v0.11.0-alpha is removed.
 - **New sortable architecture** — `useSortableList` + `SortableContainer` + `SortableItem` composable API replaces the old array-indexed approach.
@@ -408,6 +517,8 @@ v1.0.0 is a complete rewrite. Key changes:
 - **New Architecture (Fabric)** compatible.
 
 For a step-by-step guide with before/after code (including the `0.11.0-alpha` `DraxList` / `DraxListItem` API), see [MIGRATION.md](MIGRATION.md).
+
+Coming from 1.0 or 1.1: 1.2 makes no breaking changes to the documented API. The declared peer ranges were raised to match what 1.x already needed at runtime (React >= 19, React Native >= 0.78), and `react-native-worklets` is now declared as an optional peer. A drag cancelled by the system (for example, the app going to the background) no longer counts as a drop. A receiver under a cancelled drag now gets `onReceiveDragExit` with `cancelled: true`. See [CHANGELOG.md](CHANGELOG.md).
 
 ## 📋 Changelog
 

@@ -153,7 +153,7 @@ function mergeStyles(...styles: (ViewStyle | null | undefined)[]): ViewStyle {
  * Using base-style values as defaults prevents the animated style from
  * overriding the regular `style` prop (e.g., blue borders set via React state).
  */
-function computeResetStyle(base: ViewStyle | null, ...specials: (ViewStyle | null)[]): ViewStyle {
+export function computeResetStyle(base: ViewStyle | null, ...specials: (ViewStyle | null)[]): ViewStyle {
   const reset: Record<string, unknown> = {};
   const baseMap = base ? Object.entries(base).reduce<Record<string, unknown>>((acc, [k, v]) => {
     acc[k] = v;

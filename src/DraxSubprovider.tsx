@@ -2,14 +2,14 @@ import type { PropsWithChildren } from 'react';
 import { useMemo } from 'react';
 
 import { DraxContext } from './DraxContext';
-import { useDraxContext } from './hooks';
+import { useDraxInternalContext } from './hooks/useDraxContext';
 import type { DraxSubproviderProps } from './types';
 
 export const DraxSubprovider = ({
   parent,
   children,
 }: PropsWithChildren<DraxSubproviderProps>) => {
-  const contextValue = useDraxContext();
+  const contextValue = useDraxInternalContext();
   const subContextValue = useMemo(
     () => ({ ...contextValue, parent }),
     [contextValue, parent]
