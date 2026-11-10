@@ -14,6 +14,7 @@ import Reanimated, {
 
 import { DraxView } from './DraxView';
 import { useDraxContext } from './hooks/useDraxContext';
+import { computeResetStyle } from './hooks/useViewStyles';
 import type { SortableItemContextValue } from './SortableItemContext';
 import { SortableItemContext } from './SortableItemContext';
 import type { ResolvedAnimationConfig } from './params';
@@ -25,6 +26,8 @@ import type {
   SortableItemMeasurement,
   SortableListHandle,
 } from './types';
+
+const DEFAULT_DRAGGED_ITEM_STYLE: ViewStyle = { opacity: 0 };
 
 /**
  * Isolated hook for SortableItem animated style.
@@ -42,7 +45,14 @@ function useSortableItemStyle(
   animConfig: ResolvedAnimationConfig,
   reducedMotion: boolean,
   inactiveItemStyle?: ViewStyle,
+  draggedItemStyle: ViewStyle = DEFAULT_DRAGGED_ITEM_STYLE,
 ) {
+  // Reanimated never unsets a key that leaves the animated style, so every
+  // key of the item styles gets an explicit neutral value when not applied.
+  const resetStyle = useMemo(
+    () => computeResetStyle(null, inactiveItemStyle ?? null, draggedItemStyle),
+    [inactiveItemStyle, draggedItemStyle],
+  );
   return useAnimatedStyle(() => {
     // Guard: viewIdSV starts as '' before DraxView registers. Without the
     // non-empty check, a newly mounted item would match a cleared draggedIdSV ('')
@@ -82,14 +92,15 @@ function useSortableItemStyle(
 
     // Apply inactive style to non-dragged items while a drag is active
     const isInactive = dragActive && !isDragged;
+    const activeStyle = isDragged ? draggedItemStyle : isInactive ? inactiveItemStyle : undefined;
+    // User transforms apply after the shift translate.
+    const userTransform = Array.isArray(activeStyle?.transform) ? activeStyle.transform : [];
 
     return {
-      opacity: isDragged ? 0 : 1,
-      transform: [
-        { translateX },
-        { translateY },
-      ] as const,
-      ...(isInactive && inactiveItemStyle ? inactiveItemStyle : {}),
+      opacity: 1,
+      ...resetStyle,
+      ...activeStyle,
+      transform: [{ translateX }, { translateY }, ...userTransform],
     };
   });
 }
@@ -116,17 +127,19 @@ const SortableItemInner = ({
     longPressDelay,
     animationConfig,
     inactiveItemStyle,
+    draggedItemStyle,
     itemEntering,
     itemExiting,
     shiftsRef,
+    shiftsJSRef,
     instantClearSV,
     shiftsValidSV,
     itemMeasurements,
     keyExtractor,
     rawData,
     originalIndexes,
-    scrollPosition,
-    onItemSnapEnd,
+    scrollPositionJSRef,
+    onItemSnapEndRef,
     fixedKeys,
   } = sortable._internal;
 
@@ -164,7 +177,7 @@ const SortableItemInner = ({
   const itemStyle = useSortableItemStyle(
     hoverReadySV, draggedIdSV, viewIdSV,
     shiftsValidSV, shiftsRef, instantClearSV, itemKey,
-    resolvedAnimConfig, reducedMotion, inactiveItemStyle,
+    resolvedAnimConfig, reducedMotion, inactiveItemStyle, draggedItemStyle,
   );
 
   // Derive isActive SharedValue for useItemContext consumers
@@ -221,7 +234,7 @@ const SortableItemInner = ({
           draxViewProps.onDragDrop?.(event);
         }}
         onSnapEnd={(snapData) => {
-          onItemSnapEnd?.();
+          onItemSnapEndRef.current?.();
           draxViewProps.onSnapEnd?.(snapData);
         }}
         onMeasure={(measurements) => {
@@ -235,7 +248,7 @@ const SortableItemInner = ({
             let adjX = measurements.x;
             let adjY = measurements.y;
             if (Platform.OS === 'web' || measurements._transformDetected) {
-              const currentShift = shiftsRef.value[itemKey];
+              const currentShift = shiftsJSRef.current[itemKey];
               if (currentShift) {
                 adjX -= currentShift.x;
                 adjY -= currentShift.y;
@@ -248,7 +261,7 @@ const SortableItemInner = ({
               height: measurements.height,
               key: itemKey,
               index,
-              scrollAtMeasure: { x: scrollPosition.value.x, y: scrollPosition.value.y },
+              scrollAtMeasure: { ...scrollPositionJSRef.current },
             };
             itemMeasurements.current.set(itemKey, entry);
           }

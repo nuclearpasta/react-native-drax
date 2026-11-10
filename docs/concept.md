@@ -2,11 +2,11 @@
 
 The essential idea behind Drax is to augment the familiar React Native `View` component with attributes that enable it to be dragged around the screen, or to receive or monitor others that are dragged over it. These attributes include handlers for a wide variety of events in the drag-and-drop lifecycle, data payloads for dragging and receiving, and conditional styling and rendering based on drag status. This combination of features provides great flexibility and power via a declarative approach, with sensible default behaviors for simple use cases.
 
-Drax consists of two fundamental components, `DraxProvider` and `DraxView`. The `DraxProvider` wraps the entire app (or at least the area of the app in which drag-and-drop behavior will occur). It provides the React context for all drag handling which each `DraxView` interfaces with. The `DraxView` is a view which can be dragged, can receive other drags, can monitor other drags, or any combination of those behaviors. The Drax library includes more complex components such as `DraxList` (a drag-reorderable `FlatList`), but they are implemented with `DraxView` internally.
+Drax consists of two fundamental components, `DraxProvider` and `DraxView`. The `DraxProvider` wraps the entire app (or at least the area of the app in which drag-and-drop behavior will occur). It provides the React context for all drag handling which each `DraxView` interfaces with. The `DraxView` is a view which can be dragged, can receive other drags, can monitor other drags, or any combination of those behaviors. The Drax library includes more complex components such as `DraxList` (a list-agnostic sortable list that works with `FlatList`, FlashList, LegendList and others) and the composable `SortableContainer` / `SortableItem`, but they are implemented with `DraxView` internally.
 
 ## Implementation
 
-Drax works by tracking the measurements of all `DraxViews` in relation to the `DraxProvider`, keeping an internal record of all their absolute screen positions and sizes. In the case of `DraxViews` nested inside of scrollable Drax components (e.g., `DraxList`), it does this by tracking their relationships to their parents as well as the parents' scroll offsets. Drax uses `react-native-gesture-handler` to determine when drags begin and end, converting the event data from that library into absolute screen coordinates to determine interactions between `DraxViews`.
+Drax works by measuring every `DraxView` relative to its Drax parent (or the `DraxProvider` root view) and keeping those measurements in a spatial index held in a Reanimated shared value. For `DraxViews` nested inside scrollable Drax components (e.g., `DraxScrollView`, `DraxList`), it also tracks each parent's scroll offset. Drax uses `react-native-gesture-handler` to detect drags, and hit-tests the drag position against the spatial index on the UI thread, in coordinates relative to the `DraxProvider` root view. Callbacks then run on the JS thread.
 
 *(More documentation on this, including diagrams, to come later.)*
 
@@ -31,7 +31,7 @@ Drax works by tracking the measurements of all `DraxViews` in relation to the `D
 <ol type="A">
   <li><tt>onReceiveDragEnter</tt>: when a drag enters this view</li>
   <li><tt>onReceiveDragOver</tt>: while a drag is over this view</li>
-  <li><tt>onReceiveDragExit</tt>: when a drag exits this view (or is cancelled)</li>
+  <li><tt>onReceiveDragExit</tt>: when a drag exits this view (or is cancelled over it)</li>
   <li><tt>onReceiveDragDrop</tt>: when a drag ends successfully over this view</li>
 </ol>
 
@@ -59,7 +59,7 @@ The following image demonstrates examples of common drag-and-drop behavior:
 
 **`Example III`** is a simple subset of **`Example I`** in which the drag never enters a receiver, so only the events in the dragged view occur.
 
-**`Example IV`** is an exceptional case included for the sake of thoroughness. It is essentially the same as **`Example II`** but ends with the drag being cancelled by the gesture system for some reason. In this situation, no drop is considered to have happened. An `onDragEnd (6)` occurs in the dragged view, and an `onReceiveDragExit (C)` occurs in the receiver.
+**`Example IV`** is an exceptional case included for the sake of thoroughness. It is essentially the same as **`Example II`** but ends with the drag being cancelled by the gesture system for some reason. In this situation, no drop is considered to have happened. An `onDragEnd (6)` with `cancelled: true` occurs in the dragged view, an `onReceiveDragExit (C)` with `cancelled: true` occurs in the receiver, and monitors get `onMonitorDragEnd` with `cancelled: true`.
 
 ### Monitor Events
 

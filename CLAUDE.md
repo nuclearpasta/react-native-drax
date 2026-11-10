@@ -20,7 +20,10 @@ Drag-and-drop framework for React Native (iOS, Android, Web). Current package ve
 - Map-based measurements (keyed by item key) instead of array-indexed
 - Supports insert + swap reorder strategies
 - Drop indicator support: `SortableContainer` tracks target position via SharedValues, renders indicator at insertion point
+- **JS mirrors**: `shiftsJSRef` / `scrollPositionJSRef` in `_internal` mirror `shiftsRef` / `scrollPosition` for JS-thread reads (e.g. `SortableItem` `onMeasure`). A JS `.value =` write reaches the UI thread asynchronously, so a JS `.value` read can be stale and warns during render (#249). Set the mirror next to every JS-side shifts write, including before `runOnUI` blocks.
 - **Data ownership**: Library commits reorders internally via `commitReorder`. `onReorder` is a notification — parent stores data but library already committed it. When parent echoes data back, useLayoutEffect detects the match and skips (no double-render).
+- `finalizeDrag` reaches `SortableItem` through `_internal.onItemSnapEndRef` (stable ref, read at call time). `_internal` is rebuilt every render, so a plain property captured at render goes stale when the list owner re-renders mid-drag (#236/#296).
+- Jest can render the real sortable hook/container/item with `react-test-renderer`: stub `DraxView`, Reanimated, worklets, and `useDraxContext`. See `src/__tests__/SortableItem.snapEnd.test.tsx`.
 
 ### Animation Customization
 
@@ -69,6 +72,14 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - Transfer finalization: clears all committed state on source (forces useLayoutEffect external data path), clears phantom on target, fires `onTransfer`, hover covers transition until both columns re-render with correct data
 - No ghost shifts, no effectiveData bypass — both columns reset naturally via useLayoutEffect when parent updates data
 - `SortableContainer` has minimal board awareness: auto-registration + finalizeDrag delegation + drag end guards
+
+## Auto-Scroll
+
+- Props (`DraxAutoScrollProps`, shared by `DraxScrollView`, `useSortableList`, `DraxList`): `autoScrollEnabled` (true), `autoScrollIntervalLength` (250), `autoScrollInitialDelay` (0), `autoScrollJumpRatio` (0.2 of the container/viewport), `autoScrollBackThreshold`/`ForwardThreshold` (0.1/0.9). `DraxList` forwards them to `useSortableList`.
+- Timing lives in `src/autoScrollTimer.ts` (`startAutoScrollTimer`/`stopAutoScrollTimer`): dwell `initialDelay`, then jump and repeat every `intervalLength`. Leaving the band calls stop, so the dwell restarts.
+- `SortableContainer` auto-scrolls and fires `onDragPositionChange` only for its own items. A foreign drag returns early (no slot tracking, drop indicator or autoscroll), except a sortable item from another column of the same board (`boardInternal.columns.has(dragged.parentId)`), which still auto-scrolls. A list whose `_internal.onExternalDrop` is set (#333) also auto-scrolls foreign drags, with no slot tracking. Not `transferState.targetId`: the board monitor may set it after the column monitor in the same dispatch.
+- `autoScrollEnabled` false resets the scroll state and stops the timer on the next drag-over, so flipping it mid-scroll stops scrolling. `SortableContainer` stops the timer on unmount.
+- Jest: `src/__tests__/autoScroll.test.tsx` calls `SortableContainer`/`DraxScrollView` as plain functions with React hooks stubbed and reads the monitor handlers off the returned `DraxView` element. `useRef` persists by call order (so a re-render keeps the timer), and `useEffect` callbacks are collected for a mount/unmount check.
 
 ## Drag Handles
 
@@ -129,7 +140,8 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - `onDrag` — fires continuously while dragging over empty space (no receiver)
 - `onDragOver` — fires continuously while dragging over the same receiver
 - `onReceiveDragOver` — fires continuously on the receiver while being dragged over
-- All dispatched from `handleReceiverChange` which now fires on every gesture update frame
+- All dispatched from `handleReceiverChange`. The drag worklet hops to it on every receiver or monitor set change (never skipped), otherwise only while JS says continuous updates are needed (`needsUpdatesSV`: monitors, `onDragOver`/`onReceiveDragOver` over a receiver, `onDrag`/provider `onDrag` with none), with at most one such hop in flight (`jsPendingSV`). An update skipped while one is in flight sets `skippedSV`; the hop's `runOnUI` end then resends the latest position once. On release, `onDeactivate` sends one more hop before `handleDragEnd` while `needsUpdatesSV` is true, so the drop sees the release position (#343 B1). Continuous callbacks therefore fire at JS rate, not frame rate (edm 124711: an unbounded per-frame queue made drops wait seconds)
+- These SVs are internal: `DraxInternalContextValue` in `DraxContext.ts` extends the public `DraxContextValue`; read it with `useDraxInternalContext` (not exported). Do not add internal fields to `DraxContextValue` (public type). Tests that mock `hooks/useDraxContext` and run `useDragGesture` must mock `useDraxInternalContext`
 
 ## Namespace API
 

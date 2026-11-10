@@ -1,11 +1,14 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { runOnUI } from 'react-native-worklets';
 
 import {
   defaultAutoScrollBackThreshold,
   defaultAutoScrollForwardThreshold,
+  defaultAutoScrollInitialDelay,
+  defaultAutoScrollIntervalLength,
   defaultAutoScrollJumpRatio,
   defaultListItemLongPressDelay,
 } from '../params';
@@ -49,12 +52,16 @@ export const useSortableList = <T,>(
     reorderStrategy = 'insert',
     longPressDelay = defaultListItemLongPressDelay,
     lockToMainAxis = false,
+    autoScrollEnabled = true,
+    autoScrollIntervalLength = defaultAutoScrollIntervalLength,
+    autoScrollInitialDelay = defaultAutoScrollInitialDelay,
     autoScrollJumpRatio = defaultAutoScrollJumpRatio,
     autoScrollBackThreshold = defaultAutoScrollBackThreshold,
     autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
     animationConfig = 'default',
     getItemSpan,
     inactiveItemStyle,
+    draggedItemStyle,
     itemEntering,
     itemExiting,
     onDragStart,
@@ -78,6 +85,13 @@ export const useSortableList = <T,>(
    * Written from JS thread during drag, read on UI thread via useAnimatedStyle.
    */
   const shiftsRef = useSharedValue<Record<string, Position>>({});
+  /**
+   * JS-thread mirror of shiftsRef, set next to every JS-side shifts write.
+   * JS reads use this instead of `shiftsRef.value`: a JS `.value =` write is
+   * applied on the UI thread asynchronously, so a JS read can return the
+   * previous value (and warns when it happens during a React render).
+   */
+  const shiftsJSRef = useRef<Record<string, Position>>({});
 
   /**
    * When true, SortableItem applies shifts with duration 0 (instant).
@@ -118,10 +132,15 @@ export const useSortableList = <T,>(
   );
   const contentSizeRef = useRef<Position | undefined>(undefined);
   const scrollPosition = useSharedValue<Position>({ x: 0, y: 0 });
+  /** JS-thread mirror of scrollPosition (see shiftsJSRef). */
+  const scrollPositionJSRef = useRef<Position>({ x: 0, y: 0 });
 
   // ── Drag tracking (refs, no re-render) ────────────────────────────
   const draggedDisplayIndexRef = useRef<number | undefined>(undefined);
   const dragStartIndexRef = useRef<number | undefined>(undefined);
+  /** finalizeDrag, registered by SortableContainer. A ref because `_internal`
+   *  is rebuilt every render, so SortableItem must read it at call time. */
+  const onItemSnapEndRef = useRef<(() => void) | undefined>(undefined);
   /**
    * Pending reorder during drag. Tracks the desired display order
    * as indices into rawData. Updated by moveDraggedItem (ref, not state).
@@ -173,9 +192,9 @@ export const useSortableList = <T,>(
         }
       }
       if (matches) {
-        // Parent accepted our reorder — stableData stays unchanged.
-        // FlatList keeps rendering the original data order; permanent shifts
-        // handle the visual reorder. No Fabric commit → no race → no blink.
+        // Parent accepted our reorder — permanent shifts already show this
+        // order. Swap stableData now only if a flush was requested.
+        flushIfReady();
         return;
       }
     }
@@ -190,11 +209,13 @@ export const useSortableList = <T,>(
       // Board-path reorder: hover covers the transition.
       skipShiftsInvalidationRef.current = false;
       instantClearSV.value = true;
+      shiftsJSRef.current = {};
       shiftsRef.value = {};
     } else {
       // External data change: invalidate shifts immediately so the animated
       // style reads zero shifts in the same frame as the Fabric commit.
       shiftsValidSV.value = false;
+      shiftsJSRef.current = {};
       runOnUI(() => {
         'worklet';
         instantClearSV.value = true;
@@ -326,11 +347,9 @@ export const useSortableList = <T,>(
   const applyShifts = (shifts: Record<string, Position> | undefined) => {
     if (!shifts) return;
     const ghosts = ghostShiftsRef.current;
-    if (Object.keys(ghosts).length > 0) {
-      shiftsRef.value = { ...shifts, ...ghosts };
-    } else {
-      shiftsRef.value = shifts;
-    }
+    const next = Object.keys(ghosts).length > 0 ? { ...shifts, ...ghosts } : shifts;
+    shiftsJSRef.current = next;
+    shiftsRef.value = next;
   };
 
   // ── Shift computation ─────────────────────────────────────────────
@@ -475,13 +494,25 @@ export const useSortableList = <T,>(
     return newShifts;
   };
 
-  /** Compute and apply shifts during drag (skips the invisible dragged item). */
+  /**
+   * Compute and apply shifts during drag. The dragged item is skipped and
+   * keeps its drag-start (committed) shift, so its placeholder holds still
+   * at the slot it was picked up from.
+   */
   const computeShifts = () => {
-    const shifts = computeShiftsForOrder(
-      pendingOrderRef.current,
-      draggedDisplayIndexRef.current,
-      phantomRef.current ?? undefined,
-    );
+    const pending = pendingOrderRef.current;
+    const dragIdx = draggedDisplayIndexRef.current;
+    const shifts = computeShiftsForOrder(pending, dragIdx, phantomRef.current ?? undefined);
+    const origIdx = dragIdx !== undefined ? pending[dragIdx] : undefined;
+    const item = origIdx !== undefined ? stableData[origIdx] : undefined;
+    if (shifts && origIdx !== undefined && item !== undefined) {
+      const key = keyExtractor(item, origIdx);
+      const held = committedShiftsRef.current[key];
+      if (held) {
+        applyShifts({ ...shifts, [key]: held });
+        return;
+      }
+    }
     applyShifts(shifts);
   };
 
@@ -545,18 +576,27 @@ export const useSortableList = <T,>(
     committedShiftsRef.current = finalShifts ?? {};
   };
 
-  /**
-   * Flush permanent shifts: update stableData to match rawData and clear
-   * shifts. Called after a delay so both the Fabric commit and the shift
-   * clearing are processed on the same UI frame — no visual blink because
-   * items are already at the correct visual positions via permanent shifts.
-   * Restores touch hit testing (FlatList cells at correct Yoga positions).
-   */
   /** Flag: next stableData change should clear shifts via runOnUI */
   const pendingShiftFlushRef = useRef(false);
+  /** Flag: flushVisualOrder was called and has not been applied yet */
+  const flushRequestedRef = useRef(false);
+  const stableDataRef = useRef(stableData);
+  stableDataRef.current = stableData;
 
-  const flushVisualOrder = () => {
+  /**
+   * Flush permanent shifts: update stableData to match rawData and clear
+   * shifts, so FlatList cells move to their real positions (touch hit
+   * testing, renderItem indexes). Applied only once the parent has echoed
+   * the reorder (rawData differs from stableData). Uncontrolled parents
+   * never echo, so they keep the committed order and permanent shifts.
+   * Never applied during a drag: pendingOrderRef indexes into stableData.
+   */
+  const flushIfReady = () => {
+    if (!flushRequestedRef.current) return;
+    if (pendingOrderRef.current.length > 0) return;
     const currentRawData = rawDataRef.current;
+    if (currentRawData === stableDataRef.current) return;
+    flushRequestedRef.current = false;
     committedOrderRef.current = [];
     committedKeyOrderRef.current = [];
     committedShiftsRef.current = {};
@@ -567,6 +607,11 @@ export const useSortableList = <T,>(
     // Fabric update, so both land on the same UI frame.
   };
 
+  const flushVisualOrder = () => {
+    flushRequestedRef.current = true;
+    flushIfReady();
+  };
+
   // When flushVisualOrder updates stableData, clear shifts during the
   // same commit phase. The runOnUI worklet and the Fabric commit are
   // both queued from this useLayoutEffect — processed on the same
@@ -575,6 +620,7 @@ export const useSortableList = <T,>(
   useLayoutEffect(() => {
     if (pendingShiftFlushRef.current) {
       pendingShiftFlushRef.current = false;
+      shiftsJSRef.current = {};
       runOnUI(() => {
         'worklet';
         instantClearSV.value = true;
@@ -617,6 +663,7 @@ export const useSortableList = <T,>(
     instantClearSV.value = true;
     // Revert to committed shifts from the previous drag (if any).
     // If no previous drag, clears to empty (identity positions).
+    shiftsJSRef.current = committedShiftsRef.current;
     shiftsRef.value = committedShiftsRef.current;
   };
 
@@ -646,6 +693,7 @@ export const useSortableList = <T,>(
     if (shifts !== undefined) {
       applyShifts(shifts);
     } else {
+      shiftsJSRef.current = committedShiftsRef.current;
       shiftsRef.value = committedShiftsRef.current;
     }
     pendingOrderRef.current = [];
@@ -689,8 +737,8 @@ export const useSortableList = <T,>(
 
     if (pending.length === 0) {
       return {
-        x: containerMeasurements.x - scrollPosition.value.x,
-        y: containerMeasurements.y - scrollPosition.value.y,
+        x: containerMeasurements.x - scrollPositionJSRef.current.x,
+        y: containerMeasurements.y - scrollPositionJSRef.current.y,
       };
     }
 
@@ -708,8 +756,8 @@ export const useSortableList = <T,>(
           ? { x: cursor, y: startMeas.y }
           : { x: startMeas.x, y: cursor };
         return {
-          x: containerMeasurements.x + phantomPos.x - scrollPosition.value.x,
-          y: containerMeasurements.y + phantomPos.y - scrollPosition.value.y,
+          x: containerMeasurements.x + phantomPos.x - scrollPositionJSRef.current.x,
+          y: containerMeasurements.y + phantomPos.y - scrollPositionJSRef.current.y,
         };
       }
       const meas = getMeasForOrigIdx(pending[i]!);
@@ -723,8 +771,8 @@ export const useSortableList = <T,>(
       ? { x: cursor, y: startMeas.y }
       : { x: startMeas.x, y: cursor };
     return {
-      x: containerMeasurements.x + phantomPos.x - scrollPosition.value.x,
-      y: containerMeasurements.y + phantomPos.y - scrollPosition.value.y,
+      x: containerMeasurements.x + phantomPos.x - scrollPositionJSRef.current.x,
+      y: containerMeasurements.y + phantomPos.y - scrollPositionJSRef.current.y,
     };
   };
 
@@ -968,14 +1016,16 @@ export const useSortableList = <T,>(
     }
 
     return {
-      x: containerMeasurements.x + targetPos.x - scrollPosition.value.x,
-      y: containerMeasurements.y + targetPos.y - scrollPosition.value.y,
+      x: containerMeasurements.x + targetPos.x - scrollPositionJSRef.current.x,
+      y: containerMeasurements.y + targetPos.y - scrollPositionJSRef.current.y,
     };
   };
 
   // ── Scroll event handlers ─────────────────────────────────────────
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { x, y } = event.nativeEvent.contentOffset;
+    scrollPositionJSRef.current = { x, y };
     runOnUI((_event: NativeScrollEvent) => {
       'worklet';
       scrollPosition.value = {
@@ -990,6 +1040,8 @@ export const useSortableList = <T,>(
   };
 
   // ── Build the internal object ─────────────────────────────────────
+  // Flatten once per render (not memoized): RC1's externalDrop mock has no
+  // useMemo dispatcher. Docs tell callers to pass a stable style.
   const internal: SortableListInternal<T> = {
     id,
     horizontal,
@@ -1000,6 +1052,7 @@ export const useSortableList = <T,>(
     animationConfig,
     getItemSpan,
     inactiveItemStyle,
+    draggedItemStyle: StyleSheet.flatten(draggedItemStyle) ?? undefined,
     itemEntering,
     itemExiting,
     fixedKeys,
@@ -1014,8 +1067,12 @@ export const useSortableList = <T,>(
     setDraggedItem,
     resetDraggedItem,
     scrollPosition,
+    scrollPositionJSRef,
     containerMeasurementsRef,
     contentSizeRef,
+    autoScrollEnabled,
+    autoScrollIntervalLength,
+    autoScrollInitialDelay,
     autoScrollJumpRatio,
     autoScrollBackThreshold,
     autoScrollForwardThreshold,
@@ -1027,10 +1084,11 @@ export const useSortableList = <T,>(
     getMeasurementByOriginalIndex,
     dropTargetPositionSV,
     dropTargetVisibleSV,
-    onItemSnapEnd: undefined as (() => void) | undefined,
+    onItemSnapEndRef,
     draggedDisplayIndexRef,
     dragStartIndexRef,
     shiftsRef,
+    shiftsJSRef,
     instantClearSV,
     shiftsValidSV,
     initPendingOrder,

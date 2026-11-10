@@ -598,9 +598,18 @@ export interface AutoScrollState {
 
 /** Props for auto-scroll options */
 export interface DraxAutoScrollProps {
+  /** Auto-scroll when a drag nears the container's edge. @default true */
+  autoScrollEnabled?: boolean;
+  /** Time in ms between auto-scroll jumps. @default 250 */
   autoScrollIntervalLength?: number;
+  /** Time in ms a drag must stay in the edge band before the first jump.
+   *  Leaving the band resets it. @default 0 */
+  autoScrollInitialDelay?: number;
+  /** Auto-scroll jump distance as fraction of container size. @default 0.2 */
   autoScrollJumpRatio?: number;
+  /** Drag position threshold for back auto-scroll. @default 0.1 */
   autoScrollBackThreshold?: number;
+  /** Drag position threshold for forward auto-scroll. @default 0.9 */
   autoScrollForwardThreshold?: number;
 }
 
@@ -719,7 +728,7 @@ export interface DropIndicatorProps {
 }
 
 /** Options for useSortableList hook */
-export interface UseSortableListOptions<T> {
+export interface UseSortableListOptions<T> extends DraxAutoScrollProps {
   /** Optional explicit DraxView id for the container */
   id?: string;
   data: T[];
@@ -735,12 +744,6 @@ export interface UseSortableListOptions<T> {
   longPressDelay?: number;
   /** Lock item drags to the list's main axis. @default false */
   lockToMainAxis?: boolean;
-  /** Auto-scroll jump distance as fraction of container size. @default 0.2 */
-  autoScrollJumpRatio?: number;
-  /** Drag position threshold for back auto-scroll. @default 0.1 */
-  autoScrollBackThreshold?: number;
-  /** Drag position threshold for forward auto-scroll. @default 0.9 */
-  autoScrollForwardThreshold?: number;
   /** Animation config for item shift animations. @default 'default' */
   animationConfig?: SortableAnimationConfig;
   /** Returns the grid span for an item. Enables non-uniform grid layout
@@ -750,6 +753,9 @@ export interface UseSortableListOptions<T> {
   /** Style applied to all non-dragged items while a drag is active.
    *  Use for dimming/scaling inactive items (e.g., `{ opacity: 0.5 }`). */
   inactiveItemStyle?: ViewStyle;
+  /** Style of the dragged item's in-list placeholder while its hover copy moves.
+   *  Replaces the default. Use `{ opacity: 0.2 }` for a faint placeholder. @default { opacity: 0 } */
+  draggedItemStyle?: StyleProp<ViewStyle>;
   /** Reanimated layout animation for items entering the list (e.g., `FadeIn`). */
   itemEntering?: EntryOrExitLayoutType;
   /** Reanimated layout animation for items exiting the list (e.g., `FadeOut`). */
@@ -796,6 +802,8 @@ export interface SortableListInternal<T> {
   /** Returns the grid span for an item (non-uniform grid layout) */
   getItemSpan?: (item: T, index: number) => GridItemSpan;
   inactiveItemStyle?: ViewStyle;
+  /** Flattened `draggedItemStyle` */
+  draggedItemStyle?: ViewStyle;
   itemEntering?: EntryOrExitLayoutType;
   itemExiting?: EntryOrExitLayoutType;
   /** Set of item keys that are fixed (cannot be dragged or displaced) */
@@ -813,8 +821,13 @@ export interface SortableListInternal<T> {
   setDraggedItem: (index: number) => void;
   resetDraggedItem: () => void;
   scrollPosition: SharedValue<Position>;
+  /** JS-thread mirror of scrollPosition, for synchronous JS reads */
+  scrollPositionJSRef: RefObject<Position>;
   containerMeasurementsRef: RefObject<DraxViewMeasurements | undefined>;
   contentSizeRef: RefObject<Position | undefined>;
+  autoScrollEnabled: boolean;
+  autoScrollIntervalLength: number;
+  autoScrollInitialDelay: number;
   autoScrollJumpRatio: number;
   autoScrollBackThreshold: number;
   autoScrollForwardThreshold: number;
@@ -832,13 +845,15 @@ export interface SortableListInternal<T> {
   /** Called by SortableItem's onSnapEnd to finalize the drag.
    *  Stored as a ref so the latest finalizeDrag is always called,
    *  even if SortableItem has a stale _internal reference. */
-  onItemSnapEnd?: () => void;
+  onItemSnapEndRef: RefObject<(() => void) | undefined>;
   /** Current display index of the dragged item (updated during live reorder) */
   draggedDisplayIndexRef: RefObject<number | undefined>;
   /** Original display index where the drag started */
   dragStartIndexRef: RefObject<number | undefined>;
   /** Per-item shift transforms keyed by item key (UI thread) */
   shiftsRef: SharedValue<Record<string, Position>>;
+  /** JS-thread mirror of shiftsRef, for synchronous JS reads */
+  shiftsJSRef: RefObject<Record<string, Position>>;
   /** When true, SortableItem clears shift transforms instantly (no animation) */
   instantClearSV: SharedValue<boolean>;
   /** When false, SortableItem ignores shifts entirely (treats as 0).

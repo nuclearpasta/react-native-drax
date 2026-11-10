@@ -12,6 +12,7 @@ import { SortableContainer } from './SortableContainer';
 import { SortableItem } from './SortableItem';
 import type { EntryOrExitLayoutType } from 'react-native-reanimated';
 import type {
+  DraxAutoScrollProps,
   DraxViewProps,
   SortableAnimationConfig,
   SortableDragEndEvent,
@@ -22,7 +23,7 @@ import type {
   SortableReorderStrategy,
 } from './types';
 
-export interface DraxListProps<T> {
+export interface DraxListProps<T> extends DraxAutoScrollProps {
   /**
    * List component to render. Any component that accepts `data`, `renderItem`,
    * and `keyExtractor` props (FlatList, FlashList, LegendList, etc.).
@@ -47,6 +48,9 @@ export interface DraxListProps<T> {
   /** Style applied to all non-dragged items while a drag is active.
    *  Use for dimming/scaling inactive items (e.g., `{ opacity: 0.5 }`). */
   inactiveItemStyle?: ViewStyle;
+  /** Style of the dragged item's in-list placeholder while its hover copy moves.
+   *  Replaces the default. Use `{ opacity: 0.2 }` for a faint placeholder. @default { opacity: 0 } */
+  draggedItemStyle?: StyleProp<ViewStyle>;
   /** Reanimated layout animation for items entering the list (e.g., `FadeIn`). */
   itemEntering?: EntryOrExitLayoutType;
   /** Reanimated layout animation for items exiting the list (e.g., `FadeOut`). */
@@ -96,8 +100,15 @@ export const DraxList = <T,>({
   reorderStrategy,
   longPressDelay,
   lockToMainAxis,
+  autoScrollEnabled,
+  autoScrollIntervalLength,
+  autoScrollInitialDelay,
+  autoScrollJumpRatio,
+  autoScrollBackThreshold,
+  autoScrollForwardThreshold,
   animationConfig,
   inactiveItemStyle,
+  draggedItemStyle,
   itemEntering,
   itemExiting,
   itemDraxViewProps,
@@ -125,8 +136,15 @@ export const DraxList = <T,>({
     reorderStrategy,
     longPressDelay,
     lockToMainAxis,
+    autoScrollEnabled,
+    autoScrollIntervalLength,
+    autoScrollInitialDelay,
+    autoScrollJumpRatio,
+    autoScrollBackThreshold,
+    autoScrollForwardThreshold,
     animationConfig,
     inactiveItemStyle,
+    draggedItemStyle,
     itemEntering,
     itemExiting,
     onDragStart,

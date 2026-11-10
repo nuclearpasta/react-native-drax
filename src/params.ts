@@ -16,13 +16,16 @@ export const defaultScrollEventThrottle = 8;
 /** Default interval length in milliseconds for auto-scrolling jumps */
 export const defaultAutoScrollIntervalLength = 250;
 
-/** Default auto-scroll jump distance, as a fraction relative to content width/length */
+/** Default time in milliseconds a drag must stay in an auto-scroll edge band before the first jump */
+export const defaultAutoScrollInitialDelay = 0;
+
+/** Default auto-scroll jump distance, as a fraction of the scroll container's (viewport's) width/height */
 export const defaultAutoScrollJumpRatio = 0.2;
 
-/** Default drag-over maximum position threshold for auto-scroll back, as a fraction relative to content width/length */
+/** Default drag-over maximum position threshold for auto-scroll back, as a fraction of the container's width/height */
 export const defaultAutoScrollBackThreshold = 0.1;
 
-/** Default drag-over minimum position threshold for auto-scroll forward, as a fraction relative to content width/length */
+/** Default drag-over minimum position threshold for auto-scroll forward, as a fraction of the container's width/height */
 export const defaultAutoScrollForwardThreshold = 0.9;
 
 /** Duration in milliseconds for list item shift/reorder animations */
