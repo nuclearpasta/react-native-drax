@@ -764,6 +764,7 @@ use the `hover*Style` props).
   outside the list (over nothing or on another receiver), it does not call
   `onReorder`. Brought back in, the row moves from its start slot again.
   Board columns still transfer items when they leave a column.
+  As in 0.11, the list's `onDragEnd` doesn't fire for a drag released outside it.
 - **When `onReorder` fires.** It fires after the snap animation, not at
   release. If you showed the new order at release, move that code into
   `onReorder`.
