@@ -385,6 +385,93 @@ export const useSortableList = <T,>(
   };
 
   /**
+   * Virtualized single-column lists: FlatList only mounts (and so measures)
+   * the rows in its render window. These helpers work from the measured rows
+   * alone; they are used only when some row is unmeasured, so a fully
+   * measured list keeps the exact layout math below.
+   */
+  const mainPos = (m: SortableItemMeasurement) => (horizontal ? m.x : m.y);
+  const mainSize = (m: SortableItemMeasurement) => (horizontal ? m.width : m.height);
+
+  /** Row gap from the first two adjacent measured, non-empty rows (else 0). */
+  const computeSparseItemGap = (): number => {
+    for (let i = 0; i + 1 < originalIndexes.length; i++) {
+      const a = getMeasForOrigIdx(originalIndexes[i]!);
+      const b = getMeasForOrigIdx(originalIndexes[i + 1]!);
+      if (a && b && a.width > 0 && a.height > 0 && b.width > 0 && b.height > 0) {
+        return Math.max(0, mainPos(b) - mainPos(a) - mainSize(a));
+      }
+    }
+    return 0;
+  };
+
+  /**
+   * Main-axis shift that moves the row at display slot `i` of `order` from
+   * its FlatList slot to its slot in `order`. Only the rows that change
+   * sides of it count: every other row is before it in both orders (or in
+   * neither), so its size cancels out. That is why unmeasured rows outside
+   * the moved range don't matter. An unmeasured row that does change sides
+   * counts at the mean measured size. Returns undefined for a row that has
+   * no FlatList slot.
+   */
+  const makeSparseShift = (order: number[], phantom?: SortablePhantomSlot) => {
+    const sizes = new Map<number, number>();
+    let total = 0;
+    let measuredCount = 0;
+    for (const origIdx of originalIndexes) {
+      const m = getMeasForOrigIdx(origIdx);
+      if (!m) continue;
+      sizes.set(origIdx, mainSize(m));
+      total += mainSize(m);
+      measuredCount++;
+    }
+    const estimate = measuredCount > 0 ? total / measuredCount : 0;
+    const sizeOf = (origIdx: number) => sizes.get(origIdx) ?? estimate;
+    const gap = computeSparseItemGap();
+
+    // Prefix sums: FlatList (original) layout and the new order.
+    const flatSlot = new Map<number, number>();
+    const flatPrefix: number[] = [0];
+    originalIndexes.forEach((origIdx, p) => {
+      flatSlot.set(origIdx, p);
+      flatPrefix.push(flatPrefix[p]! + sizeOf(origIdx));
+    });
+    const newPrefix: number[] = [0];
+    order.forEach((origIdx, i) => newPrefix.push(newPrefix[i]! + sizeOf(origIdx)));
+    const phantomSize = phantom
+      ? (horizontal ? phantom.width : phantom.height) + gap
+      : 0;
+
+    return (i: number): number | undefined => {
+      const origIdx = order[i];
+      const p = origIdx !== undefined ? flatSlot.get(origIdx) : undefined;
+      if (p === undefined) return undefined;
+      const phantomShift = phantom && phantom.atDisplayIndex <= i ? phantomSize : 0;
+      return newPrefix[i]! - flatPrefix[p]! + gap * (i - p) + phantomShift;
+    };
+  };
+
+  /** Single-column shifts from measured rows only (see makeSparseShift). */
+  const computeSparseShifts = (
+    order: number[],
+    skipIndex?: number,
+    phantom?: SortablePhantomSlot,
+  ): Record<string, Position> => {
+    const shiftAt = makeSparseShift(order, phantom);
+    const newShifts: Record<string, Position> = {};
+    for (let i = 0; i < order.length; i++) {
+      if (skipIndex !== undefined && i === skipIndex) continue;
+      const origIdx = order[i]!;
+      const item = stableData[origIdx];
+      if (item === undefined || !getMeasForOrigIdx(origIdx)) continue;
+      const d = shiftAt(i);
+      if (d === undefined || Math.abs(d) <= 0.5) continue;
+      newShifts[keyExtractor(item, origIdx)] = horizontal ? { x: d, y: 0 } : { x: 0, y: d };
+    }
+    return newShifts;
+  };
+
+  /**
    * Compute shifts for items in the given order. Returns a map of
    * item key → {x, y} shift, or undefined if measurements are missing.
    *
@@ -401,7 +488,7 @@ export const useSortableList = <T,>(
     const measurements = order.map((origIdx) => getMeasForOrigIdx(origIdx));
     const missingShiftIdx = measurements.findIndex((m) => !m);
     if (missingShiftIdx >= 0) {
-      return undefined;
+      return numColumns <= 1 ? computeSparseShifts(order, skipIndex, phantom) : undefined;
     }
 
     const gap = computeItemGap();
@@ -793,7 +880,21 @@ export const useSortableList = <T,>(
     const measurements = originalIndexes.map((origIdx) => getMeasForOrigIdx(origIdx));
     const missingIdx = measurements.findIndex((m) => !m);
     if (missingIdx >= 0) {
-      return draggedDisplayIndexRef.current ?? 0;
+      if (numColumns > 1) return draggedDisplayIndexRef.current ?? 0;
+      // Virtualized list: only the measured (mounted) rows decide, each at
+      // its own original layout position. Before the first measured row the
+      // slot is that row; past the last measured row, the last one.
+      const sparseGap = computeSparseItemGap();
+      const pos = horizontal ? contentPos.x : contentPos.y;
+      const count = Math.min(measurements.length, pending.length);
+      let last: number | undefined;
+      for (let i = 0; i < count; i++) {
+        const meas = measurements[i];
+        if (!meas) continue;
+        if (pos < mainPos(meas) + mainSize(meas) + sparseGap / 2) return i;
+        last = i;
+      }
+      return last ?? draggedDisplayIndexRef.current ?? 0;
     }
 
     const gap = computeItemGap();
@@ -948,7 +1049,24 @@ export const useSortableList = <T,>(
     // This is the same logic as computeShifts but we only need the
     // position at displayIdx.
     const measurements = pending.map((origIdx) => getMeasForOrigIdx(origIdx));
-    if (measurements.some((m) => !m)) return DraxSnapbackTargetPreset.Default;
+    if (measurements.some((m) => !m)) {
+      // Virtualized single-column list: the dragged row's own FlatList
+      // position plus its shift into the target slot.
+      const draggedOrigIdx = pending[displayIdx];
+      const draggedMeas = draggedOrigIdx !== undefined
+        ? getMeasForOrigIdx(draggedOrigIdx)
+        : undefined;
+      const d = numColumns <= 1 && draggedMeas
+        ? makeSparseShift(pending)(displayIdx)
+        : undefined;
+      if (!draggedMeas || d === undefined) return DraxSnapbackTargetPreset.Default;
+      return {
+        x: containerMeasurements.x + draggedMeas.x + (horizontal ? d : 0)
+          - scrollPositionJSRef.current.x,
+        y: containerMeasurements.y + draggedMeas.y + (horizontal ? 0 : d)
+          - scrollPositionJSRef.current.y,
+      };
+    }
 
     let targetPos: Position;
 
