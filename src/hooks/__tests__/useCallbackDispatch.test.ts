@@ -73,6 +73,16 @@ describe('useCallbackDispatch handleDragEnd receiver callbacks', () => {
     expect(receiver.onReceiveSnapEnd).toHaveBeenCalledTimes(1);
   });
 
+  it('reports the finger position on drop as dragTouchPosition', () => {
+    handleDragEnd('item', 'zone', false, [], { x: 160, y: 50 });
+    expect(receiver.onReceiveDragDrop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dragAbsolutePosition: { x: 50, y: 50 },
+        dragTouchPosition: { x: 160, y: 50 },
+      })
+    );
+  });
+
   it('fires a cancelled exit, not a drop, when cancelled over a receiver', () => {
     handleDragEnd('item', 'zone', true, []);
     expect(receiver.onReceiveDragDrop).not.toHaveBeenCalled();

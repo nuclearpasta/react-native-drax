@@ -6,11 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKING-TS) may break your app logic if you are explicitly using Drax's exported TypeScript type definitions in your code.
 
-
 ## [Unreleased]
 
 ### Added
 
+- (BREAKING-TS) `collisionAlgorithm: 'touch'` on receiving/monitoring `DraxView`s: hit-tests at the finger instead of the hover view's center, so the receiver under the touch point receives wherever the item was grabbed (the 0.x behavior). The default `'center'` is unchanged. `CollisionAlgorithm` gains a `'touch'` member, so an exhaustive `switch` over it needs a new case (#282)
+- `dragTouchPosition` on drag end event data (`onDragEnd`, `onDragDrop`, `onReceiveDragDrop`, `onMonitorDragEnd`, `onMonitorDragDrop`, cancelled `onReceiveDragExit`): the finger position at release, relative to the `DraxProvider` root view. `dragAbsolutePosition` is unchanged (#282)
 - **Auto-scroll config**: `autoScrollEnabled` (default `true`) and `autoScrollInitialDelay` (ms in the edge band before the first jump, default `0`) on `DraxScrollView`, `useSortableList` and `DraxList`. `DraxList` now forwards all auto-scroll props to `useSortableList`.
 - **`draggedItemStyle`** on `DraxList` and `useSortableList`: style of the dragged row's in-list placeholder while its hover copy moves (default `{ opacity: 0 }`). Pass `{ opacity: 0.2 }` for a faint placeholder like 0.11. The placeholder stays at its pickup slot while the finger is down and moves to the target slot on release. Use visual props only (no layout props).
 
@@ -27,7 +28,6 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - Drag handles: the hover no longer lands one slot off when a `dragHandle` sortable item with permanent shifts is grabbed by its `DraxHandle`
 - Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover
 - Repeated drags no longer freeze the UI for seconds: drag updates only reach the JS thread when the receiver or monitors change or a continuous callback needs them, and a drop no longer waits behind a backlog of drag-over work
-
 
 ## [1.1.0] - 2026-03-23
 
@@ -48,7 +48,6 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - Updated branding to NuclearPasta across docs site and example app (logos, favicons, social cards)
 - Example app now includes 11 screens (added mixed-size grid example)
 - Corrected Reanimated and Gesture Handler version numbers in documentation comparison tables
-
 
 ## [1.0.0] - 2026-03-20
 
@@ -95,7 +94,6 @@ Complete rewrite of the library. This is a major release with breaking changes f
 - (BREAKING) Old `DraxList` component (v0.10.x API with `renderItemContent`/`renderHoverContent` and v0.11.0-alpha API with `renderItem(info, itemProps)`)
 - (BREAKING) `DraxListItem` component — replaced by `SortableItem`
 - (BREAKING) All legacy list types: `DraxListProps` (old), `DraxListItemProps`, `DraxListDraggedItemData`, `DraxListOnItemDragStartEventData`, `DraxListOnItemDragPositionChangeEventData`, `DraxListOnItemDragEndEventData`, `DraxListOnItemReorderEventData`, `DraxListRenderItemContent`, `DraxListRenderItemHoverContent`, `DraxListOnItemReorder`
-
 
 ## [0.10.3] - 2022-09-06
 

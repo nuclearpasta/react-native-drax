@@ -109,6 +109,8 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - `'center'`: hover view center must be inside receiver (default, current behavior)
 - `'intersect'`: any overlap between dragged view and receiver triggers receiving
 - `'contain'`: dragged view must be fully inside receiver
+- `'touch'`: the finger (root-relative touch point) must be inside receiver, wherever the item was grabbed (0.x behavior, #282). `hitTestWorklet` takes an optional `touchPosition`; `useDragGesture` passes `rootRelPos` in `onUpdate` and the release point from the end event in `onDeactivate`/`onFinalize`
+- Drag end events carry `dragTouchPosition` (finger at release, root-relative); `dragAbsolutePosition` at drop stays the hover top-left
 - Algorithm is per-receiver (stored in `SpatialEntry`)
 - Dragged view dimensions passed to `hitTestWorklet` for boundary calculations
 
