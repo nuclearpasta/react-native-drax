@@ -761,13 +761,15 @@ use the `hover*Style` props).
   calling `onReorder`.
 - **Leaving the list mid-drag.** As in 0.11, when a row leaves its list the
   list undoes the row's pending move and the neighbours slide back. The list
-  keeps monitoring a drag until the dragged row's centre is more than 100 pt
-  outside its edges (the monitor hit-test padding, `MONITOR_HIT_TEST_PADDING`
-  in `src/math.ts`), so "leaving" means going past that padding.
+  keeps monitoring a drag until the dragged row's centre (the finger with
+  `collisionAlgorithm: 'touch'`) is more than 100 pt outside the list's
+  visible (clipped) edges (the monitor hit-test padding,
+  `MONITOR_HIT_TEST_PADDING` in `src/math.ts`), so "leaving" means going past
+  that padding.
   - Released on another receiver (anywhere, including within the padding), the
     row does not reorder the list and `onReorder` is not called. Within the
     padding the list's `onDragEnd` still fires, with `toIndex` set to the
-    row's start index.
+    row's start index; on a receiver past the padding it doesn't fire.
   - Released over nothing more than 100 pt outside the list, `onReorder` is not
     called and, as in 0.11, the list's `onDragEnd` doesn't fire.
   - Released over nothing within the 100 pt padding, it still counts as a drop
