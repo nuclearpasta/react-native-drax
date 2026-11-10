@@ -90,7 +90,8 @@ function renderList(
   onExternalDrop?: jest.Mock,
   items = ITEMS,
   isMeasured = (_index: number) => true,
-  measure = (index: number) => ({ y: index * 60, height: 50 })
+  measure = (index: number) => ({ y: index * 60, height: 50 }),
+  horizontal = false
 ) {
   mockSlots = [];
   let props = {} as Props;
@@ -104,6 +105,7 @@ function renderList(
       keyExtractor: (item: string) => item,
       onReorder: () => {},
       onExternalDrop,
+      horizontal,
     });
     items.forEach((key, index) => {
       if (!isMeasured(index)) return;
@@ -135,7 +137,13 @@ const foreignPayload = { blankId: 7 };
 function dropAt(
   props: Props,
   y: number,
-  overrides: { parentId?: string; payload?: unknown; ratioY?: number } = {}
+  overrides: {
+    parentId?: string;
+    payload?: unknown;
+    ratioY?: number;
+    receiver?: string;
+    x?: number;
+  } = {}
 ) {
   const dragged = {
     id: 'blank',
@@ -146,9 +154,11 @@ function dropAt(
   };
   return props.onMonitorDragDrop({
     dragged,
-    receiver: { id: LIST_ID, payload: undefined },
+    receiver: overrides.receiver
+      ? { id: overrides.receiver, parentId: LIST_ID, payload: undefined }
+      : { id: LIST_ID, payload: undefined },
     dragTranslation: { x: 500, y: 500 },
-    monitorOffset: { x: 50, y },
+    monitorOffset: { x: overrides.x ?? 50, y },
     monitorOffsetRatio: { x: 0.5, y: overrides.ratioY ?? y / 170 },
   } as unknown as DraxMonitorDragDropEventData);
 }
@@ -400,6 +410,19 @@ describe('foreign drag gap (0.11 parity, #10)', () => {
     expect(shifts()).toEqual({ B: down(60) });
   });
 
+  it('uses the gap between successive visible rows when the first adjacent pair has gap 0', () => {
+    // A at 0, B at 50, C at 120 (height 50): A–B abut (gap 0), B–C gap 20.
+    // The first-adjacent loop must fall through so the shift is 50+20=70, not 50.
+    const ys = [
+      { y: 0, height: 50 },
+      { y: 50, height: 50 },
+      { y: 120, height: 50 },
+    ];
+    const props = renderList(jest.fn(), ['A', 'B', 'C'], () => true, (i) => ys[i]!);
+    hoverAt(props, 60, 'B'); // top half of B → gap before B
+    expect(shifts()).toEqual({ B: down(70), C: down(70) });
+  });
+
   it('opens the gap before the data toIndex item after an unechoed reorder', () => {
     // A was moved 0→2 with no parent echo: visual order B, C, A.
     // Hovering the top half of B (data toIndex 1) must open the gap before
@@ -442,5 +465,96 @@ describe('foreign drag gap (0.11 parity, #10)', () => {
   it('defaults autoScrollForeignDrags to true when the prop is omitted', () => {
     renderList(jest.fn());
     expect(lastSortable._internal.autoScrollForeignDrags).toBe(true);
+  });
+});
+
+// The list sits at root (20, 100). A foreign drop over a row lands in the
+// open gap (0.11 DraxList.js:298-313), not on the receiving row's centre.
+describe('foreign drop lands in the gap (0.11 parity)', () => {
+  const CONTAINER = { x: 20, y: 100, width: 100, height: 170 };
+  const atRoot = (x: number, y: number) => ({ x: CONTAINER.x + x, y: CONTAINER.y + y });
+  beforeEach(() => {
+    mockBoard = undefined;
+  });
+  function render(...args: Parameters<typeof renderList>) {
+    const props = renderList(...args);
+    lastSortable._internal.containerMeasurementsRef.current = CONTAINER as never;
+    return props;
+  }
+
+  it.each([
+    ['before B (top half of B)', 70, 'B', 1, 60],
+    ['after B (bottom half of B)', 100, 'B', 2, 120],
+    ['at the start (top half of A)', 10, 'A', 0, 0],
+  ])('snaps to the gap slot for a drop %s', (_, y, receiver, toIndex, slotY) => {
+    const onExternalDrop = jest.fn();
+    const props = render(onExternalDrop);
+    hoverAt(props, y, receiver);
+    expect(dropAt(props, y, { receiver })).toEqual(atRoot(0, slotY));
+    expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(toIndex);
+  });
+
+  it('snaps after the last row plus the row gap for a drop at the end', () => {
+    const onExternalDrop = jest.fn();
+    const props = render(onExternalDrop);
+    expect(dropAt(props, 160, { receiver: 'C' })).toEqual(atRoot(0, 120 + 50 + 10));
+    expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(3);
+  });
+
+  it.each([
+    ['top half of B (toIndex 7)', 70, 'B', 60],
+    ['bottom half of A (toIndex 1, hidden rows next)', 40, 'A', 60],
+    ['bottom half of C (end)', 160, 'C', 180],
+  ])('skips hidden (zero-size) rows: %s', (_, y, receiver, slotY) => {
+    // A 0-50, six hidden at 60, B 60-110, C 120-170.
+    const data = ['A', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'B', 'C'];
+    const ys = [0, 60, 60, 60, 60, 60, 60, 60, 120].map((v, i) => ({
+      y: v,
+      height: data[i]!.startsWith('H') ? 0 : 50,
+    }));
+    const props = render(jest.fn(), data, () => true, (i) => ys[i]!);
+    expect(dropAt(props, y, { receiver })).toEqual(atRoot(0, slotY));
+  });
+
+  it('snaps after the last visible row when hidden rows end the list', () => {
+    const ys = [{ y: 0, height: 50 }, { y: 60, height: 50 }, { y: 120, height: 0 }];
+    const props = render(jest.fn(), ['A', 'B', 'H'], () => true, (i) => ys[i]!);
+    expect(dropAt(props, 100, { receiver: 'B' })).toEqual(atRoot(0, 120));
+  });
+
+  it('snaps to the gap on a horizontal list', () => {
+    // A 0-50, B 60-110, C 120-170 along x.
+    const props = render(jest.fn(), ITEMS, () => true, (i) => ({ x: i * 60, width: 50, y: 0, height: 100 }), true);
+    expect(dropAt(props, 50, { receiver: 'B', x: 70 })).toEqual(atRoot(60, 0));
+    expect(dropAt(props, 50, { receiver: 'C', x: 160 })).toEqual(atRoot(180, 0));
+  });
+
+  it('accounts for a scroll that happened mid-drag', () => {
+    const LONG = Array.from({ length: 20 }, (_, i) => `R${i}`);
+    const props = render(jest.fn(), LONG, (i) => i >= 5);
+    hoverAt(props, 10 * 60 + 10, 'R10');
+    lastSortable._internal.scrollPosition.value = { x: 0, y: 300 };
+    lastSortable._internal.scrollPositionJSRef.current = { x: 0, y: 300 };
+    // Top half of R10 (content 610) is at 310 in the scrolled viewport.
+    expect(dropAt(props, 10 * 60 + 10 - 300, { receiver: 'R10', ratioY: 0.5 })).toEqual(
+      atRoot(0, 10 * 60 - 300)
+    );
+  });
+
+  it('snaps to the same slot the gap opened at after an unechoed reorder', () => {
+    // Visual order C, A, B: B sits at 60 + 60 = 120.
+    const props = render(jest.fn());
+    lastSortable._internal.committedOrderRef.current = [2, 0, 1];
+    lastSortable._internal.committedShiftsRef.current = {
+      C: { x: 0, y: -120 },
+      A: { x: 0, y: 60 },
+      B: { x: 0, y: 60 },
+    };
+    expect(dropAt(props, 70, { receiver: 'B' })).toEqual(atRoot(0, 120));
+  });
+
+  it('keeps the default snap without onExternalDrop or when the list itself receives', () => {
+    expect(dropAt(render(), 70, { receiver: 'B' })).toBeUndefined();
+    expect(dropAt(render(jest.fn()), 70)).toBeUndefined();
   });
 });

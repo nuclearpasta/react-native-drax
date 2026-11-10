@@ -577,17 +577,18 @@ use the `hover*Style` props).
   never takes a visual slot of its own. Insert the item yourself: the library
   does not change `data`. While the drag is over one of the list's rows, the
   rows from `toIndex` on slide aside to open a gap, as in 0.11 (lists only, not
-  grids). At release the gap closes and the dropped view snaps onto the
-  receiving row's centre (not into the gap). Insert in `onExternalDrop` (it
-  fires at release, before the snap finishes); the sample below does that. If
-  you want the item to appear only when the snap ends, use the dragged view's
-  `onSnapEnd` or the receiving row's `onReceiveSnapEnd` (via
-  `itemDraxViewProps`) — those are what fire on snap end for a row receive;
-  the list itself has no snap-end insert hook. `onExternalDrop` expects the
+  grids). At release the dropped view snaps into the gap, as in 0.11, and the
+  rows slide back. Insert in `onExternalDrop` (it fires at release, before the
+  snap finishes); the sample below does that. Do not wait for snap end to
+  insert: the gap closes at release, so a late insert leaves the hover on top
+  of the row at `toIndex` until the item appears. `onExternalDrop` expects the
   parent to keep echoing `onReorder` into `data` (same as internal reorders);
   otherwise a pending committed order can put the gap and the splice on
-  different visual rows. You can still return a snap target from
-  `containerDraxViewProps.onMonitorDragDrop`.
+  different visual rows. In this foreign-gap case the list's gap target
+  overrides a snap return from the dragged view's `onDragDrop` or the row's
+  `onReceiveDragDrop` (`itemDraxViewProps`); those callbacks still fire, but
+  their return is ignored. `containerDraxViewProps.onMonitorDragDrop` still
+  wins if it returns a snap target.
   A foreign drag never fires `onDragPositionChange` or shows the drop
   indicator. It auto-scrolls the list, as 0.11 did, so any index is reachable.
   To stop that on a list that only gives items away (a bank), set
