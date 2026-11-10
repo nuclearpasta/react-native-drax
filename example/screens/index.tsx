@@ -130,6 +130,22 @@ const EXAMPLES: Example[] = [
     sourceFile: 'live337j.tsx',
     docsSlug: 'reorderable-list',
   },
+  {
+    route: '/live345b',
+    title: 'L345b temp',
+    subtitle: 'temporary #345 S3 bank/card screen (far + near receivers)',
+    icon: 'format-list-bulleted',
+    sourceFile: 'live345b.tsx',
+    docsSlug: 'reorderable-list',
+  },
+  {
+    route: '/live337b',
+    title: 'L337b temp',
+    subtitle: 'temporary #337 A3 board screen (40-card columns)',
+    icon: 'format-list-bulleted',
+    sourceFile: 'live337b.tsx',
+    docsSlug: 'cross-list',
+  },
 ];
 
 function ExampleCard({ example }: { example: Example }) {
