@@ -113,6 +113,7 @@ const renderSortable = (options: Record<string, unknown> = {}) => {
     autoScrollJumpRatio: 0.2,
     autoScrollBackThreshold: 0.1,
     autoScrollForwardThreshold: 0.9,
+    autoScrollForeignDrags: true,
     onDragPositionChange,
     getMeasurementByOriginalIndex: jest.fn(),
     dropTargetPositionSV: sv({ x: 0, y: 0 }),
@@ -264,14 +265,38 @@ describe('SortableContainer auto-scroll', () => {
     expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
   });
 
-  it('ignores a foreign drag: no scroll, no onDragPositionChange', () => {
+  it('auto-scrolls a foreign drag by default (0.11 parity), with no onDragPositionChange', () => {
     const list = renderSortable();
+    list.onMonitorDragStart(dragEvent(MIDDLE, 'other-list'));
+    list.onMonitorDragOver(dragEvent(MIDDLE, 'other-list'));
+    expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
+    list.onMonitorDragOver(dragEvent(BOTTOM, 'other-list'));
+    expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(1);
+    jest.advanceTimersByTime(250);
+    expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(2);
+    expect(list.onDragPositionChange).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['without onExternalDrop', {}],
+    ['with onExternalDrop', { onExternalDrop: jest.fn() }],
+  ])('autoScrollForeignDrags false: a foreign drag never scrolls (%s)', (_, extra) => {
+    const list = renderSortable({ autoScrollForeignDrags: false, ...extra });
     list.onMonitorDragStart(dragEvent(MIDDLE, 'other-list'));
     list.onMonitorDragOver(dragEvent(MIDDLE, 'other-list'));
     list.onMonitorDragOver(dragEvent(BOTTOM, 'other-list'));
     jest.advanceTimersByTime(1000);
     expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
     expect(list.onDragPositionChange).not.toHaveBeenCalled();
+  });
+
+  it('autoScrollForeignDrags false: own-row drags still scroll as before', () => {
+    const list = renderSortable({ autoScrollForeignDrags: false });
+    list.onMonitorDragStart(dragEvent(MIDDLE));
+    ownDragOver(list, BOTTOM);
+    expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(1);
+    jest.advanceTimersByTime(250);
+    expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(2);
   });
 
   it('auto-scrolls a foreign drag when the list has onExternalDrop, nothing else', () => {
@@ -308,7 +333,7 @@ describe('SortableContainer auto-scroll', () => {
     expect(list.onDragPositionChange).not.toHaveBeenCalled();
   });
 
-  it('ignores a drag from a list outside the board', () => {
+  it('treats a drag from a list outside the board as foreign (autoScrollForeignDrags false: no scroll)', () => {
     mockBoardContext = {
       registerColumn: () => {},
       unregisterColumn: () => {},
@@ -317,10 +342,27 @@ describe('SortableContainer auto-scroll', () => {
         transferState: { current: undefined },
       },
     };
-    const list = renderSortable();
+    const list = renderSortable({ autoScrollForeignDrags: false });
     list.onMonitorDragOver(dragEvent(BOTTOM, 'elsewhere'));
     jest.advanceTimersByTime(1000);
     expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
+  });
+
+  it('scrolls before the 5px jitter gate, but does not reorder under it (#12)', () => {
+    const moveDraggedItem = jest.fn();
+    const getSlotFromPosition = jest.fn(() => 2);
+    const list = renderSortable({ moveDraggedItem, getSlotFromPosition });
+    // Finger grabbed at the row's centre, not moved: displacement 0.
+    const still = {
+      ...dragEvent(BOTTOM),
+      dragged: { ...dragEvent(BOTTOM).dragged, grabOffset: { x: 50, y: 20 } },
+      dragTranslation: { x: 0, y: 0 },
+    } as DraxMonitorEventData;
+    list.onMonitorDragStart(still);
+    list.onMonitorDragOver(still);
+    expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(1);
+    expect(getSlotFromPosition).not.toHaveBeenCalled();
+    expect(moveDraggedItem).not.toHaveBeenCalled();
   });
 
   it('reports position changes for its own items', () => {

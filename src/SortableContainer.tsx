@@ -84,6 +84,7 @@ export const SortableContainer = ({
     autoScrollJumpRatio,
     autoScrollBackThreshold,
     autoScrollForwardThreshold,
+    autoScrollForeignDrags,
     onDragStart: onDragStartCallback,
     onDragPositionChange: onDragPositionChangeCallback,
     onDragEnd: onDragEndCallback,
@@ -106,6 +107,7 @@ export const SortableContainer = ({
     instantClearSV,
     shiftsValidSV,
     getSlotFromPosition,
+    keyExtractor,
   } = sortable._internal;
 
   // Access hover SharedValues from DraxContext for deferred clearing.
@@ -136,6 +138,10 @@ export const SortableContainer = ({
   // Next frame, same receiver at R-1 would move backward — skip it.
   const lastMoveReceiverRef = useRef<number | undefined>(undefined);
   const lastMoveDirectionRef = useRef<number>(0); // +1 forward, -1 backward
+  /** The gap a foreign drag has open: its index and what it was built from. */
+  const foreignGapRef = useRef<
+    { index: number; base: Record<string, Position>; data: unknown[] } | undefined
+  >(undefined);
 
 
   const { freeze: freezeScroll, unfreeze: unfreezeScroll } = useWebScrollFreeze(scrollRef);
@@ -322,7 +328,7 @@ export const SortableContainer = ({
     const measurements = Array.from({ length: itemCount }, (_, i) =>
       getMeasurementByOriginalIndex(i)
     );
-    if (measurements.every((meas) => meas !== undefined)) {
+    if (grid && measurements.every((meas) => meas !== undefined)) {
       const slot = getSlotFromPosition(pos, itemCount);
       const meas = measurements[slot];
       return slot + (meas && isAfter(meas) ? 1 : 0);
@@ -352,6 +358,83 @@ export const SortableContainer = ({
     return undefined;
   };
 
+  // ── Foreign-drag gap ────────────────────────────────────────────────
+
+  /**
+   * Open a gap at data-array `index` (`toIndex`) for a foreign drag, as 0.11
+   * did: every display row from the matching slot on shifts by the dragged
+   * view's size plus the row gap. Only rows are shifted, so unmeasured
+   * (unrendered) rows don't matter. Lists only, not grids.
+   */
+  const openForeignGap = (index: number, size: number) => {
+    const base = committedShiftsRef.current;
+    const gap = foreignGapRef.current;
+    if (gap && gap.index === index && gap.base === base && gap.data === rawData) return;
+    foreignGapRef.current = { index, base, data: rawData };
+    const order = committedOrderRef.current.length > 0
+      ? committedOrderRef.current
+      : rawData.map((_, i) => i);
+    // `index` is a data-array toIndex (splice point). Map it to the display
+    // slot of that data index in `order` so the gap opens where
+    // data.splice(toIndex, 0, item) will land when the parent has not echoed
+    // onReorder (committedOrder !== identity). Append (toIndex === length)
+    // has no entry in `order` → open at the end.
+    const pos = order.indexOf(index);
+    const displayIndex = pos >= 0 ? pos : order.length;
+    // The row gap, from the first two adjacent rendered rows; if none (hidden
+    // rows between every visible pair), fall back to any two successive
+    // visible rows by position.
+    let rowGap = 0;
+    for (let i = 0; i + 1 < itemCount; i++) {
+      const a = getMeasurementByOriginalIndex(i);
+      const b = getMeasurementByOriginalIndex(i + 1);
+      if (a && b && a.width > 0 && a.height > 0 && b.width > 0 && b.height > 0) {
+        rowGap = Math.max(0, horizontal ? b.x - a.x - a.width : b.y - a.y - a.height);
+        break;
+      }
+    }
+    if (rowGap === 0) {
+      const visible: SortableItemMeasurement[] = [];
+      for (let i = 0; i < itemCount; i++) {
+        const m = getMeasurementByOriginalIndex(i);
+        if (m && m.width > 0 && m.height > 0) visible.push(m);
+      }
+      visible.sort((a, b) => (horizontal ? a.x - b.x : a.y - b.y));
+      for (let i = 0; i + 1 < visible.length; i++) {
+        const a = visible[i]!;
+        const b = visible[i + 1]!;
+        const g = horizontal ? b.x - a.x - a.width : b.y - a.y - a.height;
+        if (g > 0) {
+          rowGap = g;
+          break;
+        }
+      }
+    }
+    const delta = size + rowGap;
+    const shifts = { ...base };
+    for (let d = displayIndex; d < order.length; d++) {
+      const origIdx = order[d]!;
+      const item = rawData[origIdx];
+      if (item === undefined) continue;
+      const key = keyExtractor(item, origIdx);
+      const held = base[key] ?? { x: 0, y: 0 };
+      shifts[key] = horizontal
+        ? { x: held.x + delta, y: held.y }
+        : { x: held.x, y: held.y + delta };
+    }
+    instantClearSV.value = false;
+    shiftsJSRef.current = shifts;
+    shiftsRef.value = shifts;
+  };
+
+  const closeForeignGap = () => {
+    if (!foreignGapRef.current) return;
+    foreignGapRef.current = undefined;
+    instantClearSV.value = false;
+    shiftsJSRef.current = committedShiftsRef.current;
+    shiftsRef.value = committedShiftsRef.current;
+  };
+
   // ── Internal drag end handler ───────────────────────────────────────
 
   const handleInternalDragEnd = (
@@ -365,6 +448,7 @@ export const SortableContainer = ({
     stopScroll();
     unfreezeScroll();
     dropTargetVisibleSV.value = false;
+    closeForeignGap();
 
     const cancelled = isWithCancelledFlag(eventData) && eventData.cancelled;
 
@@ -558,6 +642,32 @@ export const SortableContainer = ({
   };
 
   const onMonitorDragOver = (eventData: DraxMonitorEventData) => {
+    const { dragged, receiver, monitorOffset, monitorOffsetRatio } = eventData;
+    const draggedPayload = isSortableItemPayload(dragged.payload)
+      ? dragged.payload
+      : undefined;
+    const externalDrag = dragged.parentId !== id || !draggedPayload;
+    // A foreign drag (a DraxView, or an item from another list) auto-scrolls
+    // this list as in 0.11 (DraxList.js:457-471), unless
+    // autoScrollForeignDrags is false. It never reports position changes. An
+    // item from another column of the same board is not foreign: it may
+    // transfer here. Checked from the drag itself, not from the board's
+    // transferState, which the board monitor may set later in the same
+    // dispatch.
+    const isBoardDrag =
+      !!draggedPayload &&
+      dragged.parentId !== undefined &&
+      !!boardContext?.boardInternal.columns.has(dragged.parentId);
+    const foreignDrag = externalDrag && !isBoardDrag;
+
+    // Auto-scroll before the jitter gate: 0.11 did not wait for a 5px move.
+    if (foreignDrag && !autoScrollForeignDrags) {
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
+    } else {
+      updateAutoScroll(monitorOffsetRatio);
+    }
+
     const displacement = computeFingerDisplacement(eventData);
     if (!jitterExceededRef.current) {
       if (displacement < FINGER_JITTER_THRESHOLD) {
@@ -572,11 +682,6 @@ export const SortableContainer = ({
 
     draxViewProps?.onMonitorDragOver?.(eventData);
 
-    const { dragged, monitorOffset, monitorOffsetRatio } = eventData;
-    const draggedPayload = isSortableItemPayload(dragged.payload)
-      ? dragged.payload
-      : undefined;
-    const externalDrag = dragged.parentId !== id || !draggedPayload;
     const fromIndex = dragStartIndexRef.current ?? draggedPayload?.index ?? 0;
     const fromItem = externalDrag
       ? undefined
@@ -586,24 +691,27 @@ export const SortableContainer = ({
       setDraggedItem(itemCount);
     }
 
-    // A foreign drag (a DraxView, or an item from another list) must not
-    // auto-scroll this list or report position changes. The one exception is
-    // an item from another column of the same board: it may transfer here,
-    // so it still auto-scrolls. Checked from the drag itself, not from the
-    // board's transferState, which the board monitor may set later in the
-    // same dispatch.
-    const isBoardDrag =
-      !!draggedPayload &&
-      dragged.parentId !== undefined &&
-      !!boardContext?.boardInternal.columns.has(dragged.parentId);
-    if (externalDrag && !isBoardDrag) {
-      // A list that accepts foreign drops (onExternalDrop) still
-      // auto-scrolls, so any index is reachable. No slot tracking.
-      if (onExternalDrop) {
-        updateAutoScroll(monitorOffsetRatio);
+    const contentPos = {
+      x: monitorOffset.x + scrollPositionJSRef.current.x,
+      y: monitorOffset.y + scrollPositionJSRef.current.y,
+    };
+
+    if (foreignDrag) {
+      // A list that accepts foreign drops opens a gap where the drop would
+      // land (the same index onExternalDrop gets). As in 0.11, only while one
+      // of its rows is the receiver, so a row that refuses the drag
+      // (receptive, dynamicReceptiveCallback) opens no gap.
+      const toIndex =
+        onExternalDrop && numColumns <= 1 && receiver?.parentId === id
+          ? getExternalDropIndex(contentPos)
+          : undefined;
+      const size = dragged.measurements
+        ? horizontal ? dragged.measurements.width : dragged.measurements.height
+        : undefined;
+      if (toIndex !== undefined && size !== undefined) {
+        openForeignGap(toIndex, size);
       } else {
-        scrollStateRef.current = AutoScrollDirection.None;
-        stopScroll();
+        closeForeignGap();
       }
       return;
     }
@@ -611,10 +719,6 @@ export const SortableContainer = ({
     // ── Position-based slot detection ──────────────────────────────────
     // Use the hover center's content position. Slot boundaries are based
     // on original layout positions (stable, never shift during drag).
-    const contentPos = {
-      x: monitorOffset.x + scrollPositionJSRef.current.x,
-      y: monitorOffset.y + scrollPositionJSRef.current.y,
-    };
     const targetSlot = getSlotFromPosition(contentPos);
 
     // Track drag position changes (log only on slot change to avoid per-frame noise)
@@ -676,9 +780,6 @@ export const SortableContainer = ({
         moveDraggedItem(targetSlot);
       }
     }
-
-    // Auto-scroll
-    updateAutoScroll(monitorOffsetRatio);
   };
 
   const onMonitorDragExit = (eventData: DraxMonitorEventData) => {

@@ -3,6 +3,7 @@ import { SortableContainer } from '../SortableContainer';
 import { useSortableList } from '../hooks/useSortableList';
 import type {
   DraxMonitorDragDropEventData,
+  DraxMonitorEventData,
   DraxProtocolDragEndResponse,
   SortableListHandle,
   SortableItemMeasurement,
@@ -76,7 +77,10 @@ jest.mock('../SortableBoardContext', () => ({
 
 type Props = {
   onMonitorDragDrop: (e: DraxMonitorDragDropEventData) => DraxProtocolDragEndResponse;
+  onMonitorDragOver: (e: DraxMonitorEventData) => void;
+  onMonitorDragExit: (e: DraxMonitorEventData) => void;
 };
+let lastSortable: SortableListHandle<unknown>;
 
 const LIST_ID = 'list';
 const ITEMS = ['A', 'B', 'C'];
@@ -85,7 +89,8 @@ const ITEMS = ['A', 'B', 'C'];
 function renderList(
   onExternalDrop?: jest.Mock,
   items = ITEMS,
-  isMeasured = (_index: number) => true
+  isMeasured = (_index: number) => true,
+  measure = (index: number) => ({ y: index * 60, height: 50 })
 ) {
   mockSlots = [];
   let props = {} as Props;
@@ -106,11 +111,11 @@ function renderList(
         key,
         index,
         x: 0,
-        y: index * 60,
         width: 100,
-        height: 50,
+        ...measure(index),
       } as SortableItemMeasurement);
     });
+    lastSortable = sortable as SortableListHandle<unknown>;
     const element = SortableContainer({
       sortable: sortable as SortableListHandle<unknown>,
       scrollRef: { current: null },
@@ -231,5 +236,211 @@ describe('onExternalDrop', () => {
   it('keeps the default snap-back whether or not the callback is set', () => {
     expect(dropAt(renderList(), 100)).toBeUndefined();
     expect(dropAt(renderList(jest.fn()), 100)).toBeUndefined();
+  });
+});
+
+/** A foreign hover at content y; `receiver` is the row under it (a row id), the list, or none. */
+function hoverAt(props: Props, y: number, receiver: string | undefined) {
+  props.onMonitorDragOver({
+    dragged: {
+      id: 'blank',
+      parentId: 'bank',
+      payload: foreignPayload,
+      grabOffset: { x: 0, y: 0 },
+      measurements: { x: 0, y: 0, width: 100, height: 50 },
+    },
+    receiver: receiver === undefined ? undefined : { id: receiver, parentId: receiver === LIST_ID ? undefined : LIST_ID },
+    dragTranslation: { x: 500, y: 500 },
+    monitorOffset: { x: 50, y },
+    monitorOffsetRatio: { x: 0.5, y: 0.5 },
+  } as unknown as DraxMonitorEventData);
+}
+const shifts = () => ({ ...(lastSortable._internal.shiftsRef.value as Record<string, unknown>) });
+const down = (y: number) => ({ x: 0, y });
+
+describe('foreign drag gap (0.11 parity, #10)', () => {
+  beforeEach(() => {
+    mockBoard = undefined;
+  });
+
+  it('opens a gap where the drop would land, moves it, and closes it on exit', () => {
+    const props = renderList(jest.fn());
+    hoverAt(props, 70, 'B'); // top half of B: gap before B
+    expect(shifts()).toEqual({ B: down(60), C: down(60) });
+    hoverAt(props, 100, 'B'); // bottom half of B: gap after B
+    expect(shifts()).toEqual({ C: down(60) });
+    props.onMonitorDragExit({ dragged: { id: 'blank', parentId: 'bank', payload: foreignPayload } } as unknown as DraxMonitorEventData);
+    expect(shifts()).toEqual({});
+  });
+
+  it('closes the gap on drop, and onExternalDrop gets the gap index', () => {
+    const onExternalDrop = jest.fn();
+    const props = renderList(onExternalDrop);
+    hoverAt(props, 100, 'B');
+    dropAt(props, 100);
+    expect(shifts()).toEqual({});
+    expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(2);
+  });
+
+  it('opens no gap without onExternalDrop', () => {
+    const props = renderList();
+    hoverAt(props, 70, 'B');
+    expect(shifts()).toEqual({});
+  });
+
+  it('opens no gap unless one of its rows is the receiver (a full list whose rows refuse the drag)', () => {
+    const props = renderList(jest.fn());
+    hoverAt(props, 70, undefined); // rows not receptive (receptive / dynamicReceptiveCallback)
+    expect(shifts()).toEqual({});
+    hoverAt(props, 70, LIST_ID); // only the container is under it
+    expect(shifts()).toEqual({});
+    hoverAt(props, 70, 'B');
+    hoverAt(props, 70, undefined); // a row refuses mid-hover: the gap closes
+    expect(shifts()).toEqual({});
+  });
+
+  it('counts rendered rows only: a hidden (zero-size) row never takes a slot of its own', () => {
+    // A 0-50, H hidden (0 high at 60), B 60-110, C 120-170.
+    const ys = [{ y: 0, height: 50 }, { y: 60, height: 0 }, { y: 60, height: 50 }, { y: 120, height: 50 }];
+    const onExternalDrop = jest.fn();
+    const props = renderList(onExternalDrop, ['A', 'H', 'B', 'C'], () => true, (i) => ys[i]!);
+    hoverAt(props, 70, 'B'); // top half of B: the gap opens between A and B
+    expect(shifts()).toEqual({ B: down(60), C: down(60) });
+    dropAt(props, 70);
+    expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(2); // index in data, before B
+  });
+
+  it.each([
+    ['before A', 10, 'A', ['X', 'A', 'B', 'C']],
+    ['before B', 70, 'B', ['A', 'X', 'B', 'C']],
+    ['after B', 100, 'B', ['A', 'B', 'X', 'C']],
+    ['after C', 160, 'C', ['A', 'B', 'C', 'X']],
+  ])('toIndex indexes the data array, hidden rows included: splicing lands %s', (_, y, receiver, visible) => {
+    // H0 and H1 are hidden (0 high). A 0-50, B 60-110, C 120-170.
+    const data = ['H0', 'A', 'H1', 'B', 'C'];
+    const ys = [{ y: 0, height: 0 }, { y: 0, height: 50 }, { y: 60, height: 0 }, { y: 60, height: 50 }, { y: 120, height: 50 }];
+    const onExternalDrop = jest.fn();
+    const props = renderList(onExternalDrop, data, () => true, (i) => ys[i]!);
+    hoverAt(props, y, receiver);
+    dropAt(props, y);
+    const { toIndex } = onExternalDrop.mock.calls[0][0];
+    const next = [...data];
+    next.splice(toIndex, 0, 'X');
+    expect(next.filter((k) => !k.startsWith('H'))).toEqual(visible);
+  });
+
+  it('opens the gap with unmeasured (unrendered) rows too', () => {
+    const LONG = Array.from({ length: 20 }, (_, i) => `R${i}`);
+    const props = renderList(jest.fn(), LONG, (i) => i >= 10);
+    hoverAt(props, 10 * 60 + 10, 'R10'); // top half of row 10
+    const expected = Object.fromEntries(LONG.slice(10).map((k) => [k, down(60)]));
+    expect(shifts()).toEqual(expected);
+  });
+
+  // Several hidden zero-size rows between A and B: the fast getSlotFromPosition
+  // path used to add a row gap after each hidden row and land one visible slot
+  // early. Drops in the upper/lower halves of B and C must agree with splice.
+  it.each([
+    ['top half of B', 70, 'B', 7, ['A', 'X', 'B', 'C']],
+    ['bottom half of B', 100, 'B', 8, ['A', 'B', 'X', 'C']],
+    ['top half of C', 130, 'C', 8, ['A', 'B', 'X', 'C']],
+    ['bottom half of C', 160, 'C', 9, ['A', 'B', 'C', 'X']],
+  ])(
+    'several hidden rows between A and B: %s → toIndex and gap agree for splice',
+    (_, y, receiver, toIndex, visible) => {
+      // A 0-50, six hidden at 60, B 60-110, C 120-170 (50pt rows, 10pt gaps).
+      const data = ['A', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'B', 'C'];
+      const ys = [
+        { y: 0, height: 50 },
+        { y: 60, height: 0 },
+        { y: 60, height: 0 },
+        { y: 60, height: 0 },
+        { y: 60, height: 0 },
+        { y: 60, height: 0 },
+        { y: 60, height: 0 },
+        { y: 60, height: 50 },
+        { y: 120, height: 50 },
+      ];
+      const onExternalDrop = jest.fn();
+      const props = renderList(onExternalDrop, data, () => true, (i) => ys[i]!);
+      hoverAt(props, y, receiver);
+      // Gap shifts every visible row from the insert point on by 50+10.
+      // After the last row (toIndex === data.length) nobody shifts.
+      const shiftedFrom =
+        toIndex <= 7
+          ? { B: down(60), C: down(60) }
+          : toIndex === 8
+            ? { C: down(60) }
+            : {};
+      expect(shifts()).toEqual(shiftedFrom);
+      dropAt(props, y);
+      expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(toIndex);
+      const next = [...data];
+      next.splice(toIndex, 0, 'X');
+      expect(next.filter((k) => !k.startsWith('H'))).toEqual(visible);
+    }
+  );
+
+  it('uses the gap between successive visible rows when no neighbours are both visible', () => {
+    // A then six hidden then B: adjacent-index loop finds no pair; fallback
+    // must still pick the 10pt gap so the shift is 60, not 50.
+    const data = ['A', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'B'];
+    const ys = [
+      { y: 0, height: 50 },
+      { y: 60, height: 0 },
+      { y: 60, height: 0 },
+      { y: 60, height: 0 },
+      { y: 60, height: 0 },
+      { y: 60, height: 0 },
+      { y: 60, height: 0 },
+      { y: 60, height: 50 },
+    ];
+    const props = renderList(jest.fn(), data, () => true, (i) => ys[i]!);
+    hoverAt(props, 70, 'B'); // top half of B → gap before B
+    expect(shifts()).toEqual({ B: down(60) });
+  });
+
+  it('opens the gap before the data toIndex item after an unechoed reorder', () => {
+    // A was moved 0→2 with no parent echo: visual order B, C, A.
+    // Hovering the top half of B (data toIndex 1) must open the gap before
+    // visual B, not before visual C.
+    const props = renderList(jest.fn());
+    lastSortable._internal.committedOrderRef.current = [1, 2, 0];
+    lastSortable._internal.committedShiftsRef.current = {
+      B: { x: 0, y: -60 },
+      C: { x: 0, y: -60 },
+      A: { x: 0, y: 120 },
+    };
+    hoverAt(props, 70, 'B');
+    expect(shifts()).toEqual({
+      B: down(0), // -60 + 60
+      C: down(0),
+      A: down(180), // 120 + 60
+    });
+  });
+
+  it('maps toIndex through order.indexOf after an unechoed reorder (not first order[d] >= toIndex)', () => {
+    // C was moved to front with no parent echo: visual order C, A, B ([2,0,1]).
+    // Hovering the top half of B yields data toIndex 1; splice(1,0,X) lands
+    // before B. The gap must open before visual B (order.indexOf(1) === 2),
+    // not before visual C (the buggy first order[d] >= 1 walk).
+    const props = renderList(jest.fn());
+    lastSortable._internal.committedOrderRef.current = [2, 0, 1];
+    lastSortable._internal.committedShiftsRef.current = {
+      C: { x: 0, y: -120 },
+      A: { x: 0, y: 60 },
+      B: { x: 0, y: 60 },
+    };
+    hoverAt(props, 70, 'B');
+    expect(shifts()).toEqual({
+      C: down(-120), // unchanged: before the insert slot
+      A: down(60), // unchanged
+      B: down(120), // 60 + 60: opens the gap before B
+    });
+  });
+
+  it('defaults autoScrollForeignDrags to true when the prop is omitted', () => {
+    renderList(jest.fn());
+    expect(lastSortable._internal.autoScrollForeignDrags).toBe(true);
   });
 });

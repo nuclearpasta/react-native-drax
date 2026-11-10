@@ -571,15 +571,28 @@ use the `hover*Style` props).
   `DraxView` (or an item of a list outside the board) into a list at a given
   index, pass `onExternalDrop` to `DraxList` / `useSortableList`. It receives
   `SortableExternalDropEvent` (`{ toIndex, payload, dragged }`), where `toIndex`
-  is the insertion index (`0` to `data.length`). Insert the item yourself: the
-  library does not change `data`, items don't shift while the drag is over the
-  list, and the dropped view snaps back unless you return a snap target from
+  is the insertion index (`0` to `data.length`). `toIndex` indexes the exact
+  array you pass as `data`, hidden (zero-size) rows included, so
+  `data.splice(toIndex, 0, item)` puts the item where the gap was. A hidden row
+  never takes a visual slot of its own. Insert the item yourself: the library
+  does not change `data`. While the drag is over one of the list's rows, the
+  rows from `toIndex` on slide aside to open a gap, as in 0.11 (lists only, not
+  grids). At release the gap closes and the dropped view snaps onto the
+  receiving row's centre (not into the gap). Insert in `onExternalDrop` (it
+  fires at release, before the snap finishes); the sample below does that. If
+  you want the item to appear only when the snap ends, use the dragged view's
+  `onSnapEnd` or the receiving row's `onReceiveSnapEnd` (via
+  `itemDraxViewProps`) — those are what fire on snap end for a row receive;
+  the list itself has no snap-end insert hook. `onExternalDrop` expects the
+  parent to keep echoing `onReorder` into `data` (same as internal reorders);
+  otherwise a pending committed order can put the gap and the splice on
+  different visual rows. You can still return a snap target from
   `containerDraxViewProps.onMonitorDragDrop`.
-  Without `onExternalDrop`, a foreign drag does not auto-scroll the list, fire
-  `onDragPositionChange` or show the drop indicator. With it, the list
-  auto-scrolls so any index is reachable, still with no `onDragPositionChange`
-  or drop indicator. Board columns still react to items from other columns of
-  the same board.
+  A foreign drag never fires `onDragPositionChange` or shows the drop
+  indicator. It auto-scrolls the list, as 0.11 did, so any index is reachable.
+  To stop that on a list that only gives items away (a bank), set
+  `autoScrollForeignDrags={false}`. Board columns still react to items from
+  other columns of the same board.
 
   ```tsx
   // 0.11: onItemReorder with isExternalDrag: true
