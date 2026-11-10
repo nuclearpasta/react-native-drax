@@ -12,4 +12,24 @@ Drax's code may appear complex, but project contributions can come in forms othe
 
 We understand how frustrating it can be to open an issue or pull request and not receive timely feedback. Please keep in mind that this project is maintained by volunteer effort, and we will do our best to reply promptly, according to our own capacity. For small PRs and simple issues, we'll try to reply within a few days to a week. Larger changes should be discussed in advance, as mentioned above, and they may take longer. Bug fixes and feature requests will be prioritized by gauging implementation difficulty and how widely applicable they are to the community, and they'll be addressed as availability allows.
 
-The library does not currently have any automated tests or code review checks. We're not averse to the idea; we simply haven't had the resources to put toward it yet. This means that code changes, particularly large ones, may take additional time to review manually. If the library's automation is something you're interested in improving, the maintainers welcome that discussion.
+## Development
+
+The repo is a Yarn 4 workspace (the library at the root, plus `example/` and `docs-site/`). Use the Node version in `.nvmrc` and enable Corepack so the pinned Yarn version is used:
+
+```bash
+corepack enable
+yarn install
+```
+
+Before opening a pull request, run the same checks CI runs:
+
+```bash
+yarn lint
+yarn typecheck
+yarn test
+yarn prepare   # builds lib/ with react-native-builder-bob
+```
+
+To try changes in the example app (Expo Router), run `yarn example start`.
+
+CI runs lint, typecheck, unit tests, the library build and a web export of the example app on every pull request. The unit tests (Jest) cover a small part of the library, so drag-and-drop behavior changes still need a manual check in the example app on a device or simulator, and larger changes may take longer to review. Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) and are checked by commitlint.

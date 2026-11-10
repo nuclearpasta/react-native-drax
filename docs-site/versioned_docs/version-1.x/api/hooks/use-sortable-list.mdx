@@ -44,6 +44,7 @@ const sortable = useSortableList({
 | `animationConfig` | `SortableAnimationConfig` | `'default'` | Animation preset or custom config |
 | `getItemSpan` | `(item: T, index: number) => GridItemSpan` | — | Grid span per item (enables mixed-size grid). Only used when `numColumns > 1`. |
 | `inactiveItemStyle` | `ViewStyle` | — | Style applied to all non-dragged items during drag |
+| `draggedItemStyle` | `StyleProp<ViewStyle>` | `{ opacity: 0 }` | Style of the dragged item's in-list placeholder while its hover copy moves. Replaces the default. The placeholder stays at its pickup slot until release. Visual props only; pass a stable style |
 | `itemEntering` | `EntryOrExitLayoutType` | — | Reanimated layout animation for items entering the list |
 | `itemExiting` | `EntryOrExitLayoutType` | — | Reanimated layout animation for items exiting the list |
 | `onDragStart` | `(event: SortableDragStartEvent<T>) => void` | — | Drag started |
