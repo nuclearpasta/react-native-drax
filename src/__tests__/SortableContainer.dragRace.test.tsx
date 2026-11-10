@@ -149,6 +149,10 @@ const mockCtx = {
   startPositionSV: sv({ x: 0, y: 0 }),
   rootOffsetSV: sv({ x: 0, y: 0 }),
   rootViewRef: { current: null },
+  needsUpdatesSV: sv(true),
+  jsPendingSV: sv(false),
+  lastMonitorKeySV: sv(''),
+  skippedSV: sv(false),
   hoverClearDeferredRef: { current: false },
   hoverContent: null as ReactNode,
   setHoverContent: (content: ReactNode) => {
@@ -165,7 +169,10 @@ const mockCtx = {
   handleReceiverChange: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleReceiverChange'],
   handleDragEnd: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleDragEnd'],
 };
-jest.mock('../hooks/useDraxContext', () => ({ useDraxContext: () => mockCtx }));
+jest.mock('../hooks/useDraxContext', () => ({
+  useDraxContext: () => mockCtx,
+  useDraxInternalContext: () => mockCtx,
+}));
 
 import { create } from 'react-test-renderer';
 let mockRoot: ReturnType<typeof create> | undefined;
