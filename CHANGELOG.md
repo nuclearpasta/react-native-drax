@@ -26,6 +26,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - Drag handles: the hover no longer lands one slot off when a `dragHandle` sortable item with permanent shifts is grabbed by its `DraxHandle`
 - Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover
 - Repeated drags no longer freeze the UI for seconds: drag updates only reach the JS thread when the receiver or monitors change or a continuous callback needs them, and a drop no longer waits behind a backlog of drag-over work
+- Sortable lists: a row that crosses a neighbour and then leaves its list no longer reorders the list when it is released outside it (over nothing or on another receiver). Leaving the list undoes the pending move and the neighbours slide back, as in 0.11; a row brought back in moves from its start slot again. Board columns are unchanged
 
 
 ## [1.1.0] - 2026-03-23

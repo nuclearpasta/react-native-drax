@@ -759,6 +759,11 @@ use the `hover*Style` props).
   to the background mid-drag) is not a drop. It calls `onDragEnd` with
   `cancelled: true`, and lists put the item back in its start position without
   calling `onReorder`.
+- **Leaving the list mid-drag.** As in 0.11, when a row leaves its list the
+  list undoes the row's pending move and the neighbours slide back. Released
+  outside the list (over nothing or on another receiver), it does not call
+  `onReorder`. Brought back in, the row moves from its start slot again.
+  Board columns still transfer items when they leave a column.
 - **When `onReorder` fires.** It fires after the snap animation, not at
   release. If you showed the new order at release, move that code into
   `onReorder`.

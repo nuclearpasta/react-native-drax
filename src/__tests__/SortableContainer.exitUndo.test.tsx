@@ -82,6 +82,7 @@ const spatial = () => [
   ...KEYS.map((k, i) => entry(k, 0, 0, i * ROW, 100, ROW)),
   entry('card', -1, 300, 0, 100, ROW),
   entry('nearCard', -1, 0, ROW * KEYS.length + 10, 100, ROW), // inside the list's monitor padding
+  entry('outer', -1, 0, 0, 600, 600, true), // an outer monitor around the list (e.g. a DraxScrollView)
 ];
 const mockCtx = {
   hoverReadySV: sv(false), dragPhaseSV: sv<string>('idle'), draggedIdSV: sv(''), receiverIdSV: sv(''),
@@ -121,10 +122,12 @@ const Dispatcher = () => {
 
 let sortable: SortableListHandle<string>;
 let setListData: (update: (prev: string[]) => string[]) => void = () => {};
-const List = ({ onReorder, onDragEnd }: { onReorder: jest.Mock; onDragEnd: jest.Mock }) => {
+const List = ({ onReorder, onDragEnd, reorderStrategy }: {
+  onReorder: jest.Mock; onDragEnd: jest.Mock; reorderStrategy?: 'insert' | 'swap';
+}) => {
   const [data, setData] = useState(KEYS);
   setListData = setData;
-  const handle = useSortableList({ id: 'list', data, keyExtractor: (i) => i, onReorder, onDragEnd });
+  const handle = useSortableList({ id: 'list', data, keyExtractor: (i) => i, onReorder, onDragEnd, reorderStrategy });
   useLayoutEffect(() => { sortable = handle; });
   return (
     <SortableContainer sortable={handle} scrollRef={{ current: null }}>
@@ -146,7 +149,7 @@ const settle = () => act(() => {
 });
 
 let root: ReturnType<typeof create> | undefined;
-const setup = () => {
+const setup = (reorderStrategy?: 'insert' | 'swap') => {
   mockDraxProps.clear();
   mockCtx.spatialIndexSV.value = spatial();
   const onReorder = jest.fn();
@@ -156,9 +159,10 @@ const setup = () => {
     root = create(
       <>
         <Dispatcher />
-        <List onReorder={onReorder} onDragEnd={onDragEnd} />
+        <List onReorder={onReorder} onDragEnd={onDragEnd} reorderStrategy={reorderStrategy} />
         <DraxView id="card" payload={{ card: true }} />
         <DraxView id="nearCard" payload={{ card: true }} onReceiveDragDrop={onNearCardDrop} />
+        <DraxView id="outer" monitoring />
       </>
     );
   });
@@ -308,6 +312,72 @@ describe('SortableContainer: a row that leaves the list undoes its pending move'
     finishSnap();
     expect(onReorder).toHaveBeenCalledWith(
       expect.objectContaining({ data: ['B', 'A', 'C', 'D', 'E'], fromIndex: 0, toIndex: 1 })
+    );
+  });
+});
+
+// rc.3 Exit fix: 0.11 reset the shifts on every monitor exit or end
+// (build/DraxList.js:341-342 via onMonitorDragExit :474-476).
+describe('SortableContainer: monitor exit resets the pending order and shifts', () => {
+  it('exit, then release over nothing: shifts reset at exit, no onReorder', () => {
+    const { onReorder } = setup();
+    start('A', row(0));
+    move(row(0), 'A', ['list']);
+    move(row(2), 'C', ['list']); // pending order B, C, A
+    expect(shifts()).toHaveProperty('B');
+    expect(shifts()).toHaveProperty('C');
+    move(NOWHERE, '', []); // monitor exit
+    // Reset on exit, before the release: neighbours go back to their slots.
+    expect(shifts()).toEqual(sortable._internal.committedShiftsRef.current);
+    end('A', []);
+    finishSnap();
+    act(() => { jest.advanceTimersByTime(1000); });
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(shifts()).toEqual({});
+    expect(sortable.data).toEqual(KEYS);
+  });
+
+  it('exit into an outer monitor, re-enter, then release on a row: onReorder with the re-entry indices', () => {
+    // The row leaves the list but stays inside an outer monitor, so
+    // re-entering does not fire the list's onMonitorDragStart again: only
+    // the exit reset stops the stale order from carrying over. 'swap' makes
+    // the result depend on that order: from the start order A swaps with D;
+    // from a stale B, C, A it would swap with the row in slot 3 of that order.
+    const { onReorder } = setup('swap');
+    start('A', row(0));
+    move(row(0), 'A', ['outer', 'list']);
+    move(row(1), 'B', ['outer', 'list']);
+    move(row(2), 'C', ['outer', 'list']); // pending order B, C, A
+    move(NOWHERE, '', ['outer']); // list exit, still inside the outer monitor
+    expect(shifts()).toEqual(sortable._internal.committedShiftsRef.current);
+    move(row(3), 'D', ['outer', 'list']); // back in over slot 3: A swaps with D
+    end('A', ['outer', 'list']);
+    finishSnap();
+    expect(onReorder).toHaveBeenCalledTimes(1);
+    expect(onReorder).toHaveBeenCalledWith(
+      expect.objectContaining({ data: ['D', 'B', 'C', 'A', 'E'], fromIndex: 0, toIndex: 3, fromItem: 'A' })
+    );
+  });
+
+  it('regression: an in-list reorder still calls onReorder, also after an exit drag', () => {
+    const { onReorder } = setup();
+    // A drag that left the list and was released over nothing first.
+    start('A', row(0));
+    move(row(0), 'A', ['list']);
+    move(row(1), 'B', ['list']);
+    move(NOWHERE, '', []);
+    end('A', []);
+    finishSnap();
+    expect(onReorder).not.toHaveBeenCalled();
+    // Then a plain in-list reorder.
+    start('A', row(0));
+    move(row(0), 'A', ['list']);
+    move(row(2), 'C', ['list']);
+    end('A', ['list']);
+    finishSnap();
+    expect(onReorder).toHaveBeenCalledTimes(1);
+    expect(onReorder).toHaveBeenCalledWith(
+      expect.objectContaining({ data: ['B', 'C', 'A', 'D', 'E'], fromIndex: 0, toIndex: 2, fromItem: 'A' })
     );
   });
 });
