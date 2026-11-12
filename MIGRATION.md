@@ -488,10 +488,15 @@ Other places that used `protocol`:
 | 0.11 (on `dragged` / `receiver`) | 1.2 |
 |---|---|
 | `x.data.measurements` (relative to the Drax parent) | `x.measurements?: DraxViewMeasurements`. Same frame: relative to the Drax parent, or content-relative inside a scrollable parent. Optional. |
-| `x.data.absoluteMeasurements` | **From 1.2.0** as `x.absoluteMeasurements?: DraxViewMeasurements` on both `dragged` and `receiver` (not in 1.0 / 1.1). Provider-root frame, same as `dragAbsolutePosition` / `hoverPosition`. On `dragged` it is the view's **layout** position, not the hover's. On `dragged` it is not set on every continuous event; see [5.4](#54-new-optional-event-fields-from-120). In earlier 1.x, derive from offsets — see below and [5.3](#53-dragabsoluteposition-at-drop). |
+| `x.data.absoluteMeasurements` | **From 1.2.0** as `x.absoluteMeasurements?: DraxViewMeasurements` on both `dragged` and `receiver` (not in 1.0 / 1.1). Provider-root frame, same as `dragAbsolutePosition` / `hoverPosition`. On `dragged` it is the view's **layout** position, not the hover's. On `dragged` it is not set on every continuous event; see [5.4](#54-new-optional-event-fields-from-120). |
 | `dragged.data.hoverMeasurements` | **From 1.2.0** as `dragged.hoverMeasurements?: DraxViewMeasurements`: `hoverPosition` plus the dragged view's measured size (default hover / hit-test size). A `renderHoverContent` of a different size is not measured. Set on the same events as `dragged.absoluteMeasurements` ([5.4](#54-new-optional-event-fields-from-120)). Not in earlier 1.x. See also [6.1](#61-updatehoverviewmeasurements). |
 | `x.data.parentId`, `x.data.scrollPosition` | `x.parentId`. Scroll position is not exposed. |
 | `onSnapEnd` grab offset | **From 1.2.0** as `dragged.grabOffset?: Position` on `DraxSnapEndEventData` (and `onReceiveSnapEnd`). Not top-level on the event. |
+
+On `dragged`, `absoluteMeasurements` and `hoverMeasurements` are set on start,
+enter, exit, drop and end events. Don't rely on them in continuous events
+(`onDrag`, `onDragOver`, `onReceiveDragOver`, `onMonitorDragOver`): there they
+are only set in a frame where an enter or exit also fires.
 
 `DraxViewMeasurements` gained a numeric `_transformDetected` field (1 when the
 view is positioned by transforms, as in LegendList). If you build
@@ -505,18 +510,15 @@ The offset fields on events are unchanged: `dragAbsolutePosition`,
 
 **Caveat:** `dragAbsolutePosition` is the hover **centre** during a drag, but
 the hover **top-left** in drop / end events. See [5.3](#53-dragabsoluteposition-at-drop).
-Until 1.2.0's `absoluteMeasurements` lands, you can still derive a
-provider-root frame during a drag:
+To snap the hover to the centre of the receiver, read the provider-root frames
+directly (from 1.2.0):
 
 ```tsx
-onReceiveDragOver={({ dragAbsolutePosition, receiver, dragged }) => {
-  // During a drag, dragAbsolutePosition is the hover centre.
-  // receiveOffset is relative to the receiver's absolute (provider-root) frame.
-  const receiverAbsX = dragAbsolutePosition.x - receiver.receiveOffset.x;
-  const receiverAbsY = dragAbsolutePosition.y - receiver.receiveOffset.y;
-  const receiverSize = receiver.measurements; // width / height
-  // top-left of the dragged view's hover copy, provider-relative
-  const hoverTopLeft = dragged.hoverPosition;
+onDragDrop={({ dragged, receiver }) => {
+  const r = receiver.absoluteMeasurements; // provider-root frame
+  const h = dragged.hoverMeasurements;
+  if (!r || !h) return undefined;
+  return { x: r.x + (r.width - h.width) / 2, y: r.y + (r.height - h.height) / 2 };
 }}
 ```
 
@@ -787,6 +789,6 @@ use the `hover*Style` props).
 | `useDraxContext().updateHoverViewMeasurements` | **No equivalent.** Measurement is automatic. Use `useDraxMethods().requestPositionUpdate()` to re-measure. |
 | `renderItem(info, itemProps)` | `renderItem(info)`, `useItemContext()`, or `SortableItem` props |
 | `x.data.protocol.payload` | `x.payload` |
-| `x.data.measurements` / `absoluteMeasurements` / `hoverMeasurements` | `x.measurements?` / **from 1.2.0** `x.absoluteMeasurements?` (layout position on `dragged`; derive from offsets in earlier 1.x; see [5.3](#53-dragabsoluteposition-at-drop)) / **from 1.2.0** `dragged.hoverMeasurements?` (`hoverPosition` + dragged view size) |
+| `x.data.measurements` / `absoluteMeasurements` / `hoverMeasurements` | `x.measurements?` / **from 1.2.0** `x.absoluteMeasurements?` (layout position on `dragged`, provider-root frame) / **from 1.2.0** `dragged.hoverMeasurements?` (`hoverPosition` + dragged view size) |
 | `viewState.releasedDragTracking.grabOffset` | **No equivalent** on `DraxViewState`. Keep `dragged.grabOffset` from `onDragEnd` / `onDragDrop` in a ref. **From 1.2.0:** also `dragged.grabOffset?` on `onSnapEnd` / `onReceiveSnapEnd`. |
 | Autoscroll | Jump/threshold since 1.x (1.0+). **From 1.2.0:** `autoScrollEnabled`, `autoScrollInitialDelay`, honoured `autoScrollIntervalLength`, and `DraxList` forwarding. `autoScrollInitialDelay` defaults to `0` (no dwell; opt in with e.g. `300`) — see [3.6](#36-auto-scroll-props). |
