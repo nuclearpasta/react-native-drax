@@ -154,6 +154,7 @@ export const SortableContainer = ({
 
   const finalizeDrag = () => {
     unfreezeScroll();
+    sortable._internal.dragActiveRef.current = false;
 
     if (boardContext?.boardInternal.transferState.current?.targetId) {
       boardContext.boardInternal.finalizeTransfer?.();

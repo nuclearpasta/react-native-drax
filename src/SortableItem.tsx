@@ -140,6 +140,7 @@ const SortableItemInner = ({
     originalIndexes,
     scrollPositionJSRef,
     onItemSnapEndRef,
+    dragActiveRef,
     fixedKeys,
   } = sortable._internal;
 
@@ -226,6 +227,12 @@ const SortableItemInner = ({
           // Capture the DraxView's registered ID so useAnimatedStyle can match
           // it against draggedIdSV for visibility control.
           viewIdSV.value = reg?.id ?? '';
+        }}
+        onDragStart={(event) => {
+          // Sync in handleDragStart, after the previous drag's finalize:
+          // the list is busy before this drag's first monitor update.
+          dragActiveRef.current = true;
+          draxViewProps.onDragStart?.(event);
         }}
         onDragEnd={(event) => {
           draxViewProps.onDragEnd?.(event);

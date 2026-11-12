@@ -140,6 +140,11 @@ export const useSortableList = <T,>(
   /** finalizeDrag, registered by SortableContainer. A ref because `_internal`
    *  is rebuilt every render, so SortableItem must read it at call time. */
   const onItemSnapEndRef = useRef<(() => void) | undefined>(undefined);
+  /** True from an item's onDragStart until finalizeDrag. Set synchronously
+   *  in handleDragStart, before the first monitor update seeds
+   *  pendingOrderRef (that needs finger movement), so a deferred flush
+   *  never lands under a drag that has not moved yet. */
+  const dragActiveRef = useRef(false);
   /**
    * Pending reorder during drag. Tracks the desired display order
    * as indices into rawData. Updated by moveDraggedItem (ref, not state).
@@ -595,7 +600,7 @@ export const useSortableList = <T,>(
    */
   const flushIfReady = () => {
     if (!flushRequestedRef.current) return;
-    if (pendingOrderRef.current.length > 0) return;
+    if (dragActiveRef.current || pendingOrderRef.current.length > 0) return;
     const currentRawData = rawDataRef.current;
     if (currentRawData === stableDataRef.current) return;
     if (
@@ -1096,6 +1101,7 @@ export const useSortableList = <T,>(
     dropTargetPositionSV,
     dropTargetVisibleSV,
     onItemSnapEndRef,
+    dragActiveRef,
     draggedDisplayIndexRef,
     dragStartIndexRef,
     shiftsRef,
