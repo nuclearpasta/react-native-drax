@@ -75,8 +75,15 @@ export enum DraxViewReceiveStatus {
 
 // ─── Collision Algorithm ────────────────────────────────────────────────────
 
-/** Algorithm used to determine if a dragged view is over a receiver */
-export type CollisionAlgorithm = 'center' | 'intersect' | 'contain';
+/**
+ * Algorithm used to determine if a dragged view is over a receiver:
+ * - `'center'` (default): the hover view's center is inside the receiver
+ * - `'intersect'`: the hover view overlaps the receiver
+ * - `'contain'`: the hover view is fully inside the receiver
+ * - `'touch'`: the finger (touch point) is inside the receiver, wherever the
+ *   item was grabbed (the 0.x behavior)
+ */
+export type CollisionAlgorithm = 'center' | 'intersect' | 'contain' | 'touch';
 
 // ─── Spatial Index (SharedValue, UI Thread) ────────────────────────────────
 
@@ -99,7 +106,7 @@ export interface SpatialEntry {
   draggable: boolean;
   /** If true, this view will not receive drags from its own children */
   rejectOwnChildren: boolean;
-  /** Collision algorithm for receiving: 'center' (default), 'intersect', or 'contain' */
+  /** Collision algorithm for receiving: 'center' (default), 'intersect', 'contain', or 'touch' */
   collisionAlgorithm: CollisionAlgorithm;
 }
 
@@ -139,6 +146,13 @@ export interface DraxDragEventData {
   dragAbsolutePosition: Position;
   dragTranslation: Position;
   dragged: DraxEventDraggedViewData;
+  /**
+   * Finger (touch point) position relative to the DraxProvider root view.
+   * Set on drag end events (onDragEnd, onDragDrop, onReceiveDragDrop,
+   * onMonitorDragEnd, onMonitorDragDrop, and the onReceiveDragExit fired when a
+   * drag is cancelled over a receiver); undefined on other events.
+   */
+  dragTouchPosition?: Position;
 }
 
 /** Supplemental type for adding a cancelled flag */
@@ -180,7 +194,9 @@ export interface DraxMonitorEndEventData
   extends DraxMonitorEventData, WithCancelledFlag {}
 
 /** Data about a Drax monitor drag-drop event */
-export interface DraxMonitorDragDropEventData extends Required<DraxMonitorEventData> {}
+export interface DraxMonitorDragDropEventData
+  extends Required<Omit<DraxMonitorEventData, 'dragTouchPosition'>>,
+    Pick<DraxMonitorEventData, 'dragTouchPosition'> {}
 
 // ─── Snap Types ────────────────────────────────────────────────────────────
 
@@ -422,7 +438,7 @@ export interface DraxViewProps
   lockDragYPosition?: boolean;
   /** When true, drag is only activated via a descendant DraxHandle component */
   dragHandle?: boolean;
-  /** Collision algorithm for receiving drags: 'center' (default), 'intersect', or 'contain' */
+  /** Collision algorithm for receiving drags: 'center' (default), 'intersect', 'contain', or 'touch' */
   collisionAlgorithm?: CollisionAlgorithm;
   /** Ref to a View that constrains the drag area. The dragged view will be clamped within these bounds. */
   dragBoundsRef?: RefObject<any>;
@@ -507,7 +523,8 @@ export interface DraxContextValue {
     draggedId: string,
     receiverId: string,
     cancelled: boolean,
-    finalMonitorIds?: string[]
+    finalMonitorIds?: string[],
+    touchPosition?: Position
   ) => void;
 
   // ── Hover content ──────────────────────────────────────────────────

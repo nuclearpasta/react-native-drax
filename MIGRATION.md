@@ -738,6 +738,13 @@ use the `hover*Style` props).
 
 ## 7. Behavior changes
 
+- **Hit-test point.** 0.11 picked the receiver under the finger. 1.2 picks the
+  receiver under the center of the dragged view (`collisionAlgorithm`
+  `'center'`, the default), so an item grabbed near its edge is received where
+  its center is, not where the finger is. To get the 0.11 behavior, set
+  `collisionAlgorithm="touch"` on each receiving (or monitoring) `DraxView`.
+  Drop events report the hover view's top-left in `dragAbsolutePosition`; the
+  finger position at release is in `dragTouchPosition`.
 - **Items dragged in from outside a list.** 0.11 `DraxList` accepted external
   items and reported them with `isExternalDrag: true`. In 1.2, a drag from
   outside a `SortableContainer` snaps back, and `onReorder` never reports an

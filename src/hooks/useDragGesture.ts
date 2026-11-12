@@ -35,6 +35,7 @@ export const useDragGesture = (
     receiverIdSV,
     rejectedReceiverIdSV,
     dragPhaseSV,
+    hoverReadySV,
     hoverPositionSV,
     dragAbsolutePositionSV,
     spatialIndexSV,
@@ -132,6 +133,14 @@ export const useDragGesture = (
       const spatialIndex = viewSpatialIndexSV.value;
       const entries = spatialIndexSV.value;
 
+      // A drag still snapping is superseded: handleDragStart finalizes it,
+      // and its deferred clear must leave this drag's state alone. Start
+      // from the idle state, like any drag (HoverLayer sets ready/dragging).
+      if (dragPhaseSV.value === 'releasing') {
+        dragPhaseSV.value = 'idle';
+        hoverReadySV.value = false;
+      }
+
       // Store shared state (all positions in root-relative space).
       // DO NOT set dragPhaseSV here — it's set by HoverLayer's useLayoutEffect
       // AFTER hover content is committed to the DOM. This prevents the grab blink
@@ -213,6 +222,7 @@ export const useDragGesture = (
 
       // Hit-test at the center of the hover view (not at the raw finger position)
       // so that receiving activates when the dragged item visually overlaps the receiver.
+      // Receivers with collisionAlgorithm 'touch' test the finger (rootRelPos) instead.
       const viewEntry = entries[spatialIndex];
       const hitTestPos: Position = {
         x: hoverX + (viewEntry ? viewEntry.width / 2 : 0),
@@ -225,7 +235,8 @@ export const useDragGesture = (
         entries,
         scrollOffsetsSV.value,
         id,
-        viewEntry ? { width: viewEntry.width, height: viewEntry.height } : undefined
+        viewEntry ? { width: viewEntry.width, height: viewEntry.height } : undefined,
+        rootRelPos
       );
 
       // Skip the rejected receiver — don't set it in receiverIdSV and don't
@@ -276,11 +287,17 @@ export const useDragGesture = (
         }
       }
     },
-    onDeactivate: (_event, didSucceed) => {
+    onDeactivate: (event, didSucceed) => {
       'worklet';
 
       // A cancelled gesture is not a drop: onFinalize runs the cancel path.
       if (!didSucceed) return;
+
+      // Root-relative finger position at release
+      const touchPos: Position = {
+        x: event.absoluteX - rootOffsetSV.value.x,
+        y: event.absoluteY - rootOffsetSV.value.y,
+      };
 
       const currentDraggedId = draggedIdSV.value;
       const currentReceiverId = receiverIdSV.value;
@@ -298,7 +315,8 @@ export const useDragGesture = (
         deactivateEntries,
         scrollOffsetsSV.value,
         id,
-        finalDims
+        finalDims,
+        touchPos
       );
 
       // Set phase and clear receiver on UI thread so useAnimatedStyle
@@ -318,9 +336,9 @@ export const useDragGesture = (
       }
 
       // Bounce to JS for end callbacks + snap animation
-      runOnJS(handleDragEnd)(currentDraggedId, currentReceiverId, false, finalHitResult.monitorIds);
+      runOnJS(handleDragEnd)(currentDraggedId, currentReceiverId, false, finalHitResult.monitorIds, touchPos);
     },
-    onFinalize: (_event, didSucceed) => {
+    onFinalize: (event, didSucceed) => {
       'worklet';
 
       // If gesture was cancelled (not ended normally).
@@ -329,6 +347,10 @@ export const useDragGesture = (
       if (!didSucceed && draggedIdSV.value !== '') {
         const currentDraggedId = draggedIdSV.value;
         const currentReceiverId = receiverIdSV.value;
+        const touchPos: Position = {
+          x: event.absoluteX - rootOffsetSV.value.x,
+          y: event.absoluteY - rootOffsetSV.value.y,
+        };
 
         const viewEntryCancel = spatialIndexSV.value[viewSpatialIndexSV.value];
         const cancelDims = viewEntryCancel
@@ -339,14 +361,15 @@ export const useDragGesture = (
           spatialIndexSV.value,
           scrollOffsetsSV.value,
           id,
-          cancelDims
+          cancelDims,
+          touchPos
         );
 
         dragPhaseSV.value = 'releasing';
         receiverIdSV.value = '';
         skippedSV.value = false;
 
-        runOnJS(handleDragEnd)(currentDraggedId, currentReceiverId, true, finalHitResult.monitorIds);
+        runOnJS(handleDragEnd)(currentDraggedId, currentReceiverId, true, finalHitResult.monitorIds, touchPos);
       }
     },
   });

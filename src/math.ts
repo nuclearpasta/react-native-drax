@@ -85,13 +85,16 @@ const MONITOR_HIT_TEST_PADDING = 100;
  * @param scrollOffsets - Scroll offsets per entry
  * @param excludeId - ID of the dragged view (excluded from hit-testing)
  * @param draggedDimensions - Optional dimensions of the dragged view (needed for intersect/contain)
+ * @param touchPosition - Optional finger position (absolute), used by 'touch' receivers.
+ *   Without it, 'touch' receivers fall back to `position`.
  */
 export const hitTestWorklet = (
   position: Position,
   entries: SpatialEntry[],
   scrollOffsets: Position[],
   excludeId: string,
-  draggedDimensions?: ViewDimensions
+  draggedDimensions?: ViewDimensions,
+  touchPosition?: Position
 ): HitTestResult => {
   'worklet';
 
@@ -128,13 +131,40 @@ export const hitTestWorklet = (
     // Compute absolute position by walking parent chain
     const absPos = computeAbsolutePositionWorklet(i, entries, scrollOffsets);
 
-    const recLeft = absPos.x;
-    const recTop = absPos.y;
-    const recRight = recLeft + entry.width;
-    const recBottom = recTop + entry.height;
+    // A receiver only counts where its ancestors show it, e.g. a row only
+    // inside its list's viewport. Monitors keep their full (padded) bounds.
+    let recLeft = absPos.x;
+    let recTop = absPos.y;
+    let recRight = recLeft + entry.width;
+    let recBottom = recTop + entry.height;
+    if (!entry.monitoring && entry.parentIndex >= 0) {
+      // Walk up once, accumulating each ancestor's absolute origin from the
+      // child's: child abs = parent abs + child.x - parentScroll.
+      let childAbsX = absPos.x;
+      let childAbsY = absPos.y;
+      let child = entry;
+      let pIdx = entry.parentIndex;
+      while (pIdx >= 0) {
+        const parent = entries[pIdx];
+        if (!parent) break;
+        const ps = scrollOffsets[pIdx];
+        const px = childAbsX - child.x + (ps ? ps.x : 0);
+        const py = childAbsY - child.y + (ps ? ps.y : 0);
+        if (parent.width > 0 && parent.height > 0) {
+          if (px > recLeft) recLeft = px;
+          if (py > recTop) recTop = py;
+          if (px + parent.width < recRight) recRight = px + parent.width;
+          if (py + parent.height < recBottom) recBottom = py + parent.height;
+        }
+        childAbsX = px; childAbsY = py; child = parent; pIdx = parent.parentIndex;
+      }
+    }
+    if (recRight <= recLeft || recBottom <= recTop) continue; // clipped away
 
     let isHit: boolean;
     const algo = entry.collisionAlgorithm;
+    // Point for point-based tests: the finger for 'touch', else the hover center
+    const point = algo === 'touch' && touchPosition ? touchPosition : position;
 
     if (algo === 'intersect' && dw > 0 && dh > 0) {
       // Any overlap between dragged view and receiver
@@ -151,12 +181,12 @@ export const hitTestWorklet = (
         dragTop >= recTop &&
         dragBottom <= recBottom;
     } else {
-      // Default 'center': hover center is inside receiver
+      // Default 'center' (hover center) or 'touch' (finger) is inside receiver
       isHit =
-        position.x >= recLeft &&
-        position.y >= recTop &&
-        position.x < recRight &&
-        position.y < recBottom;
+        point.x >= recLeft &&
+        point.y >= recTop &&
+        point.x < recRight &&
+        point.y < recBottom;
     }
 
     if (isHit) {
@@ -173,10 +203,10 @@ export const hitTestWorklet = (
     } else if (entry.monitoring) {
       // Padded bounds check for monitoring views only (tolerates hover drift during auto-scroll)
       const isPaddedHit =
-        position.x >= recLeft - MONITOR_HIT_TEST_PADDING &&
-        position.y >= recTop - MONITOR_HIT_TEST_PADDING &&
-        position.x < recRight + MONITOR_HIT_TEST_PADDING &&
-        position.y < recBottom + MONITOR_HIT_TEST_PADDING;
+        point.x >= recLeft - MONITOR_HIT_TEST_PADDING &&
+        point.y >= recTop - MONITOR_HIT_TEST_PADDING &&
+        point.x < recRight + MONITOR_HIT_TEST_PADDING &&
+        point.y < recBottom + MONITOR_HIT_TEST_PADDING;
       if (isPaddedHit) {
         monitorIds.push(entry.id);
       }
