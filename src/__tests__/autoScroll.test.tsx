@@ -68,6 +68,8 @@ jest.mock('../SortableBoardContext', () => ({
 type MonitorHandlers = {
   onMonitorDragStart: (e: DraxMonitorEventData) => void;
   onMonitorDragOver: (e: DraxMonitorEventData) => void;
+  onMonitorDragEnd: (e: DraxMonitorEventData) => unknown;
+  onMonitorDragDrop: (e: DraxMonitorEventData) => unknown;
 };
 
 /** A drag event over the monitor at vertical ratio `y` (container is 100x400). */
@@ -308,6 +310,45 @@ describe('SortableContainer auto-scroll', () => {
     expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(1);
     expect(list.onDragPositionChange).not.toHaveBeenCalled();
   });
+
+  it.each(['onMonitorDragEnd', 'onMonitorDragDrop'] as const)(
+    'stops auto-scrolling when a board transfer ends (%s)',
+    (handler) => {
+      // A3: the target column kept scrolling after a transfer released.
+      const transferState: { current: unknown } = { current: undefined };
+      mockBoardContext = {
+        registerColumn: () => {},
+        unregisterColumn: () => {},
+        boardInternal: {
+          columns: new Map([['other-list', {}]]),
+          transferState,
+        },
+      };
+      const list = renderSortable();
+      list.onMonitorDragStart(dragEvent(MIDDLE, 'other-list'));
+      list.onMonitorDragOver(dragEvent(BOTTOM, 'other-list'));
+      expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(1);
+      transferState.current = { targetId: 'list', sourceId: 'other-list' };
+      list[handler](dragEvent(BOTTOM, 'other-list'));
+      list.scroller.scrollToOffset.mockClear();
+      jest.advanceTimersByTime(8000);
+      expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['onMonitorDragEnd', 'onMonitorDragDrop'] as const)(
+    'stops auto-scrolling when a foreign drag ends on an onExternalDrop list (%s)',
+    (handler) => {
+      const list = renderSortable({ onExternalDrop: jest.fn() });
+      list.onMonitorDragStart(dragEvent(MIDDLE, 'other-list'));
+      list.onMonitorDragOver(dragEvent(BOTTOM, 'other-list'));
+      expect(list.scroller.scrollToOffset).toHaveBeenCalledTimes(1);
+      list[handler](dragEvent(BOTTOM, 'other-list'));
+      list.scroller.scrollToOffset.mockClear();
+      jest.advanceTimersByTime(8000);
+      expect(list.scroller.scrollToOffset).not.toHaveBeenCalled();
+    }
+  );
 
   it('ignores a drag from a list outside the board', () => {
     mockBoardContext = {

@@ -638,6 +638,10 @@ export const SortableContainer = ({
 
   const onMonitorDragEnd = (eventData: DraxMonitorEndEventData) => {
     if (boardContext?.boardInternal.transferState.current?.targetId) {
+      // A transfer skips handleInternalDragEnd: stop the target column's
+      // auto-scroll here, or it scrolls on after release (#337 A3).
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
       unfreezeScroll();
       draxViewProps?.onMonitorDragEnd?.(eventData);
       return undefined;
@@ -651,6 +655,10 @@ export const SortableContainer = ({
 
   const onMonitorDragDrop = (eventData: DraxMonitorDragDropEventData) => {
     if (boardContext?.boardInternal.transferState.current?.targetId) {
+      // A transfer skips handleInternalDragEnd: stop the target column's
+      // auto-scroll here, or it scrolls on after release (#337 A3).
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
       unfreezeScroll();
       draxViewProps?.onMonitorDragDrop?.(eventData);
       return undefined;
