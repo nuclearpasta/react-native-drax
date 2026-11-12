@@ -257,6 +257,22 @@ describe('useSortableList: data changes from outside during a row drag', () => {
     expect(reorderData(onReorder)).toEqual([['B', 'C', 'A', 'D', 'E']]);
   });
 
+  it('same keys in a new array after A moved down 2 slots -> live shifts stay, the drop still reorders', () => {
+    const { onReorder } = setup();
+    start('A', slot(0));
+    move(slot(0), 'A');
+    move(slot(1), 'B');
+    move(slot(2), 'C');
+    const shifts = () => sortable._internal.shiftsRef.value;
+    const before = shifts();
+    expect(before).toMatchObject({ B: { y: -ROW }, C: { y: -ROW } });
+    act(() => setListData([...KEYS]));
+    settle();
+    expect(shifts()).toEqual(before); // B and C stay slid aside, not {}
+    drop('A');
+    expect(reorderData(onReorder)).toEqual([['B', 'C', 'A', 'D', 'E']]);
+  });
+
   it('data reordered mid-drag (same length), then A moved -> no onReorder', () => {
     const { onReorder } = setup();
     start('A', slot(0));

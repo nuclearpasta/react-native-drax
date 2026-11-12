@@ -206,7 +206,13 @@ export const useSortableList = <T,>(
     const sameKeys = rawData.length === previous.length && rawData.every(
       (item, i) => keyExtractor(item, i) === keyExtractor(previous[i]!, i)
     );
-    if (dragStartIndexRef.current !== undefined && !sameKeys) {
+    if (dragStartIndexRef.current !== undefined) {
+      if (sameKeys) {
+        // A refetch: keep the drag's live shifts (and committed state) so
+        // rows that already slid aside don't jump back under the hover.
+        setStableData(rawData);
+        return;
+      }
       pendingOrderRef.current = [];
       dragStartIndexRef.current = undefined;
       draggedDisplayIndexRef.current = undefined;
