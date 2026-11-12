@@ -424,6 +424,202 @@ describe('second drag racing the first drag snap (#250)', () => {
   );
 });
 
+// Controlled parent: it stores onReorder's data and echoes it back.
+const ControlledList = ({ onReorder }: { onReorder: jest.Mock }) => {
+  const [data, setData] = useState(KEYS);
+  const handle = useSortableList({
+    id: 'list',
+    data,
+    keyExtractor: (item) => item,
+    onReorder: (e) => {
+      onReorder(e);
+      setData(e.data);
+    },
+  });
+  useLayoutEffect(() => {
+    sortable = handle;
+  });
+  return (
+    <SortableContainer sortable={handle} scrollRef={{ current: null }}>
+      {handle.data.map((item, index) => (
+        <Cell key={item} handle={handle} index={index} />
+      ))}
+    </SortableContainer>
+  );
+};
+
+describe('rapid drags with a controlled parent (#334 F1)', () => {
+  beforeAll(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    jest.useFakeTimers();
+  });
+  beforeEach(() => {
+    mockDraxProps.clear();
+    mockUIQueue.length = 0;
+    mockJSQueue.length = 0;
+    Object.assign(mockCtx, {
+      hoverPositionSV: makeHoverPositionSV(),
+      hoverContent: null,
+    });
+    mockCtx.hoverReadySV.value = false;
+    mockCtx.dragPhaseSV.value = 'idle';
+    mockCtx.draggedIdSV.value = '';
+    mockCtx.spatialIndexSV.value = listSpatialIndex();
+    rerenderCell.clear();
+  });
+  afterEach(() => {
+    act(() => ReactNative.unmountComponentAtNode(1));
+  });
+
+  /** Drag `key` activates mid-snap: the previous drag's finalize, this
+   *  drag's handleDragStart and its first monitor update all run on JS
+   *  before React renders again. */
+  const startMidSnap = (key: string, toSlot: number) => {
+    activate(key);
+    act(() => {
+      while (mockJSQueue.length || mockUIQueue.length) {
+        if (mockJSQueue.length) mockJSQueue.shift()!();
+        else mockUIQueue.shift()!();
+      }
+      mockDraxProps.get('list')!.onMonitorDragStart!({
+        dragged: { parentId: 'list', payload: mockDraxProps.get(key)!.payload },
+      } as never);
+      sortable._internal.moveDraggedItem(toSlot);
+    });
+  };
+
+  it('seeds drag 2 from the visual order after a no-move drag 1 ends under it', () => {
+    const onReorder = jest.fn();
+    act(() =>
+      ReactNative.render(
+        <>
+          <Dispatcher />
+          <ControlledList onReorder={onReorder} />
+        </>,
+        1
+      )
+    );
+    for (const key of KEYS) {
+      mockGestureId = key;
+      createDragGesture(key, sv(KEYS.indexOf(key) + 1) as never, sv(true) as never, sv(250) as never);
+    }
+    layout();
+    act(() =>
+      KEYS.forEach((key, i) =>
+        mockDraxProps.get(key)!.onMeasure!({ x: 0, y: i * ROW, width: 100, height: ROW } as never)
+      )
+    );
+    settle();
+
+    // Drag 0: A to after D.
+    activate('A');
+    settle();
+    monitorStart('A', 3);
+    release('A', 3);
+    expect(mockCtx.hoverPositionSV.snapping).toBe(true);
+
+    // Drag 1: B starts mid-snap; drag 0's rAF sends onReorder and the echo
+    // renders mid drag 1, so its flush is deferred. B is released unmoved.
+    startMidSnap('B', 0);
+    settle();
+    expect(onReorder).toHaveBeenCalledTimes(1);
+    expect(visualOrder()).toBe('BCDAE');
+    release('B', 0);
+    expect(mockCtx.hoverPositionSV.snapping).toBe(true);
+
+    // Drag 2: A (visual slot 3, stale cell index 0) starts mid drag 1's
+    // snap and moves to the top. Drag 1's finalize must not flush the
+    // deferred echo under it.
+    startMidSnap('A', 0);
+    expect(sortable._internal.dragStartIndexRef.current).toBe(3);
+    settle();
+    // Mid drag 2 (the dragged row's own shift is stale while it is hidden).
+    const pendingKeys = () =>
+      sortable._internal.pendingOrderRef.current.map((i) => sortable.data[i]).join('');
+    expect(pendingKeys()).toBe('ABCDE');
+    release('A', 0);
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+
+    expect(onReorder).toHaveBeenCalledTimes(2);
+    expect(onReorder.mock.calls[1][0]).toMatchObject({
+      fromIndex: 3,
+      toIndex: 0,
+      fromItem: 'A',
+      data: ['A', 'B', 'C', 'D', 'E'],
+    });
+    expect(visualOrder()).toBe('ABCDE');
+    expect(sortable._internal.pendingOrderRef.current).toEqual([]);
+  });
+
+  it('does not flush under drag 2 when its first monitor update comes after the rAF', () => {
+    const onReorder = jest.fn();
+    act(() =>
+      ReactNative.render(
+        <>
+          <Dispatcher />
+          <ControlledList onReorder={onReorder} />
+        </>,
+        1
+      )
+    );
+    for (const key of KEYS) {
+      mockGestureId = key;
+      createDragGesture(key, sv(KEYS.indexOf(key) + 1) as never, sv(true) as never, sv(250) as never);
+    }
+    layout();
+    act(() =>
+      KEYS.forEach((key, i) =>
+        mockDraxProps.get(key)!.onMeasure!({ x: 0, y: i * ROW, width: 100, height: ROW } as never)
+      )
+    );
+    settle();
+
+    // Drag 0: A to after D. Drag 1: B starts mid-snap, so drag 0's echo
+    // renders mid drag 1 and its flush is deferred. B is released unmoved.
+    activate('A');
+    settle();
+    monitorStart('A', 3);
+    release('A', 3);
+    startMidSnap('B', 0);
+    settle();
+    release('B', 0);
+    expect(mockCtx.hoverPositionSV.snapping).toBe(true);
+    const stable = sortable.data;
+    expect(stable.join('')).toBe('ABCDE');
+
+    // Drag 2: A activates mid drag 1's snap and the finger holds still.
+    // handleDragStart finalizes drag 1 (rAF flush queued), then the rAF
+    // fires before any monitor update for drag 2.
+    activate('A');
+    drainJS();
+    drainUI();
+    drainJS();
+    act(() => jest.runOnlyPendingTimers());
+    expect(mockCtx.draggedIdSV.value).toBe('A');
+    // The flush must wait for drag 2 to end.
+    expect(sortable.data).toBe(stable);
+
+    monitorStart('A', 0);
+    expect(sortable._internal.dragStartIndexRef.current).toBe(3);
+    settle();
+    expect(sortable.data).toBe(stable);
+    release('A', 0);
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+
+    expect(onReorder).toHaveBeenCalledTimes(2);
+    expect(onReorder.mock.calls[1][0]).toMatchObject({
+      fromIndex: 3,
+      toIndex: 0,
+      fromItem: 'A',
+      data: ['A', 'B', 'C', 'D', 'E'],
+    });
+    expect(visualOrder()).toBe('ABCDE');
+    expect(sortable._internal.pendingOrderRef.current).toEqual([]);
+  });
+});
+
 // Board: column 1 (A B C) at x 0, column 2 (X Y) at x 200.
 const COL1 = ['A', 'B', 'C'];
 const COL2 = ['X', 'Y'];
