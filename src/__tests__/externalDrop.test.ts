@@ -76,6 +76,7 @@ jest.mock('../SortableBoardContext', () => ({
 
 type Props = {
   onMonitorDragDrop: (e: DraxMonitorDragDropEventData) => DraxProtocolDragEndResponse;
+  onMeasure: (m: unknown) => void;
 };
 
 const LIST_ID = 'list';
@@ -86,8 +87,14 @@ function renderList(
   onExternalDrop?: jest.Mock,
   items = ITEMS,
   isMeasured = (_index: number) => true,
-  numColumns = 1
+  numColumns = 1,
+  {
+    horizontal = false,
+    collisionAlgorithm,
+    height = 170,
+  }: { horizontal?: boolean; collisionAlgorithm?: string; height?: number } = {}
 ) {
+  container = { width: 330, height };
   mockSlots = [];
   let props = {} as Props;
   for (let pass = 0; pass < 10; pass++) {
@@ -101,14 +108,15 @@ function renderList(
       onReorder: () => {},
       onExternalDrop,
       numColumns,
+      horizontal,
     });
     items.forEach((key, index) => {
       if (!isMeasured(index)) return;
       sortable._internal.itemMeasurements.current.set(key, {
         key,
         index,
-        x: (index % numColumns) * 110,
-        y: Math.floor(index / numColumns) * 60,
+        x: horizontal ? index * 110 : (index % numColumns) * 110,
+        y: horizontal ? 0 : Math.floor(index / numColumns) * 60,
         width: 100,
         height: 50,
       } as SortableItemMeasurement);
@@ -117,6 +125,7 @@ function renderList(
       sortable: sortable as SortableListHandle<unknown>,
       scrollRef: { current: null },
       children: null,
+      draxViewProps: collisionAlgorithm ? { collisionAlgorithm } as never : undefined,
     }) as ReactElement<Props>;
     props = element.props;
     const effects = mockEffects;
@@ -124,29 +133,52 @@ function renderList(
     effects.forEach((fn) => fn());
     if (!mockDirty) break;
   }
+  props.onMeasure({ x: 0, y: 0, ...container });
   return props;
 }
 
+// Container (monitor) size, at the root origin. Set per render.
+let container = { width: 330, height: 170 };
+
 const foreignPayload = { blankId: 7 };
 
+/**
+ * Drop a 100x50 foreign view with its centre at (x, y) in the list. Like
+ * dispatch at drag end, monitorOffset and dragAbsolutePosition are the hover's
+ * top-left (the monitor is at the root origin); dragTouchPosition is the finger,
+ * `fingerShift` from the centre.
+ */
 function dropAt(
   props: Props,
   y: number,
-  overrides: { parentId?: string; payload?: unknown; ratioY?: number; x?: number } = {}
+  overrides: {
+    parentId?: string;
+    payload?: unknown;
+    x?: number;
+    fingerShift?: { x: number; y: number };
+  } = {}
 ) {
   const dragged = {
     id: 'blank',
     parentId: 'parentId' in overrides ? overrides.parentId : 'bank',
     payload: 'payload' in overrides ? overrides.payload : foreignPayload,
-    grabOffset: { x: 0, y: 0 },
+    grabOffset: { x: 50, y: 25 },
     measurements: { x: 0, y: 0, width: 100, height: 50 },
   };
+  const centre = { x: overrides.x ?? 50, y };
+  const topLeft = { x: centre.x - 50, y: centre.y - 25 };
+  const shift = overrides.fingerShift ?? { x: 0, y: 0 };
   return props.onMonitorDragDrop({
     dragged,
     receiver: { id: LIST_ID, payload: undefined },
+    dragAbsolutePosition: topLeft,
+    dragTouchPosition: { x: centre.x + shift.x, y: centre.y + shift.y },
     dragTranslation: { x: 500, y: 500 },
-    monitorOffset: { x: overrides.x ?? 50, y },
-    monitorOffsetRatio: { x: 0.5, y: overrides.ratioY ?? y / 170 },
+    monitorOffset: topLeft,
+    monitorOffsetRatio: {
+      x: topLeft.x / container.width,
+      y: topLeft.y / container.height,
+    },
   } as unknown as DraxMonitorDragDropEventData);
 }
 
@@ -212,14 +244,14 @@ describe('onExternalDrop', () => {
       ['bottom half of the last row', 19 * 60 + 40, 20],
     ])('fires with the index of the measured row for a drop on the %s', (_, y, toIndex) => {
       const onExternalDrop = jest.fn();
-      dropAt(renderList(onExternalDrop, LONG, (i) => i !== 0), y, { ratioY: 0.5 });
+      dropAt(renderList(onExternalDrop, LONG, (i) => i !== 0, 1, { height: 1300 }), y);
       expect(onExternalDrop).toHaveBeenCalledTimes(1);
       expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(toIndex);
     });
 
     it('does not fire when no measured row is under the drop', () => {
       const onExternalDrop = jest.fn();
-      dropAt(renderList(onExternalDrop, LONG, (i) => i >= 10), 2 * 60 + 10, { ratioY: 0.5 });
+      dropAt(renderList(onExternalDrop, LONG, (i) => i >= 10, 1, { height: 1300 }), 2 * 60 + 10);
       expect(onExternalDrop).not.toHaveBeenCalled();
     });
   });
@@ -234,15 +266,61 @@ describe('onExternalDrop', () => {
       ['below the last row under the left half of D', 140, 5],
     ])('fires with toIndex for a drop %s', (_, y, toIndex) => {
       const onExternalDrop = jest.fn();
-      dropAt(renderList(onExternalDrop, CELLS, () => true, 3), y, { x: 20, ratioY: 0.9 });
+      dropAt(renderList(onExternalDrop, CELLS, () => true, 3), y, { x: 20 });
       expect(onExternalDrop).toHaveBeenCalledTimes(1);
       expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(toIndex);
     });
   });
 
+  // Scenario 11: the drop is indexed at the hover centre, not its top-left
+  // (half a cell to the left of the finger for a centre grab).
+  describe('at the hover centre on a 3-column grid', () => {
+    const CELLS = ['A', 'B', 'C', 'D', 'E'];
+    it.each([
+      ['the right half of B', 190, 25, 2],
+      ['the left half of B', 130, 25, 1],
+      ['the right half of A near the left edge', 70, 25, 1],
+      ['the left half of A at the left edge', 10, 25, 0],
+      ['the right half of E', 200, 85, 5],
+      ['right of the last cell', 280, 85, 5],
+      ['below the last row', 50, 140, 5],
+    ])('fires with toIndex for a drop on %s', (_, x, y, toIndex) => {
+      const onExternalDrop = jest.fn();
+      dropAt(renderList(onExternalDrop, CELLS, () => true, 3), y, { x });
+      expect(onExternalDrop).toHaveBeenCalledTimes(1);
+      expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(toIndex);
+    });
+  });
+
+  // Horizontal row of three 100pt cells with 10pt gaps: A 0-100, B 110-210, C 220-320.
+  describe('on a horizontal list', () => {
+    it.each([
+      ['the left half of B', 140, 1],
+      ['the right half of B', 190, 2],
+      ['the right half of C', 300, 3],
+      ['the left half of A at the left edge', 10, 0],
+    ])('fires with toIndex for a drop on %s', (_, x, toIndex) => {
+      const onExternalDrop = jest.fn();
+      dropAt(renderList(onExternalDrop, ITEMS, () => true, 1, { horizontal: true }), 25, { x });
+      expect(onExternalDrop).toHaveBeenCalledTimes(1);
+      expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(toIndex);
+    });
+  });
+
+  it("indexes at the finger for collisionAlgorithm 'touch'", () => {
+    const CELLS = ['A', 'B', 'C', 'D', 'E'];
+    const onExternalDrop = jest.fn();
+    const props = renderList(onExternalDrop, CELLS, () => true, 3, {
+      collisionAlgorithm: 'touch',
+    });
+    // Hover centre on the left half of B, finger 40pt right on its right half.
+    dropAt(props, 25, { x: 130, fingerShift: { x: 40, y: 0 } });
+    expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(2);
+  });
+
   it('does not fire for a drop outside the list bounds', () => {
     const onExternalDrop = jest.fn();
-    dropAt(renderList(onExternalDrop), 250, { ratioY: 1.2 });
+    dropAt(renderList(onExternalDrop), 250);
     expect(onExternalDrop).not.toHaveBeenCalled();
   });
 

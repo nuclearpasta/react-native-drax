@@ -415,22 +415,43 @@ export const SortableContainer = ({
 
     // Opt-in: a foreign view (not a board column item) dropped inside the list.
     // toIndex comes from the drop position, not from drag-over state.
-    const ratio = eventData.monitorOffsetRatio;
     if (
       onExternalDrop &&
       totalDragEnd &&
       !cancelled &&
       externalDrag &&
-      !boardContext?.boardInternal.columns.has(dragged.parentId ?? '') &&
-      ratio.x >= 0 && ratio.x <= 1 && ratio.y >= 0 && ratio.y <= 1
+      !boardContext?.boardInternal.columns.has(dragged.parentId ?? '')
     ) {
-      const pos = {
-        x: eventData.monitorOffset.x + scrollPositionJSRef.current.x,
-        y: eventData.monitorOffset.y + scrollPositionJSRef.current.y,
-      };
-      const toIndex = getExternalDropIndex(pos);
-      if (toIndex !== undefined) {
-        onExternalDrop({ toIndex, payload: dragged.payload, dragged });
+      // Drag end events measure monitorOffset from the hover's top-left. Index
+      // at the hover centre, as drag-over and own reorder do, or at the finger
+      // for a 'touch' list (scenario 11: the top-left gave i for a right-half
+      // drop and skipped drops near the leading edge).
+      const { monitorOffset, monitorOffsetRatio, dragAbsolutePosition } = eventData;
+      const touch =
+        draxViewProps?.collisionAlgorithm === 'touch'
+          ? eventData.dragTouchPosition
+          : undefined;
+      const point = touch
+        ? {
+            x: monitorOffset.x + touch.x - dragAbsolutePosition.x,
+            y: monitorOffset.y + touch.y - dragAbsolutePosition.y,
+          }
+        : {
+            x: monitorOffset.x + (dragged.measurements?.width ?? 0) / 2,
+            y: monitorOffset.y + (dragged.measurements?.height ?? 0) / 2,
+          };
+      const container = containerMeasurementsRef.current;
+      const ratio = container
+        ? { x: point.x / (container.width || 1), y: point.y / (container.height || 1) }
+        : monitorOffsetRatio;
+      if (ratio.x >= 0 && ratio.x <= 1 && ratio.y >= 0 && ratio.y <= 1) {
+        const toIndex = getExternalDropIndex({
+          x: point.x + scrollPositionJSRef.current.x,
+          y: point.y + scrollPositionJSRef.current.y,
+        });
+        if (toIndex !== undefined) {
+          onExternalDrop({ toIndex, payload: dragged.payload, dragged });
+        }
       }
     }
 
