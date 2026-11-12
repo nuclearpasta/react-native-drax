@@ -202,6 +202,7 @@ const deps = {
   hoverPositionSV,
   grabOffsetSV: sv(grabOffset),
   startPositionSV: sv({ x: 22, y: 24 }),
+  needsUpdatesSV: sv(false),
   setHoverContent: jest.fn(),
   hoverReadySV: sv(true),
   hoverClearDeferredRef: { current: false },
