@@ -726,6 +726,16 @@ export interface SortableReorderEvent<T> {
   isExternalDrag: boolean;
 }
 
+/** Event data for a foreign drag dropped on a sortable list */
+export interface SortableExternalDropEvent {
+  /** Insertion index in the list's data, from 0 to data.length */
+  toIndex: number;
+  /** Payload of the dropped view */
+  payload: unknown;
+  /** Data about the dropped view */
+  dragged: DraxEventDraggedViewData;
+}
+
 /** Props for rendering a drop indicator in a sortable container */
 export interface DropIndicatorProps {
   /** Whether the indicator should be visible */
@@ -773,6 +783,14 @@ export interface UseSortableListOptions<T> extends DraxAutoScrollProps {
   onDragPositionChange?: (event: SortableDragPositionChangeEvent<T>) => void;
   /** Callback when drag ends */
   onDragEnd?: (event: SortableDragEndEvent<T>) => void;
+  /** Opt-in. Called when a view that is not one of this list's items (and not
+   *  a SortableBoard transfer) is dropped inside the list. The library does
+   *  not change the data or shift items: insert the item at `toIndex` yourself.
+   *  While some rows are unmeasured (not mounted by a virtualized list), the
+   *  index is known only for a drop on a measured row (in a single-column
+   *  list, also in its gap to a measured next row, or before a measured first
+   *  row / after a measured last row); any other drop is not reported. */
+  onExternalDrop?: (event: SortableExternalDropEvent) => void;
 }
 
 /** Handle returned by useSortableList — pass to SortableContainer and SortableItem */
@@ -834,6 +852,7 @@ export interface SortableListInternal<T> {
   onDragStart?: (event: SortableDragStartEvent<T>) => void;
   onDragPositionChange?: (event: SortableDragPositionChangeEvent<T>) => void;
   onDragEnd?: (event: SortableDragEndEvent<T>) => void;
+  onExternalDrop?: (event: SortableExternalDropEvent) => void;
   onReorder: (event: SortableReorderEvent<T>) => void;
   getMeasurementByOriginalIndex: (originalIndex: number) => SortableItemMeasurement | undefined;
   /** Position of the drop indicator (animated) */
@@ -879,7 +898,7 @@ export interface SortableListInternal<T> {
   /** Cancel drag without reorder — reverts to committed shifts */
   cancelDrag: () => void;
   /** Compute target display index from a container-local content position */
-  getSlotFromPosition: (contentPos: Position) => number;
+  getSlotFromPosition: (contentPos: Position, slotCount?: number) => number;
   /** Current phantom slot (cross-container drag) */
   phantomRef: RefObject<SortablePhantomSlot | undefined>;
   /** Reserve space for an incoming item at the given display index */

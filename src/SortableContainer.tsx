@@ -21,6 +21,7 @@ import type {
   DraxMonitorEventData,
   DraxProtocolDragEndResponse,
   DraxViewProps,
+  SortableItemMeasurement,
   SortableListHandle,
 } from './types';
 import {
@@ -79,6 +80,7 @@ export const SortableContainer = ({
   const {
     id,
     horizontal,
+    numColumns,
     draggedItem,
     rawData,
     moveDraggedItem,
@@ -98,6 +100,7 @@ export const SortableContainer = ({
     onDragStart: onDragStartCallback,
     onDragPositionChange: onDragPositionChangeCallback,
     onDragEnd: onDragEndCallback,
+    onExternalDrop,
     onReorder,
     getMeasurementByOriginalIndex,
     dropTargetPositionSV,
@@ -307,6 +310,58 @@ export const SortableContainer = ({
     stopAutoScrollTimer(scrollTimerRef.current);
   };
 
+  /**
+   * Insertion index (0 to itemCount) for a foreign drop at a content position,
+   * or undefined when no measured row decides it. A virtualized list only
+   * measures its mounted rows, and getSlotFromPosition gives up (slot 0) when
+   * any row is unmeasured. Then only the measured row under the drop counts
+   * (for a list, its gap to a measured next row too; before the first row and
+   * after the last row count when those rows are measured).
+   */
+  const getExternalDropIndex = (pos: Position): number | undefined => {
+    const grid = numColumns > 1;
+    const isAfter = (meas: SortableItemMeasurement) =>
+      horizontal || grid
+        ? pos.x > meas.x + meas.width / 2
+        : pos.y > meas.y + meas.height / 2;
+    const measurements = Array.from({ length: itemCount }, (_, i) =>
+      getMeasurementByOriginalIndex(i)
+    );
+    const main = (p: { x: number; y: number }) => (horizontal ? p.x : p.y);
+    if (measurements.every((meas) => meas !== undefined)) {
+      // Past the far edge of the last row: append. getSlotFromPosition keeps
+      // the last row there, and a grid's isAfter only checks x.
+      const farEdge = Math.max(
+        ...measurements.map((m) => main(m) + (horizontal ? m.width : m.height))
+      );
+      if (main(pos) > farEdge) return itemCount;
+      const slot = getSlotFromPosition(pos, itemCount);
+      const meas = measurements[slot];
+      return slot + (meas && isAfter(meas) ? 1 : 0);
+    }
+    for (let i = 0; i < itemCount; i++) {
+      const meas = measurements[i];
+      if (!meas) continue;
+      let hit: boolean;
+      if (grid) {
+        hit =
+          pos.x >= meas.x && pos.x <= meas.x + meas.width &&
+          pos.y >= meas.y && pos.y <= meas.y + meas.height;
+      } else {
+        const start = main(meas);
+        const next = measurements[i + 1];
+        const end =
+          i === itemCount - 1
+            ? Infinity
+            : next
+              ? main(next)
+              : start + (horizontal ? meas.width : meas.height);
+        hit = (i === 0 || main(pos) >= start) && main(pos) < end;
+      }
+      if (hit) return i + (isAfter(meas) ? 1 : 0);
+    }
+    return undefined;
+  };
   // Stop auto-scrolling on unmount (a pending delay would otherwise start an
   // interval on an unmounted list). The timer object is never replaced.
   useEffect(() => {
@@ -378,6 +433,48 @@ export const SortableContainer = ({
       && dragged.parentId === id && !!receiver
       && receiver.id !== id && receiver.parentId !== id;
     if (droppedOutside) restoreStartOrder();
+
+    // Opt-in: a foreign view (not a board column item) dropped inside the list.
+    // toIndex comes from the drop position, not from drag-over state.
+    if (
+      onExternalDrop &&
+      totalDragEnd &&
+      !cancelled &&
+      externalDrag &&
+      !boardContext?.boardInternal.columns.has(dragged.parentId ?? '')
+    ) {
+      // Drag end events measure monitorOffset from the hover's top-left. Index
+      // at the hover centre, as drag-over and own reorder do, or at the finger
+      // for a 'touch' list (scenario 11: the top-left gave i for a right-half
+      // drop and skipped drops near the leading edge).
+      const { monitorOffset, monitorOffsetRatio, dragAbsolutePosition } = eventData;
+      const touch =
+        draxViewProps?.collisionAlgorithm === 'touch'
+          ? eventData.dragTouchPosition
+          : undefined;
+      const point = touch
+        ? {
+            x: monitorOffset.x + touch.x - dragAbsolutePosition.x,
+            y: monitorOffset.y + touch.y - dragAbsolutePosition.y,
+          }
+        : {
+            x: monitorOffset.x + (dragged.measurements?.width ?? 0) / 2,
+            y: monitorOffset.y + (dragged.measurements?.height ?? 0) / 2,
+          };
+      const container = containerMeasurementsRef.current;
+      const ratio = container
+        ? { x: point.x / (container.width || 1), y: point.y / (container.height || 1) }
+        : monitorOffsetRatio;
+      if (ratio.x >= 0 && ratio.x <= 1 && ratio.y >= 0 && ratio.y <= 1) {
+        const toIndex = getExternalDropIndex({
+          x: point.x + scrollPositionJSRef.current.x,
+          y: point.y + scrollPositionJSRef.current.y,
+        });
+        if (toIndex !== undefined) {
+          onExternalDrop({ toIndex, payload: dragged.payload, dragged });
+        }
+      }
+    }
 
     if (totalDragEnd) {
       onDragEndCallback?.({
@@ -501,6 +598,37 @@ export const SortableContainer = ({
     }
   };
 
+  const updateAutoScroll = (eventData: DraxMonitorEventData) => {
+    if (!autoScrollEnabled) {
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
+      return;
+    }
+    // Test the edge band at the finger, as 0.11 did, not at the hover centre:
+    // a row cut off at the edge, held by its visible part, must not scroll.
+    const { monitorOffset, monitorOffsetRatio } = eventData;
+    const shift = fingerFromCentre(eventData);
+    const containerLength = horizontal
+      ? containerMeasurementsRef.current?.width
+      : containerMeasurementsRef.current?.height;
+    const ratio =
+      shift && containerLength
+        ? ((horizontal ? monitorOffset.x + shift.x : monitorOffset.y + shift.y) /
+          containerLength)
+        : horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y;
+    if (ratio > autoScrollBackThreshold && ratio < autoScrollForwardThreshold) {
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
+    } else {
+      if (ratio >= autoScrollForwardThreshold) {
+        scrollStateRef.current = AutoScrollDirection.Forward;
+      } else if (ratio <= autoScrollBackThreshold) {
+        scrollStateRef.current = AutoScrollDirection.Back;
+      }
+      startScroll();
+    }
+  };
+
   const onMonitorDragOver = (eventData: DraxMonitorEventData) => {
     const displacement = computeFingerDisplacement(eventData);
     if (!jitterExceededRef.current) {
@@ -516,7 +644,7 @@ export const SortableContainer = ({
 
     draxViewProps?.onMonitorDragOver?.(eventData);
 
-    const { dragged, monitorOffset, monitorOffsetRatio } = eventData;
+    const { dragged, monitorOffset } = eventData;
     const draggedPayload = isSortableItemPayload(dragged.payload)
       ? dragged.payload
       : undefined;
@@ -541,8 +669,14 @@ export const SortableContainer = ({
       dragged.parentId !== undefined &&
       !!boardContext?.boardInternal.columns.has(dragged.parentId);
     if (externalDrag && !isBoardDrag) {
-      scrollStateRef.current = AutoScrollDirection.None;
-      stopScroll();
+      // A list that accepts foreign drops (onExternalDrop) still
+      // auto-scrolls, so any index is reachable. No slot tracking.
+      if (onExternalDrop) {
+        updateAutoScroll(eventData);
+      } else {
+        scrollStateRef.current = AutoScrollDirection.None;
+        stopScroll();
+      }
       return;
     }
 
@@ -616,33 +750,7 @@ export const SortableContainer = ({
     }
 
     // Auto-scroll
-    if (!autoScrollEnabled) {
-      scrollStateRef.current = AutoScrollDirection.None;
-      stopScroll();
-      return;
-    }
-    // Test the edge band at the finger, as 0.11 did, not at the hover centre:
-    // a row cut off at the edge, held by its visible part, must not scroll.
-    const shift = fingerFromCentre(eventData);
-    const containerLength = horizontal
-      ? containerMeasurementsRef.current?.width
-      : containerMeasurementsRef.current?.height;
-    const ratio =
-      shift && containerLength
-        ? ((horizontal ? monitorOffset.x + shift.x : monitorOffset.y + shift.y) /
-          containerLength)
-        : horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y;
-    if (ratio > autoScrollBackThreshold && ratio < autoScrollForwardThreshold) {
-      scrollStateRef.current = AutoScrollDirection.None;
-      stopScroll();
-    } else {
-      if (ratio >= autoScrollForwardThreshold) {
-        scrollStateRef.current = AutoScrollDirection.Forward;
-      } else if (ratio <= autoScrollBackThreshold) {
-        scrollStateRef.current = AutoScrollDirection.Back;
-      }
-      startScroll();
-    }
+    updateAutoScroll(eventData);
   };
 
   const onMonitorDragExit = (eventData: DraxMonitorEventData) => {
