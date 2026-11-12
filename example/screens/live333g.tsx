@@ -1,6 +1,7 @@
 // TEMPORARY harness screen for #333 scenario 11 (foreign drop into a grid or horizontal list).
 // Never merge. Every cell is mounted (initialNumToRender = data length), so every cell is measured.
 // onExternalDrop is passed through DraxList's open props so this file also typechecks on main.
+// 'foot 1' (default) adds a blank list footer so a drop below the last row can be touched.
 import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { DraxList, DraxProvider, DraxView } from 'react-native-drax';
@@ -18,6 +19,7 @@ export default function Live333g() {
   const [data, setData] = useState(CELLS);
   const [layout, setLayout] = useState<Layout>('grid');
   const [ext, setExt] = useState(true);
+  const [foot, setFoot] = useState(true);
   const [last, setLast] = useState('none');
   const [listKey, setListKey] = useState(0);
   const nextId = useRef(0);
@@ -48,6 +50,7 @@ export default function Live333g() {
         <View style={styles.bar}>
           <Btn label={`layout ${layout}`} onPress={() => remount(grid ? 'horiz' : 'grid')} />
           <Btn label={`ext ${ext ? 1 : 0}`} onPress={() => setExt((v) => !v)} />
+          <Btn label={`foot ${foot ? 1 : 0}`} onPress={() => setFoot((v) => !v)} />
           <Btn label="l333g-reset" text="reset" onPress={() => remount(layout)} />
         </View>
         <View style={styles.bar}>
@@ -85,6 +88,9 @@ export default function Live333g() {
             containerStyle={styles.flex}
             style={styles.flex}
             scrollEventThrottle={16}
+            ListFooterComponent={
+              foot ? <View accessibilityLabel="l333g-footer" style={grid ? styles.footer : styles.horizFooter} /> : null
+            }
             renderItem={({ item }: { item: string }) => (
               <View accessibilityLabel={`cell ${item}`} style={[grid ? styles.cell : styles.horizCell, item.startsWith('X') ? styles.cellNew : styles.cellOld]}>
                 <Text style={styles.cellText}>{item}</Text>
@@ -116,6 +122,8 @@ const styles = StyleSheet.create({
   paletteHover: { opacity: 0.8 },
   paletteText: { color: 'white', fontWeight: '700', fontSize: 20 },
   cell: { flex: 1, height: 90, margin: 4, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  footer: { height: 240 },
+  horizFooter: { width: 240 },
   horizCell: { width: 90, height: 100, margin: 4, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   cellOld: { backgroundColor: '#e8eefc' },
   cellNew: { backgroundColor: '#c8f7c5' },
