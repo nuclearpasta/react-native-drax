@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DraxProvider, DraxList } from 'react-native-drax';
+import { DraxProvider, DraxList, DraxView } from 'react-native-drax';
 import type { SortableAnimationPreset } from 'react-native-drax';
 import { useTheme, itemColor } from '../components/ThemeContext';
 import { ExampleLinks } from '../components/ExampleLinks';
@@ -46,6 +46,13 @@ const getHeight = (alphaIndex: number) => {
   return height;
 };
 
+/** Letter of a dropped list row (DraxList item payloads carry the item). */
+const getDroppedItem = (payload: unknown) =>
+  typeof payload === 'object' && payload !== null && 'item' in payload
+    && typeof payload.item === 'string'
+    ? payload.item
+    : undefined;
+
 const getItemStyleTweaks = (alphaItem: string) => {
   const alphaIndex = alphabet.indexOf(alphaItem);
   return {
@@ -58,6 +65,16 @@ export default function ReorderableList() {
   const [alphaData, setAlphaData] = useState(alphabet);
   const [animPreset, setAnimPreset] =
     useState<SortableAnimationPreset>('spring');
+  const addedCount = useRef(0);
+  // Repro for a data change during a drag: tap, then drag a row before the
+  // new row lands. The drag is cancelled, so no row is lost or misplaced.
+  const prependSoon = () => {
+    setTimeout(() => {
+      addedCount.current += 1;
+      const added = `+${addedCount.current}`;
+      setAlphaData((data) => [added, ...data]);
+    }, 1000);
+  };
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
 
@@ -100,6 +117,15 @@ export default function ReorderableList() {
           ))}
         </View>
         <ExampleLinks slug="reorderable-list" />
+        <Pressable
+          testID="prepend-soon"
+          onPress={prependSoon}
+          style={[styles.prependButton, { backgroundColor: theme.lineStrong }]}
+        >
+          <Text style={[styles.presetButtonText, { color: theme.muted }]}>
+            Add a row in 1 s (then drag)
+          </Text>
+        </Pressable>
         <DraxList
           data={alphaData}
           keyExtractor={(item) => item}
@@ -129,7 +155,7 @@ export default function ReorderableList() {
           onReorder={({ data }) => {
             setAlphaData(data);
           }}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const tweaks = getItemStyleTweaks(item);
             return (
             <View
@@ -140,11 +166,30 @@ export default function ReorderableList() {
                 { backgroundColor: itemColor(tweaks.backgroundColor, isDark) },
               ]}
             >
-              <Text style={[styles.alphaText, { color: isDark ? '#e0e0e0' : '#333' }]}>{item}</Text>
+              <Text style={[styles.alphaText, { color: isDark ? '#e0e0e0' : '#333' }]}>{index + 1}. {item}</Text>
             </View>
             );
           }}
         />
+        <DraxView
+          testID="remove-zone"
+          style={[
+            styles.removeZone,
+            {
+              borderColor: theme.lineStrong,
+              backgroundColor: theme.surface,
+              marginBottom: insets.bottom + 8,
+            },
+          ]}
+          receivingStyle={styles.removeZoneReceiving}
+          onReceiveDragDrop={({ dragged }) => {
+            const item = getDroppedItem(dragged.payload);
+            if (item === undefined) return;
+            setAlphaData((data) => data.filter((d) => d !== item));
+          }}
+        >
+          <Text style={[styles.removeZoneText, { color: theme.muted }]}>Drop here to remove</Text>
+        </DraxView>
       </View>
     </DraxProvider>
   );
@@ -185,6 +230,13 @@ const styles = StyleSheet.create({
   presetButtonTextActive: {
     color: '#fff',
   },
+  prependButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    margin: 6,
+  },
   alphaItem: {
     backgroundColor: '#aaaaff',
     borderRadius: 8,
@@ -195,5 +247,20 @@ const styles = StyleSheet.create({
   },
   alphaText: {
     fontSize: 28,
+  },
+  removeZone: {
+    margin: 8,
+    paddingVertical: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+  },
+  removeZoneReceiving: {
+    borderColor: '#ef4444',
+  },
+  removeZoneText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

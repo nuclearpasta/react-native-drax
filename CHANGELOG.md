@@ -17,12 +17,14 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 - (BREAKING-TS) `DraxContextValue.rootViewRef` is now a Reanimated `AnimatedRef<View>` instead of `{ current: HostInstance | null }`, so the root view can be measured on the UI thread at drag start. `.current` still holds the host view.
 - `autoScrollIntervalLength` is now honoured by `DraxScrollView` and sortable lists (it was ignored and the interval was fixed at 250 ms).
+- (BREAKING) Sortable lists (not board columns) fire `onReorder` at release, as 0.11 did, instead of about 350 ms later after the snap animation. The rows still move to their new positions in the list's render at snap end, so `renderItem`'s `info.index` reflects the pre-drop order until the snap ends. Number rows from your own data (for example `data.indexOf(item)`), not from `info.index`.
 - A foreign drag over a sortable list (a `DraxView`, or an item from a list outside its board) no longer auto-scrolls the list, tracks slots, fires `onDragPositionChange` or shows the drop indicator. Board columns still react to items from other columns of the same board.
 
 ### Fixed
 
 - Drag handles: the hover no longer lands one slot off when a `dragHandle` sortable item with permanent shifts is grabbed by its `DraxHandle`
 - Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover
+- Sortable lists: when `data` changes from outside while a row is dragged (for example a quick second drop), the row's pending move is dropped. The drag stays active, but its drop is a cancel: the row snaps back to its own slot, with no `onReorder`. Before, `onReorder` got the old order mapped onto the new data, so an item was lost. A new array with the same keys (a refetch) doesn't count as a change.
 
 
 ## [1.1.0] - 2026-03-23
