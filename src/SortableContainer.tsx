@@ -116,6 +116,8 @@ export const SortableContainer = ({
     instantClearSV,
     shiftsValidSV,
     getSlotFromPosition,
+    keyExtractor,
+    itemMeasurements,
   } = sortable._internal;
 
   // Access hover SharedValues from DraxContext for deferred clearing.
@@ -140,6 +142,9 @@ export const SortableContainer = ({
   const scrollStateRef = useRef(AutoScrollDirection.None);
   const scrollTimerRef = useRef<AutoScrollTimer>({});
   const draggedToIndex = useRef<number | undefined>(undefined);
+  /** Key of this list's row being dragged; its index can go stale if `data`
+   *  changes mid-drag, and DraxList's cells are keyed by index. */
+  const draggedKeyRef = useRef<string | undefined>(undefined);
   const jitterExceededRef = useRef(false);
   // Track last receiver that triggered a reorder to prevent oscillation.
   // After moveDraggedItem inserts at position R, the receiver shifts to R-1.
@@ -386,7 +391,10 @@ export const SortableContainer = ({
       toPayload !== undefined &&
       computeFingerDisplacement(eventData) < FINGER_JITTER_THRESHOLD
     ) {
-      return undefined;
+      // The data changed mid-drag (the drag's indices were cleared): the
+      // dragged cell may now show another row, so snap back by the row's key.
+      const dataChanged = !externalDrag && dragStartIndexRef.current === undefined;
+      return dataChanged ? getDraggedRowSnapTarget(fromOriginalIndex) : undefined;
     }
 
     // Reorder happened — return snap target. Don't commit yet;
@@ -419,8 +427,17 @@ export const SortableContainer = ({
     }
 
     // No receiver — snap back to the dragged item's current position
+    return getDraggedRowSnapTarget(fromOriginalIndex);
+  };
+
+  /** Absolute position of the dragged row, found by its key (cells may be
+   *  keyed by index, so the dragged cell can show another row after a data
+   *  change). */
+  const getDraggedRowSnapTarget = (fromOriginalIndex: number) => {
     const containerMeasurements = containerMeasurementsRef.current;
-    const fromMeas = getMeasurementByOriginalIndex(fromOriginalIndex);
+    const fromMeas = draggedKeyRef.current !== undefined
+      ? itemMeasurements.current.get(draggedKeyRef.current)
+      : getMeasurementByOriginalIndex(fromOriginalIndex);
     if (fromMeas && containerMeasurements) {
       return {
         x: containerMeasurements.x + fromMeas.x - scrollPositionJSRef.current.x,
@@ -443,6 +460,7 @@ export const SortableContainer = ({
     freezeScroll();
 
     const { dragged } = eventData;
+    draggedKeyRef.current = undefined;
 
     // No guard on draggedItem.value — Reanimated 4 doesn't reliably sync
     // SharedValue writes from runOnUI worklets, so the value may be stale.
@@ -455,6 +473,8 @@ export const SortableContainer = ({
     ) {
       const { index, originalIndex } = dragged.payload;
       setDraggedItem(originalIndex);
+      const startItem = rawData[originalIndex];
+      if (startItem !== undefined) draggedKeyRef.current = keyExtractor(startItem, originalIndex);
       // Initialize pending order BEFORE setting display index.
       // initPendingOrder copies the committed visual order into pendingOrderRef.
       initPendingOrder();
