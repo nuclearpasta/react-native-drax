@@ -85,7 +85,8 @@ const ITEMS = ['A', 'B', 'C'];
 function renderList(
   onExternalDrop?: jest.Mock,
   items = ITEMS,
-  isMeasured = (_index: number) => true
+  isMeasured = (_index: number) => true,
+  numColumns = 1
 ) {
   mockSlots = [];
   let props = {} as Props;
@@ -99,14 +100,15 @@ function renderList(
       keyExtractor: (item: string) => item,
       onReorder: () => {},
       onExternalDrop,
+      numColumns,
     });
     items.forEach((key, index) => {
       if (!isMeasured(index)) return;
       sortable._internal.itemMeasurements.current.set(key, {
         key,
         index,
-        x: 0,
-        y: index * 60,
+        x: (index % numColumns) * 110,
+        y: Math.floor(index / numColumns) * 60,
         width: 100,
         height: 50,
       } as SortableItemMeasurement);
@@ -130,7 +132,7 @@ const foreignPayload = { blankId: 7 };
 function dropAt(
   props: Props,
   y: number,
-  overrides: { parentId?: string; payload?: unknown; ratioY?: number } = {}
+  overrides: { parentId?: string; payload?: unknown; ratioY?: number; x?: number } = {}
 ) {
   const dragged = {
     id: 'blank',
@@ -143,7 +145,7 @@ function dropAt(
     dragged,
     receiver: { id: LIST_ID, payload: undefined },
     dragTranslation: { x: 500, y: 500 },
-    monitorOffset: { x: 50, y },
+    monitorOffset: { x: overrides.x ?? 50, y },
     monitorOffsetRatio: { x: 0.5, y: overrides.ratioY ?? y / 170 },
   } as unknown as DraxMonitorDragDropEventData);
 }
@@ -219,6 +221,22 @@ describe('onExternalDrop', () => {
       const onExternalDrop = jest.fn();
       dropAt(renderList(onExternalDrop, LONG, (i) => i >= 10), 2 * 60 + 10, { ratioY: 0.5 });
       expect(onExternalDrop).not.toHaveBeenCalled();
+    });
+  });
+
+  // Vertical 3-column grid of 5 cells (100x50, 10pt gaps): row 0 is A B C,
+  // row 1 (y 60-110) is D E.
+  describe('on a 3-column grid', () => {
+    const CELLS = ['A', 'B', 'C', 'D', 'E'];
+
+    it.each([
+      ['inside the left half of D', 80, 3],
+      ['below the last row under the left half of D', 140, 5],
+    ])('fires with toIndex for a drop %s', (_, y, toIndex) => {
+      const onExternalDrop = jest.fn();
+      dropAt(renderList(onExternalDrop, CELLS, () => true, 3), y, { x: 20, ratioY: 0.9 });
+      expect(onExternalDrop).toHaveBeenCalledTimes(1);
+      expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(toIndex);
     });
   });
 

@@ -323,12 +323,18 @@ export const SortableContainer = ({
     const measurements = Array.from({ length: itemCount }, (_, i) =>
       getMeasurementByOriginalIndex(i)
     );
+    const main = (p: { x: number; y: number }) => (horizontal ? p.x : p.y);
     if (measurements.every((meas) => meas !== undefined)) {
+      // Past the far edge of the last row: append. getSlotFromPosition keeps
+      // the last row there, and a grid's isAfter only checks x.
+      const farEdge = Math.max(
+        ...measurements.map((m) => main(m) + (horizontal ? m.width : m.height))
+      );
+      if (main(pos) > farEdge) return itemCount;
       const slot = getSlotFromPosition(pos, itemCount);
       const meas = measurements[slot];
       return slot + (meas && isAfter(meas) ? 1 : 0);
     }
-    const main = (p: { x: number; y: number }) => (horizontal ? p.x : p.y);
     for (let i = 0; i < itemCount; i++) {
       const meas = measurements[i];
       if (!meas) continue;
