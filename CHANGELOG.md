@@ -19,6 +19,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 - (BREAKING-TS) `DraxContextValue.rootViewRef` is now a Reanimated `AnimatedRef<View>` instead of `{ current: HostInstance | null }`, so the root view can be measured on the UI thread at drag start. `.current` still holds the host view.
 - `autoScrollIntervalLength` is now honoured by `DraxScrollView` and sortable lists (it was ignored and the interval was fixed at 250 ms).
+- (BREAKING) Sortable lists (not board columns) fire `onReorder` at release, as 0.11 did, instead of about 350 ms later after the snap animation. The rows still move to their new positions in the list's render at snap end, so `renderItem`'s `info.index` reflects the pre-drop order until the snap ends. Number rows from your own data (for example `data.indexOf(item)`), not from `info.index`.
 - A foreign drag over a sortable list (a `DraxView`, or an item from a list outside its board) no longer auto-scrolls the list, tracks slots, fires `onDragPositionChange` or shows the drop indicator. Board columns still react to items from other columns of the same board.
 - Behaviour change: receivers are clipped to their parents' visible area again, as in 0.11. A receiver inside a parent view or list (e.g. a list row scrolled out of view) no longer gets drops outside that parent's visible area, so a drop on a view next to an auto-scrolled list reaches that view instead of a hidden row. The `contain` hit test now needs the receiver's visible part to contain the dragged view's whole rect.
 - (BREAKING) Sortable lists test the auto-scroll edge band at the finger, as 0.11 did, instead of at the hover's centre. Picking up a row that is cut off at the list edge by its visible part no longer starts auto-scrolling. The other way round, when the list is scrolled, grabbing a fully visible edge row near its outer edge now auto-scrolls once the finger moves 5 px, as 0.11 did. `DraxScrollView` and the `monitorOffset` / `monitorOffsetRatio` event fields are unchanged.
@@ -28,6 +29,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - Drag handles: the hover no longer lands one slot off when a `dragHandle` sortable item with permanent shifts is grabbed by its `DraxHandle`
 - Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover
 - Repeated drags no longer freeze the UI for seconds: drag updates only reach the JS thread when the receiver or monitors change or a continuous callback needs them, and a drop no longer waits behind a backlog of drag-over work
+- Sortable lists: when `data` changes from outside while a row is dragged (for example a quick second drop), the row's pending move is dropped. The drag stays active, but its drop is a cancel: the row snaps back to its own slot, with no `onReorder`. Before, `onReorder` got the old order mapped onto the new data, so an item was lost. A new array with the same keys (a refetch) doesn't count as a change, and rows already slid aside stay put.
 
 ## [1.1.0] - 2026-03-23
 
