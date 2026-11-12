@@ -125,6 +125,7 @@ describe('useSortableList flushVisualOrder', () => {
   });
 
   it('applies a mid-drag echo when that drag is cancelled', () => {
+    jest.useFakeTimers();
     const update = render(items('ABC'));
     const echoed = drop([2, 1, 0]);
 
@@ -137,6 +138,10 @@ describe('useSortableList flushVisualOrder', () => {
       handle._internal.cancelDrag();
       handle._internal.resetDraggedItem();
     });
+    // The flush waits a frame, so a drag starting in the same tick blocks it.
+    expect(handle.data).not.toBe(echoed);
+    act(() => jest.runOnlyPendingTimers());
+    jest.useRealTimers();
     expect(handle.data).toBe(echoed);
     expect(handle._internal.committedOrderRef.current).toEqual([]);
     expect(handle._internal.shiftsRef.value).toEqual({});

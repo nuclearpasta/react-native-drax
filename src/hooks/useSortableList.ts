@@ -649,8 +649,11 @@ export const useSortableList = <T,>(
     dragStartIndexRef.current = undefined;
     pendingOrderRef.current = [];
     // A cancelled drag may have deferred a flush for an echo that
-    // arrived mid-drag; apply it now that the drag is over.
-    flushIfReady();
+    // arrived mid-drag; apply it now that the drag is over. Deferred a
+    // frame: when a new drag cancels this one's snap, finalizeDrag runs
+    // inside its handleDragStart, before its onMonitorDragStart fills
+    // pendingOrderRef, so a sync flush would land under the new drag.
+    requestAnimationFrame(flushIfReady);
   };
 
   /**
