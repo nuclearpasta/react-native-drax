@@ -387,6 +387,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
             height: measurementsRef.current.height,
           }
         : undefined,
+      payload: props.dragPayload ?? props.payload,
     });
   } else {
     renderedContent = children;
