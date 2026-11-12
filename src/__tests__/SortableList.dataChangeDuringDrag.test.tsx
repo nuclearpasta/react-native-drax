@@ -178,7 +178,7 @@ const drop = (id: string) => {
   receiver = '';
   const snapTarget = mockCtx.hoverPositionSV.snapTarget;
   act(() => mockCtx.hoverPositionSV.finishSnap());
-  settle(); // runs the rAF that sends onReorder
+  settle(); // runs the rAF that requests the flush (onReorder already fired at release)
   return snapTarget;
 };
 const reorderData = (onReorder: jest.Mock) =>
