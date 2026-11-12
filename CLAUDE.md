@@ -23,6 +23,7 @@ Drag-and-drop framework for React Native (iOS, Android, Web). Current package ve
 - **JS mirrors**: `shiftsJSRef` / `scrollPositionJSRef` in `_internal` mirror `shiftsRef` / `scrollPosition` for JS-thread reads (e.g. `SortableItem` `onMeasure`). A JS `.value =` write reaches the UI thread asynchronously, so a JS `.value` read can be stale and warns during render (#249). Set the mirror next to every JS-side shifts write, including before `runOnUI` blocks.
 - **Data ownership**: Library commits reorders internally via `commitReorder`. `onReorder` is a notification — parent stores data but library already committed it. When parent echoes data back, useLayoutEffect detects the match and skips (no double-render).
 - `finalizeDrag` reaches `SortableItem` through `_internal.onItemSnapEndRef` (stable ref, read at call time). `_internal` is rebuilt every render, so a plain property captured at render goes stale when the list owner re-renders mid-drag (#236/#296).
+- **Exit undoes the pending move**: when the list's own item leaves a non-board list, `onMonitorDragExit` calls `restoreStartOrder` (same as the cancel path), so a drop outside reorders nothing; re-entry recomputes the slot. Board columns skip it (they transfer through exit). Test: `src/__tests__/SortableContainer.exitUndo.test.tsx`.
 - Jest can render the real sortable hook/container/item with `react-test-renderer`: stub `DraxView`, Reanimated, worklets, and `useDraxContext`. See `src/__tests__/SortableItem.snapEnd.test.tsx`.
 
 ### Back-to-Back Drags (#250)
@@ -206,7 +207,7 @@ All interactive elements have `testID` for identification via `ui_describe_all` 
 |--------|---------------|----------|
 | Home | `example-{route}` | `example-color-drag-drop`, `example-drag-handles` |
 | Color Drag/Drop | `color-block-{color}`, `receiving-zone`, `staging-zone`, `*-clear-button` | `color-block-red`, `receiving-zone-clear-button` |
-| Reorderable List | `sortable-item-{letter}`, `sortable-list-container` | `sortable-item-A`, `sortable-item-Z` |
+| Reorderable List | `sortable-item-{letter}`, `sortable-list-container`, `remove-zone` | `sortable-item-A`, `sortable-item-Z` |
 | Reorderable Grid | `grid-tile-{number}`, `sortable-grid-container` | `grid-tile-1`, `grid-tile-30` |
 | Mixed-Size Grid | `mixed-tile-{id}`, `mixed-grid-container` | `mixed-tile-weather`, `mixed-tile-mail` |
 | Drag Handles | `handle-item-{id}`, `drag-handles-container` | `handle-item-item-0` |
