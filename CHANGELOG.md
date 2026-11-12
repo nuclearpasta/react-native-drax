@@ -14,6 +14,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - `dragTouchPosition` on drag end event data (`onDragEnd`, `onDragDrop`, `onReceiveDragDrop`, `onMonitorDragEnd`, `onMonitorDragDrop`, cancelled `onReceiveDragExit`): the finger position at release, relative to the `DraxProvider` root view. `dragAbsolutePosition` is unchanged (#282)
 - **Auto-scroll config**: `autoScrollEnabled` (default `true`) and `autoScrollInitialDelay` (ms in the edge band before the first jump, default `0`) on `DraxScrollView`, `useSortableList` and `DraxList`. `DraxList` now forwards all auto-scroll props to `useSortableList`.
 - **`draggedItemStyle`** on `DraxList` and `useSortableList`: style of the dragged row's in-list placeholder while its hover copy moves (default `{ opacity: 0 }`). Pass `{ opacity: 0.2 }` for a faint placeholder like 0.11. The placeholder stays at its pickup slot while the finger is down and moves to the target slot on release. Use visual props only (no layout props).
+- **Render payload**: `DraxRenderContentProps.payload` (`dragPayload ?? payload`, the value drag events carry as `dragged.payload`) is passed to `renderContent` and `renderHoverContent`. Sortable rows include `item`, `index` and `originalIndex`.
 
 ### Changed
 
@@ -29,6 +30,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover
 - Repeated drags no longer freeze the UI for seconds: drag updates only reach the JS thread when the receiver or monitors change or a continuous callback needs them, and a drop no longer waits behind a backlog of drag-over work
 - Gesture Handler v3: the first long-press after `draggable` flips from `false` to `true` now starts a drag; `draggable` and `longPressDelay` changes reach the pan handler in the same render (#267)
+- Sortable lists: a row that crosses a neighbour and then leaves its list no longer reorders the list when it is released on another receiver, or over nothing more than 100 pt outside the list (the monitor hit-test padding, `MONITOR_HIT_TEST_PADDING` in `src/math.ts`). Leaving the list undoes the pending move and the neighbours slide back, as in 0.11; a row brought back in moves from its start slot again. A release over nothing within that 100 pt padding still counts as a drop in the list (the row takes its last hovered slot and `onReorder` fires), as before. Board columns are unchanged.
 
 ## [1.1.0] - 2026-03-23
 

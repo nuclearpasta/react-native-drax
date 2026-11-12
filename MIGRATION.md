@@ -480,7 +480,7 @@ Other places that used `protocol`:
 | 0.11 | 1.2 |
 |---|---|
 | `dragged.data.protocol.<callback or flag>` | **No equivalent.** Other views' props are not exposed in events. Keep what you need in the payload. |
-| `viewState.data.protocol.payload` in `renderContent` | **No equivalent** on `DraxViewState`. Use the value from your render scope. You already pass it as `payload`. |
+| `viewState.data.protocol.payload` in `renderContent` / `renderHoverContent` | **From 1.2.0:** `props.payload` (`dragPayload ?? payload`). Sortable list rows include `item`, `index` and `originalIndex`, so a row's hover can reach its item. |
 | `dynamicReceptiveCallback({ foundView, excludedView })` with `foundView.data.protocol.payload` | `dynamicReceptiveCallback({ targetId, targetMeasurements, draggedId, draggedPayload, draggedParentId? })`. `excludedView.parentId` is `draggedParentId` (**from 1.2.0**; not in earlier 1.x). The receiver's own payload is in your closure. For simple payload checks, use `acceptsDrag(draggedPayload)`. |
 
 ### 5.2 Event measurements
@@ -766,6 +766,26 @@ use the `hover*Style` props).
   to the background mid-drag) is not a drop. It calls `onDragEnd` with
   `cancelled: true`, and lists put the item back in its start position without
   calling `onReorder`.
+- **Leaving the list mid-drag.** As in 0.11, when a row leaves its list the
+  list undoes the row's pending move and the neighbours slide back. The list
+  keeps monitoring a drag until the dragged row's centre (the finger with
+  `collisionAlgorithm: 'touch'`) is more than 100 pt outside the list's
+  visible (clipped) edges (the monitor hit-test padding,
+  `MONITOR_HIT_TEST_PADDING` in `src/math.ts`), so "leaving" means going past
+  that padding.
+  - Released on another receiver (anywhere, including within the padding), the
+    row does not reorder the list and `onReorder` is not called. Within the
+    padding the list's `onDragEnd` still fires, with `toIndex` set to the
+    row's start index; on a receiver past the padding it doesn't fire.
+  - Released over nothing more than 100 pt outside the list, `onReorder` is not
+    called and, as in 0.11, the list's `onDragEnd` doesn't fire.
+  - Released over nothing within the 100 pt padding, it still counts as a drop
+    in the list: the row takes the slot it last hovered (for example the last
+    slot, just below the list), `onDragEnd` reports that `toIndex` and
+    `onReorder` fires, as before this change.
+  Brought back in, the row moves from its start slot again. A receptive view
+  nested inside a row counts as outside the list. Board columns still transfer
+  items when they leave a column.
 - **When `onReorder` fires.** It fires after the snap animation, not at
   release. If you showed the new order at release, move that code into
   `onReorder`.
