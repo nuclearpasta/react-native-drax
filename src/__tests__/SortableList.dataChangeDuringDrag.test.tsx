@@ -16,11 +16,13 @@ import type { DraxViewProps, SortableListHandle, SpatialEntry } from '../types';
 // queues drained by the test.
 
 const mockDraxProps = new Map<string, DraxViewProps>();
+const mockMeasureCalls: string[] = [];
 jest.mock('../DraxView', () => ({
   DraxView: (props: DraxViewProps & { children?: ReactNode }) => {
     const payload = props.payload as { item?: string } | undefined;
     mockDraxProps.set(props.monitoring ? props.id ?? '' : payload?.item ?? props.id ?? '', props);
     if (props.id) mockDraxProps.set(props.id, props); // index-keyed cells: the view id stays with the cell
+    if (payload?.item) props.registration?.({ id: props.id ?? '', measure: () => mockMeasureCalls.push(payload.item!) });
     return props.children ?? null;
   },
 }));
@@ -312,6 +314,26 @@ describe('useSortableList: data changes from outside during a row drag', () => {
     move(slot(1), 'A');
     move(slot(2), 'C');
     expect(onDragPositionChange.mock.calls.map(([e]) => e.toIndex)).toEqual([1, 2]);
+  });
+
+  it('a transform-detected measure after a drop (stale shift) -> measured once more after 2 frames, then stops', () => {
+    setup();
+    start('A', slot(0));
+    move(slot(0), 'A');
+    move(slot(1), 'B');
+    drop('A');
+    mockMeasureCalls.length = 0;
+    const measureB = (y: number) => act(() => mockDraxProps.get('B')!.onMeasure!(
+      { x: 0, y, width: 100, height: ROW, _transformDetected: 1 } as never
+    ));
+    // B's committed shift is -ROW (layout y ROW, shown at 0).
+    measureB(ROW / 2); // still rendered mid-shift: stored as y 75
+    act(() => { jest.runOnlyPendingTimers(); jest.runOnlyPendingTimers(); });
+    expect(mockMeasureCalls).toEqual(['B']);
+    measureB(0); // the follow-up, shift rendered
+    act(() => { jest.runOnlyPendingTimers(); jest.runOnlyPendingTimers(); });
+    expect(mockMeasureCalls).toEqual(['B']);
+    expect(sortable._internal.itemMeasurements.current.get('B')?.y).toBe(ROW);
   });
 
   it('data reordered mid-drag (same length), then A moved -> no onReorder', () => {
