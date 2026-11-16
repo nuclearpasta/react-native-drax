@@ -155,6 +155,7 @@ export const SortableContainer = ({
 
   const finalizeDrag = () => {
     unfreezeScroll();
+    sortable._internal.dragActiveRef.current = false;
 
     if (boardContext?.boardInternal.transferState.current?.targetId) {
       boardContext.boardInternal.finalizeTransfer?.();
@@ -217,6 +218,7 @@ export const SortableContainer = ({
         requestAnimationFrame(() => {
           onReorder(reorderEvent);
           if (boardContext) {
+            // Board keeps the delay: the hover covers the transfer transition.
             setTimeout(() => {
               sortable._internal.flushVisualOrder();
             }, 300);
