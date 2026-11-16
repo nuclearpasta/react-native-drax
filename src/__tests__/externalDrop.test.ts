@@ -92,7 +92,13 @@ function renderList(
     horizontal = false,
     collisionAlgorithm,
     height = 170,
-  }: { horizontal?: boolean; collisionAlgorithm?: string; height?: number } = {}
+    scrollY = 0,
+  }: {
+    horizontal?: boolean;
+    collisionAlgorithm?: string;
+    height?: number;
+    scrollY?: number;
+  } = {}
 ) {
   container = { width: 330, height };
   mockSlots = [];
@@ -121,6 +127,7 @@ function renderList(
         height: 50,
       } as SortableItemMeasurement);
     });
+    sortable._internal.scrollPositionJSRef.current = { x: 0, y: scrollY };
     const element = SortableContainer({
       sortable: sortable as SortableListHandle<unknown>,
       scrollRef: { current: null },
@@ -268,6 +275,36 @@ describe('onExternalDrop', () => {
       const onExternalDrop = jest.fn();
       dropAt(renderList(onExternalDrop, CELLS, () => true, 3), y, { x: 20 });
       expect(onExternalDrop).toHaveBeenCalledTimes(1);
+      expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(toIndex);
+    });
+  });
+
+  // Full last row (D E F, y 60-110): empty space below it appends under every
+  // column, not only past the last cell's midpoint.
+  describe('below a full last row on a 3-column grid', () => {
+    const CELLS = ['A', 'B', 'C', 'D', 'E', 'F'];
+    it.each([
+      ['the first column', 50],
+      ['the second column', 160],
+      ['the third column', 270],
+    ])('appends for a drop under %s', (_, x) => {
+      const onExternalDrop = jest.fn();
+      dropAt(renderList(onExternalDrop, CELLS, () => true, 3), 140, { x });
+      expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(6);
+    });
+  });
+
+  // 12 cells in 4 rows (content 0-230) in a 170pt viewport scrolled by 120:
+  // container y 0 is content y 120 (row 2, G H I).
+  describe('on a scrolled 3-column grid', () => {
+    const CELLS = 'ABCDEFGHIJKL'.split('');
+    it.each([
+      ['the right half of H', 190, 25, 8],
+      ['the left half of K', 130, 85, 10],
+      ['below the last row', 50, 140, 12],
+    ])('fires with toIndex for a drop on %s', (_, x, y, toIndex) => {
+      const onExternalDrop = jest.fn();
+      dropAt(renderList(onExternalDrop, CELLS, () => true, 3, { scrollY: 120 }), y, { x });
       expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(toIndex);
     });
   });
