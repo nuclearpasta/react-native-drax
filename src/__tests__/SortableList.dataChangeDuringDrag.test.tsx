@@ -111,10 +111,10 @@ const Dispatcher = () => {
 
 let sortable: SortableListHandle<string>;
 let setListData: (next: string[]) => void = () => {};
-const List = ({ onReorder }: { onReorder: jest.Mock }) => {
+const List = ({ onReorder, onDragPositionChange }: { onReorder: jest.Mock; onDragPositionChange?: jest.Mock }) => {
   const [data, setData] = useState<string[]>(KEYS);
   setListData = setData;
-  const handle = useSortableList({ id: 'list', data, keyExtractor: (i) => i, onReorder });
+  const handle = useSortableList({ id: 'list', data, keyExtractor: (i) => i, onReorder, onDragPositionChange });
   useLayoutEffect(() => { sortable = handle; });
   return (
     <SortableContainer sortable={handle} scrollRef={{ current: null }}>
@@ -144,11 +144,11 @@ const measureAll = (keys: string[]) => {
 };
 
 let root: ReturnType<typeof create> | undefined;
-const setup = (indexKeyed = false) => {
+const setup = (indexKeyed = false, onDragPositionChange?: jest.Mock) => {
   cellId = indexKeyed ? (_key, index) => `cell${index}` : (key) => key;
   mockDraxProps.clear();
   const onReorder = jest.fn();
-  act(() => { root = create(<><Dispatcher /><List onReorder={onReorder} /></>); });
+  act(() => { root = create(<><Dispatcher /><List onReorder={onReorder} onDragPositionChange={onDragPositionChange} /></>); });
   measureAll(KEYS);
   return { onReorder };
 };
@@ -271,6 +271,47 @@ describe('useSortableList: data changes from outside during a row drag', () => {
     expect(shifts()).toEqual(before); // B and C stay slid aside, not {}
     drop('A');
     expect(reorderData(onReorder)).toEqual([['B', 'C', 'A', 'D', 'E']]);
+  });
+
+  // A refetch re-renders every row, so each re-measures (via measure(), which
+  // includes the shift transform) while B is still sliding up: B reads as
+  // y 75, not its layout y 50.
+  const refetchWithMidShiftMeasure = () => {
+    act(() => setListData([...KEYS]));
+    act(() => KEYS.forEach((k, i) => mockDraxProps.get(k)!.onMeasure!(
+      { x: 0, y: k === 'B' ? ROW / 2 : i * ROW, width: 100, height: ROW, _transformDetected: k === 'B' ? 1 : 0 } as never
+    )));
+    settle();
+  };
+
+  it('same-key refetch while the finger rests on slot 2 -> the drop goes to slot 2, not 1', () => {
+    const { onReorder } = setup();
+    start('A', slot(0));
+    move(slot(0), 'A');
+    move(slot(1), 'B');
+    move(slot(2), 'C'); // the finger stops here
+    refetchWithMidShiftMeasure();
+    move(slot(2), 'C'); // the update resent after the refetch, same position
+    drop('A');
+    expect(reorderData(onReorder)).toEqual([['B', 'C', 'A', 'D', 'E']]);
+  });
+
+  it('same-key refetch mid-drag -> the next drag\'s position changes follow the finger', () => {
+    const onDragPositionChange = jest.fn();
+    const { onReorder } = setup(false, onDragPositionChange);
+    start('A', slot(0));
+    move(slot(0), 'A');
+    move(slot(1), 'B');
+    refetchWithMidShiftMeasure();
+    drop('A');
+    expect(reorderData(onReorder)).toEqual([['B', 'A', 'C', 'D', 'E']]);
+    // The parent does not echo: rows keep their layout, shifts show B A C D E.
+    onDragPositionChange.mockClear();
+    start('B', slot(0));
+    move(slot(0), 'B');
+    move(slot(1), 'A');
+    move(slot(2), 'C');
+    expect(onDragPositionChange.mock.calls.map(([e]) => e.toIndex)).toEqual([1, 2]);
   });
 
   it('data reordered mid-drag (same length), then A moved -> no onReorder', () => {

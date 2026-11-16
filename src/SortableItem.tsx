@@ -141,6 +141,7 @@ const SortableItemInner = ({
     scrollPositionJSRef,
     onItemSnapEndRef,
     fixedKeys,
+    dragStartIndexRef,
   } = sortable._internal;
 
   // Get hoverReadySV and draggedIdSV from DraxContext (provider-level SharedValues)
@@ -239,7 +240,12 @@ const SortableItemInner = ({
         }}
         onMeasure={(measurements) => {
           draxViewProps.onMeasure?.(measurements);
-          if (itemKey && measurements) {
+          // Slot boundaries use layout positions fixed for the drag. A
+          // re-render mid-drag (e.g. a same-key refetch) re-measures rows
+          // mid-shift, so keep a row's measurement while its list drags.
+          const keep = dragStartIndexRef.current !== undefined
+            && !!itemKey && itemMeasurements.current.has(itemKey);
+          if (itemKey && measurements && !keep) {
             // Subtract Drax shift transforms when they're included in the
             // measurement. On web: measureLayout always includes transforms.
             // On native: measureLayout ignores transforms, UNLESS DraxView
