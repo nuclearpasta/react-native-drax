@@ -11,6 +11,7 @@ import { useDraxContext, useDraxId } from './hooks';
 import { useDragGesture } from './hooks/useDragGesture';
 import { isDraggable as computeIsDraggable } from './hooks/useSpatialIndex';
 import { useViewStyles } from './hooks/useViewStyles';
+import { isTransformPositioned } from './math';
 import { defaultLongPressDelay } from './params';
 import type {
   DraxViewMeasurementHandler,
@@ -240,8 +241,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
             const parentScroll = parentData?.scrollPosition?.value ?? { x: 0, y: 0 };
             const visualX = pageX - parentPageX + parentScroll.x;
             const visualY = pageY - parentPageY + parentScroll.y;
-            // If visual position differs from layout, the view is transform-positioned.
-            if (Math.abs(visualX - layoutX) > 1 || Math.abs(visualY - layoutY) > 1) {
+            if (isTransformPositioned({ x: layoutX, y: layoutY }, { x: visualX, y: visualY })) {
               finalizeMeasurement(visualX, visualY, width!, height!, handler, 1);
             } else {
               finalizeMeasurement(layoutX, layoutY, width!, height!, handler);
