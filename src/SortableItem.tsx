@@ -141,6 +141,7 @@ const SortableItemInner = ({
     scrollPositionJSRef,
     onItemSnapEndRef,
     fixedKeys,
+    dragStartIndexRef,
   } = sortable._internal;
 
   // Get hoverReadySV and draggedIdSV from DraxContext (provider-level SharedValues)
@@ -165,6 +166,8 @@ const SortableItemInner = ({
   // can compare it with draggedIdSV on the UI thread.
   const viewIdSV = useSharedValue('');
 
+  /** A follow-up measure is pending (see onMeasure). */
+  const remeasureRef = useRef(false);
   const measureFnRef = useRef<
     ((handler?: DraxViewMeasurementHandler) => void) | null
   >(null);
@@ -239,7 +242,24 @@ const SortableItemInner = ({
         }}
         onMeasure={(measurements) => {
           draxViewProps.onMeasure?.(measurements);
-          if (itemKey && measurements) {
+          // A measurement that includes transforms (web, or measure() when
+          // transform-detected) includes the row's shift as
+          // rendered, which can lag shiftsJSRef: mid-animation, or just after
+          // a drop clears the shifts. Slot boundaries are fixed for a drag, so
+          // keep the row's measurement while its list drags; otherwise
+          // measure once more after the cleared shift has rendered.
+          const transformed = Platform.OS === 'web' || !!measurements?._transformDetected;
+          const keep = transformed && dragStartIndexRef.current !== undefined
+            && !!itemKey && itemMeasurements.current.has(itemKey);
+          if (transformed && !keep) {
+            if (remeasureRef.current) {
+              remeasureRef.current = false;
+            } else {
+              remeasureRef.current = true;
+              requestAnimationFrame(() => requestAnimationFrame(() => measureFnRef.current?.()));
+            }
+          }
+          if (itemKey && measurements && !keep) {
             // Subtract Drax shift transforms when they're included in the
             // measurement. On web: measureLayout always includes transforms.
             // On native: measureLayout ignores transforms, UNLESS DraxView
@@ -247,7 +267,7 @@ const SortableItemInner = ({
             // switched to measure() — flagged via _transformDetected.
             let adjX = measurements.x;
             let adjY = measurements.y;
-            if (Platform.OS === 'web' || measurements._transformDetected) {
+            if (transformed) {
               const currentShift = shiftsJSRef.current[itemKey];
               if (currentShift) {
                 adjX -= currentShift.x;

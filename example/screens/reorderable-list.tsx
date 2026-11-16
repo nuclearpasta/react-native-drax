@@ -68,6 +68,11 @@ export default function ReorderableList() {
       setAlphaData((data) => [added, ...data]);
     }, 1000);
   };
+  // Repro for a same-key refetch during a drag: tap, then drag a row and
+  // rest on a slot as the new array lands. The drop goes to that slot.
+  const refetchSoon = () => {
+    setTimeout(() => setAlphaData((data) => [...data]), 1000);
+  };
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
 
@@ -117,6 +122,15 @@ export default function ReorderableList() {
         >
           <Text style={[styles.presetButtonText, { color: theme.muted }]}>
             Add a row in 1 s (then drag)
+          </Text>
+        </Pressable>
+        <Pressable
+          testID="refetch-soon"
+          onPress={refetchSoon}
+          style={[styles.prependButton, { backgroundColor: theme.lineStrong }]}
+        >
+          <Text style={[styles.presetButtonText, { color: theme.muted }]}>
+            Refetch in 1 s (then drag)
           </Text>
         </Pressable>
         <DraxList
