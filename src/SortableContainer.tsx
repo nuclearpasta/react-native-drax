@@ -183,6 +183,7 @@ export const SortableContainer = ({
 
   const finalizeDrag = () => {
     unfreezeScroll();
+    sortable._internal.dragActiveRef.current = false;
     const sentAtRelease = reorderSentAtReleaseRef.current;
     reorderSentAtReleaseRef.current = false;
 

@@ -424,6 +424,126 @@ describe('second drag racing the first drag snap (#250)', () => {
   );
 });
 
+// Controlled parent: it stores onReorder's data and echoes it back in the
+// same tick. onReorder fires at release, so the echo renders during the snap.
+const ControlledList = ({ onReorder, onSnapEnd }: { onReorder: jest.Mock; onSnapEnd: jest.Mock }) => {
+  const [data, setData] = useState(KEYS);
+  const handle = useSortableList({
+    id: 'list',
+    data,
+    keyExtractor: (item) => item,
+    onReorder: (e) => {
+      onReorder(e);
+      setData(e.data);
+    },
+  });
+  useLayoutEffect(() => {
+    sortable = handle;
+  });
+  return (
+    <SortableContainer sortable={handle} scrollRef={{ current: null }}>
+      {handle.data.map((item, index) => (
+        <SortableItem key={item} sortable={handle} index={index} onSnapEnd={() => onSnapEnd(item)}>
+          <Leaf />
+        </SortableItem>
+      ))}
+    </SortableContainer>
+  );
+};
+
+describe('second drag racing the first drag snap, controlled parent (#348)', () => {
+  beforeAll(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    jest.useFakeTimers();
+  });
+  beforeEach(() => {
+    mockDraxProps.clear();
+    mockUIQueue.length = 0;
+    mockJSQueue.length = 0;
+    Object.assign(mockCtx, {
+      hoverPositionSV: makeHoverPositionSV(),
+      hoverContent: null,
+    });
+    mockCtx.hoverReadySV.value = false;
+    mockCtx.dragPhaseSV.value = 'idle';
+    mockCtx.draggedIdSV.value = '';
+    mockCtx.spatialIndexSV.value = listSpatialIndex();
+  });
+  afterEach(() => {
+    act(() => ReactNative.unmountComponentAtNode(1));
+  });
+
+  it('drag 2 starts from the visual order when the echo flush is due before its first update', () => {
+    const onReorder = jest.fn();
+    const onSnapEnd = jest.fn();
+    act(() =>
+      ReactNative.render(
+        <>
+          <Dispatcher />
+          <ControlledList onReorder={onReorder} onSnapEnd={onSnapEnd} />
+        </>,
+        1
+      )
+    );
+    for (const key of KEYS) {
+      mockGestureId = key;
+      createDragGesture(key, sv(KEYS.indexOf(key) + 1) as never, sv(true) as never, sv(250) as never);
+    }
+    act(() =>
+      KEYS.forEach((key, i) =>
+        mockDraxProps.get(key)!.onMeasure!({ x: 0, y: i * ROW, width: 100, height: ROW } as never)
+      )
+    );
+    settle();
+
+    // Drag 1: A to slot 2. onReorder fires at release; the echo renders
+    // during the snap.
+    activate('A');
+    settle();
+    monitorStart('A', 2);
+    release('A', 2);
+    expect(onReorder).toHaveBeenCalledTimes(1);
+    expect(onReorder.mock.calls[0][0].data.join('')).toBe('BCADE');
+    expect(mockCtx.hoverPositionSV.snapping).toBe(true);
+    expect(visualOrder()).toBe('BCADE');
+
+    // Drag 2: D (slot 3) activates mid-snap. handleDragStart finalizes
+    // drag 1, then a frame passes before drag 2's first monitor update.
+    activate('D');
+    drainJS();
+    drainUI();
+    drainJS();
+    act(() => jest.runOnlyPendingTimers());
+    expect(onSnapEnd).toHaveBeenCalledWith('A');
+    expect(mockCtx.draggedIdSV.value).toBe('D');
+    expect(visualOrder()).toBe('BCADE');
+
+    monitorStart('D', 1);
+    expect(sortable._internal.dragStartIndexRef.current).toBe(3);
+    const pendingKeys = () =>
+      sortable._internal.pendingOrderRef.current.map((i) => sortable.data[i]).join('');
+    expect(pendingKeys()).toBe('BDCAE');
+    settle();
+    expect(pendingKeys()).toBe('BDCAE');
+    release('D', 1);
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+    // The flush's shift clear is queued when its render commits.
+    settle();
+
+    expect(onReorder).toHaveBeenCalledTimes(2);
+    expect(onReorder.mock.calls[1][0]).toMatchObject({
+      fromIndex: 3,
+      toIndex: 1,
+      fromItem: 'D',
+      data: ['B', 'D', 'C', 'A', 'E'],
+    });
+    expect(onSnapEnd).toHaveBeenCalledTimes(2);
+    expect(visualOrder()).toBe('BDCAE');
+    expect(sortable._internal.pendingOrderRef.current).toEqual([]);
+  });
+});
+
 // Board: column 1 (A B C) at x 0, column 2 (X Y) at x 200.
 const COL1 = ['A', 'B', 'C'];
 const COL2 = ['X', 'Y'];

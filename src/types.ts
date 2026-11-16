@@ -844,6 +844,9 @@ export interface SortableListInternal<T> {
    *  Stored as a ref so the latest finalizeDrag is always called,
    *  even if SortableItem has a stale _internal reference. */
   onItemSnapEndRef: RefObject<(() => void) | undefined>;
+  /** True while a drag of one of this list's items is active (item
+   *  onDragStart → finalizeDrag). Blocks the deferred flush. */
+  dragActiveRef: RefObject<boolean>;
   /** Current display index of the dragged item (updated during live reorder) */
   draggedDisplayIndexRef: RefObject<number | undefined>;
   /** Original display index where the drag started */
