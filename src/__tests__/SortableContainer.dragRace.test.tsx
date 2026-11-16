@@ -473,9 +473,7 @@ describe('second drag racing the first drag snap, controlled parent (#348)', () 
     act(() => ReactNative.unmountComponentAtNode(1));
   });
 
-  it('drag 2 starts from the visual order when the echo flush is due before its first update', () => {
-    const onReorder = jest.fn();
-    const onSnapEnd = jest.fn();
+  const mount = (onReorder: jest.Mock, onSnapEnd: jest.Mock) => {
     act(() =>
       ReactNative.render(
         <>
@@ -495,6 +493,12 @@ describe('second drag racing the first drag snap, controlled parent (#348)', () 
       )
     );
     settle();
+  };
+
+  it('drag 2 starts from the visual order when the echo flush is due before its first update', () => {
+    const onReorder = jest.fn();
+    const onSnapEnd = jest.fn();
+    mount(onReorder, onSnapEnd);
 
     // Drag 1: A to slot 2. onReorder fires at release; the echo renders
     // during the snap.
@@ -541,6 +545,35 @@ describe('second drag racing the first drag snap, controlled parent (#348)', () 
     expect(onSnapEnd).toHaveBeenCalledTimes(2);
     expect(visualOrder()).toBe('BDCAE');
     expect(sortable._internal.pendingOrderRef.current).toEqual([]);
+  });
+
+  it('a drag starting right after the flush keeps its shift clear instant until it moves', () => {
+    mount(jest.fn(), jest.fn());
+    activate('A');
+    settle();
+    monitorStart('A', 2);
+    release('A', 2);
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+    settle();
+    // The echo is flushed: rows sit at their real slots, shifts cleared at once.
+    expect(sortable.data.join('')).toBe('BCADE');
+    expect(sortable._internal.instantClearSV.value).toBe(true);
+
+    // Drag 2 starts before the cleared shifts have rendered. Rows measured
+    // now must not catch a shift animating out.
+    activate('D');
+    drainJS();
+    drainUI();
+    act(() => {
+      mockDraxProps.get('list')!.onMonitorDragStart!({
+        dragged: { parentId: 'list', payload: mockDraxProps.get('D')!.payload },
+      } as never);
+    });
+    expect(sortable._internal.instantClearSV.value).toBe(true);
+
+    act(() => sortable._internal.moveDraggedItem(1));
+    expect(sortable._internal.instantClearSV.value).toBe(false);
   });
 });
 
