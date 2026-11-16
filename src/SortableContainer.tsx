@@ -98,6 +98,7 @@ export const SortableContainer = ({
     onDragStart: onDragStartCallback,
     onDragPositionChange: onDragPositionChangeCallback,
     onDragEnd: onDragEndCallback,
+    onExternalDrop,
     onReorder,
     getMeasurementByOriginalIndex,
     dropTargetPositionSV,
@@ -159,6 +160,7 @@ export const SortableContainer = ({
 
   const finalizeDrag = () => {
     unfreezeScroll();
+    sortable._internal.dragActiveRef.current = false;
 
     if (boardContext?.boardInternal.transferState.current?.targetId) {
       boardContext.boardInternal.finalizeTransfer?.();
@@ -221,6 +223,7 @@ export const SortableContainer = ({
         requestAnimationFrame(() => {
           onReorder(reorderEvent);
           if (boardContext) {
+            // Board keeps the delay: the hover covers the transfer transition.
             setTimeout(() => {
               sortable._internal.flushVisualOrder();
             }, 300);
@@ -319,6 +322,22 @@ export const SortableContainer = ({
     return () => stopAutoScrollTimer(timer);
   }, []);
 
+  // ── Undo the pending move ───────────────────────────────────────────
+
+  /** Puts the dragged item back at its start slot and neighbours back at
+   *  their committed shifts, so finalizeDrag commits nothing. */
+  const restoreStartOrder = () => {
+    if (dragStartIndexRef.current === undefined) return;
+    initPendingOrder();
+    draggedDisplayIndexRef.current = dragStartIndexRef.current;
+    shiftsJSRef.current = committedShiftsRef.current;
+    shiftsRef.value = committedShiftsRef.current;
+    // Forget the last move, so the oscillation guard in onMonitorDragOver
+    // does not block a move back in after re-entry.
+    lastMoveReceiverRef.current = undefined;
+    lastMoveDirectionRef.current = 0;
+  };
+
   // ── Internal drag end handler ───────────────────────────────────────
 
   const handleInternalDragEnd = (
@@ -340,12 +359,7 @@ export const SortableContainer = ({
     // and finalizeDrag commits nothing. Neighbours animate back to their
     // committed slots with the snap (initPendingOrder keeps instantClearSV
     // false); finalizeDrag clears the drag state once the snap ends.
-    if (cancelled && totalDragEnd && dragStartIndexRef.current !== undefined) {
-      initPendingOrder();
-      draggedDisplayIndexRef.current = dragStartIndexRef.current;
-      shiftsJSRef.current = committedShiftsRef.current;
-      shiftsRef.value = committedShiftsRef.current;
-    }
+    if (cancelled && totalDragEnd) restoreStartOrder();
 
     const { dragged, receiver } = eventData;
     const draggedPayload = isSortableItemPayload(dragged.payload)
@@ -362,6 +376,16 @@ export const SortableContainer = ({
       : undefined;
     const toPayload =
       receiver?.parentId === id ? receiverPayload : undefined;
+    // Our own row dropped on a receiver outside the list while the list is
+    // still a monitor (within the hit-test padding): not a reorder. Only the
+    // list itself and its rows (parentId === id) count as inside, so a
+    // receptive view nested inside a row (its parent is the row's DraxView)
+    // counts as outside the list. A release over nothing within the padding
+    // has no receiver and still reorders to the last hovered slot.
+    const droppedOutside = totalDragEnd && !cancelled && !boardContext
+      && dragged.parentId === id && !!receiver
+      && receiver.id !== id && receiver.parentId !== id;
+    if (droppedOutside) restoreStartOrder();
 
     if (totalDragEnd) {
       onDragEndCallback?.({
@@ -384,6 +408,8 @@ export const SortableContainer = ({
       }
       draggedToIndex.current = undefined;
     }
+
+    if (droppedOutside) return undefined;
 
     // User hasn't moved — skip reorder, snap back to origin.
     // Don't clean up here — finalizeDrag handles it after snap completes.
@@ -498,6 +524,37 @@ export const SortableContainer = ({
     }
   };
 
+  const updateAutoScroll = (eventData: DraxMonitorEventData) => {
+    if (!autoScrollEnabled) {
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
+      return;
+    }
+    // Test the edge band at the finger, as 0.11 did, not at the hover centre:
+    // a row cut off at the edge, held by its visible part, must not scroll.
+    const { monitorOffset, monitorOffsetRatio } = eventData;
+    const shift = fingerFromCentre(eventData);
+    const containerLength = horizontal
+      ? containerMeasurementsRef.current?.width
+      : containerMeasurementsRef.current?.height;
+    const ratio =
+      shift && containerLength
+        ? ((horizontal ? monitorOffset.x + shift.x : monitorOffset.y + shift.y) /
+          containerLength)
+        : horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y;
+    if (ratio > autoScrollBackThreshold && ratio < autoScrollForwardThreshold) {
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
+    } else {
+      if (ratio >= autoScrollForwardThreshold) {
+        scrollStateRef.current = AutoScrollDirection.Forward;
+      } else if (ratio <= autoScrollBackThreshold) {
+        scrollStateRef.current = AutoScrollDirection.Back;
+      }
+      startScroll();
+    }
+  };
+
   const onMonitorDragOver = (eventData: DraxMonitorEventData) => {
     const displacement = computeFingerDisplacement(eventData);
     if (!jitterExceededRef.current) {
@@ -513,7 +570,7 @@ export const SortableContainer = ({
 
     draxViewProps?.onMonitorDragOver?.(eventData);
 
-    const { dragged, monitorOffset, monitorOffsetRatio } = eventData;
+    const { dragged, monitorOffset } = eventData;
     const draggedPayload = isSortableItemPayload(dragged.payload)
       ? dragged.payload
       : undefined;
@@ -538,8 +595,14 @@ export const SortableContainer = ({
       dragged.parentId !== undefined &&
       !!boardContext?.boardInternal.columns.has(dragged.parentId);
     if (externalDrag && !isBoardDrag) {
-      scrollStateRef.current = AutoScrollDirection.None;
-      stopScroll();
+      // A list that accepts foreign drops (onExternalDrop) still
+      // auto-scrolls, so any index is reachable. No slot tracking.
+      if (onExternalDrop) {
+        updateAutoScroll(eventData);
+      } else {
+        scrollStateRef.current = AutoScrollDirection.None;
+        stopScroll();
+      }
       return;
     }
 
@@ -613,43 +676,25 @@ export const SortableContainer = ({
     }
 
     // Auto-scroll
-    if (!autoScrollEnabled) {
-      scrollStateRef.current = AutoScrollDirection.None;
-      stopScroll();
-      return;
-    }
-    // Test the edge band at the finger, as 0.11 did, not at the hover centre:
-    // a row cut off at the edge, held by its visible part, must not scroll.
-    const shift = fingerFromCentre(eventData);
-    const containerLength = horizontal
-      ? containerMeasurementsRef.current?.width
-      : containerMeasurementsRef.current?.height;
-    const ratio =
-      shift && containerLength
-        ? ((horizontal ? monitorOffset.x + shift.x : monitorOffset.y + shift.y) /
-          containerLength)
-        : horizontal ? monitorOffsetRatio.x : monitorOffsetRatio.y;
-    if (ratio > autoScrollBackThreshold && ratio < autoScrollForwardThreshold) {
-      scrollStateRef.current = AutoScrollDirection.None;
-      stopScroll();
-    } else {
-      if (ratio >= autoScrollForwardThreshold) {
-        scrollStateRef.current = AutoScrollDirection.Forward;
-      } else if (ratio <= autoScrollBackThreshold) {
-        scrollStateRef.current = AutoScrollDirection.Back;
-      }
-      startScroll();
-    }
+    updateAutoScroll(eventData);
   };
 
   const onMonitorDragExit = (eventData: DraxMonitorEventData) => {
     stopScroll();
     handleInternalDragEnd(eventData, false);
+    // Our own item left the list: undo its pending move, so a drop outside
+    // (or over nothing) does not reorder. Re-entering recomputes the slot on
+    // the next drag-over. Board columns transfer items through exit.
+    if (eventData.dragged.parentId === id && !boardContext) restoreStartOrder();
     draxViewProps?.onMonitorDragExit?.(eventData);
   };
 
   const onMonitorDragEnd = (eventData: DraxMonitorEndEventData) => {
     if (boardContext?.boardInternal.transferState.current?.targetId) {
+      // A transfer skips handleInternalDragEnd: stop the target column's
+      // auto-scroll here, or it scrolls on after release (#337 A3).
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
       unfreezeScroll();
       draxViewProps?.onMonitorDragEnd?.(eventData);
       return undefined;
@@ -663,6 +708,10 @@ export const SortableContainer = ({
 
   const onMonitorDragDrop = (eventData: DraxMonitorDragDropEventData) => {
     if (boardContext?.boardInternal.transferState.current?.targetId) {
+      // A transfer skips handleInternalDragEnd: stop the target column's
+      // auto-scroll here, or it scrolls on after release (#337 A3).
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
       unfreezeScroll();
       draxViewProps?.onMonitorDragDrop?.(eventData);
       return undefined;

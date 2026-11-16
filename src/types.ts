@@ -133,12 +133,28 @@ export interface DraxEventDraggedViewData extends DraxEventViewData {
   grabOffset: Position;
   grabOffsetRatio: Position;
   hoverPosition: Position;
+  /** The view's measurements in the DraxProvider root frame (the frame of
+   *  `dragAbsolutePosition` and `hoverPosition`). This is the view's layout
+   *  position, not the hover's. Undefined if the view is not measured yet.
+   *  Set on start, enter, exit, drop and end events. Continuous over/drag
+   *  events only have it in a frame where an enter/exit also fires
+   *  (computing it every frame is costly). */
+  absoluteMeasurements?: DraxViewMeasurements;
+  /** The hover view's frame in the DraxProvider root frame: `hoverPosition`
+   *  plus the dragged view's measured size. That is the size of the default
+   *  hover copy and the size used for hit-testing. A `renderHoverContent` of
+   *  a different size is not measured. Undefined if the view is not measured yet.
+   *  Set on the same events as `absoluteMeasurements`. */
+  hoverMeasurements?: DraxViewMeasurements;
 }
 
 /** Data about a receiver view involved in a Drax event */
 export interface DraxEventReceiverViewData extends DraxEventViewData {
   receiveOffset: Position;
   receiveOffsetRatio: Position;
+  /** The receiver's measurements in the DraxProvider root frame (the frame of
+   *  `dragAbsolutePosition`). */
+  absoluteMeasurements?: DraxViewMeasurements;
 }
 
 /** Data about a Drax drag event */
@@ -224,7 +240,8 @@ export interface DraxSnapData {
 
 /** Data passed to onSnapEnd and onReceiveSnapEnd callbacks */
 export interface DraxSnapEndEventData {
-  dragged: { id: string; parentId?: string; payload: unknown };
+  /** `grabOffset` is the dragged view's grab offset for the drag that just ended. */
+  dragged: { id: string; parentId?: string; payload: unknown; grabOffset?: Position };
   receiver?: { id: string; parentId?: string; payload: unknown };
 }
 
@@ -259,6 +276,8 @@ export interface DraxRenderContentProps {
   hover: boolean;
   children: ReactNode;
   dimensions?: ViewDimensions;
+  /** The view's drag payload (`dragPayload ?? payload`), the same value drag events carry as `dragged.payload` */
+  payload?: unknown;
 }
 
 /** Props provided to a render function for a hovering copy of a Drax view */
@@ -351,6 +370,8 @@ export interface DraxViewProps
     targetMeasurements: DraxViewMeasurements;
     draggedId: string;
     draggedPayload: unknown;
+    /** Id of the dragged view's Drax parent view, if any */
+    draggedParentId?: string;
   }) => boolean;
 
   /** Simpler convenience prop for conditional drop acceptance based on payload */
@@ -726,6 +747,16 @@ export interface SortableReorderEvent<T> {
   isExternalDrag: boolean;
 }
 
+/** Event data for a foreign drag dropped on a sortable list */
+export interface SortableExternalDropEvent {
+  /** Insertion index in the list's data, from 0 to data.length */
+  toIndex: number;
+  /** Payload of the dropped view */
+  payload: unknown;
+  /** Data about the dropped view */
+  dragged: DraxEventDraggedViewData;
+}
+
 /** Props for rendering a drop indicator in a sortable container */
 export interface DropIndicatorProps {
   /** Whether the indicator should be visible */
@@ -834,6 +865,7 @@ export interface SortableListInternal<T> {
   onDragStart?: (event: SortableDragStartEvent<T>) => void;
   onDragPositionChange?: (event: SortableDragPositionChangeEvent<T>) => void;
   onDragEnd?: (event: SortableDragEndEvent<T>) => void;
+  onExternalDrop?: (event: SortableExternalDropEvent) => void;
   onReorder: (event: SortableReorderEvent<T>) => void;
   getMeasurementByOriginalIndex: (originalIndex: number) => SortableItemMeasurement | undefined;
   /** Position of the drop indicator (animated) */
@@ -844,6 +876,9 @@ export interface SortableListInternal<T> {
    *  Stored as a ref so the latest finalizeDrag is always called,
    *  even if SortableItem has a stale _internal reference. */
   onItemSnapEndRef: RefObject<(() => void) | undefined>;
+  /** True while a drag of one of this list's items is active (item
+   *  onDragStart → finalizeDrag). Blocks the deferred flush. */
+  dragActiveRef: RefObject<boolean>;
   /** Current display index of the dragged item (updated during live reorder) */
   draggedDisplayIndexRef: RefObject<number | undefined>;
   /** Original display index where the drag started */
