@@ -1,7 +1,9 @@
 /* ══════════════════════════════════════════════════════════════════════
    NuclearPasta Design System for Docusaurus
    Mirrors: nuclearpasta.com globals.css
-   Fonts:   Space Grotesk (sans), IBM Plex Mono (mono)
+   Fonts:   Space Grotesk (sans), IBM Plex Mono (mono), self-hosted.
+   @font-face lives in docusaurus headTags so webpack does not rewrite
+   the /react-native-drax/fonts/ URLs.
    ══════════════════════════════════════════════════════════════════════ */
 
 /* ── CSS Variables (light) ───────────────────────────────────────────── */
@@ -808,8 +810,8 @@ code.install-command {
 /* ── Reveal Animation ────────────────────────────────────────────────── */
 
 @keyframes reveal {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { transform: translateY(12px); }
+  to { transform: translateY(0); }
 }
 
 .hero-section,
@@ -818,6 +820,16 @@ code.install-command {
 .comparison-section,
 .footer-cta {
   animation: reveal 520ms ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-section,
+  .features-grid,
+  .tabs-container,
+  .comparison-section,
+  .footer-cta {
+    animation: none;
+  }
 }
 
 /* Staggered entry */
