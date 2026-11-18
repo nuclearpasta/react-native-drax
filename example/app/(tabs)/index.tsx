@@ -1,2 +1,4 @@
 import { clientScreen } from '../../components/ClientOnly';
-export default clientScreen(() => import('../../screens/index'), 'Drax Examples');
+export default clientScreen(() => import('../../screens/index'), 'Drax Examples', {
+  intro: true,
+});
