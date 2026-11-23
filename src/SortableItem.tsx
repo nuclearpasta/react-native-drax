@@ -166,6 +166,15 @@ const SortableItemInner = ({
   // can compare it with draggedIdSV on the UI thread.
   const viewIdSV = useSharedValue('');
 
+  // True from this item's onDragStart to its onDragEnd/onDragDrop. If the item
+  // unmounts in between, its view is unregistered and handleDragEnd returns
+  // early (no onDragEnd, no snap, no finalizeDrag), so clear dragActiveRef
+  // here or flushIfReady stays blocked.
+  const ownsDragRef = useRef(false);
+  useEffect(() => () => {
+    if (ownsDragRef.current) dragActiveRef.current = false;
+  }, [dragActiveRef]);
+
   const measureFnRef = useRef<
     ((handler?: DraxViewMeasurementHandler) => void) | null
   >(null);
@@ -232,12 +241,15 @@ const SortableItemInner = ({
           // Sync in handleDragStart, after the previous drag's finalize:
           // the list is busy before this drag's first monitor update.
           dragActiveRef.current = true;
+          ownsDragRef.current = true;
           draxViewProps.onDragStart?.(event);
         }}
         onDragEnd={(event) => {
+          ownsDragRef.current = false;
           draxViewProps.onDragEnd?.(event);
         }}
         onDragDrop={(event) => {
+          ownsDragRef.current = false;
           draxViewProps.onDragDrop?.(event);
         }}
         onSnapEnd={(snapData) => {

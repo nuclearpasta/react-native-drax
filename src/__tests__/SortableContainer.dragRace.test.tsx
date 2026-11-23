@@ -1,4 +1,4 @@
-import { act, useLayoutEffect, useState } from 'react';
+import { act, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import type { DraxPanGestureConfig } from '../compat';
@@ -184,11 +184,14 @@ const ReactNative = {
 const Leaf = () => null;
 let sortable: SortableListHandle<string>;
 const rerenderCell = new Map<string, () => void>();
+/** Cells whose item is unmounted on their next render (a virtualized row). */
+const unmountedCells = new Set<string>();
 
 /** Re-renders its item on its own, like a FlatList cell after layout. */
 const Cell = ({ handle, index }: { handle: SortableListHandle<string>; index: number }) => {
   const [, setTick] = useState(0);
   rerenderCell.set(handle.data[index]!, () => setTick((t) => t + 1));
+  if (unmountedCells.has(handle.data[index]!)) return null;
   return (
     <SortableItem sortable={handle} index={index}>
       <Leaf />
@@ -448,6 +451,34 @@ const ControlledList = ({ onReorder }: { onReorder: jest.Mock }) => {
   );
 };
 
+// Controlled parent that echoes onReorder's data only when the test calls
+// `echo()`.
+let echo: () => void = () => {};
+const DeferredEchoList = ({ onReorder }: { onReorder: jest.Mock }) => {
+  const [data, setData] = useState(KEYS);
+  const pendingRef = useRef<string[] | undefined>(undefined);
+  const handle = useSortableList({
+    id: 'list',
+    data,
+    keyExtractor: (item) => item,
+    onReorder: (e) => {
+      onReorder(e);
+      pendingRef.current = e.data;
+    },
+  });
+  useLayoutEffect(() => {
+    sortable = handle;
+    echo = () => act(() => setData(pendingRef.current!));
+  });
+  return (
+    <SortableContainer sortable={handle} scrollRef={{ current: null }}>
+      {handle.data.map((item, index) => (
+        <Cell key={item} handle={handle} index={index} />
+      ))}
+    </SortableContainer>
+  );
+};
+
 describe('rapid drags with a controlled parent (#334 F1)', () => {
   beforeAll(() => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -466,6 +497,7 @@ describe('rapid drags with a controlled parent (#334 F1)', () => {
     mockCtx.draggedIdSV.value = '';
     mockCtx.spatialIndexSV.value = listSpatialIndex();
     rerenderCell.clear();
+    unmountedCells.clear();
   });
   afterEach(() => {
     act(() => ReactNative.unmountComponentAtNode(1));
@@ -617,6 +649,60 @@ describe('rapid drags with a controlled parent (#334 F1)', () => {
     });
     expect(visualOrder()).toBe('ABCDE');
     expect(sortable._internal.pendingOrderRef.current).toEqual([]);
+  });
+
+  it('flushes after a drag ends with its view already unregistered (#334 follow-up)', () => {
+    const onReorder = jest.fn();
+    act(() =>
+      ReactNative.render(
+        <>
+          <Dispatcher />
+          <DeferredEchoList onReorder={onReorder} />
+        </>,
+        1
+      )
+    );
+    for (const key of KEYS) {
+      mockGestureId = key;
+      createDragGesture(key, sv(KEYS.indexOf(key) + 1) as never, sv(true) as never, sv(250) as never);
+    }
+    layout();
+    act(() =>
+      KEYS.forEach((key, i) =>
+        mockDraxProps.get(key)!.onMeasure!({ x: 0, y: i * ROW, width: 100, height: ROW } as never)
+      )
+    );
+    settle();
+
+    // Drag 0: A to after D. The parent has not echoed yet, so the flush waits.
+    activate('A');
+    settle();
+    monitorStart('A', 3);
+    release('A', 3);
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+    expect(onReorder).toHaveBeenCalledTimes(1);
+    const stable = sortable.data;
+    expect(stable.join('')).toBe('ABCDE');
+
+    // Drag 1: E starts, then its row unmounts mid-drag (its DraxView
+    // unregisters), so the release hits handleDragEnd's early return.
+    activate('E');
+    settle();
+    expect(mockCtx.draggedIdSV.value).toBe('E');
+    unmountedCells.add('E');
+    act(() => rerenderCell.get('E')!());
+    mockDraxProps.delete('E');
+    release('E', 4);
+    settle();
+    expect(mockCtx.draggedIdSV.value).toBe('');
+
+    // The parent echoes drag 0's order: the deferred flush must apply.
+    echo();
+    settle();
+    expect(sortable._internal.dragActiveRef.current).toBe(false);
+    expect(sortable.data).not.toBe(stable);
+    expect(sortable.data.join('')).toBe('BCDAE');
   });
 });
 
