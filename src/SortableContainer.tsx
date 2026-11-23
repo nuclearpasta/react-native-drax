@@ -157,6 +157,7 @@ export const SortableContainer = ({
 
   const finalizeDrag = () => {
     unfreezeScroll();
+    sortable._internal.dragActiveRef.current = false;
 
     if (boardContext?.boardInternal.transferState.current?.targetId) {
       boardContext.boardInternal.finalizeTransfer?.();
@@ -219,6 +220,7 @@ export const SortableContainer = ({
         requestAnimationFrame(() => {
           onReorder(reorderEvent);
           if (boardContext) {
+            // Board keeps the delay: the hover covers the transfer transition.
             setTimeout(() => {
               sortable._internal.flushVisualOrder();
             }, 300);
@@ -369,6 +371,22 @@ export const SortableContainer = ({
     return () => stopAutoScrollTimer(timer);
   }, []);
 
+  // ── Undo the pending move ───────────────────────────────────────────
+
+  /** Puts the dragged item back at its start slot and neighbours back at
+   *  their committed shifts, so finalizeDrag commits nothing. */
+  const restoreStartOrder = () => {
+    if (dragStartIndexRef.current === undefined) return;
+    initPendingOrder();
+    draggedDisplayIndexRef.current = dragStartIndexRef.current;
+    shiftsJSRef.current = committedShiftsRef.current;
+    shiftsRef.value = committedShiftsRef.current;
+    // Forget the last move, so the oscillation guard in onMonitorDragOver
+    // does not block a move back in after re-entry.
+    lastMoveReceiverRef.current = undefined;
+    lastMoveDirectionRef.current = 0;
+  };
+
   // ── Internal drag end handler ───────────────────────────────────────
 
   const handleInternalDragEnd = (
@@ -390,12 +408,7 @@ export const SortableContainer = ({
     // and finalizeDrag commits nothing. Neighbours animate back to their
     // committed slots with the snap (initPendingOrder keeps instantClearSV
     // false); finalizeDrag clears the drag state once the snap ends.
-    if (cancelled && totalDragEnd && dragStartIndexRef.current !== undefined) {
-      initPendingOrder();
-      draggedDisplayIndexRef.current = dragStartIndexRef.current;
-      shiftsJSRef.current = committedShiftsRef.current;
-      shiftsRef.value = committedShiftsRef.current;
-    }
+    if (cancelled && totalDragEnd) restoreStartOrder();
 
     const { dragged, receiver } = eventData;
     const draggedPayload = isSortableItemPayload(dragged.payload)
@@ -412,6 +425,16 @@ export const SortableContainer = ({
       : undefined;
     const toPayload =
       receiver?.parentId === id ? receiverPayload : undefined;
+    // Our own row dropped on a receiver outside the list while the list is
+    // still a monitor (within the hit-test padding): not a reorder. Only the
+    // list itself and its rows (parentId === id) count as inside, so a
+    // receptive view nested inside a row (its parent is the row's DraxView)
+    // counts as outside the list. A release over nothing within the padding
+    // has no receiver and still reorders to the last hovered slot.
+    const droppedOutside = totalDragEnd && !cancelled && !boardContext
+      && dragged.parentId === id && !!receiver
+      && receiver.id !== id && receiver.parentId !== id;
+    if (droppedOutside) restoreStartOrder();
 
     // Opt-in: a foreign view (not a board column item) dropped inside the list.
     // toIndex comes from the drop position, not from drag-over state.
@@ -476,6 +499,8 @@ export const SortableContainer = ({
       }
       draggedToIndex.current = undefined;
     }
+
+    if (droppedOutside) return undefined;
 
     // User hasn't moved — skip reorder, snap back to origin.
     // Don't clean up here — finalizeDrag handles it after snap completes.
@@ -733,11 +758,19 @@ export const SortableContainer = ({
   const onMonitorDragExit = (eventData: DraxMonitorEventData) => {
     stopScroll();
     handleInternalDragEnd(eventData, false);
+    // Our own item left the list: undo its pending move, so a drop outside
+    // (or over nothing) does not reorder. Re-entering recomputes the slot on
+    // the next drag-over. Board columns transfer items through exit.
+    if (eventData.dragged.parentId === id && !boardContext) restoreStartOrder();
     draxViewProps?.onMonitorDragExit?.(eventData);
   };
 
   const onMonitorDragEnd = (eventData: DraxMonitorEndEventData) => {
     if (boardContext?.boardInternal.transferState.current?.targetId) {
+      // A transfer skips handleInternalDragEnd: stop the target column's
+      // auto-scroll here, or it scrolls on after release (#337 A3).
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
       unfreezeScroll();
       draxViewProps?.onMonitorDragEnd?.(eventData);
       return undefined;
@@ -751,6 +784,10 @@ export const SortableContainer = ({
 
   const onMonitorDragDrop = (eventData: DraxMonitorDragDropEventData) => {
     if (boardContext?.boardInternal.transferState.current?.targetId) {
+      // A transfer skips handleInternalDragEnd: stop the target column's
+      // auto-scroll here, or it scrolls on after release (#337 A3).
+      scrollStateRef.current = AutoScrollDirection.None;
+      stopScroll();
       unfreezeScroll();
       draxViewProps?.onMonitorDragDrop?.(eventData);
       return undefined;
