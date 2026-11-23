@@ -1,6 +1,15 @@
+import { readFileSync } from 'fs';
+import path from 'path';
 import { themes as prismThemes } from 'prism-react-renderer';
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+
+// Inlined into <head> so the faces are not pulled through the CSS bundle,
+// which would base64 the woff2 files into styles.css.
+const fontFacesCss = readFileSync(path.join(__dirname, 'src/css/font-faces.css'), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/\s+/g, ' ')
+  .trim();
 
 const config: Config = {
   title: 'react-native-drax',
@@ -70,24 +79,18 @@ const config: Config = {
     {
       tagName: 'link',
       attributes: {
-        rel: 'preconnect',
-        href: 'https://fonts.googleapis.com',
-      },
-    },
-    {
-      tagName: 'link',
-      attributes: {
-        rel: 'preconnect',
-        href: 'https://fonts.gstatic.com',
+        rel: 'preload',
+        href: '/react-native-drax/fonts/space-grotesk-latin.woff2',
+        as: 'font',
+        type: 'font/woff2',
         crossorigin: 'anonymous',
       },
     },
     {
-      tagName: 'link',
-      attributes: {
-        rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap',
-      },
+      tagName: 'style',
+      // headTags require an attributes object; a <style> has no attributes.
+      attributes: {},
+      innerHTML: fontFacesCss,
     },
     {
       tagName: 'script',
