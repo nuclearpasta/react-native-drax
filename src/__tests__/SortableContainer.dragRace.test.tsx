@@ -168,6 +168,7 @@ const mockCtx = {
   handleDragStart: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleDragStart'],
   handleReceiverChange: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleReceiverChange'],
   handleDragEnd: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleDragEnd'],
+  onUnregisteredDragEnd: (() => {}) as ReturnType<typeof useCallbackDispatch>['onUnregisteredDragEnd'],
 };
 jest.mock('../hooks/useDraxContext', () => ({
   useDraxContext: () => mockCtx,
@@ -702,6 +703,63 @@ describe('rapid drags with a controlled parent (#334 F1)', () => {
     settle();
     expect(sortable._internal.dragActiveRef.current).toBe(false);
     expect(sortable.data).not.toBe(stable);
+    expect(sortable.data.join('')).toBe('BCDAE');
+  });
+
+  it('keeps the list busy while a drag outlives its unmounted row (#363 review)', () => {
+    const onReorder = jest.fn();
+    act(() =>
+      ReactNative.render(
+        <>
+          <Dispatcher />
+          <DeferredEchoList onReorder={onReorder} />
+        </>,
+        1
+      )
+    );
+    for (const key of KEYS) {
+      mockGestureId = key;
+      createDragGesture(key, sv(KEYS.indexOf(key) + 1) as never, sv(true) as never, sv(250) as never);
+    }
+    layout();
+    act(() =>
+      KEYS.forEach((key, i) =>
+        mockDraxProps.get(key)!.onMeasure!({ x: 0, y: i * ROW, width: 100, height: ROW } as never)
+      )
+    );
+    settle();
+
+    // Drag 0: A to after D. The parent has not echoed yet, so the flush waits.
+    activate('A');
+    settle();
+    monitorStart('A', 3);
+    release('A', 3);
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+    const stable = sortable.data;
+    expect(stable.join('')).toBe('ABCDE');
+
+    // Drag 1: E starts, then its row leaves the virtualized window while the
+    // finger is still down. The gesture survives the unmount.
+    activate('E');
+    settle();
+    unmountedCells.add('E');
+    act(() => rerenderCell.get('E')!());
+    mockDraxProps.delete('E');
+    settle();
+    expect(mockCtx.draggedIdSV.value).toBe('E');
+
+    // The echo lands mid-drag: no flush under the live hover.
+    echo();
+    settle();
+    expect(sortable._internal.dragActiveRef.current).toBe(true);
+    expect(sortable.data).toBe(stable);
+
+    // The drag ends (on its unregistered view): now the deferred flush runs.
+    release('E', 4);
+    settle();
+    expect(mockCtx.draggedIdSV.value).toBe('');
+    expect(sortable._internal.dragActiveRef.current).toBe(false);
     expect(sortable.data.join('')).toBe('BCDAE');
   });
 });

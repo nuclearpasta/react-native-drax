@@ -61,7 +61,10 @@ const mockCtx = {
   hoverClearDeferredRef: { current: false },
   setHoverContent: jest.fn(),
 };
-jest.mock('../hooks/useDraxContext', () => ({ useDraxContext: () => mockCtx }));
+jest.mock('../hooks/useDraxContext', () => ({
+  useDraxContext: () => mockCtx,
+  useDraxInternalContext: () => mockCtx,
+}));
 
 const DATA = ['A'];
 const keyExtractor = (item: string) => item;

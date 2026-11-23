@@ -103,6 +103,33 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
   const currentMonitorIdsRef = useRef<string[]>([]);
   // Completion of the snap animation still in flight, if any.
   const pendingSnapCompleteRef = useRef<(() => void) | null>(null);
+  // Run when a drag whose view unregistered mid-drag really ends, keyed by
+  // dragged view id. See onUnregisteredDragEnd.
+  const unregisteredEndRef = useRef(new Map<string, () => void>());
+
+  /** Runs every pending unregistered-drag-end callback (or only `draggedId`'s). */
+  const runUnregisteredDragEnd = (draggedId?: string) => {
+    const callbacks = unregisteredEndRef.current;
+    if (draggedId === undefined) {
+      const all = [...callbacks.values()];
+      callbacks.clear();
+      all.forEach((callback) => callback());
+      return;
+    }
+    const callback = callbacks.get(draggedId);
+    callbacks.delete(draggedId);
+    callback?.();
+  };
+
+  /**
+   * Called by a dragged view that unmounts mid-drag. The gesture may outlive
+   * the view (e.g. a virtualized row scrolled out of the window), so its
+   * owner's cleanup must wait for the drag's real end: `callback` runs when
+   * handleDragEnd arrives for `draggedId`, or when a new drag starts.
+   */
+  const onUnregisteredDragEnd = (draggedId: string, callback: () => void) => {
+    unregisteredEndRef.current.set(draggedId, callback);
+  };
 
   /** A view's measurements in the provider root frame */
   const toAbsoluteMeasurements = (
@@ -208,6 +235,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     // hoverPositionSV), so its completion callback never fires. Finalize the
     // previous drag now, before this drag touches any sortable state.
     pendingSnapCompleteRef.current?.();
+    // A drag whose view unmounted is over once a new one starts.
+    runUnregisteredDragEnd();
 
     const draggedEntry = getViewEntry(draggedId);
     if (!draggedEntry) return;
@@ -556,6 +585,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
 
     const draggedEntry = getViewEntry(draggedId);
     if (!draggedEntry) {
+      // The dragged view unregistered mid-drag: no view callbacks can run.
       // Reset drag state atomically on UI thread to avoid one-frame flash
       runOnUI((
         _hoverReadySV: typeof hoverReadySV,
@@ -570,6 +600,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
         _hoverPositionSV.value = { x: 0, y: 0 };
       })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
+      runUnregisteredDragEnd(draggedId);
       return;
     }
 
@@ -589,8 +620,12 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
         _hoverPositionSV.value = { x: 0, y: 0 };
       })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
+      runUnregisteredDragEnd(draggedId);
       return;
     }
+    // Still registered (e.g. remounted under the same id): the view's own
+    // end callbacks run, so drop any unmount cleanup left for this drag.
+    unregisteredEndRef.current.delete(draggedId);
 
     const startPos = startPositionSV.value;
     const dragTranslation = {
@@ -751,6 +786,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     handleDragStart,
     handleReceiverChange,
     handleDragEnd,
+    onUnregisteredDragEnd,
   };
 };
 

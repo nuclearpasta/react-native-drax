@@ -13,7 +13,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 
 import { DraxView } from './DraxView';
-import { useDraxContext } from './hooks/useDraxContext';
+import { useDraxInternalContext } from './hooks/useDraxContext';
 import { computeResetStyle } from './hooks/useViewStyles';
 import type { SortableItemContextValue } from './SortableItemContext';
 import { SortableItemContext } from './SortableItemContext';
@@ -145,7 +145,7 @@ const SortableItemInner = ({
   } = sortable._internal;
 
   // Get hoverReadySV and draggedIdSV from DraxContext (provider-level SharedValues)
-  const { hoverReadySV, draggedIdSV } = useDraxContext();
+  const { hoverReadySV, draggedIdSV, onUnregisteredDragEnd } = useDraxInternalContext();
 
   const originalIndex = originalIndexes[index] ?? index;
   const item = rawData[originalIndex];
@@ -166,14 +166,25 @@ const SortableItemInner = ({
   // can compare it with draggedIdSV on the UI thread.
   const viewIdSV = useSharedValue('');
 
-  // True from this item's onDragStart to its onDragEnd/onDragDrop. If the item
-  // unmounts in between, its view is unregistered and handleDragEnd returns
-  // early (no onDragEnd, no snap, no finalizeDrag), so clear dragActiveRef
-  // here or flushIfReady stays blocked.
-  const ownsDragRef = useRef(false);
+  // This item's dragged view id, from its onDragStart to its
+  // onDragEnd/onDragDrop. If the item unmounts in between, its view is
+  // unregistered and handleDragEnd returns early (no onDragEnd, no snap, no
+  // finalizeDrag). The gesture can outlive the view (a virtualized row
+  // scrolled out mid-drag), so the list stays busy until that early end.
+  const ownedDragIdRef = useRef('');
+  // Latest values for the unmount-only cleanup below.
+  const unmountDepsRef = useRef({ internal: sortable._internal, onUnregisteredDragEnd });
+  unmountDepsRef.current = { internal: sortable._internal, onUnregisteredDragEnd };
   useEffect(() => () => {
-    if (ownsDragRef.current) dragActiveRef.current = false;
-  }, [dragActiveRef]);
+    const draggedId = ownedDragIdRef.current;
+    if (!draggedId) return;
+    const { internal, onUnregisteredDragEnd: deferToDragEnd } = unmountDepsRef.current;
+    deferToDragEnd(draggedId, () => {
+      internal.dragActiveRef.current = false;
+      // Clears the pending order and flushes a deferred echo next frame.
+      internal.resetDraggedItem();
+    });
+  }, []);
 
   const measureFnRef = useRef<
     ((handler?: DraxViewMeasurementHandler) => void) | null
@@ -241,15 +252,15 @@ const SortableItemInner = ({
           // Sync in handleDragStart, after the previous drag's finalize:
           // the list is busy before this drag's first monitor update.
           dragActiveRef.current = true;
-          ownsDragRef.current = true;
+          ownedDragIdRef.current = event.dragged.id;
           draxViewProps.onDragStart?.(event);
         }}
         onDragEnd={(event) => {
-          ownsDragRef.current = false;
+          ownedDragIdRef.current = '';
           draxViewProps.onDragEnd?.(event);
         }}
         onDragDrop={(event) => {
-          ownsDragRef.current = false;
+          ownedDragIdRef.current = '';
           draxViewProps.onDragDrop?.(event);
         }}
         onSnapEnd={(snapData) => {

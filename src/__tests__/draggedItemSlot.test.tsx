@@ -49,7 +49,10 @@ const mockCtx = {
   hoverClearDeferredRef: { current: false },
   setHoverContent: jest.fn(),
 };
-jest.mock('../hooks/useDraxContext', () => ({ useDraxContext: () => mockCtx }));
+jest.mock('../hooks/useDraxContext', () => ({
+  useDraxContext: () => mockCtx,
+  useDraxInternalContext: () => mockCtx,
+}));
 
 // Rows A, B, C are 50 high, stacked from y 0, in a container at (10, 20).
 const DATA = ['A', 'B', 'C'];

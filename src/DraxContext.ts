@@ -16,6 +16,10 @@ export interface DraxInternalContextValue extends DraxContextValue {
   /** Set by the drag worklet when it skips a continuous update because a hop is in
    *  flight. The hop's end then sends the latest state once more. */
   skippedSV: SharedValue<boolean>;
+  /** Defers a dragged view's unmount cleanup to the drag's real end: runs
+   *  `callback` when handleDragEnd arrives for `draggedId` (its view is gone),
+   *  or when the next drag starts. */
+  onUnregisteredDragEnd: (draggedId: string, callback: () => void) => void;
 }
 
 export const DraxContext = createContext<DraxInternalContextValue | undefined>(

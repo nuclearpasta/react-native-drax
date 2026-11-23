@@ -98,7 +98,10 @@ const mockCtx = {
   handleReceiverChange: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleReceiverChange'],
   handleDragEnd: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleDragEnd'],
 };
-jest.mock('../hooks/useDraxContext', () => ({ useDraxContext: () => mockCtx }));
+jest.mock('../hooks/useDraxContext', () => ({
+  useDraxContext: () => mockCtx,
+  useDraxInternalContext: () => mockCtx,
+}));
 
 /** Real callback dispatch, wired to the stubbed views and spatial index. */
 const Dispatcher = () => {

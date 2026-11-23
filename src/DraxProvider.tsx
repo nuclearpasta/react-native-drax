@@ -87,7 +87,7 @@ export const DraxProvider = ({
   }, []);
 
   // ── Callback dispatch ──────────────────────────────────────────────
-  const { handleDragStart, handleReceiverChange, handleDragEnd } =
+  const { handleDragStart, handleReceiverChange, handleDragEnd, onUnregisteredDragEnd } =
     useCallbackDispatch({
       getViewEntry,
       spatialIndexSV,
@@ -159,6 +159,7 @@ export const DraxProvider = ({
       handleDragStart,
       handleReceiverChange,
       handleDragEnd,
+      onUnregisteredDragEnd,
 
       // Hover content
       setHoverContent,
@@ -197,6 +198,7 @@ export const DraxProvider = ({
       handleDragStart,
       handleReceiverChange,
       handleDragEnd,
+      onUnregisteredDragEnd,
       setHoverContent,
       droppedItemsRef,
       rootViewRef,
