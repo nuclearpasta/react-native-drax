@@ -16,6 +16,15 @@ import type {
   Position,
 } from './types';
 
+/** A function that keeps its identity across renders and calls the `callback` of the latest render. */
+function useStableCallback<Args extends unknown[], Result>(
+  callback: (...args: Args) => Result
+): (...args: Args) => Result {
+  const callbackRef = useRef(callback);
+  callbackRef.current = callback;
+  return useCallback((...args: Args) => callbackRef.current(...args), []);
+}
+
 export const DraxProvider = ({
   style = styles.provider,
   debug = false,
@@ -61,16 +70,16 @@ export const DraxProvider = ({
   const droppedItemsRef = useRef<Map<string, Set<string>>>(new Map());
 
   // ── Spatial index + registry ───────────────────────────────────────
-  const {
-    spatialIndexSV,
-    scrollOffsetsSV,
-    registerView,
-    unregisterView,
-    updateMeasurements,
-    updateScrollOffset,
-    updateViewProps,
-    getViewEntry,
-  } = useSpatialIndex();
+  const spatialIndex = useSpatialIndex();
+  const { spatialIndexSV, scrollOffsetsSV } = spatialIndex;
+  // The hooks return new functions on every render; the context value holds stable ones, or every DraxView would
+  // render again whenever the provider does (it does when the hover content is set and cleared, on every drag).
+  const registerView = useStableCallback(spatialIndex.registerView);
+  const unregisterView = useStableCallback(spatialIndex.unregisterView);
+  const updateMeasurements = useStableCallback(spatialIndex.updateMeasurements);
+  const updateScrollOffset = useStableCallback(spatialIndex.updateScrollOffset);
+  const updateViewProps = useStableCallback(spatialIndex.updateViewProps);
+  const getViewEntry = useStableCallback(spatialIndex.getViewEntry);
 
   // ── Hover content (ref-based to avoid provider re-renders) ─────────
   // Store content in a ref so changing it doesn't re-render the entire tree.
@@ -87,7 +96,7 @@ export const DraxProvider = ({
   }, []);
 
   // ── Callback dispatch ──────────────────────────────────────────────
-  const { handleDragStart, handleReceiverChange, handleDragEnd } =
+  const dispatch =
     useCallbackDispatch({
       getViewEntry,
       spatialIndexSV,
@@ -109,6 +118,9 @@ export const DraxProvider = ({
       onProviderDragEnd,
       droppedItemsRef,
     });
+  const handleDragStart = useStableCallback(dispatch.handleDragStart);
+  const handleReceiverChange = useStableCallback(dispatch.handleReceiverChange);
+  const handleDragEnd = useStableCallback(dispatch.handleDragEnd);
 
   // ── Root view ref ──────────────────────────────────────────────────
   const rootViewRef = useAnimatedRef<ComponentRef<typeof View>>();
