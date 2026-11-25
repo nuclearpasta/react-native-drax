@@ -475,6 +475,8 @@ export interface ViewRegistryEntry {
   spatialIndex: number;
   /** Scroll position SharedValue, for scrollable parent views */
   scrollPosition?: SharedValue<Position>;
+  /** The view's own copy of `spatialIndex` (its drag gesture reads it on the UI thread) */
+  spatialIndexSV?: SharedValue<number>;
   /** Current measurements */
   measurements?: DraxViewMeasurements;
   /** All props from DraxView (callbacks, styles, payload, etc.) */
@@ -565,6 +567,8 @@ export interface RegisterViewPayload {
   id: string;
   parentId?: string;
   scrollPosition?: SharedValue<Position>;
+  /** The view's own copy of its index in the spatial index, kept current by the registry */
+  spatialIndexSV?: SharedValue<number>;
   props: DraxViewProps;
 }
 

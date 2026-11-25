@@ -91,10 +91,12 @@ export const useSpatialIndex = () => {
     registryRef.current.delete(id);
     nextIndexRef.current -= 1;
 
-    // Update spatial indices for all entries after the removed one
+    // Update spatial indices for all entries after the removed one, and each view's own copy: its drag gesture
+    // reads the copy, and with a stable context nothing else updates it
     for (const [, regEntry] of registryRef.current) {
       if (regEntry.spatialIndex > removedIndex) {
         regEntry.spatialIndex -= 1;
+        if (regEntry.spatialIndexSV) regEntry.spatialIndexSV.value = regEntry.spatialIndex;
       }
     }
 
@@ -117,7 +119,7 @@ export const useSpatialIndex = () => {
 
   /** Register a view (idempotent — re-registration preserves measurements) */
   const registerView = (payload: RegisterViewPayload) => {
-    const { id, parentId, scrollPosition, props } = payload;
+    const { id, parentId, scrollPosition, props, spatialIndexSV: viewSpatialIndexSV } = payload;
 
     // Cancel any pending unregister for this view
     pendingUnregistersRef.current.delete(id);
@@ -133,6 +135,8 @@ export const useSpatialIndex = () => {
       existing.parentId = parentId;
       existing.scrollPosition = scrollPosition;
       existing.props = props;
+      existing.spatialIndexSV = viewSpatialIndexSV ?? existing.spatialIndexSV;
+      if (existing.spatialIndexSV) existing.spatialIndexSV.value = existing.spatialIndex;
 
       const idx = existing.spatialIndex;
       updateSpatialEntryCapabilities(
@@ -182,9 +186,11 @@ export const useSpatialIndex = () => {
       parentId,
       spatialIndex,
       scrollPosition,
+      spatialIndexSV: viewSpatialIndexSV,
       measurements: undefined,
       props,
     });
+    if (viewSpatialIndexSV) viewSpatialIndexSV.value = spatialIndex;
 
     // Fix up children that registered before this parent.
     // React fires useEffect bottom-up, so children often register before their parent.

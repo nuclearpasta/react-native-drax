@@ -258,19 +258,24 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
   const propsRef = useRef(props);
   propsRef.current = props;
 
+  // This view's index in the spatial index, read by its drag gesture on the UI thread. The registry sets it on
+  // registration and updates it whenever an earlier view unregisters and the views after it move up.
+  const spatialIndexSV = useSharedValue(-1);
+
   useEffect(() => {
     registerView({
       id,
       parentId,
       scrollPosition,
       props: propsRef.current,
+      spatialIndexSV,
     });
     // Re-measure after registration. onLayout may have fired before
     // registerView (useEffect runs after paint), causing updateMeasurements
     // to silently drop data (entry didn't exist yet in registry).
     measureWithHandler();
     return () => unregisterView(id);
-  }, [id, parentId, scrollPosition, registerView, unregisterView, measureWithHandler]);
+  }, [id, parentId, scrollPosition, spatialIndexSV, registerView, unregisterView, measureWithHandler]);
 
   // ── Update registry when props change ────────────────────────────────
   useEffect(() => {
@@ -305,15 +310,6 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
   }, [id, measureWithHandler, registration]);
 
   // ── Gesture (per-view, UI thread) ──────────────────────────────────
-  // Use a SharedValue for spatialIndex so it updates reactively after registration
-  const spatialIndexSV = useSharedValue(-1);
-
-  // Update spatialIndex after registration completes
-  useEffect(() => {
-    const entry = getViewEntry(id);
-    const index = entry?.spatialIndex ?? -1;
-    spatialIndexSV.value = index;
-  }, [id, getViewEntry, spatialIndexSV]);
 
   // Sync scroll position to spatial index — delegated to a separate hook
   // so the worklet closure only contains SharedValues (no refs from DraxView scope).

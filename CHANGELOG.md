@@ -27,6 +27,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 ### Fixed
 
 - A drag no longer re-renders every `DraxView` and `SortableItem` in the tree: the `DraxProvider` context value now stays the same object when the provider renders for the hover content at drag start and end (its registry and dispatch functions were new functions on every render)
+- The registry keeps each `DraxView`'s copy of its spatial index current: it sets the SharedValue the view's drag gesture reads on registration, and updates it when an earlier view unregisters (a deleted row, a row a virtualized list unmounts). `DraxView` used to set it after mounting and again whenever the context value changed; with the stable context value above, a view registered after one that unregistered would have dragged with another view's entry
 - Drag handles: the hover no longer lands one slot off when a `dragHandle` sortable item with permanent shifts is grabbed by its `DraxHandle`
 - Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover
 - Repeated drags no longer freeze the UI for seconds: drag updates only reach the JS thread when the receiver or monitors change or a continuous callback needs them, and a drop no longer waits behind a backlog of drag-over work
