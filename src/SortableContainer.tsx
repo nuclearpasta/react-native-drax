@@ -101,6 +101,7 @@ export const SortableContainer = ({
     onExternalDrop,
     onReorder,
     getMeasurementByOriginalIndex,
+    alignItemLayout,
     dropTargetPositionSV,
     dropTargetVisibleSV,
     draggedDisplayIndexRef,
@@ -481,6 +482,9 @@ export const SortableContainer = ({
     ) {
       const { index, originalIndex } = dragged.payload;
       setDraggedItem(originalIndex);
+      // getItemLayout: from here on the rows' positions come from the list,
+      // aligned with the dragged row's measurement.
+      alignItemLayout(originalIndex);
       // Initialize pending order BEFORE setting display index.
       // initPendingOrder copies the committed visual order into pendingOrderRef.
       initPendingOrder();

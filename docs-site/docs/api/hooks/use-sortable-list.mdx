@@ -43,6 +43,7 @@ const sortable = useSortableList({
 | `autoScrollForwardThreshold` | `number` | `0.9` | Forward auto-scroll threshold |
 | `animationConfig` | `SortableAnimationConfig` | `'default'` | Animation preset or custom config |
 | `getItemSpan` | `(item: T, index: number) => GridItemSpan` | — | Grid span per item (enables mixed-size grid). Only used when `numColumns > 1`. |
+| `getItemLayout` | `(key: string) => SortableItemLayout \| undefined` | — | Where the list component places a row: `{ offset, length }` along the main axis. For virtualized lists, see [below](#virtualized-lists-getitemlayout). Single-column lists only. |
 | `inactiveItemStyle` | `ViewStyle` | — | Style applied to all non-dragged items during drag |
 | `draggedItemStyle` | `StyleProp<ViewStyle>` | `{ opacity: 0 }` | Style of the dragged item's in-list placeholder while its hover copy moves. Replaces the default. The placeholder stays at its pickup slot until release. Visual props only; pass a stable style |
 | `itemEntering` | `EntryOrExitLayoutType` | — | Reanimated layout animation for items entering the list |
@@ -81,6 +82,21 @@ const sortable = useSortableList({ data, keyExtractor, onReorder });
   />
 </SortableContainer>
 ```
+
+## Virtualized Lists: `getItemLayout`
+
+Drax measures the rows it can see. A virtualized list mounts only the rows near the viewport, so the rows outside it are unmeasured, and a row that was unmounted keeps the measurement it had then. Slot detection, neighbour shifts and the snap target need every row.
+
+With `getItemLayout` the list component supplies what Drax cannot measure. It is called with a row's key and returns where the list has laid that row out:
+
+- `offset`: start of the row along the main axis, in the list's own content coordinates. Any origin works: when a drag starts, Drax aligns the offsets with the dragged row's measurement.
+- `length`: size of the row along the main axis, without the gap to the next row. Used only while the row has no measurement.
+
+Return `undefined` for a row the list knows nothing about; that row then counts with its own measurement, if it has one.
+
+From drag start on, every row's main-axis position comes from `getItemLayout`. Report layout positions in the order of `sortable.data` (where the list component has placed the rows), not the order on screen after a reorder the parent has not echoed yet. The function is called for every row on each drag update, so keep it cheap.
+
+Keep the dragged row mounted while the list scrolls (its gesture ends when it unmounts), for example with a pinned or always-rendered row if the list component offers one.
 
 ## Related
 

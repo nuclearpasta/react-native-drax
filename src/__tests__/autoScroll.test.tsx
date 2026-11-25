@@ -117,6 +117,7 @@ const renderSortable = (options: Record<string, unknown> = {}) => {
     autoScrollForwardThreshold: 0.9,
     onDragPositionChange,
     getMeasurementByOriginalIndex: jest.fn(),
+    alignItemLayout: jest.fn(),
     dropTargetPositionSV: sv({ x: 0, y: 0 }),
     dropTargetVisibleSV: sv(false),
     draggedDisplayIndexRef: { current: undefined },

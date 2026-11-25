@@ -697,6 +697,14 @@ export interface SortableItemMeasurement {
   scrollAtMeasure: Position;
 }
 
+/** Where a list component places a row along its main axis (see `getItemLayout`) */
+export interface SortableItemLayout {
+  /** Start of the row in the list's own content coordinates */
+  offset: number;
+  /** Size of the row along the main axis, without the gap to the next row */
+  length: number;
+}
+
 /** Internal payload attached to each SortableItem's DraxView */
 export interface SortableItemPayload {
   index: number;
@@ -788,6 +796,16 @@ export interface UseSortableListOptions<T> extends DraxAutoScrollProps {
    *  where items can span multiple columns and/or rows.
    *  Only used when numColumns > 1. */
   getItemSpan?: (item: T, index: number) => GridItemSpan;
+  /** Where the list component places the row with this key, for a virtualized
+   *  list that mounts (and so measures) only the rows near the viewport.
+   *  From drag start on, every row's main-axis position comes from here
+   *  instead of from its own measurement, and its size too while it has no
+   *  measurement, so rows that are not mounted count for slots, shifts and
+   *  the snap target. The offsets may have any origin: they are aligned with
+   *  the dragged row's measurement when the drag starts. Return undefined for
+   *  a row the list knows nothing about. Single-column lists only
+   *  (ignored when numColumns > 1). */
+  getItemLayout?: (key: string) => SortableItemLayout | undefined;
   /** Style applied to all non-dragged items while a drag is active.
    *  Use for dimming/scaling inactive items (e.g., `{ opacity: 0.5 }`). */
   inactiveItemStyle?: ViewStyle;
@@ -868,6 +886,9 @@ export interface SortableListInternal<T> {
   onExternalDrop?: (event: SortableExternalDropEvent) => void;
   onReorder: (event: SortableReorderEvent<T>) => void;
   getMeasurementByOriginalIndex: (originalIndex: number) => SortableItemMeasurement | undefined;
+  /** Align the positions of `getItemLayout` with the measurement of the row
+   *  at this original index. Called when that row's drag starts. */
+  alignItemLayout: (originalIndex: number) => void;
   /** Position of the drop indicator (animated) */
   dropTargetPositionSV: SharedValue<Position>;
   /** Whether the drop indicator is visible (animated) */

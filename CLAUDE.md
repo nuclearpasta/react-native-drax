@@ -26,6 +26,7 @@ Drag-and-drop framework for React Native (iOS, Android, Web). Current package ve
 - `finalizeDrag` reaches `SortableItem` through `_internal.onItemSnapEndRef` (stable ref, read at call time). `_internal` is rebuilt every render, so a plain property captured at render goes stale when the list owner re-renders mid-drag (#236/#296).
 - **Exit undoes the pending move**: when the list's own item leaves a non-board list, `onMonitorDragExit` calls `restoreStartOrder` (same as the cancel path), so a drop outside reorders nothing; re-entry recomputes the slot. Board columns skip it (they transfer through exit). Test: `src/__tests__/SortableContainer.exitUndo.test.tsx`.
 - Jest can render the real sortable hook/container/item with `react-test-renderer`: stub `DraxView`, Reanimated, worklets, and `useDraxContext`. See `src/__tests__/SortableItem.snapEnd.test.tsx`.
+- **`getItemLayout`** (`useSortableList` option, single-column lists): for virtualized lists that mount only the rows near the viewport. `SortableContainer.onMonitorDragStart` calls `_internal.alignItemLayout`, which stores the dragged row's measured position minus the list's offset for it. From then on `getMeasurementByOriginalIndex` returns every row at `getItemLayout(key).offset` plus that alignment, with the row's measured size or else `length`. Every reader of row measurements goes through `getMeasurementByOriginalIndex`; a new one must too, or it sees only the mounted rows. Test: `src/__tests__/itemLayout.test.tsx`.
 
 ### Back-to-Back Drags (#250)
 

@@ -88,6 +88,7 @@ export type {
   SortableAnimationPreset,
   SortableAnimationCustomConfig,
   SortableItemMeasurement,
+  SortableItemLayout,
   DropIndicatorProps,
 
   // Board types (cross-container sortable)

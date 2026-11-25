@@ -60,6 +60,7 @@ export const useSortableList = <T,>(
     autoScrollForwardThreshold = defaultAutoScrollForwardThreshold,
     animationConfig = 'default',
     getItemSpan,
+    getItemLayout,
     inactiveItemStyle,
     draggedItemStyle,
     itemEntering,
@@ -220,13 +221,49 @@ export const useSortableList = <T,>(
 
   // ── Helpers ─────────────────────────────────────────────────────────
 
+  /**
+   * getItemLayout: Drax's main-axis position of a row minus the list's
+   * offset for it, taken from the dragged row when a drag starts. Undefined
+   * before the first drag, without getItemLayout and in grids; then every
+   * row's position is its own measurement.
+   */
+  const itemLayoutAlignmentRef = useRef<number | undefined>(undefined);
+
+  const alignItemLayout = (originalIndex: number) => {
+    itemLayoutAlignmentRef.current = undefined;
+    if (!getItemLayout || numColumns > 1) return;
+    const item = stableData[originalIndex];
+    if (item === undefined) return;
+    const key = keyExtractor(item, originalIndex);
+    const measured = itemMeasurements.current.get(key);
+    const layout = getItemLayout(key);
+    if (!measured || !layout) return;
+    itemLayoutAlignmentRef.current =
+      (horizontal ? measured.x : measured.y) - layout.offset;
+  };
+
   const getMeasurementByOriginalIndex = (
     originalIndex: number
   ): SortableItemMeasurement | undefined => {
     const item = stableData[originalIndex];
     if (item === undefined) return undefined;
     const key = keyExtractor(item, originalIndex);
-    return itemMeasurements.current.get(key);
+    const measured = itemMeasurements.current.get(key);
+
+    // A virtualized list measures only the rows it has mounted, and a row
+    // that was unmounted keeps the position it had then (a later reorder may
+    // have moved it). The list knows where every row is now.
+    const alignment = itemLayoutAlignmentRef.current;
+    const layout = alignment !== undefined ? getItemLayout?.(key) : undefined;
+    if (alignment === undefined || !layout) return measured;
+    // Cross-axis position and size: the row's own, else any measured row's
+    // (the rows of a single-column list share them).
+    const reference = measured ?? itemMeasurements.current.values().next().value;
+    if (!reference) return measured;
+    const position = layout.offset + alignment;
+    return horizontal
+      ? { ...reference, key, x: position, width: measured?.width ?? layout.length }
+      : { ...reference, key, y: position, height: measured?.height ?? layout.length };
   };
 
   // Alias for internal use
@@ -1098,6 +1135,7 @@ export const useSortableList = <T,>(
     onDragEnd,
     onReorder,
     getMeasurementByOriginalIndex,
+    alignItemLayout,
     dropTargetPositionSV,
     dropTargetVisibleSV,
     onItemSnapEndRef,

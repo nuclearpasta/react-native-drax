@@ -15,6 +15,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 - **Auto-scroll config**: `autoScrollEnabled` (default `true`) and `autoScrollInitialDelay` (ms in the edge band before the first jump, default `0`) on `DraxScrollView`, `useSortableList` and `DraxList`. `DraxList` now forwards all auto-scroll props to `useSortableList`.
 - **`draggedItemStyle`** on `DraxList` and `useSortableList`: style of the dragged row's in-list placeholder while its hover copy moves (default `{ opacity: 0 }`). Pass `{ opacity: 0.2 }` for a faint placeholder like 0.11. The placeholder stays at its pickup slot while the finger is down and moves to the target slot on release. Use visual props only (no layout props).
 - **Render payload**: `DraxRenderContentProps.payload` (`dragPayload ?? payload`, the value drag events carry as `dragged.payload`) is passed to `renderContent` and `renderHoverContent`. Sortable rows include `item`, `index` and `originalIndex`.
+- **`getItemLayout`** on `useSortableList`, for virtualized lists that mount only the rows near the viewport: `(key) => ({ offset, length })` tells Drax where the list component places a row. From drag start on, every row's main-axis position comes from it (aligned with the dragged row's measurement) and its size too while the row is unmeasured, so a row can be dragged across rows that are not mounted, and a row that was unmounted before a reorder no longer counts at its old position. Single-column lists only; without the option nothing changes.
 
 ### Changed
 
