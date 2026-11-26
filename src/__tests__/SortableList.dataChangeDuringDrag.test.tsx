@@ -357,6 +357,7 @@ describe('useSortableList: data changes from outside during a row drag', () => {
     move(slot(2), 'cell2');
     act(() => mockCtx.handleDragEnd('cell0', receiver, false, ['list']));
     receiver = '';
+    settle(); // the release's JS work; the snap is still running
     // The refetch (a copy of the parent's data) lands during the snap. Every
     // row re-renders and re-measures; cell 0 (layout 0,0) goes through
     // measure() and shows A's target shift.
