@@ -319,17 +319,6 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
   // so the worklet closure only contains SharedValues (no refs from DraxView scope).
   useScrollPositionSync(scrollPosition, spatialIndexSV, scrollOffsetsSV);
 
-  // SharedValues for gesture config — RNGH 3.0 reconfigures the native
-  // handler on the UI thread, bypassing JS→native bridge entirely.
-  const draggableSV = useSharedValue(draggable);
-  const longPressDelaySV = useSharedValue(longPressDelay);
-
-  // Update SharedValues when props change (in useEffect to avoid render-time writes)
-  useEffect(() => {
-    draggableSV.value = draggable;
-    longPressDelaySV.value = longPressDelay;
-  }, [draggable, longPressDelay, draggableSV, longPressDelaySV]);
-
   // Drag bounds: measure the bounds view relative to root and store in SharedValue
   const dragBoundsSV = useSharedValue<{ x: number; y: number; width: number; height: number } | null>(null);
   useEffect(() => {
@@ -352,8 +341,8 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
   const gesture = useDragGesture(
     id,
     spatialIndexSV,
-    draggableSV,
-    longPressDelaySV,
+    draggable,
+    longPressDelay,
     lockDragXPosition,
     lockDragYPosition,
     dragBoundsSV,

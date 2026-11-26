@@ -130,6 +130,10 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
   const onUnregisteredDragEnd = (draggedId: string, callback: () => void) => {
     unregisteredEndRef.current.set(draggedId, callback);
   };
+  // Set from handleDragEnd until the next handleDragStart. An update can still
+  // reach JS after the end (a hop in flight at a cancel resends a skipped
+  // update), and must not move a sortable item after the drop or cancel (#336).
+  const dragEndedRef = useRef(false);
 
   /** A view's measurements in the provider root frame */
   const toAbsoluteMeasurements = (
@@ -237,6 +241,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     pendingSnapCompleteRef.current?.();
     // A drag whose view unmounted is over once a new one starts.
     runUnregisteredDragEnd();
+    dragEndedRef.current = false;
 
     const draggedEntry = getViewEntry(draggedId);
     if (!draggedEntry) return;
@@ -345,6 +350,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     absolutePosition: Position,
     monitorIds?: string[]
   ) => {
+    if (dragEndedRef.current) return;
     const draggedId = draggedIdSV.value;
 
     const newMonitorIds = monitorIds ?? [];
@@ -580,6 +586,7 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     finalMonitorIds?: string[],
     touchPosition?: Position
   ) => {
+    dragEndedRef.current = true;
     // receiverIdSV is already cleared on the UI thread in onDeactivate/onFinalize,
     // so the receiver's animated style resets immediately.
 

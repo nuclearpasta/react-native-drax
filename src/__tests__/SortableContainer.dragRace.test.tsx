@@ -764,6 +764,75 @@ describe('rapid drags with a controlled parent (#334 F1)', () => {
   });
 });
 
+// #336: `draggable` flips false mid-drag, so RNGH cancels the gesture while a
+// continuous hop is still in flight. On device a later update still reached
+// JS after the cancel's handleDragEnd: the hop's end resent a skipped update,
+// and onMonitorDragOver moved the item again after restoreStartOrder, so
+// finalizeDrag committed the move.
+describe('late drag updates after a cancelled drag (#336)', () => {
+  beforeAll(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    jest.useFakeTimers();
+  });
+  beforeEach(() => {
+    mockDraxProps.clear();
+    mockUIQueue.length = 0;
+    mockJSQueue.length = 0;
+    Object.assign(mockCtx, {
+      hoverPositionSV: makeHoverPositionSV(),
+      hoverContent: null,
+    });
+    mockCtx.hoverReadySV.value = false;
+    mockCtx.dragPhaseSV.value = 'idle';
+    mockCtx.draggedIdSV.value = '';
+    mockCtx.spatialIndexSV.value = listSpatialIndex();
+    rerenderCell.clear();
+  });
+  afterEach(() => {
+    act(() => ReactNative.unmountComponentAtNode(1));
+  });
+
+  /** UI thread: the finger is at `dy` below the centre of row `slot`. */
+  const update = (slot: number, dy = 0) => {
+    const p = rowCenter(slot);
+    mockGestures.get('A')!.onUpdate!({ absoluteX: p.x, absoluteY: p.y + dy } as never);
+  };
+
+  it.each([
+    // On device the cancel's skippedSV reset lost the race with an update,
+    // so the in-flight hop's end resends the latest position.
+    ['a skipped update resent by the in-flight hop', () => {
+      mockCtx.skippedSV.value = true;
+    }],
+    // A gesture update delivered after the cancel hops on its own.
+    ['an update after the cancel', () => update(1, 10)],
+  ])('does not reorder on %s', (_name, lateUpdate) => {
+    const onReorder = setup();
+
+    activate('A');
+    settle();
+    update(1); // A over B: the list moves A to slot 1
+    settle();
+    expect(sortable._internal.pendingOrderRef.current).toEqual([1, 0, 2, 3, 4]);
+
+    update(1, 5); // continuous hop, in flight when the gesture is cancelled
+    // RNGH cancels the gesture: draggable became false.
+    const p = rowCenter(1);
+    mockGestures.get('A')!.onDeactivate!({ absoluteX: p.x, absoluteY: p.y } as never, false);
+    mockGestures.get('A')!.onFinalize!({ absoluteX: p.x, absoluteY: p.y } as never, false);
+    lateUpdate();
+    settle();
+    expect(mockCtx.hoverPositionSV.snapping).toBe(true);
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(visualOrder()).toBe('ABCDE');
+    expect(mockCtx.draggedIdSV.value).toBe('');
+    expect(mockCtx.hoverContent).toBeNull();
+  });
+});
+
 // Board: column 1 (A B C) at x 0, column 2 (X Y) at x 200.
 const COL1 = ['A', 'B', 'C'];
 const COL2 = ['X', 'Y'];
