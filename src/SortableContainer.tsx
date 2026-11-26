@@ -1,7 +1,7 @@
 import type { ReactNode, RefObject } from 'react';
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { StyleSheet } from 'react-native';
-import type { StyleProp, ViewStyle } from 'react-native';
+import type { GestureResponderEvent, StyleProp, ViewStyle } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Reanimated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { runOnJS, runOnUI } from 'react-native-worklets';
@@ -835,6 +835,20 @@ export const SortableContainer = ({
     return providedSnapTarget ?? defaultSnapbackTarget;
   };
 
+  // A touch that may become a drag holds the flush (see flushIfReady).
+  const onTouchStart = (event: GestureResponderEvent) => {
+    draxViewProps?.onTouchStart?.(event);
+    sortable._internal.setPressActive(true);
+  };
+  const onTouchEnd = (event: GestureResponderEvent) => {
+    draxViewProps?.onTouchEnd?.(event);
+    if (event.nativeEvent.touches.length === 0) sortable._internal.setPressActive(false);
+  };
+  const onTouchCancel = (event: GestureResponderEvent) => {
+    draxViewProps?.onTouchCancel?.(event);
+    if (event.nativeEvent.touches.length === 0) sortable._internal.setPressActive(false);
+  };
+
   const handleMeasure = (event: any) => {
     draxViewProps?.onMeasure?.(event);
     containerMeasurementsRef.current = event;
@@ -849,6 +863,9 @@ export const SortableContainer = ({
       scrollPosition={scrollPosition}
       monitoring
       onMeasure={handleMeasure}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
       onMonitorDragStart={onMonitorDragStart}
       onMonitorDragOver={onMonitorDragOver}
       onMonitorDragExit={onMonitorDragExit}

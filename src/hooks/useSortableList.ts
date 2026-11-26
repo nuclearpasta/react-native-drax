@@ -147,6 +147,8 @@ export const useSortableList = <T,>(
    *  pendingOrderRef (that needs finger movement), so a deferred flush
    *  never lands under a drag that has not moved yet. */
   const dragActiveRef = useRef(false);
+  /** A touch is down in the list (it may become a drag after the long press). */
+  const pressActiveRef = useRef(false);
   /**
    * Pending reorder during drag. Tracks the desired display order
    * as indices into rawData. Updated by moveDraggedItem (ref, not state).
@@ -622,11 +624,14 @@ export const useSortableList = <T,>(
    * committed key order; an earlier echo is not enough). Uncontrolled
    * parents never echo, so they keep the committed order and permanent
    * shifts. Never applied during a drag: pendingOrderRef indexes into
-   * stableData.
+   * stableData. Nor while a touch is down: cells are index-keyed, so the
+   * flush renders another item in the cell under the finger, and a long
+   * press that began on that cell would drag the new item.
    */
   const flushIfReady = () => {
     if (!flushRequestedRef.current) return;
-    if (dragActiveRef.current || pendingOrderRef.current.length > 0) return;
+    if (dragActiveRef.current || pressActiveRef.current
+      || pendingOrderRef.current.length > 0) return;
     const currentRawData = rawDataRef.current;
     if (currentRawData === stableDataRef.current) return;
     if (
@@ -649,6 +654,13 @@ export const useSortableList = <T,>(
   const flushVisualOrder = () => {
     flushRequestedRef.current = true;
     flushIfReady();
+  };
+
+  const setPressActive = (active: boolean) => {
+    pressActiveRef.current = active;
+    // A frame later: when the press became a drag, its handleDragStart
+    // (dragActiveRef) may reach JS after the touch cancel.
+    if (!active) requestAnimationFrame(flushIfReady);
   };
 
   // When flushVisualOrder updates stableData, clear shifts during the
@@ -1131,6 +1143,7 @@ export const useSortableList = <T,>(
     dropTargetVisibleSV,
     onItemSnapEndRef,
     dragActiveRef,
+    setPressActive,
     draggedDisplayIndexRef,
     dragStartIndexRef,
     shiftsRef,
