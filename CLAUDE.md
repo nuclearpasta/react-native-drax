@@ -8,6 +8,7 @@ Drag-and-drop framework for React Native (iOS, Android, Web). Current package ve
 - **Reanimated 4 + react-native-worklets + Gesture Handler 3** (GH v2 also supported via `src/compat`)
 - Peer ranges: React >=19.0.0, React Native >=0.78.0 (New Architecture), Reanimated ^4.0.0, Gesture Handler >=2.0.0, react-native-worklets >=0.3.0 (optional peer via `peerDependenciesMeta`: `src` imports `runOnJS`/`runOnUI` from it, and Reanimated 4 already requires it).
 - Single `HoverLayer`, per-view gesture handlers
+- Pan `enabled` / `activateAfterLongPress` are passed to RNGH as plain values from the `draggable` / `longPressDelay` props, not SharedValues (#267). A SharedValue written in an effect is stale when RNGH's config effect reads it on the JS thread (Reanimated `getSync` runs before the async set lands), so the first touch after `draggable` false→true missed. RNGH resends the full config in the same commit when a plain value changes.
 - Latest React features.
 
 
@@ -145,6 +146,7 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - `onDragOver` — fires continuously while dragging over the same receiver
 - `onReceiveDragOver` — fires continuously on the receiver while being dragged over
 - All dispatched from `handleReceiverChange`. The drag worklet hops to it on every receiver or monitor set change (never skipped), otherwise only while JS says continuous updates are needed (`needsUpdatesSV`: monitors, `onDragOver`/`onReceiveDragOver` over a receiver, `onDrag`/provider `onDrag` with none), with at most one such hop in flight (`jsPendingSV`). An update skipped while one is in flight sets `skippedSV`; the hop's `runOnUI` end then resends the latest position once. On release, `onDeactivate` sends one more hop before `handleDragEnd` while `needsUpdatesSV` is true, so the drop sees the release position (#343 B1). Continuous callbacks therefore fire at JS rate, not frame rate (edm 124711: an unbounded per-frame queue made drops wait seconds)
+- `handleReceiverChange` ignores calls from `handleDragEnd` until the next `handleDragStart` (`dragEndedRef`, #336). On device a hop in flight at a cancel (`draggable` flipped false) resent a skipped update after `handleDragEnd`, so `onMonitorDragOver` moved the item after `restoreStartOrder` and `finalizeDrag` committed it. Test: `SortableContainer.dragRace.test.tsx` › late drag updates after a cancelled drag
 - These SVs are internal: `DraxInternalContextValue` in `DraxContext.ts` extends the public `DraxContextValue`; read it with `useDraxInternalContext` (not exported). Do not add internal fields to `DraxContextValue` (public type). Tests that mock `hooks/useDraxContext` and run `useDragGesture` must mock `useDraxInternalContext`
 
 ## Event Data

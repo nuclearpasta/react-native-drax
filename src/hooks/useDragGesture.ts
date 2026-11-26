@@ -14,15 +14,14 @@ import { useDraxInternalContext } from './useDraxContext';
  * or the monitor set changes. Otherwise it hops only while JS reports that
  * continuous updates are needed, with at most one such hop in flight.
  *
- * On RNGH v3, `enabledSV` and `longPressDelaySV` are SharedValues that
- * reconfigure the native gesture handler on the UI thread — zero JS bridge.
- * On RNGH v2, they are mirrored to plain values with gesture recreation on change.
+ * `enabled` and `longPressDelay` are plain values so the gesture config built
+ * in the render where they change already carries them (#267).
  */
 export const useDragGesture = (
   id: string,
   viewSpatialIndexSV: SharedValue<number>,
-  enabledSV: SharedValue<boolean>,
-  longPressDelaySV: SharedValue<number>,
+  enabled: boolean,
+  longPressDelay: number,
   lockDragXPosition?: boolean,
   lockDragYPosition?: boolean,
   dragBoundsSV?: SharedValue<{ x: number; y: number; width: number; height: number } | null>,
@@ -91,8 +90,8 @@ export const useDragGesture = (
   };
 
   const gesture = useDraxPanGesture({
-    enabledSV,
-    longPressDelaySV,
+    enabled,
+    longPressDelay,
     maxPointers: 1,
     shouldCancelWhenOutside: false,
     touchAction,

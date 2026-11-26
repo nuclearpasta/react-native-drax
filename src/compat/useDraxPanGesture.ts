@@ -1,6 +1,4 @@
-import { useMemo, useState } from 'react';
-import { useAnimatedReaction } from 'react-native-reanimated';
-import { runOnJS } from 'react-native-worklets';
+import { useMemo } from 'react';
 
 import { isGestureHandlerV3 } from './detectVersion';
 import { resolveDidSucceed } from './resolveDidSucceed';
@@ -11,8 +9,11 @@ import type { DraxPanEvent, DraxPanGesture, DraxPanGestureConfig } from './types
 const rngh = require('react-native-gesture-handler');
 
 /**
- * v3 path — passes through to RNGH's usePanGesture with SharedValue config.
- * Zero overhead, UI-thread-driven reconfiguration.
+ * v3 path — passes through to RNGH's usePanGesture.
+ * `enabled` / `activateAfterLongPress` are plain values (#267): RNGH sends them
+ * with the full config in the commit where they change. A SharedValue written
+ * in an effect is still stale when RNGH reads it on the JS thread, and its
+ * UI-thread listener lands later, so the first touch saw `enabled: false`.
  */
 function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
   // Build config without undefined failOffset keys — RNGH v3 warns on
@@ -21,8 +22,8 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
   const onDeactivate = config.onDeactivate;
   const onFinalize = config.onFinalize;
   const panConfig: Record<string, unknown> = {
-    enabled: config.enabledSV,
-    activateAfterLongPress: config.longPressDelaySV,
+    enabled: config.enabled,
+    activateAfterLongPress: config.longPressDelay,
     maxPointers: config.maxPointers,
     shouldCancelWhenOutside: config.shouldCancelWhenOutside,
     touchAction: config.touchAction,
@@ -49,45 +50,18 @@ function useDraxPanGestureV3(config: DraxPanGestureConfig): DraxPanGesture {
 
 /**
  * v2 path — wraps Gesture.Pan() builder pattern.
- * SharedValue config is watched via useAnimatedReaction and triggers gesture
- * recreation on change. This is slower than v3 but functionally correct.
- * In practice, enabled/longPressDelay change very rarely (prop updates only).
+ * The gesture is rebuilt with plain values on every render.
  */
 function useDraxPanGestureV2(config: DraxPanGestureConfig): DraxPanGesture {
   const Gesture = rngh.Gesture;
-
-  // Mirror SharedValues to React state for v2 gesture config
-  const [enabled, setEnabled] = useState(config.enabledSV.value);
-  const [longPressDelay, setLongPressDelay] = useState(
-    config.longPressDelaySV.value
-  );
-
-  // Watch SharedValue changes and sync to JS state
-  useAnimatedReaction(
-    () => config.enabledSV.value,
-    (current, prev) => {
-      if (prev !== null && current !== prev) {
-        runOnJS(setEnabled)(current);
-      }
-    }
-  );
-
-  useAnimatedReaction(
-    () => config.longPressDelaySV.value,
-    (current, prev) => {
-      if (prev !== null && current !== prev) {
-        runOnJS(setLongPressDelay)(current);
-      }
-    }
-  );
 
   // Typed as DraxPanGesture directly — v2 builder returns a legacy type that's structurally
   // different from v3's PanGesture at compile time, but GestureDetector accepts both at runtime.
   // Since Gesture comes from require() (any), the assignment is valid without a cast.
   const gesture: DraxPanGesture = useMemo(() => {
     let g = Gesture.Pan()
-      .enabled(enabled)
-      .activateAfterLongPress(longPressDelay)
+      .enabled(config.enabled)
+      .activateAfterLongPress(config.longPressDelay)
       .maxPointers(config.maxPointers)
       .shouldCancelWhenOutside(config.shouldCancelWhenOutside);
     if (config.failOffsetX !== undefined) g = g.failOffsetX(config.failOffsetX);
@@ -109,7 +83,7 @@ function useDraxPanGestureV2(config: DraxPanGestureConfig): DraxPanGesture {
         'worklet';
         config.onFinalize(event, success);
       });
-  }, [Gesture, enabled, longPressDelay, config]);
+  }, [Gesture, config]);
 
   return gesture;
 }
