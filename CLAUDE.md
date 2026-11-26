@@ -40,6 +40,7 @@ Drag-and-drop framework for React Native (iOS, Android, Web). Current package ve
 
 - FlatList/FlashList/LegendList only mount (and measure) rows in their render window. Own-list reorder in a single-column list works from the measured rows alone (0.11 parity): `getSlotFromPosition` checks only measured rows (before the first measured row → that row, past the last → the last), `computeShiftsForOrder` falls back to `computeSparseShifts`, and `getSnapbackTarget` to `makeSparseShift`. A row's shift only depends on the rows that change sides of it, so unmeasured rows outside the moved range cancel out; an unmeasured row inside it counts at the mean measured size. A fully measured list keeps the exact layout path.
 - Still bail out while a row is unmeasured: grids (`numColumns > 1`, slot stays put, shifts undefined) and `getPhantomSnapTarget` (board transfer into a virtualized column snaps to the default target).
+- Inside `getSlotFromPosition` use `slotCount`, not `pending`: there is no local `pending` there, and a bare `pending` would resolve to jest's global. The lib `tsconfig.json` sets `types` without `jest`, so `yarn typecheck` now flags a bare `pending` in `src` (tests are type-checked by `tsconfig.test.json`).
 - Tests: `src/__tests__/virtualizedReorder.test.tsx`.
 
 ### Animation Customization

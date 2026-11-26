@@ -28,7 +28,7 @@
     "example": "yarn workspace react-native-drax-example",
     "clean": "del-cli lib",
     "prepare": "bob build",
-    "typecheck": "tsc && tsc --project example/tsconfig.json",
+    "typecheck": "tsc && tsc --project tsconfig.test.json && tsc --project example/tsconfig.json",
     "lint": "eslint .",
     "test": "jest --passWithNoTests",
     "release": "release-it"
