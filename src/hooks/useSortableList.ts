@@ -126,6 +126,7 @@ export const useSortableList = <T,>(
   const itemMeasurements = useRef<Map<string, SortableItemMeasurement>>(
     new Map()
   );
+  const layoutPositionedRef = useRef(false);
   const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(
     undefined
   );
@@ -1095,6 +1096,7 @@ export const useSortableList = <T,>(
     fixedKeys,
     draggedItem,
     itemMeasurements,
+    layoutPositionedRef,
     originalIndexes,
     keyExtractor,
     data: stableData,

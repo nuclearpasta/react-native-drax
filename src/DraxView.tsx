@@ -186,10 +186,15 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
   /** Finalize measurements and notify consumers.
    *  `transformDetected` = 1 when auto-detection found transform-based positioning
    *  (visual measurement used instead of Yoga layout). Consumers can check
-   *  `measurements._transformDetected` to know whether shift subtraction is needed. */
+   *  `measurements._transformDetected` to know whether shift subtraction is needed.
+   *  With it set, `_layoutX`/`_layoutY` carry the Yoga layout position. */
   const finalizeMeasurement = useCallback(
-    (x: number, y: number, width: number, height: number, handler?: DraxViewMeasurementHandler, transformDetected = 0) => {
+    (x: number, y: number, width: number, height: number, handler?: DraxViewMeasurementHandler, transformDetected = 0, layoutX?: number, layoutY?: number) => {
       const measurements: DraxViewMeasurements = { height, x, y, width, _transformDetected: transformDetected };
+      if (layoutX !== undefined && layoutY !== undefined) {
+        measurements._layoutX = layoutX;
+        measurements._layoutY = layoutY;
+      }
       measurementsRef.current = measurements;
       updateMeasurementsCtx(id, measurements);
       onMeasure?.(measurements);
@@ -242,7 +247,7 @@ export const DraxView = memo((props: DraxViewProps): ReactNode => {
             const visualX = pageX - parentPageX + parentScroll.x;
             const visualY = pageY - parentPageY + parentScroll.y;
             if (isTransformPositioned({ x: layoutX, y: layoutY }, { x: visualX, y: visualY })) {
-              finalizeMeasurement(visualX, visualY, width!, height!, handler, 1);
+              finalizeMeasurement(visualX, visualY, width!, height!, handler, 1, layoutX, layoutY);
             } else {
               finalizeMeasurement(layoutX, layoutY, width!, height!, handler);
             }
