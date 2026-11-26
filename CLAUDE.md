@@ -8,6 +8,7 @@ Drag-and-drop framework for React Native (iOS, Android, Web). Current package ve
 - **Reanimated 4 + react-native-worklets + Gesture Handler 3** (GH v2 also supported via `src/compat`)
 - Peer ranges: React >=19.0.0, React Native >=0.78.0 (New Architecture), Reanimated ^4.0.0, Gesture Handler >=2.0.0, react-native-worklets >=0.3.0 (optional peer via `peerDependenciesMeta`: `src` imports `runOnJS`/`runOnUI` from it, and Reanimated 4 already requires it).
 - Single `HoverLayer`, per-view gesture handlers
+- Pan `enabled` / `activateAfterLongPress` are passed to RNGH as plain values from the `draggable` / `longPressDelay` props, not SharedValues (#267). A SharedValue written in an effect is stale when RNGH's config effect reads it on the JS thread (Reanimated `getSync` runs before the async set lands), so the first touch after `draggable` false→true missed. RNGH resends the full config in the same commit when a plain value changes.
 - Latest React features.
 
 
@@ -107,6 +108,17 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - Both checked in `handleReceiverChange` (JS thread). If rejected, receiver is cleared and enter callbacks skipped.
 - Use for max capacity: `acceptsDrag={() => items.length < 5}`
 
+## External Drops (single list)
+
+- Opt-in `onExternalDrop` on `useSortableList` / `DraxList`: fires in `SortableContainer.handleInternalDragEnd` when a foreign view (not this list's item, not a board column item, no active board transfer) is dropped with its drop point inside the container bounds (ratio in [0,1] of `containerMeasurementsRef`). Not on cancel.
+- Drop point: drag end events measure `monitorOffset` (and `dragAbsolutePosition`) from the hover's top-left, while drag-over measures from the hover centre. The drop point is `monitorOffset` + half `dragged.measurements` (the hover centre, as own reorder uses), or the finger (`monitorOffset + dragTouchPosition - dragAbsolutePosition`) when the container's `draxViewProps.collisionAlgorithm` is `'touch'`. Indexing at the top-left gave i instead of i+1 on a cell's right half and skipped drops near the leading edge (#333 scenario 11).
+- `toIndex` is computed at drop time from the drop point + scroll by `SortableContainer.getExternalDropIndex`. All rows measured: `getSlotFromPosition(pos, itemCount)` (explicit slot count, because `pendingOrderRef` is empty for foreign drags), then +1 if past the slot item's midpoint (main axis for lists, x for grids). A drop past the far main-axis edge of the last row returns data.length first (`getSlotFromPosition` keeps the last row there, so a grid drop under a last-row cell's left half would otherwise insert before it). Range 0..data.length.
+- Some rows unmeasured (a virtualized list only measures mounted rows; `getSlotFromPosition` then bails out to slot 0): only a measured row under the drop decides (lists: also its gap to a measured next row, before a measured first row, after a measured last row). No such row → `onExternalDrop` is not called, rather than reporting a wrong index. Own-drag reorder keeps `getSlotFromPosition`'s bail-out (no move).
+- No phantom slot, no shifts, no data mutation; the foreign view snaps back by default.
+- Drag-over for foreign drags is main's here: they auto-scroll the list, and `onDragPositionChange` / the drop indicator also run for them (`moveDraggedItem` can't: `draggedDisplayIndexRef` is unset). #326 adds a foreign-drag filter in `onMonitorDragOver` that stops all of that. Once both are in, that filter must still auto-scroll when `onExternalDrop` is set (it is on `sortable._internal` and destructured in `SortableContainer`), with no `onDragPositionChange`, `moveDraggedItem` or drop indicator.
+- Live touch: a foreign view dragged in from above the list crosses its top auto-scroll band (`autoScrollBackThreshold`, delay 0) and the list jumps back `autoScrollJumpRatio` of the viewport before the drop. Coordinates read before the drag are then one jump off: below-last-row drops gave 27/28 instead of 30, and a drop after an insert and a scroll gave 23 instead of 26. Move straight from the source to the target (no interpolated frames in the band), or read positions after the drag. Both cases give the right index then.
+- Tests: `src/__tests__/externalDrop.test.ts` runs the hook + container as plain functions on a mock hook store. The harness predates `react-test-renderer`, which is a devDependency on main since #310 but not on this branch's base.
+
 ## Collision Algorithms
 
 - `DraxView` accepts `collisionAlgorithm` prop: `'center'` (default), `'intersect'`, or `'contain'`
@@ -146,6 +158,7 @@ The composable API (`useSortableList` + `SortableContainer` + `SortableItem`) is
 - `onDragOver` — fires continuously while dragging over the same receiver
 - `onReceiveDragOver` — fires continuously on the receiver while being dragged over
 - All dispatched from `handleReceiverChange`. The drag worklet hops to it on every receiver or monitor set change (never skipped), otherwise only while JS says continuous updates are needed (`needsUpdatesSV`: monitors, `onDragOver`/`onReceiveDragOver` over a receiver, `onDrag`/provider `onDrag` with none), with at most one such hop in flight (`jsPendingSV`). An update skipped while one is in flight sets `skippedSV`; the hop's `runOnUI` end then resends the latest position once. On release, `onDeactivate` sends one more hop before `handleDragEnd` while `needsUpdatesSV` is true, so the drop sees the release position (#343 B1). Continuous callbacks therefore fire at JS rate, not frame rate (edm 124711: an unbounded per-frame queue made drops wait seconds)
+- `handleReceiverChange` ignores calls from `handleDragEnd` until the next `handleDragStart` (`dragEndedRef`, #336). On device a hop in flight at a cancel (`draggable` flipped false) resent a skipped update after `handleDragEnd`, so `onMonitorDragOver` moved the item after `restoreStartOrder` and `finalizeDrag` committed it. Test: `SortableContainer.dragRace.test.tsx` › late drag updates after a cancelled drag
 - These SVs are internal: `DraxInternalContextValue` in `DraxContext.ts` extends the public `DraxContextValue`; read it with `useDraxInternalContext` (not exported). Do not add internal fields to `DraxContextValue` (public type). Tests that mock `hooks/useDraxContext` and run `useDragGesture` must mock `useDraxInternalContext`
 
 ## Event Data
