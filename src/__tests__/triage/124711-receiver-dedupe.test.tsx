@@ -176,7 +176,6 @@ const mockCtx = {
   handleDragStart: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleDragStart'],
   handleReceiverChange: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleReceiverChange'],
   handleDragEnd: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleDragEnd'],
-  onUnregisteredDragEnd: (() => {}) as ReturnType<typeof useCallbackDispatch>['onUnregisteredDragEnd'],
 };
 jest.mock('../../hooks/useDraxContext', () => ({
   useDraxContext: () => mockCtx,
@@ -257,7 +256,6 @@ const Dispatcher = () => {
     handleDragStart: Object.assign(dispatch.handleDragStart, { mockName: 'handleDragStart' }),
     handleDragEnd: Object.assign(dispatch.handleDragEnd, { mockName: 'handleDragEnd' }),
     handleReceiverChange: counted,
-    onUnregisteredDragEnd: dispatch.onUnregisteredDragEnd,
   });
   return null;
 };

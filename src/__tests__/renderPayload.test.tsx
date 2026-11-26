@@ -46,18 +46,16 @@ jest.mock('react-native-worklets', () => ({
   runOnJS: <F,>(fn: F) => fn,
 }));
 const sv = <T,>(value: T) => ({ value });
-jest.mock('../hooks/useDraxContext', () => {
-  const ctx = () => ({
+jest.mock('../hooks/useDraxContext', () => ({
+  useDraxContext: () => ({
     hoverReadySV: sv(false),
     dragPhaseSV: sv('idle'),
     draggedIdSV: sv(''),
     hoverPositionSV: sv({ x: 0, y: 0 }),
     hoverClearDeferredRef: { current: false },
     setHoverContent: jest.fn(),
-    onUnregisteredDragEnd: jest.fn(),
-  });
-  return { useDraxContext: ctx, useDraxInternalContext: ctx };
-});
+  }),
+}));
 
 const DATA = ['A', 'B', 'C'];
 

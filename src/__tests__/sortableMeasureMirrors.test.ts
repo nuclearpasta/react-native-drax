@@ -63,14 +63,9 @@ jest.mock('react', () => ({
   useMemo: (fn: () => unknown) => fn(),
 }));
 jest.mock('../DraxView', () => ({ DraxView: 'DraxView' }));
-jest.mock('../hooks/useDraxContext', () => {
-  const ctx = () => ({
-    hoverReadySV: { value: false },
-    draggedIdSV: { value: '' },
-    onUnregisteredDragEnd: () => {},
-  });
-  return { useDraxContext: ctx, useDraxInternalContext: ctx };
-});
+jest.mock('../hooks/useDraxContext', () => ({
+  useDraxContext: () => ({ hoverReadySV: { value: false }, draggedIdSV: { value: '' } }),
+}));
 
 type MeasureHandler = (m: DraxViewMeasurements | undefined) => void;
 

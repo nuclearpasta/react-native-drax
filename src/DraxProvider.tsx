@@ -61,6 +61,8 @@ export const DraxProvider = ({
   const droppedItemsRef = useRef<Map<string, Set<string>>>(new Map());
 
   // ── Spatial index + registry ───────────────────────────────────────
+  // Ends a drag whose dragged view unregisters (set below, after dispatch).
+  const onBeforeUnregisterRef = useRef<(id: string) => void>(() => {});
   const {
     spatialIndexSV,
     scrollOffsetsSV,
@@ -70,7 +72,7 @@ export const DraxProvider = ({
     updateScrollOffset,
     updateViewProps,
     getViewEntry,
-  } = useSpatialIndex();
+  } = useSpatialIndex(onBeforeUnregisterRef);
 
   // ── Hover content (ref-based to avoid provider re-renders) ─────────
   // Store content in a ref so changing it doesn't re-render the entire tree.
@@ -87,7 +89,7 @@ export const DraxProvider = ({
   }, []);
 
   // ── Callback dispatch ──────────────────────────────────────────────
-  const { handleDragStart, handleReceiverChange, handleDragEnd, onUnregisteredDragEnd } =
+  const { handleDragStart, handleReceiverChange, handleDragEnd, handleViewUnregister } =
     useCallbackDispatch({
       getViewEntry,
       spatialIndexSV,
@@ -109,6 +111,7 @@ export const DraxProvider = ({
       onProviderDragEnd,
       droppedItemsRef,
     });
+  onBeforeUnregisterRef.current = handleViewUnregister;
 
   // ── Root view ref ──────────────────────────────────────────────────
   const rootViewRef = useAnimatedRef<ComponentRef<typeof View>>();
@@ -159,7 +162,6 @@ export const DraxProvider = ({
       handleDragStart,
       handleReceiverChange,
       handleDragEnd,
-      onUnregisteredDragEnd,
 
       // Hover content
       setHoverContent,
@@ -198,7 +200,6 @@ export const DraxProvider = ({
       handleDragStart,
       handleReceiverChange,
       handleDragEnd,
-      onUnregisteredDragEnd,
       setHoverContent,
       droppedItemsRef,
       rootViewRef,

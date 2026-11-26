@@ -184,6 +184,10 @@ export const useDragGesture = (
     onUpdate: (event) => {
       'worklet';
 
+      // Released already: this view unregistered mid-drag and the drag was
+      // cancelled (handleViewUnregister), or another view's drag took over.
+      if (draggedIdSV.value !== id || dragPhaseSV.value === 'releasing') return;
+
       // Convert screen-absolute touch to root-view-relative
       const rootOffset = rootOffsetSV.value;
       const rootRelX = event.absoluteX - rootOffset.x;
@@ -291,6 +295,8 @@ export const useDragGesture = (
 
       // A cancelled gesture is not a drop: onFinalize runs the cancel path.
       if (!didSucceed) return;
+      // Already released (see onUpdate).
+      if (draggedIdSV.value !== id || dragPhaseSV.value === 'releasing') return;
 
       // Root-relative finger position at release
       const touchPos: Position = {
@@ -343,7 +349,7 @@ export const useDragGesture = (
       // If gesture was cancelled (not ended normally).
       // Check draggedIdSV (set in onActivate) instead of dragPhaseSV
       // because phase is now set later in handleDragStart via runOnUI.
-      if (!didSucceed && draggedIdSV.value !== '') {
+      if (!didSucceed && draggedIdSV.value === id && dragPhaseSV.value !== 'releasing') {
         const currentDraggedId = draggedIdSV.value;
         const currentReceiverId = receiverIdSV.value;
         const touchPos: Position = {

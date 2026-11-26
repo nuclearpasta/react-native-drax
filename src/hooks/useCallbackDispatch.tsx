@@ -103,33 +103,6 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
   const currentMonitorIdsRef = useRef<string[]>([]);
   // Completion of the snap animation still in flight, if any.
   const pendingSnapCompleteRef = useRef<(() => void) | null>(null);
-  // Run when a drag whose view unregistered mid-drag really ends, keyed by
-  // dragged view id. See onUnregisteredDragEnd.
-  const unregisteredEndRef = useRef(new Map<string, () => void>());
-
-  /** Runs every pending unregistered-drag-end callback (or only `draggedId`'s). */
-  const runUnregisteredDragEnd = (draggedId?: string) => {
-    const callbacks = unregisteredEndRef.current;
-    if (draggedId === undefined) {
-      const all = [...callbacks.values()];
-      callbacks.clear();
-      all.forEach((callback) => callback());
-      return;
-    }
-    const callback = callbacks.get(draggedId);
-    callbacks.delete(draggedId);
-    callback?.();
-  };
-
-  /**
-   * Called by a dragged view that unmounts mid-drag. The gesture may outlive
-   * the view (e.g. a virtualized row scrolled out of the window), so its
-   * owner's cleanup must wait for the drag's real end: `callback` runs when
-   * handleDragEnd arrives for `draggedId`, or when a new drag starts.
-   */
-  const onUnregisteredDragEnd = (draggedId: string, callback: () => void) => {
-    unregisteredEndRef.current.set(draggedId, callback);
-  };
   // Set from handleDragEnd until the next handleDragStart. An update can still
   // reach JS after the end (a hop in flight at a cancel resends a skipped
   // update), and must not move a sortable item after the drop or cancel (#336).
@@ -239,8 +212,6 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     // hoverPositionSV), so its completion callback never fires. Finalize the
     // previous drag now, before this drag touches any sortable state.
     pendingSnapCompleteRef.current?.();
-    // A drag whose view unmounted is over once a new one starts.
-    runUnregisteredDragEnd();
     dragEndedRef.current = false;
 
     const draggedEntry = getViewEntry(draggedId);
@@ -592,7 +563,6 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
 
     const draggedEntry = getViewEntry(draggedId);
     if (!draggedEntry) {
-      // The dragged view unregistered mid-drag: no view callbacks can run.
       // Reset drag state atomically on UI thread to avoid one-frame flash
       runOnUI((
         _hoverReadySV: typeof hoverReadySV,
@@ -607,7 +577,6 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
         _hoverPositionSV.value = { x: 0, y: 0 };
       })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
-      runUnregisteredDragEnd(draggedId);
       return;
     }
 
@@ -627,12 +596,8 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
         _hoverPositionSV.value = { x: 0, y: 0 };
       })(hoverReadySV, dragPhaseSV, draggedIdSV, hoverPositionSV);
       setHoverContent(null);
-      runUnregisteredDragEnd(draggedId);
       return;
     }
-    // Still registered (e.g. remounted under the same id): the view's own
-    // end callbacks run, so drop any unmount cleanup left for this drag.
-    unregisteredEndRef.current.delete(draggedId);
 
     const startPos = startPositionSV.value;
     const dragTranslation = {
@@ -789,11 +754,36 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     onProviderDragEnd?.({ draggedId, receiverId: receiverId || undefined, position: hoverPositionSV.value, cancelled });
   };
 
+  /**
+   * Called just before a view leaves the registry. If it is the dragged view
+   * (e.g. a virtualized row scrolled out by autoscroll), its gesture dies with
+   * it or can no longer reach its callbacks, and an end for an unregistered
+   * view runs none of them. End the drag now as a cancel, like a system
+   * cancel in onFinalize: onDragEnd, monitor ends (the list restores its
+   * start order and stops autoscroll), the snap and onSnapEnd all run.
+   */
+  const handleViewUnregister = (id: string) => {
+    if (dragEndedRef.current || draggedIdSV.value !== id) return;
+    const { receiverIdSV } = deps;
+    const receiverId = receiverIdSV.value;
+    // The release, as onFinalize sets it. The gesture worklets ignore
+    // updates and ends once the phase is 'releasing'.
+    runOnUI((
+      _dragPhaseSV: typeof dragPhaseSV,
+      _receiverIdSV: typeof receiverIdSV,
+    ) => {
+      'worklet';
+      _dragPhaseSV.value = 'releasing';
+      _receiverIdSV.value = '';
+    })(dragPhaseSV, receiverIdSV);
+    handleDragEnd(id, receiverId, true);
+  };
+
   return {
     handleDragStart,
     handleReceiverChange,
     handleDragEnd,
-    onUnregisteredDragEnd,
+    handleViewUnregister,
   };
 };
 

@@ -49,10 +49,7 @@ const mockCtx = {
   hoverClearDeferredRef: { current: false },
   setHoverContent: jest.fn(),
 };
-jest.mock('../hooks/useDraxContext', () => ({
-  useDraxContext: () => mockCtx,
-  useDraxInternalContext: () => mockCtx,
-}));
+jest.mock('../hooks/useDraxContext', () => ({ useDraxContext: () => mockCtx }));
 
 const DATA = ['A', 'B', 'C'];
 const Leaf = () => null;
