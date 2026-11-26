@@ -1,4 +1,4 @@
-import { ScrollViewStyleReset } from 'expo-router/html';
+import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
 const TITLE = 'react-native-drax — Live Demo';
@@ -16,8 +16,14 @@ const darkModeCSS = `
 `;
 
 export default function Root({ children }: PropsWithChildren) {
+  // Expo SDK 58 renders static HTML through React streaming and hands the
+  // bundle <script> tags, CSS links and the react-native-web style element to
+  // the custom root through this context. Without headNodes/bodyNodes the
+  // exported pages ship no JS and the demo never leaves "Loading...".
+  const { htmlAttributes, headNodes, bodyAttributes, bodyNodes } =
+    useServerDocumentContext();
   return (
-    <html lang="en">
+    <html lang="en" {...htmlAttributes}>
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -69,8 +75,12 @@ export default function Root({ children }: PropsWithChildren) {
 
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: darkModeCSS }} />
+        {headNodes}
       </head>
-      <body>{children}</body>
+      <body {...bodyAttributes}>
+        {children}
+        {bodyNodes}
+      </body>
     </html>
   );
 }
