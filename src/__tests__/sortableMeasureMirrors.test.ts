@@ -89,7 +89,10 @@ const measured = { x: 0, y: 100, width: 50, height: 40, _transformDetected: 1 };
 describe('SortableItem onMeasure reads JS-side state synchronously (#249)', () => {
   let sortable: SortableListHandle<string>;
 
+  // A transform-detected measure schedules a follow-up measure two frames
+  // later; fake timers keep that rAF from outliving the test environment.
   beforeEach(() => {
+    jest.useFakeTimers();
     mockUiQueue.length = 0;
     sortable = useSortableList({ data: ['A', 'B'], keyExtractor: (s) => s, onReorder: () => {} });
     // A previous drag left a permanent shift on A, already applied on the UI thread.
@@ -97,6 +100,11 @@ describe('SortableItem onMeasure reads JS-side state synchronously (#249)', () =
     sortable._internal.cancelDrag();
     flushUI();
     mockState.jsReads = 0;
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+    jest.useRealTimers();
   });
 
   it('subtracts the shift JS just wrote, not the stale UI value', () => {
