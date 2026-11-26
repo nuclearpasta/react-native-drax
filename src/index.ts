@@ -83,6 +83,7 @@ export type {
   SortableDragStartEvent,
   SortableDragPositionChangeEvent,
   SortableDragEndEvent,
+  SortableExternalDropEvent,
   SortableReorderStrategy,
   SortableAnimationConfig,
   SortableAnimationPreset,

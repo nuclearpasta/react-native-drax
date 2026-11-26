@@ -135,6 +135,7 @@ const SortableItemInner = ({
     instantClearSV,
     shiftsValidSV,
     itemMeasurements,
+    layoutPositionedRef,
     keyExtractor,
     rawData,
     originalIndexes,
@@ -247,8 +248,28 @@ const SortableItemInner = ({
           onItemSnapEndRef.current?.();
           draxViewProps.onSnapEnd?.(snapData);
         }}
-        onMeasure={(measurements) => {
-          draxViewProps.onMeasure?.(measurements);
+        onMeasure={(rawMeasurements) => {
+          draxViewProps.onMeasure?.(rawMeasurements);
+          // DraxView takes the visual position (measure()) of a view whose
+          // layout is 0 on an axis, for LegendList (rows at main-axis layout 0,
+          // placed by transform). In a list that places rows by layout (a row
+          // measured untransformed at a non-zero main-axis position), that is
+          // only the first row, and measure() includes whatever shift is on
+          // screen: right after a flush, an index-keyed cell still shows the
+          // previous row's shift (#347 review). Use the layout position.
+          let measurements = rawMeasurements;
+          if (Platform.OS !== 'web' && measurements) {
+            if (!measurements._transformDetected) {
+              if (Math.abs(horizontal ? measurements.x : measurements.y) > 1) {
+                layoutPositionedRef.current = true;
+              }
+            } else if (layoutPositionedRef.current) {
+              const { _layoutX: layoutX, _layoutY: layoutY } = measurements;
+              if (layoutX !== undefined && layoutY !== undefined) {
+                measurements = { ...measurements, x: layoutX, y: layoutY, _transformDetected: 0 };
+              }
+            }
+          }
           // A measurement that includes transforms (web, or measure() when
           // transform-detected) includes the row's shift as
           // rendered, which can lag shiftsJSRef: mid-animation, or just after

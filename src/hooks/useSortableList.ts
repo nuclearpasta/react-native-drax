@@ -67,6 +67,7 @@ export const useSortableList = <T,>(
     onDragStart,
     onDragPositionChange,
     onDragEnd,
+    onExternalDrop,
   } = options;
 
   const id = useDraxId(options.id);
@@ -126,6 +127,7 @@ export const useSortableList = <T,>(
   const itemMeasurements = useRef<Map<string, SortableItemMeasurement>>(
     new Map()
   );
+  const layoutPositionedRef = useRef(false);
   const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(
     undefined
   );
@@ -823,9 +825,11 @@ export const useSortableList = <T,>(
    * Used when dragging over empty space (no receiver hit) to determine
    * which slot the dragged item should occupy.
    */
-  const getSlotFromPosition = (contentPos: Position): number => {
-    const pending = pendingOrderRef.current;
-    if (pending.length === 0) return 0;
+  const getSlotFromPosition = (
+    contentPos: Position,
+    slotCount = pendingOrderRef.current.length
+  ): number => {
+    if (slotCount === 0) return 0;
 
     // Use ORIGINAL layout positions for stable slot boundaries.
     // Key insight: slot boundaries must NOT shift when items are reordered
@@ -841,8 +845,8 @@ export const useSortableList = <T,>(
 
     const gap = computeItemGap();
 
-    // Use the shorter of measurements and pending to avoid out-of-bounds access.
-    const itemCount = Math.min(measurements.length, pending.length);
+    // Use the shorter of measurements and slotCount to avoid out-of-bounds access.
+    const itemCount = Math.min(measurements.length, slotCount);
     if (itemCount === 0) return 0;
 
     if (numColumns <= 1) {
@@ -902,7 +906,7 @@ export const useSortableList = <T,>(
 
       // Direct cell hit
       const owner = cellOwner.get(`${cellRow},${cellCol}`);
-      if (owner !== undefined) return Math.min(owner, pending.length - 1);
+      if (owner !== undefined) return Math.min(owner, slotCount - 1);
 
       // Empty cell — find nearest item by center distance
       let minDist = Infinity;
@@ -918,7 +922,7 @@ export const useSortableList = <T,>(
           nearest = i;
         }
       }
-      return Math.min(nearest, pending.length - 1);
+      return Math.min(nearest, slotCount - 1);
     } else {
       // ── Uniform grid — find row then column ──
       const firstMeas = measurements[0];
@@ -970,7 +974,7 @@ export const useSortableList = <T,>(
         targetCol = c;
       }
 
-      return Math.min(targetRow * numColumns + targetCol, pending.length - 1);
+      return Math.min(targetRow * numColumns + targetCol, slotCount - 1);
     }
   };
 
@@ -1098,6 +1102,7 @@ export const useSortableList = <T,>(
     fixedKeys,
     draggedItem,
     itemMeasurements,
+    layoutPositionedRef,
     originalIndexes,
     keyExtractor,
     data: stableData,
@@ -1119,6 +1124,7 @@ export const useSortableList = <T,>(
     onDragStart,
     onDragPositionChange,
     onDragEnd,
+    onExternalDrop,
     onReorder,
     getMeasurementByOriginalIndex,
     dropTargetPositionSV,
