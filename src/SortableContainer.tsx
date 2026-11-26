@@ -332,8 +332,9 @@ export const SortableContainer = ({
   /**
    * Insertion index (0 to itemCount) for a foreign drop at a content position,
    * or undefined when no measured row decides it. A virtualized list only
-   * measures its mounted rows, and getSlotFromPosition gives up (slot 0) when
-   * any row is unmeasured. Then only the measured row under the drop counts
+   * measures its mounted rows, and getSlotFromPosition then clamps to the
+   * measured rows (lists) or keeps the slot (grids), which is right for an
+   * own drag but not for an insert. Then only the measured row under the drop counts
    * (for a list, its gap to a measured next row too; before the first row and
    * after the last row count when those rows are measured).
    */
