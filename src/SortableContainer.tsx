@@ -121,6 +121,7 @@ export const SortableContainer = ({
     shiftsValidSV,
     getSlotFromPosition,
     keyExtractor,
+    itemMeasurements,
   } = sortable._internal;
 
   // Access hover SharedValues from DraxContext for deferred clearing.
@@ -145,6 +146,9 @@ export const SortableContainer = ({
   const scrollStateRef = useRef(AutoScrollDirection.None);
   const scrollTimerRef = useRef<AutoScrollTimer>({});
   const draggedToIndex = useRef<number | undefined>(undefined);
+  /** Key of this list's row being dragged; its index can go stale if `data`
+   *  changes mid-drag, and DraxList's cells are keyed by index. */
+  const draggedKeyRef = useRef<string | undefined>(undefined);
   const jitterExceededRef = useRef(false);
   // Track last receiver that triggered a reorder to prevent oscillation.
   // After moveDraggedItem inserts at position R, the receiver shifts to R-1.
@@ -159,41 +163,48 @@ export const SortableContainer = ({
 
   const { freeze: freezeScroll, unfreeze: unfreezeScroll } = useWebScrollFreeze(scrollRef);
 
+  /** Set when handleInternalDragEnd sent onReorder at release. */
+  const reorderSentAtReleaseRef = useRef(false);
+
+  /** The reorder the current drag makes, or undefined if it made none. */
+  const getReorderEvent = () => {
+    const startIdx = dragStartIndexRef.current;
+    const endIdx = draggedDisplayIndexRef.current;
+    const pending = pendingOrderRef.current;
+    if (startIdx === undefined || endIdx === undefined
+      || startIdx === endIdx || pending.length === 0) return undefined;
+    const draggedOrigIdx = pending[endIdx];
+    const displacedOrigIdx = pending[startIdx];
+    return {
+      data: pending
+        .map((idx) => rawData[idx])
+        .filter((item): item is any => item !== undefined),
+      fromIndex: startIdx,
+      toIndex: endIdx,
+      fromItem: draggedOrigIdx !== undefined ? rawData[draggedOrigIdx] as any : undefined as any,
+      toItem: displacedOrigIdx !== undefined ? rawData[displacedOrigIdx] as any : undefined as any,
+      isExternalDrag: false,
+    };
+  };
+
   // ── Finalize drag (called after snap animation completes) ──────────
 
   const finalizeDrag = () => {
     unfreezeScroll();
     sortable._internal.dragActiveRef.current = false;
+    const sentAtRelease = reorderSentAtReleaseRef.current;
+    reorderSentAtReleaseRef.current = false;
 
     if (boardContext?.boardInternal.transferState.current?.targetId) {
       boardContext.boardInternal.finalizeTransfer?.();
       return;
     }
 
-    const startIdx = dragStartIndexRef.current;
-    const endIdx = draggedDisplayIndexRef.current;
+    // Build final data BEFORE clearing refs
+    const reorderEvent = getReorderEvent();
 
-    const pending = pendingOrderRef.current;
-    const didReorder = startIdx !== undefined && endIdx !== undefined
-      && startIdx !== endIdx && pending.length > 0;
-
-    if (didReorder) {
-      // Build final data BEFORE clearing refs
-      const finalData = pending
-        .map((idx) => rawData[idx])
-        .filter((item): item is any => item !== undefined);
-      const draggedOrigIdx = pending[endIdx];
-      const displacedOrigIdx = pending[startIdx];
-
-      const reorderEvent = {
-        data: finalData,
-        fromIndex: startIdx,
-        toIndex: endIdx,
-        fromItem: draggedOrigIdx !== undefined ? rawData[draggedOrigIdx] as any : undefined as any,
-        toItem: displacedOrigIdx !== undefined ? rawData[displacedOrigIdx] as any : undefined as any,
-        isExternalDrag: false,
-      };
-
+    if (reorderEvent) {
+      const pending = pendingOrderRef.current;
       {
         // ── PERMANENT SHIFTS: blink-free for all contexts ──
         const finalShifts = computeShiftsForOrder(pending) ?? {};
@@ -224,7 +235,7 @@ export const SortableContainer = ({
         })(finalShifts);
 
         requestAnimationFrame(() => {
-          onReorder(reorderEvent);
+          if (!sentAtRelease) onReorder(reorderEvent);
           if (boardContext) {
             // Board keeps the delay: the hover covers the transfer transition.
             setTimeout(() => {
@@ -321,8 +332,9 @@ export const SortableContainer = ({
   /**
    * Insertion index (0 to itemCount) for a foreign drop at a content position,
    * or undefined when no measured row decides it. A virtualized list only
-   * measures its mounted rows, and getSlotFromPosition gives up (slot 0) when
-   * any row is unmeasured. Then only the measured row under the drop counts
+   * measures its mounted rows, and getSlotFromPosition then clamps to the
+   * measured rows (lists) or keeps the slot (grids), which is right for an
+   * own drag but not for an insert. Then only the measured row under the drop counts
    * (for a list, its gap to a measured next row too; before the first row and
    * after the last row count when those rows are measured).
    */
@@ -548,8 +560,8 @@ export const SortableContainer = ({
     // A cancelled drag (e.g. the app went to the background mid-drag) is not
     // a reorder: restore the start order so the item snaps back to its slot
     // and finalizeDrag commits nothing. Neighbours animate back to their
-    // committed slots with the snap (initPendingOrder keeps instantClearSV
-    // false); finalizeDrag clears the drag state once the snap ends.
+    // committed slots with the snap (instantClearSV is false once the drag
+    // has moved); finalizeDrag clears the drag state once the snap ends.
     if (cancelled && totalDragEnd) restoreStartOrder();
 
     const { dragged, receiver } = eventData;
@@ -656,7 +668,10 @@ export const SortableContainer = ({
       toPayload !== undefined &&
       computeFingerDisplacement(eventData) < FINGER_JITTER_THRESHOLD
     ) {
-      return undefined;
+      // The data changed mid-drag (the drag's indices were cleared): the
+      // dragged cell may now show another row, so snap back by the row's key.
+      const dataChanged = !externalDrag && dragStartIndexRef.current === undefined;
+      return dataChanged ? getDraggedRowSnapTarget(fromOriginalIndex) : undefined;
     }
 
     // Reorder happened — return snap target. Don't commit yet;
@@ -673,6 +688,15 @@ export const SortableContainer = ({
         shiftsRef.value = targetShifts;
       }
       const snapbackTarget = getSnapbackTarget();
+      // Report the reorder at release, as 0.11 did (boards still report at
+      // snap end). Committing the order now makes the parent's echo match
+      // it, so the echo waits for finalizeDrag instead of resetting the drag.
+      const reorderEvent = boardContext ? undefined : getReorderEvent();
+      if (reorderEvent) {
+        commitVisualOrder();
+        reorderSentAtReleaseRef.current = true;
+        onReorder(reorderEvent);
+      }
       return snapbackTarget;
     }
 
@@ -689,8 +713,17 @@ export const SortableContainer = ({
     }
 
     // No receiver — snap back to the dragged item's current position
+    return getDraggedRowSnapTarget(fromOriginalIndex);
+  };
+
+  /** Absolute position of the dragged row, found by its key (cells may be
+   *  keyed by index, so the dragged cell can show another row after a data
+   *  change). */
+  const getDraggedRowSnapTarget = (fromOriginalIndex: number) => {
     const containerMeasurements = containerMeasurementsRef.current;
-    const fromMeas = getMeasurementByOriginalIndex(fromOriginalIndex);
+    const fromMeas = draggedKeyRef.current !== undefined
+      ? itemMeasurements.current.get(draggedKeyRef.current)
+      : getMeasurementByOriginalIndex(fromOriginalIndex);
     if (fromMeas && containerMeasurements) {
       return {
         x: containerMeasurements.x + fromMeas.x - scrollPositionJSRef.current.x,
@@ -713,6 +746,7 @@ export const SortableContainer = ({
     freezeScroll();
 
     const { dragged } = eventData;
+    draggedKeyRef.current = undefined;
 
     // No guard on draggedItem.value — Reanimated 4 doesn't reliably sync
     // SharedValue writes from runOnUI worklets, so the value may be stale.
@@ -725,6 +759,8 @@ export const SortableContainer = ({
     ) {
       const { index, originalIndex } = dragged.payload;
       setDraggedItem(originalIndex);
+      const startItem = rawData[originalIndex];
+      if (startItem !== undefined) draggedKeyRef.current = keyExtractor(startItem, originalIndex);
       // Initialize pending order BEFORE setting display index.
       // initPendingOrder copies the committed visual order into pendingOrderRef.
       initPendingOrder();

@@ -186,11 +186,20 @@ let sortable: SortableListHandle<string>;
 const rerenderCell = new Map<string, () => void>();
 
 /** Re-renders its item on its own, like a FlatList cell after layout. */
-const Cell = ({ handle, index }: { handle: SortableListHandle<string>; index: number }) => {
+const Cell = ({
+  handle,
+  index,
+  onSnapEnd,
+}: {
+  handle: SortableListHandle<string>;
+  index: number;
+  onSnapEnd?: (key: string) => void;
+}) => {
   const [, setTick] = useState(0);
-  rerenderCell.set(handle.data[index]!, () => setTick((t) => t + 1));
+  const key = handle.data[index]!;
+  rerenderCell.set(key, () => setTick((t) => t + 1));
   return (
-    <SortableItem sortable={handle} index={index}>
+    <SortableItem sortable={handle} index={index} onSnapEnd={() => onSnapEnd?.(key)}>
       <Leaf />
     </SortableItem>
   );
@@ -424,8 +433,9 @@ describe('second drag racing the first drag snap (#250)', () => {
   );
 });
 
-// Controlled parent: it stores onReorder's data and echoes it back.
-const ControlledList = ({ onReorder }: { onReorder: jest.Mock }) => {
+// Controlled parent: it stores onReorder's data and echoes it back in the
+// same tick. onReorder fires at release, so the echo renders during the snap.
+const ControlledList = ({ onReorder, onSnapEnd }: { onReorder: jest.Mock; onSnapEnd?: jest.Mock }) => {
   const [data, setData] = useState(KEYS);
   const handle = useSortableList({
     id: 'list',
@@ -442,11 +452,138 @@ const ControlledList = ({ onReorder }: { onReorder: jest.Mock }) => {
   return (
     <SortableContainer sortable={handle} scrollRef={{ current: null }}>
       {handle.data.map((item, index) => (
-        <Cell key={item} handle={handle} index={index} />
+        <Cell key={item} handle={handle} index={index} onSnapEnd={onSnapEnd} />
       ))}
     </SortableContainer>
   );
 };
+
+describe('second drag racing the first drag snap, controlled parent (#348)', () => {
+  beforeAll(() => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    jest.useFakeTimers();
+  });
+  beforeEach(() => {
+    mockDraxProps.clear();
+    mockUIQueue.length = 0;
+    mockJSQueue.length = 0;
+    Object.assign(mockCtx, {
+      hoverPositionSV: makeHoverPositionSV(),
+      hoverContent: null,
+    });
+    mockCtx.hoverReadySV.value = false;
+    mockCtx.dragPhaseSV.value = 'idle';
+    mockCtx.draggedIdSV.value = '';
+    mockCtx.spatialIndexSV.value = listSpatialIndex();
+    rerenderCell.clear();
+  });
+  afterEach(() => {
+    act(() => ReactNative.unmountComponentAtNode(1));
+  });
+
+  const mount = (onReorder: jest.Mock, onSnapEnd: jest.Mock) => {
+    act(() =>
+      ReactNative.render(
+        <>
+          <Dispatcher />
+          <ControlledList onReorder={onReorder} onSnapEnd={onSnapEnd} />
+        </>,
+        1
+      )
+    );
+    for (const key of KEYS) {
+      mockGestureId = key;
+      createDragGesture(key, sv(KEYS.indexOf(key) + 1) as never, sv(true) as never, sv(250) as never);
+    }
+    act(() =>
+      KEYS.forEach((key, i) =>
+        mockDraxProps.get(key)!.onMeasure!({ x: 0, y: i * ROW, width: 100, height: ROW } as never)
+      )
+    );
+    settle();
+  };
+
+  it('drag 2 starts from the visual order when the echo flush is due before its first update', () => {
+    const onReorder = jest.fn();
+    const onSnapEnd = jest.fn();
+    mount(onReorder, onSnapEnd);
+
+    // Drag 1: A to slot 2. onReorder fires at release; the echo renders
+    // during the snap.
+    activate('A');
+    settle();
+    monitorStart('A', 2);
+    release('A', 2);
+    expect(onReorder).toHaveBeenCalledTimes(1);
+    expect(onReorder.mock.calls[0][0].data.join('')).toBe('BCADE');
+    expect(mockCtx.hoverPositionSV.snapping).toBe(true);
+    expect(visualOrder()).toBe('BCADE');
+
+    // Drag 2: D (slot 3) activates mid-snap. handleDragStart finalizes
+    // drag 1, then a frame passes before drag 2's first monitor update.
+    activate('D');
+    drainJS();
+    drainUI();
+    drainJS();
+    act(() => jest.runOnlyPendingTimers());
+    expect(onSnapEnd).toHaveBeenCalledWith('A');
+    expect(mockCtx.draggedIdSV.value).toBe('D');
+    expect(visualOrder()).toBe('BCADE');
+
+    monitorStart('D', 1);
+    expect(sortable._internal.dragStartIndexRef.current).toBe(3);
+    const pendingKeys = () =>
+      sortable._internal.pendingOrderRef.current.map((i) => sortable.data[i]).join('');
+    expect(pendingKeys()).toBe('BDCAE');
+    settle();
+    expect(pendingKeys()).toBe('BDCAE');
+    release('D', 1);
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+    // The flush's shift clear is queued when its render commits.
+    settle();
+
+    expect(onReorder).toHaveBeenCalledTimes(2);
+    expect(onReorder.mock.calls[1][0]).toMatchObject({
+      fromIndex: 3,
+      toIndex: 1,
+      fromItem: 'D',
+      data: ['B', 'D', 'C', 'A', 'E'],
+    });
+    expect(onSnapEnd).toHaveBeenCalledTimes(2);
+    expect(visualOrder()).toBe('BDCAE');
+    expect(sortable._internal.pendingOrderRef.current).toEqual([]);
+  });
+
+  it('a drag starting right after the flush keeps its shift clear instant until it moves', () => {
+    mount(jest.fn(), jest.fn());
+    activate('A');
+    settle();
+    monitorStart('A', 2);
+    release('A', 2);
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+    settle();
+    // The echo is flushed: rows sit at their real slots, shifts cleared at once.
+    expect(sortable.data.join('')).toBe('BCADE');
+    expect(sortable._internal.instantClearSV.value).toBe(true);
+
+    // Drag 2 starts before the cleared shifts have rendered. Rows measured
+    // now must not catch a shift animating out.
+    activate('D');
+    drainJS();
+    drainUI();
+    act(() => {
+      mockDraxProps.get('list')!.onMonitorDragStart!({
+        dragged: { parentId: 'list', payload: mockDraxProps.get('D')!.payload },
+      } as never);
+    });
+    expect(sortable._internal.instantClearSV.value).toBe(true);
+
+    act(() => sortable._internal.moveDraggedItem(1));
+    expect(sortable._internal.instantClearSV.value).toBe(false);
+  });
+});
 
 describe('rapid drags with a controlled parent (#334 F1)', () => {
   beforeAll(() => {

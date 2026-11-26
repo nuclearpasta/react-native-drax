@@ -166,13 +166,14 @@ describe('dragged item placeholder slot', () => {
     expect(shiftOf('A')).toEqual({ x: 0, y: 2 * ROW });
   });
 
-  it('moves to the target slot during the snap; onReorder fires after it', () => {
+  it('moves to the target slot during the snap; onReorder fires at release', () => {
     pickUp('A');
     act(() => sortable._internal.moveDraggedItem(2));
     expect(drop('A')).toEqual({ x: CONTAINER.x, y: CONTAINER.y + 2 * ROW });
     expect(shiftOf('A')).toEqual({ x: 0, y: 2 * ROW });
     expect(shiftOf('B')).toEqual({ x: 0, y: -ROW });
-    expect(onReorder).not.toHaveBeenCalled();
+    // onReorder fires at release, as 0.11 did, not at snap end.
+    expect(onReorder).toHaveBeenCalledTimes(1);
 
     snapEnd('A');
     expect(onReorder).toHaveBeenCalledTimes(1);

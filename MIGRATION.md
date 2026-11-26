@@ -370,7 +370,7 @@ const sortable = useSortableList({
 | Required | no | yes |
 | Event type | `DraxListOnItemReorderEventData<T>` | `SortableReorderEvent<T>` |
 | Fields | `fromIndex`, `fromItem?`, `toIndex`, `toItem?`, `isExternalDrag` | `data: T[]` (reordered), `fromIndex`, `fromItem`, `toIndex`, `toItem`, `isExternalDrag` |
-| When it fires | on release | after the release snap animation ends (then the list commits the new order) |
+| When it fires | on release | on release, as in 0.11 (sortable lists; board columns fire after the snap). The list renders the new order when the snap ends |
 
 ```tsx
 // 0.11
@@ -821,9 +821,12 @@ use the `hover*Style` props).
   Brought back in, the row moves from its start slot again. A receptive view
   nested inside a row counts as outside the list. Board columns still transfer
   items when they leave a column.
-- **When `onReorder` fires.** It fires after the snap animation, not at
-  release. If you showed the new order at release, move that code into
-  `onReorder`.
+- **When `onReorder` fires.** It fires at release, as 0.11's `onItemReorder`
+  did (board columns: after the snap). The list keeps showing the moved rows
+  as shifts until the snap ends and only then renders your new `data`, so
+  `renderItem`'s `info.index` reflects the pre-drop order until the snap
+  ends. Number rows from your own data (for example `data.indexOf(item)`),
+  not from `info.index`.
 - **Gesture config.** `longPressDelay` still defaults to 0 on `DraxView` and 250
   on list items. New `DraxView` props: `dragActivationFailOffset`,
   `scrollHorizontal` (web), `dragHandle` with `DraxHandle`, `dragBoundsRef`,
