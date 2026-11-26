@@ -127,6 +127,7 @@ export const useSortableList = <T,>(
   const itemMeasurements = useRef<Map<string, SortableItemMeasurement>>(
     new Map()
   );
+  const layoutPositionedRef = useRef(false);
   const containerMeasurementsRef = useRef<DraxViewMeasurements | undefined>(
     undefined
   );
@@ -190,6 +191,26 @@ export const useSortableList = <T,>(
       // order. Swap stableData now only if a flush was requested.
       flushIfReady();
       return;
+    }
+
+    // A row drag in progress holds indices into the old data. If the data
+    // really changed (its keys, not just the array's identity), drop its
+    // pending move, so finalizeDrag cancels instead of sending onReorder with
+    // the old order mapped onto the new data.
+    const previous = stableDataRef.current;
+    const sameKeys = rawData.length === previous.length && rawData.every(
+      (item, i) => keyExtractor(item, i) === keyExtractor(previous[i]!, i)
+    );
+    if (dragStartIndexRef.current !== undefined) {
+      if (sameKeys) {
+        // A refetch: keep the drag's live shifts (and committed state) so
+        // rows that already slid aside don't jump back under the hover.
+        setStableData(rawData);
+        return;
+      }
+      pendingOrderRef.current = [];
+      dragStartIndexRef.current = undefined;
+      draggedDisplayIndexRef.current = undefined;
     }
 
     // External data change or initial mount — update stableData and reset.
@@ -1078,6 +1099,7 @@ export const useSortableList = <T,>(
     fixedKeys,
     draggedItem,
     itemMeasurements,
+    layoutPositionedRef,
     originalIndexes,
     keyExtractor,
     data: stableData,

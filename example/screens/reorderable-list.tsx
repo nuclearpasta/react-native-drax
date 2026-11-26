@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DraxProvider, DraxList, DraxView } from 'react-native-drax';
@@ -65,6 +65,21 @@ export default function ReorderableList() {
   const [alphaData, setAlphaData] = useState(alphabet);
   const [animPreset, setAnimPreset] =
     useState<SortableAnimationPreset>('spring');
+  const addedCount = useRef(0);
+  // Repro for a data change during a drag: tap, then drag a row before the
+  // new row lands. The drag is cancelled, so no row is lost or misplaced.
+  const prependSoon = () => {
+    setTimeout(() => {
+      addedCount.current += 1;
+      const added = `+${addedCount.current}`;
+      setAlphaData((data) => [added, ...data]);
+    }, 1000);
+  };
+  // Repro for a same-key refetch during a drag: tap, then drag a row and
+  // rest on a slot as the new array lands. The drop goes to that slot.
+  const refetchSoon = () => {
+    setTimeout(() => setAlphaData((data) => [...data]), 1000);
+  };
   const [showFarZone, setShowFarZone] = useState(false);
   const [farZoneItem, setFarZoneItem] = useState<string>();
   const insets = useSafeAreaInsets();
@@ -128,6 +143,24 @@ export default function ReorderableList() {
           </Pressable>
         </View>
         <ExampleLinks slug="reorderable-list" />
+        <Pressable
+          testID="prepend-soon"
+          onPress={prependSoon}
+          style={[styles.prependButton, { backgroundColor: theme.lineStrong }]}
+        >
+          <Text style={[styles.presetButtonText, { color: theme.muted }]}>
+            Add a row in 1 s (then drag)
+          </Text>
+        </Pressable>
+        <Pressable
+          testID="refetch-soon"
+          onPress={refetchSoon}
+          style={[styles.prependButton, { backgroundColor: theme.lineStrong }]}
+        >
+          <Text style={[styles.presetButtonText, { color: theme.muted }]}>
+            Refetch in 1 s (then drag)
+          </Text>
+        </Pressable>
         <DraxList
           data={alphaData}
           keyExtractor={(item) => item}
@@ -258,6 +291,13 @@ const styles = StyleSheet.create({
   },
   presetButtonTextActive: {
     color: '#fff',
+  },
+  prependButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+    margin: 6,
   },
   alphaItem: {
     backgroundColor: '#aaaaff',

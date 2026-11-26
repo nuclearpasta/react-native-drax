@@ -13,7 +13,7 @@ import Reanimated, {
 } from 'react-native-reanimated';
 
 import { DraxView } from './DraxView';
-import { useDraxInternalContext } from './hooks/useDraxContext';
+import { useDraxContext } from './hooks/useDraxContext';
 import { computeResetStyle } from './hooks/useViewStyles';
 import type { SortableItemContextValue } from './SortableItemContext';
 import { SortableItemContext } from './SortableItemContext';
@@ -135,6 +135,7 @@ const SortableItemInner = ({
     instantClearSV,
     shiftsValidSV,
     itemMeasurements,
+    layoutPositionedRef,
     keyExtractor,
     rawData,
     originalIndexes,
@@ -142,10 +143,11 @@ const SortableItemInner = ({
     onItemSnapEndRef,
     dragActiveRef,
     fixedKeys,
+    dragStartIndexRef,
   } = sortable._internal;
 
   // Get hoverReadySV and draggedIdSV from DraxContext (provider-level SharedValues)
-  const { hoverReadySV, draggedIdSV, onUnregisteredDragEnd } = useDraxInternalContext();
+  const { hoverReadySV, draggedIdSV } = useDraxContext();
 
   const originalIndex = originalIndexes[index] ?? index;
   const item = rawData[originalIndex];
@@ -166,26 +168,8 @@ const SortableItemInner = ({
   // can compare it with draggedIdSV on the UI thread.
   const viewIdSV = useSharedValue('');
 
-  // This item's dragged view id, from its onDragStart to its
-  // onDragEnd/onDragDrop. If the item unmounts in between, its view is
-  // unregistered and handleDragEnd returns early (no onDragEnd, no snap, no
-  // finalizeDrag). The gesture can outlive the view (a virtualized row
-  // scrolled out mid-drag), so the list stays busy until that early end.
-  const ownedDragIdRef = useRef('');
-  // Latest values for the unmount-only cleanup below.
-  const unmountDepsRef = useRef({ internal: sortable._internal, onUnregisteredDragEnd });
-  unmountDepsRef.current = { internal: sortable._internal, onUnregisteredDragEnd };
-  useEffect(() => () => {
-    const draggedId = ownedDragIdRef.current;
-    if (!draggedId) return;
-    const { internal, onUnregisteredDragEnd: deferToDragEnd } = unmountDepsRef.current;
-    deferToDragEnd(draggedId, () => {
-      internal.dragActiveRef.current = false;
-      // Clears the pending order and flushes a deferred echo next frame.
-      internal.resetDraggedItem();
-    });
-  }, []);
-
+  /** A follow-up measure is pending (see onMeasure). */
+  const remeasureRef = useRef(false);
   const measureFnRef = useRef<
     ((handler?: DraxViewMeasurementHandler) => void) | null
   >(null);
@@ -252,24 +236,58 @@ const SortableItemInner = ({
           // Sync in handleDragStart, after the previous drag's finalize:
           // the list is busy before this drag's first monitor update.
           dragActiveRef.current = true;
-          ownedDragIdRef.current = event.dragged.id;
           draxViewProps.onDragStart?.(event);
         }}
         onDragEnd={(event) => {
-          ownedDragIdRef.current = '';
           draxViewProps.onDragEnd?.(event);
         }}
         onDragDrop={(event) => {
-          ownedDragIdRef.current = '';
           draxViewProps.onDragDrop?.(event);
         }}
         onSnapEnd={(snapData) => {
           onItemSnapEndRef.current?.();
           draxViewProps.onSnapEnd?.(snapData);
         }}
-        onMeasure={(measurements) => {
-          draxViewProps.onMeasure?.(measurements);
-          if (itemKey && measurements) {
+        onMeasure={(rawMeasurements) => {
+          draxViewProps.onMeasure?.(rawMeasurements);
+          // DraxView takes the visual position (measure()) of a view whose
+          // layout is 0 on an axis, for LegendList (rows at main-axis layout 0,
+          // placed by transform). In a list that places rows by layout (a row
+          // measured untransformed at a non-zero main-axis position), that is
+          // only the first row, and measure() includes whatever shift is on
+          // screen: right after a flush, an index-keyed cell still shows the
+          // previous row's shift (#347 review). Use the layout position.
+          let measurements = rawMeasurements;
+          if (Platform.OS !== 'web' && measurements) {
+            if (!measurements._transformDetected) {
+              if (Math.abs(horizontal ? measurements.x : measurements.y) > 1) {
+                layoutPositionedRef.current = true;
+              }
+            } else if (layoutPositionedRef.current) {
+              const { _layoutX: layoutX, _layoutY: layoutY } = measurements;
+              if (layoutX !== undefined && layoutY !== undefined) {
+                measurements = { ...measurements, x: layoutX, y: layoutY, _transformDetected: 0 };
+              }
+            }
+          }
+          // A measurement that includes transforms (web, or measure() when
+          // transform-detected) includes the row's shift as
+          // rendered, which can lag shiftsJSRef: mid-animation, or just after
+          // a drop clears the shifts. Slot boundaries are fixed for a drag, so
+          // keep the row's measurement while its list drags; otherwise
+          // measure once more after the cleared shift has rendered.
+          const transformed = Platform.OS === 'web' || !!measurements?._transformDetected;
+          const keep = transformed && dragStartIndexRef.current !== undefined
+            && !!itemKey && itemMeasurements.current.has(itemKey);
+          if (transformed && !keep) {
+            if (remeasureRef.current) {
+              remeasureRef.current = false;
+            } else {
+              remeasureRef.current = true;
+              requestAnimationFrame(() => requestAnimationFrame(() => measureFnRef.current?.()));
+            }
+          }
+          if (itemKey && measurements && !keep) {
             // Subtract Drax shift transforms when they're included in the
             // measurement. On web: measureLayout always includes transforms.
             // On native: measureLayout ignores transforms, UNLESS DraxView
@@ -277,7 +295,7 @@ const SortableItemInner = ({
             // switched to measure() — flagged via _transformDetected.
             let adjX = measurements.x;
             let adjY = measurements.y;
-            if (Platform.OS === 'web' || measurements._transformDetected) {
+            if (transformed) {
               const currentShift = shiftsJSRef.current[itemKey];
               if (currentShift) {
                 adjX -= currentShift.x;
