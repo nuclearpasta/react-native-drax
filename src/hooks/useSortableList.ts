@@ -514,6 +514,10 @@ export const useSortableList = <T,>(
    * at the slot it was picked up from.
    */
   const computeShifts = () => {
+    // Live shifts animate. Set here, not at drag start: a flush that just
+    // cleared the shifts instantly must not turn into an animation when a
+    // drag starts in the next frames, or rows are measured mid-animation.
+    instantClearSV.value = false;
     const pending = pendingOrderRef.current;
     const dragIdx = draggedDisplayIndexRef.current;
     const shifts = computeShiftsForOrder(pending, dragIdx, phantomRef.current ?? undefined);
@@ -693,7 +697,6 @@ export const useSortableList = <T,>(
     pendingOrderRef.current = committed.length > 0
       ? [...committed]
       : [...originalIndexes];
-    instantClearSV.value = false;
   };
 
   /**
