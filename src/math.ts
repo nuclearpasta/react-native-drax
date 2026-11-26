@@ -375,3 +375,13 @@ export function packGrid(
 
   return { positions, totalRows: count > 0 ? maxRow + 1 : 0 };
 }
+
+/**
+ * Whether a view is placed by a transform (LegendList: absolute at 0,0 plus
+ * translate), given its layout position (measureLayout, no transforms) and its
+ * visual position (measure()). Only an axis whose layout position is 0 counts:
+ * a vertical FlatList row (x 0, y > 0) moved by a sortable shift keeps its
+ * layout position.
+ */
+export const isTransformPositioned = (layout: Position, visual: Position) =>
+  (layout.x === 0 && Math.abs(visual.x) > 1) || (layout.y === 0 && Math.abs(visual.y) > 1);

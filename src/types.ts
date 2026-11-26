@@ -848,6 +848,9 @@ export interface SortableListInternal<T> {
   fixedKeys: RefObject<Set<string>>;
   draggedItem: SharedValue<number | undefined>;
   itemMeasurements: RefObject<Map<string, SortableItemMeasurement>>;
+  /** True once a row measured without transforms at a non-zero position:
+   *  the list places rows by layout (FlatList, grid), not by transform. */
+  layoutPositionedRef: RefObject<boolean>;
   originalIndexes: number[];
   keyExtractor: (item: T, index: number) => string;
   data: T[];

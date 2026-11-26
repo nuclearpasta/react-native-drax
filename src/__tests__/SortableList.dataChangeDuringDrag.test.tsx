@@ -1,0 +1,421 @@
+import { act, useLayoutEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { create } from 'react-test-renderer';
+
+import { useCallbackDispatch } from '../hooks/useCallbackDispatch';
+import { useSortableList } from '../hooks/useSortableList';
+import { SortableContainer } from '../SortableContainer';
+import { SortableItem } from '../SortableItem';
+import type { DraxViewProps, SortableListHandle, SpatialEntry } from '../types';
+
+// The list's data changes from outside WHILE one of its rows is dragged (two
+// quick drops: drop 1's insert lands at drag 2's start). The drag's pending
+// order indexes the old data, so it must not reach onReorder.
+// Real useCallbackDispatch + useSortableList + SortableContainer +
+// SortableItem; DraxView stubbed to record props. UI/JS threads are FIFO
+// queues drained by the test.
+
+const mockDraxProps = new Map<string, DraxViewProps>();
+const mockMeasureCalls: string[] = [];
+jest.mock('../DraxView', () => ({
+  DraxView: (props: DraxViewProps & { children?: ReactNode }) => {
+    const payload = props.payload as { item?: string } | undefined;
+    mockDraxProps.set(props.monitoring ? props.id ?? '' : payload?.item ?? props.id ?? '', props);
+    if (props.id) mockDraxProps.set(props.id, props); // index-keyed cells: the view id stays with the cell
+    if (payload?.item) props.registration?.({ id: props.id ?? '', measure: () => mockMeasureCalls.push(payload.item!) });
+    return props.children ?? null;
+  },
+}));
+
+interface MockSnap { to: unknown; cb?: (finished: boolean) => void }
+const isMockSnap = (v: unknown): v is MockSnap => typeof v === 'object' && v !== null && 'mockSnap' in v;
+jest.mock('react-native-reanimated', () => {
+  const { useState: useStateMock } = jest.requireActual('react');
+  return {
+    __esModule: true,
+    default: { View: ({ children }: { children?: ReactNode }) => children ?? null },
+    useSharedValue: <T,>(value: T) => useStateMock(() => ({ value }))[0],
+    useDerivedValue: () => ({ value: false }),
+    useAnimatedStyle: () => ({}),
+    useReducedMotion: () => false,
+    measure: () => null,
+    withDelay: (_d: number, a: unknown) => a,
+    withTiming: (to: unknown, _c: unknown, cb?: (f: boolean) => void) => ({ mockSnap: true, to, cb }),
+    withSpring: <T,>(v: T) => v,
+    Easing: { linear: undefined },
+  };
+});
+const mockUIQueue: (() => void)[] = [];
+const mockJSQueue: (() => void)[] = [];
+jest.mock('react-native-worklets', () => ({
+  runOnUI: <A extends unknown[]>(fn: (...a: A) => void) => (...a: A) => { mockUIQueue.push(() => fn(...a)); },
+  runOnJS: <A extends unknown[]>(fn: (...a: A) => void) => (...a: A) => { mockJSQueue.push(() => fn(...a)); },
+}));
+
+const makeHoverPositionSV = () => {
+  let current: unknown = { x: 0, y: 0 };
+  let snap: MockSnap | undefined;
+  return {
+    get value() { return current; },
+    set value(next: unknown) {
+      const running = snap; snap = undefined; running?.cb?.(false);
+      if (isMockSnap(next)) snap = next; else current = next;
+    },
+    finishSnap() { const r = snap!; snap = undefined; current = r.to; r.cb?.(true); },
+    get snapTarget() { return snap?.to; },
+  };
+};
+const sv = <T,>(value: T) => ({ value });
+const ROW = 50;
+const KEYS = ['A', 'B', 'C', 'D', 'E'];
+const entry = (id: string, parentIndex: number, x: number, y: number, w: number, h: number, monitor = false) =>
+  ({ id, x, y, width: w, height: h, parentIndex, receptive: !monitor, monitoring: monitor, draggable: !monitor } as SpatialEntry);
+// Cell view ids: item keys, or `cell<i>` for index-keyed cells (as DraxList renders).
+let cellId = (key: string, _index: number) => key;
+const spatial = (keys: string[] = KEYS) => [
+  entry('list', -1, 0, 0, 100, ROW * keys.length, true),
+  ...keys.map((k, i) => entry(cellId(k, i), 0, 0, i * ROW, 100, ROW)),
+];
+const mockCtx = {
+  hoverReadySV: sv(false), dragPhaseSV: sv<string>('idle'), draggedIdSV: sv(''), receiverIdSV: sv(''),
+  rejectedReceiverIdSV: sv(''), hoverPositionSV: makeHoverPositionSV(), dragAbsolutePositionSV: sv({ x: 0, y: 0 }),
+  hoverDimsSV: sv({ x: 0, y: 0 }), spatialIndexSV: sv(spatial()), scrollOffsetsSV: sv([] as { x: number; y: number }[]),
+  grabOffsetSV: sv({ x: 0, y: 0 }), startPositionSV: sv({ x: 0, y: 0 }), rootOffsetSV: sv({ x: 0, y: 0 }),
+  needsUpdatesSV: sv(false),
+  rootViewRef: { current: null }, hoverClearDeferredRef: { current: false },
+  setHoverContent: (content: ReactNode) => {
+    if (content != null) mockUIQueue.push(() => { mockCtx.dragPhaseSV.value = 'dragging'; mockCtx.hoverReadySV.value = true; });
+  },
+  handleDragStart: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleDragStart'],
+  handleReceiverChange: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleReceiverChange'],
+  handleDragEnd: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleDragEnd'],
+};
+jest.mock('../hooks/useDraxContext', () => ({ useDraxContext: () => mockCtx }));
+
+const Dispatcher = () => {
+  const dispatch = useCallbackDispatch({
+    ...mockCtx,
+    getViewEntry: (id: string) => {
+      const props = mockDraxProps.get(id);
+      if (!props) return undefined;
+      const entries = mockCtx.spatialIndexSV.value;
+      const index = entries.findIndex((e) => e.id === id);
+      const e = entries[index]!;
+      return { id, parentId: entries[e.parentIndex]?.id, spatialIndex: index,
+        measurements: { x: e.x, y: e.y, width: e.width, height: e.height }, props };
+    },
+    hoverStylesRef: { current: null },
+    droppedItemsRef: { current: new Map() },
+  } as never);
+  Object.assign(mockCtx, dispatch);
+  return null;
+};
+
+let sortable: SortableListHandle<string>;
+let setListData: (next: string[]) => void = () => {};
+/** The parent's current data (what a refetch copies). */
+let listData: string[] = KEYS;
+const List = ({ onReorder, onDragPositionChange }: { onReorder: jest.Mock; onDragPositionChange?: jest.Mock }) => {
+  const [data, setData] = useState<string[]>(KEYS);
+  setListData = setData;
+  listData = data;
+  const handle = useSortableList({ id: 'list', data, keyExtractor: (i) => i, onReorder, onDragPositionChange });
+  useLayoutEffect(() => { sortable = handle; });
+  return (
+    <SortableContainer sortable={handle} scrollRef={{ current: null }}>
+      {handle.data.map((item, index) => (
+        <SortableItem key={cellId(item, index)} id={cellId(item, index)} sortable={handle} index={index}>{null}</SortableItem>
+      ))}
+    </SortableContainer>
+  );
+};
+
+const settle = () => act(() => {
+  for (let g = 0; g < 200; g++) {
+    if (mockUIQueue.length) mockUIQueue.shift()!();
+    else if (mockJSQueue.length) mockJSQueue.shift()!();
+    else if (jest.getTimerCount()) jest.runOnlyPendingTimers();
+    else return;
+  }
+  throw new Error('queues did not settle');
+});
+
+// Re-measure every row at its slot in `keys` (what layout does after a data change).
+const measureAll = (keys: string[]) => {
+  mockCtx.spatialIndexSV.value = spatial(keys);
+  act(() => keys.forEach((k, i) => mockDraxProps.get(k)!.onMeasure!({ x: 0, y: i * ROW, width: 100, height: ROW } as never)));
+  act(() => mockDraxProps.get('list')!.onMeasure!({ x: 0, y: 0, width: 100, height: ROW * keys.length } as never));
+  settle();
+};
+
+let root: ReturnType<typeof create> | undefined;
+const setup = (indexKeyed = false, onDragPositionChange?: jest.Mock) => {
+  cellId = indexKeyed ? (_key, index) => `cell${index}` : (key) => key;
+  mockDraxProps.clear();
+  const onReorder = jest.fn();
+  act(() => { root = create(<><Dispatcher /><List onReorder={onReorder} onDragPositionChange={onDragPositionChange} /></>); });
+  measureAll(KEYS);
+  return { onReorder };
+};
+afterEach(() => { act(() => root?.unmount()); root = undefined; });
+beforeAll(() => { jest.useFakeTimers(); });
+
+// Slot centres; slot 0 is grabbed at y 40 to stay out of the 10% auto-scroll band.
+const slot = (s: number) => ({ x: 50, y: s === 0 ? 40 : s * ROW + ROW / 2 });
+let receiver = '';
+const start = (id: string, pos: { x: number; y: number }) => {
+  receiver = '';
+  mockCtx.draggedIdSV.value = id;
+  mockCtx.grabOffsetSV.value = { x: 50, y: ROW / 2 };
+  mockCtx.startPositionSV.value = pos;
+  mockCtx.hoverPositionSV.value = pos;
+  act(() => mockCtx.handleDragStart(id, pos, { x: 0, y: 0 }));
+  settle();
+};
+const move = (pos: { x: number; y: number }, newReceiver: string) => {
+  mockCtx.hoverPositionSV.value = pos;
+  act(() => mockCtx.handleReceiverChange(receiver, newReceiver, pos, ['list']));
+  receiver = newReceiver;
+  settle();
+};
+const drop = (id: string) => {
+  act(() => mockCtx.handleDragEnd(id, receiver, false, ['list']));
+  receiver = '';
+  const snapTarget = mockCtx.hoverPositionSV.snapTarget;
+  act(() => mockCtx.hoverPositionSV.finishSnap());
+  settle(); // runs the rAF that sends onReorder
+  return snapTarget;
+};
+const reorderData = (onReorder: jest.Mock) =>
+  (onReorder.mock.calls as unknown as [{ data: string[] }][]).map(([e]) => e.data);
+
+describe('useSortableList: data changes from outside during a row drag', () => {
+  it('control: no data change, A moved down 2 slots -> onReorder data [B, C, A, D, E]', () => {
+    const { onReorder } = setup();
+    start('A', slot(0));
+    move(slot(0), 'A');
+    move(slot(1), 'B');
+    move(slot(2), 'C');
+    drop('A');
+    expect(reorderData(onReorder)).toEqual([['B', 'C', 'A', 'D', 'E']]);
+  });
+
+  it('X prepended mid-drag, then A moved down 2 slots -> the drag is cancelled: no onReorder, no item lost', () => {
+    const { onReorder } = setup();
+    start('A', slot(0));
+    move(slot(0), 'A');
+    // Drop 1's insert lands now (edm: onReceiveSnapEnd fired from drag 2's start).
+    const NEXT = ['X', ...KEYS];
+    act(() => setListData(NEXT));
+    measureAll(NEXT); // X at slot 0, A at slot 1, ... E at slot 5
+    // A moves down 2 slots in the new layout: slot 1 -> slot 3.
+    move(slot(1), 'A');
+    move(slot(2), 'B');
+    move(slot(3), 'C');
+    expect(drop('A')).toEqual({ x: 0, y: ROW }); // back to A's slot in the new data
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(sortable.data).toEqual(NEXT);
+
+    // The next drag starts from the new data and reorders it.
+    start('A', slot(1));
+    move(slot(1), 'A');
+    move(slot(2), 'B');
+    move(slot(3), 'C');
+    drop('A');
+    expect(reorderData(onReorder)).toEqual([['X', 'B', 'C', 'A', 'D', 'E']]);
+  });
+
+  it('index-keyed cells (DraxList): X prepended mid-drag -> the cancelled drop snaps back to A, not to the row now in its cell', () => {
+    const { onReorder } = setup(true);
+    start('cell0', slot(0)); // A
+    move(slot(0), 'cell0');
+    const NEXT = ['X', ...KEYS];
+    act(() => setListData(NEXT));
+    measureAll(NEXT); // cell0 now renders X; A is in cell1 at slot 1
+    move(slot(1), 'cell1');
+    move(slot(2), 'cell2');
+    expect(drop('cell0')).toEqual({ x: 0, y: ROW }); // A's slot, not X's
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(sortable.data).toEqual(NEXT);
+  });
+
+  it('index-keyed cells: X prepended mid-drag, release without moving -> snaps back to A, not to X', () => {
+    const { onReorder } = setup(true);
+    start('cell0', slot(0)); // A
+    move(slot(0), 'cell0');
+    const NEXT = ['X', ...KEYS];
+    act(() => setListData(NEXT));
+    measureAll(NEXT); // cell0 now renders X; A is in cell1 at slot 1
+    expect(drop('cell0')).toEqual({ x: 0, y: ROW }); // A's slot, not X's
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(sortable.data).toEqual(NEXT);
+  });
+
+  it('same keys in a new array mid-drag (a refetch) -> the drag still reorders', () => {
+    const { onReorder } = setup();
+    start('A', slot(0));
+    move(slot(0), 'A');
+    act(() => setListData([...KEYS]));
+    move(slot(1), 'B');
+    move(slot(2), 'C');
+    drop('A');
+    expect(reorderData(onReorder)).toEqual([['B', 'C', 'A', 'D', 'E']]);
+  });
+
+  it('same keys in a new array after A moved down 2 slots -> live shifts stay, the drop still reorders', () => {
+    const { onReorder } = setup();
+    start('A', slot(0));
+    move(slot(0), 'A');
+    move(slot(1), 'B');
+    move(slot(2), 'C');
+    const shifts = () => sortable._internal.shiftsRef.value;
+    const before = shifts();
+    expect(before).toMatchObject({ B: { y: -ROW }, C: { y: -ROW } });
+    act(() => setListData([...KEYS]));
+    settle();
+    expect(shifts()).toEqual(before); // B and C stay slid aside, not {}
+    drop('A');
+    expect(reorderData(onReorder)).toEqual([['B', 'C', 'A', 'D', 'E']]);
+  });
+
+  // A refetch re-renders every row, so each re-measures (via measure(), which
+  // includes the shift transform) while B is still sliding up: B reads as
+  // y 75, not its layout y 50.
+  const refetchWithMidShiftMeasure = () => {
+    act(() => setListData([...KEYS]));
+    act(() => KEYS.forEach((k, i) => mockDraxProps.get(k)!.onMeasure!(
+      { x: 0, y: k === 'B' ? ROW / 2 : i * ROW, width: 100, height: ROW, _transformDetected: k === 'B' ? 1 : 0 } as never
+    )));
+    settle();
+  };
+
+  it('same-key refetch while the finger rests on slot 2 -> the drop goes to slot 2, not 1', () => {
+    const { onReorder } = setup();
+    start('A', slot(0));
+    move(slot(0), 'A');
+    move(slot(1), 'B');
+    move(slot(2), 'C'); // the finger stops here
+    refetchWithMidShiftMeasure();
+    move(slot(2), 'C'); // the update resent after the refetch, same position
+    drop('A');
+    expect(reorderData(onReorder)).toEqual([['B', 'C', 'A', 'D', 'E']]);
+  });
+
+  it('same-key refetch mid-drag -> the next drag\'s position changes follow the finger', () => {
+    const onDragPositionChange = jest.fn();
+    const { onReorder } = setup(false, onDragPositionChange);
+    start('A', slot(0));
+    move(slot(0), 'A');
+    move(slot(1), 'B');
+    refetchWithMidShiftMeasure();
+    drop('A');
+    expect(reorderData(onReorder)).toEqual([['B', 'A', 'C', 'D', 'E']]);
+    // The parent does not echo: rows keep their layout, shifts show B A C D E.
+    onDragPositionChange.mockClear();
+    start('B', slot(0));
+    move(slot(0), 'B');
+    move(slot(1), 'A');
+    move(slot(2), 'C');
+    expect(onDragPositionChange.mock.calls.map(([e]) => e.toIndex)).toEqual([1, 2]);
+  });
+
+  it('a transform-detected measure after a drop (stale shift) -> measured once more after 2 frames, then stops', () => {
+    setup();
+    start('A', slot(0));
+    move(slot(0), 'A');
+    move(slot(1), 'B');
+    drop('A');
+    mockMeasureCalls.length = 0;
+    const measureB = (y: number) => act(() => mockDraxProps.get('B')!.onMeasure!(
+      { x: 0, y, width: 100, height: ROW, _transformDetected: 1 } as never
+    ));
+    // B's committed shift is -ROW (layout y ROW, shown at 0).
+    measureB(ROW / 2); // still rendered mid-shift: stored as y 75
+    act(() => { jest.runOnlyPendingTimers(); jest.runOnlyPendingTimers(); });
+    expect(mockMeasureCalls).toEqual(['B']);
+    measureB(0); // the follow-up, shift rendered
+    act(() => { jest.runOnlyPendingTimers(); jest.runOnlyPendingTimers(); });
+    expect(mockMeasureCalls).toEqual(['B']);
+    expect(sortable._internal.itemMeasurements.current.get('B')?.y).toBe(ROW);
+  });
+
+  // PR #347 review (real touch, 2/8): back-to-back drags on a controlled
+  // DraxList. Drag 1's refetch lands during its snap, then its onReorder and
+  // the echo, then drag 2 activates. Right after the echo's flush, cell 0
+  // shows B but still renders A's old shift (+2 rows), so measure() reports
+  // y 100 for a row whose layout is y 0. Stored as B's position, it made drag
+  // 2 read slot 4 at slot 3 (log: to=11 in a 12-row list) and drop one short.
+  it('back-to-back drag after a refetch during the snap and the echo -> drag 2 follows the finger', () => {
+    cellId = (_key, index) => `cell${index}`;
+    mockDraxProps.clear();
+    const onReorder = jest.fn((e: { data: string[] }) => setListData(e.data));
+    const onDragPositionChange = jest.fn();
+    act(() => { root = create(<><Dispatcher /><List onReorder={onReorder} onDragPositionChange={onDragPositionChange} /></>); });
+    measureAll(KEYS);
+
+    // Drag 1: A from slot 0 to slot 2, released.
+    start('cell0', slot(0));
+    move(slot(0), 'cell0');
+    move(slot(1), 'cell1');
+    move(slot(2), 'cell2');
+    act(() => mockCtx.handleDragEnd('cell0', receiver, false, ['list']));
+    receiver = '';
+    settle(); // the release's JS work; the snap is still running
+    // The refetch (a copy of the parent's data) lands during the snap. Every
+    // row re-renders and re-measures; cell 0 (layout 0,0) goes through
+    // measure() and shows A's target shift.
+    act(() => setListData([...listData]));
+    act(() => KEYS.forEach((k, i) => mockDraxProps.get(k)!.onMeasure!(i === 0
+      ? { x: 0, y: 2 * ROW, width: 100, height: ROW, _transformDetected: 1, _layoutX: 0, _layoutY: 0 } as never
+      : { x: 0, y: i * ROW, width: 100, height: ROW, _transformDetected: 0 } as never)));
+    // Snap ends: onReorder, then the parent's echo flushes the visual order.
+    act(() => mockCtx.hoverPositionSV.finishSnap());
+    settle();
+    settle();
+    const NEXT = ['B', 'C', 'A', 'D', 'E'];
+    expect(reorderData(onReorder)).toEqual([NEXT]);
+    expect(sortable.data).toEqual(NEXT);
+
+    // The flush re-renders the rows. Cell 0 now shows B, still at A's stale
+    // shift; the follow-up measure only lands after drag 2 has begun.
+    act(() => NEXT.forEach((k, i) => mockDraxProps.get(k)!.onMeasure!(i === 0
+      ? { x: 0, y: 2 * ROW, width: 100, height: ROW, _transformDetected: 1, _layoutX: 0, _layoutY: 0 } as never
+      : { x: 0, y: i * ROW, width: 100, height: ROW, _transformDetected: 0 } as never)));
+
+    // Drag 2: D from slot 3 to slot 1.
+    onDragPositionChange.mockClear();
+    start('cell3', slot(3));
+    move(slot(3), 'cell3');
+    move(slot(2), 'cell2');
+    move(slot(1), 'cell1');
+    expect(onDragPositionChange.mock.calls.map(([e]) => e.toIndex)).toEqual([2, 1]);
+    drop('cell3');
+    expect(reorderData(onReorder)[1]).toEqual(['B', 'D', 'C', 'A', 'E']);
+  });
+
+  it('rows placed by transform (LegendList: every layout y is 0) keep their visual positions', () => {
+    cellId = (key) => key;
+    mockDraxProps.clear();
+    act(() => { root = create(<><Dispatcher /><List onReorder={jest.fn()} /></>); });
+    // Row 0 sits at 0,0 (no transform detected); padding puts every row at x 16.
+    act(() => KEYS.forEach((k, i) => mockDraxProps.get(k)!.onMeasure!(i === 0
+      ? { x: 16, y: 0, width: 100, height: ROW, _transformDetected: 0 } as never
+      : { x: 16, y: i * ROW, width: 100, height: ROW, _transformDetected: 1, _layoutX: 16, _layoutY: 0 } as never)));
+    const ys = KEYS.map((k) => sortable._internal.itemMeasurements.current.get(k)?.y);
+    expect(ys).toEqual(KEYS.map((_k, i) => i * ROW));
+  });
+
+  it('data reordered mid-drag (same length), then A moved -> no onReorder', () => {
+    const { onReorder } = setup();
+    start('A', slot(0));
+    move(slot(0), 'A');
+    const NEXT = [...KEYS].reverse();
+    act(() => setListData(NEXT));
+    measureAll(NEXT); // A now at slot 4
+    move(slot(3), 'B');
+    move(slot(2), 'C');
+    expect(drop('A')).toEqual({ x: 0, y: 4 * ROW });
+    expect(onReorder).not.toHaveBeenCalled();
+    expect(sortable.data).toEqual(NEXT);
+  });
+});
