@@ -49,6 +49,7 @@ describe('useDragGesture end callbacks', () => {
     mockHandleDragEnd.mockClear();
     mockCtx.draggedIdSV.value = 'item';
     mockCtx.receiverIdSV.value = 'zone';
+    mockCtx.dragPhaseSV.value = 'dragging';
     useDragGesture('item', sv(0) as never, true, 250);
   });
 

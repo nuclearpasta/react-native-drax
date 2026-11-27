@@ -35,6 +35,7 @@ const receiver = {
 
 describe('useCallbackDispatch handleDragEnd receiver callbacks', () => {
   let handleDragEnd: ReturnType<typeof useCallbackDispatch>['handleDragEnd'];
+  let handleViewUnregister: ReturnType<typeof useCallbackDispatch>['handleViewUnregister'];
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -47,7 +48,7 @@ describe('useCallbackDispatch handleDragEnd receiver callbacks', () => {
       },
       zone: { id: 'zone', spatialIndex: 1, measurements, props: receiver },
     };
-    ({ handleDragEnd } = useCallbackDispatch({
+    ({ handleDragEnd, handleViewUnregister } = useCallbackDispatch({
       getViewEntry: (id: string) => entries[id],
       spatialIndexSV: sv([spatialEntry, spatialEntry]),
       scrollOffsetsSV: sv([]),
@@ -94,6 +95,14 @@ describe('useCallbackDispatch handleDragEnd receiver callbacks', () => {
       })
     );
     expect(receiver.onReceiveSnapEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores the gesture end that arrives after an unregister cancel (#363)', () => {
+    handleViewUnregister('item');
+    // The surviving gesture's onFinalize lands before 'releasing' did.
+    handleDragEnd('item', 'zone', false, []);
+    expect(receiver.onReceiveDragDrop).not.toHaveBeenCalled();
+    expect(receiver.onReceiveSnapEnd).not.toHaveBeenCalled();
   });
 });
 

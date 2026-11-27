@@ -46,8 +46,13 @@ function updateSpatialEntryCapabilities(
  * The spatial index lives on the UI thread and is used by gesture worklets
  * for hit-testing. The registry is JS-thread only and stores callbacks,
  * props, and other data that worklets don't need.
+ *
+ * `onBeforeUnregisterRef.current` runs for a view just before it leaves the
+ * registry, while its entry can still be read.
  */
-export const useSpatialIndex = () => {
+export const useSpatialIndex = (
+  onBeforeUnregisterRef?: { current: (id: string) => void }
+) => {
   // ── SharedValues ───────────────────────────────────────────────────
   const spatialIndexSV = useSharedValue<SpatialEntry[]>([]);
   const scrollOffsetsSV = useSharedValue<Position[]>([]);
@@ -218,6 +223,7 @@ export const useSpatialIndex = () => {
     queueMicrotask(() => {
       if (!pendingUnregistersRef.current.has(id)) return;
       pendingUnregistersRef.current.delete(id);
+      onBeforeUnregisterRef?.current(id);
       performUnregister(id);
     });
   };

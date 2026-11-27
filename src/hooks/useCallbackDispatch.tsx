@@ -557,6 +557,10 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     finalMonitorIds?: string[],
     touchPosition?: Position
   ) => {
+    // A drag ends once. After handleViewUnregister cancelled it, the
+    // gesture's own end can still arrive (onFinalize may beat the UI-thread
+    // 'releasing' write) and would reset the snap the cancel started.
+    if (dragEndedRef.current) return;
     dragEndedRef.current = true;
     // receiverIdSV is already cleared on the UI thread in onDeactivate/onFinalize,
     // so the receiver's animated style resets immediately.
@@ -754,10 +758,36 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     onProviderDragEnd?.({ draggedId, receiverId: receiverId || undefined, position: hoverPositionSV.value, cancelled });
   };
 
+  /**
+   * Called just before a view leaves the registry. If it is the dragged view
+   * (e.g. a virtualized row scrolled out by autoscroll), its gesture dies with
+   * it or can no longer reach its callbacks, and an end for an unregistered
+   * view runs none of them. End the drag now as a cancel, like a system
+   * cancel in onFinalize: onDragEnd, monitor ends (the list restores its
+   * start order and stops autoscroll), the snap and onSnapEnd all run.
+   */
+  const handleViewUnregister = (id: string) => {
+    if (dragEndedRef.current || draggedIdSV.value !== id) return;
+    const { receiverIdSV } = deps;
+    const receiverId = receiverIdSV.value;
+    // The release, as onFinalize sets it. The gesture worklets ignore
+    // updates and ends once the phase is 'releasing'.
+    runOnUI((
+      _dragPhaseSV: typeof dragPhaseSV,
+      _receiverIdSV: typeof receiverIdSV,
+    ) => {
+      'worklet';
+      _dragPhaseSV.value = 'releasing';
+      _receiverIdSV.value = '';
+    })(dragPhaseSV, receiverIdSV);
+    handleDragEnd(id, receiverId, true);
+  };
+
   return {
     handleDragStart,
     handleReceiverChange,
     handleDragEnd,
+    handleViewUnregister,
   };
 };
 

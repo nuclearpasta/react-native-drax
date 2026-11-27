@@ -1,4 +1,4 @@
-import { act, useLayoutEffect, useState } from 'react';
+import { act, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 
 import type { DraxPanGestureConfig } from '../compat';
@@ -168,6 +168,7 @@ const mockCtx = {
   handleDragStart: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleDragStart'],
   handleReceiverChange: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleReceiverChange'],
   handleDragEnd: (() => {}) as ReturnType<typeof useCallbackDispatch>['handleDragEnd'],
+  handleViewUnregister: undefined as ReturnType<typeof useCallbackDispatch>['handleViewUnregister'] | undefined,
 };
 jest.mock('../hooks/useDraxContext', () => ({
   useDraxContext: () => mockCtx,
@@ -184,6 +185,8 @@ const ReactNative = {
 const Leaf = () => null;
 let sortable: SortableListHandle<string>;
 const rerenderCell = new Map<string, () => void>();
+/** Cells whose item is unmounted on their next render (a virtualized row). */
+const unmountedCells = new Set<string>();
 
 /** Re-renders its item on its own, like a FlatList cell after layout. */
 const Cell = ({
@@ -198,6 +201,7 @@ const Cell = ({
   const [, setTick] = useState(0);
   const key = handle.data[index]!;
   rerenderCell.set(key, () => setTick((t) => t + 1));
+  if (unmountedCells.has(key)) return null;
   return (
     <SortableItem sortable={handle} index={index} onSnapEnd={() => onSnapEnd?.(key)}>
       <Leaf />
@@ -399,6 +403,7 @@ describe('second drag racing the first drag snap (#250)', () => {
     mockCtx.draggedIdSV.value = '';
     mockCtx.spatialIndexSV.value = listSpatialIndex();
     rerenderCell.clear();
+    unmountedCells.clear();
   });
   afterEach(() => {
     act(() => ReactNative.unmountComponentAtNode(1));
@@ -458,6 +463,33 @@ const ControlledList = ({ onReorder, onSnapEnd }: { onReorder: jest.Mock; onSnap
   );
 };
 
+// Controlled parent that echoes onReorder's data only when the test calls
+// `echo()`.
+let echo: () => void = () => {};
+const DeferredEchoList = ({ onReorder }: { onReorder: jest.Mock }) => {
+  const [data, setData] = useState(KEYS);
+  const pendingRef = useRef<string[] | undefined>(undefined);
+  const handle = useSortableList({
+    id: 'list',
+    data,
+    keyExtractor: (item) => item,
+    onReorder: (e) => {
+      onReorder(e);
+      pendingRef.current = e.data;
+    },
+  });
+  useLayoutEffect(() => {
+    sortable = handle;
+    echo = () => act(() => setData(pendingRef.current!));
+  });
+  return (
+    <SortableContainer sortable={handle} scrollRef={{ current: null }}>
+      {handle.data.map((item, index) => (
+        <Cell key={item} handle={handle} index={index} />
+      ))}
+    </SortableContainer>
+  );
+};
 describe('second drag racing the first drag snap, controlled parent (#348)', () => {
   beforeAll(() => {
     (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -603,6 +635,7 @@ describe('rapid drags with a controlled parent (#334 F1)', () => {
     mockCtx.draggedIdSV.value = '';
     mockCtx.spatialIndexSV.value = listSpatialIndex();
     rerenderCell.clear();
+    unmountedCells.clear();
   });
   afterEach(() => {
     act(() => ReactNative.unmountComponentAtNode(1));
@@ -755,6 +788,112 @@ describe('rapid drags with a controlled parent (#334 F1)', () => {
     expect(visualOrder()).toBe('ABCDE');
     expect(sortable._internal.pendingOrderRef.current).toEqual([]);
   });
+
+  it('cancels the drag at once when its row unmounts mid-drag (#363)', () => {
+    const onReorder = jest.fn();
+    act(() =>
+      ReactNative.render(
+        <>
+          <Dispatcher />
+          <DeferredEchoList onReorder={onReorder} />
+        </>,
+        1
+      )
+    );
+    for (const key of KEYS) {
+      mockGestureId = key;
+      createDragGesture(key, sv(KEYS.indexOf(key) + 1) as never, sv(true) as never, sv(250) as never);
+    }
+    layout();
+    act(() =>
+      KEYS.forEach((key, i) =>
+        mockDraxProps.get(key)!.onMeasure!({ x: 0, y: i * ROW, width: 100, height: ROW } as never)
+      )
+    );
+    settle();
+
+    // Drag 0: A to after D. The parent has not echoed yet, so the flush waits.
+    activate('A');
+    settle();
+    monitorStart('A', 3);
+    release('A', 3);
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+    expect(onReorder).toHaveBeenCalledTimes(1);
+    expect(sortable.data.join('')).toBe('ABCDE');
+
+    // Drag 1: D (slot 2) is held in the list's bottom band and auto-scrolls.
+    const onDragEnd = jest.fn();
+    const dProps = mockDraxProps.get('D')!;
+    mockDraxProps.set('D', {
+      ...dProps,
+      onDragEnd: (e) => {
+        onDragEnd(e);
+        return dProps.onDragEnd!(e);
+      },
+    });
+    activate('D');
+    settle();
+    const gesture = mockGestures.get('D')!;
+    for (const y of [140, 200, 240]) {
+      gesture.onUpdate!({ absoluteX: 50, absoluteY: y } as never);
+      drainUI();
+      drainJS();
+    }
+    expect(sortable._internal.pendingOrderRef.current).not.toEqual([]);
+    expect(jest.getTimerCount()).toBeGreaterThan(0); // autoscroll interval
+
+    // The list scrolls D's row out of its window: the row unmounts and its
+    // DraxView unregisters. The provider runs handleViewUnregister just
+    // before it drops the registry entry. The finger is still down, and its
+    // gesture sends nothing more (it died with the view).
+    unmountedCells.add('D');
+    act(() => rerenderCell.get('D')!());
+    act(() => mockCtx.handleViewUnregister?.('D'));
+    mockDraxProps.delete('D');
+    drainUI();
+    drainJS();
+
+    // The drag ended as a cancel, with no new drag start: onDragEnd fired,
+    // autoscroll stopped, and the hover snaps back.
+    expect(onDragEnd).toHaveBeenCalledTimes(1);
+    expect(onDragEnd.mock.calls[0][0]).toMatchObject({ cancelled: true });
+    expect(mockCtx.dragPhaseSV.value).toBe('releasing');
+    expect(mockCtx.hoverPositionSV.snapping).toBe(true);
+    expect(jest.getTimerCount()).toBe(0); // autoscroll stopped
+    // A late gesture event for the dead view changes nothing.
+    gesture.onUpdate!({ absoluteX: 50, absoluteY: 240 } as never);
+    gesture.onFinalize!({ absoluteX: 50, absoluteY: 240 } as never, false);
+    expect(mockJSQueue).toEqual([]);
+
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+    expect(onReorder).toHaveBeenCalledTimes(1); // the cancel commits nothing
+    expect(mockCtx.draggedIdSV.value).toBe('');
+    expect(mockCtx.hoverContent).toBeNull();
+    expect(sortable._internal.dragActiveRef.current).toBe(false);
+    expect(jest.getTimerCount()).toBe(0);
+
+    // Drag 2, right away (no echo yet): E to the top reorders.
+    activate('E');
+    settle();
+    monitorStart('E', 0);
+    release('E', 0);
+    mockCtx.hoverPositionSV.finishSnap();
+    settle();
+    expect(onReorder).toHaveBeenCalledTimes(2);
+    expect(onReorder.mock.calls[1][0]).toMatchObject({
+      fromIndex: 4,
+      toIndex: 0,
+      fromItem: 'E',
+      data: ['E', 'B', 'C', 'D', 'A'],
+    });
+
+    // The parent echoes: the list is not stuck busy, the flush applies.
+    echo();
+    settle();
+    expect(sortable.data.join('')).toBe('EBCDA');
+  });
 });
 
 // #336: `draggable` flips false mid-drag, so RNGH cancels the gesture while a
@@ -780,6 +919,7 @@ describe('late drag updates after a cancelled drag (#336)', () => {
     mockCtx.draggedIdSV.value = '';
     mockCtx.spatialIndexSV.value = listSpatialIndex();
     rerenderCell.clear();
+    unmountedCells.clear();
   });
   afterEach(() => {
     act(() => ReactNative.unmountComponentAtNode(1));
@@ -882,6 +1022,7 @@ describe('second drag racing a board transfer snap (#250)', () => {
     mockCtx.draggedIdSV.value = '';
     mockCtx.spatialIndexSV.value = boardSpatialIndex();
     rerenderCell.clear();
+    unmountedCells.clear();
   });
   afterEach(() => {
     act(() => ReactNative.unmountComponentAtNode(1));
