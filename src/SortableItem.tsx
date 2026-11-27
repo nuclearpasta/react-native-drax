@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { memo, useEffect, useMemo, useRef } from 'react';
-import type { ViewStyle } from 'react-native';
+import type { GestureResponderEvent, ViewStyle } from 'react-native';
 import { Platform } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
@@ -15,6 +15,7 @@ import Reanimated, {
 import { DraxView } from './DraxView';
 import { useDraxContext } from './hooks/useDraxContext';
 import { computeResetStyle } from './hooks/useViewStyles';
+import { computeAbsolutePositionWorklet } from './math';
 import type { SortableItemContextValue } from './SortableItemContext';
 import { SortableItemContext } from './SortableItemContext';
 import type { ResolvedAnimationConfig } from './params';
@@ -144,10 +145,11 @@ const SortableItemInner = ({
     dragActiveRef,
     fixedKeys,
     dragStartIndexRef,
+    onItemTouchStart,
   } = sortable._internal;
 
   // Get hoverReadySV and draggedIdSV from DraxContext (provider-level SharedValues)
-  const { hoverReadySV, draggedIdSV } = useDraxContext();
+  const { hoverReadySV, draggedIdSV, spatialIndexSV, scrollOffsetsSV, rootOffsetSV } = useDraxContext();
 
   const originalIndex = originalIndexes[index] ?? index;
   const item = rawData[originalIndex];
@@ -167,6 +169,28 @@ const SortableItemInner = ({
   // Store this DraxView's registered ID in a SharedValue so useAnimatedStyle
   // can compare it with draggedIdSV on the UI thread.
   const viewIdSV = useSharedValue('');
+  const viewIdRef = useRef('');
+
+  // The finger and this cell's layout rect (root-relative, as hit tests see
+  // them), read only when a touch follows a flush (onItemTouchStart). Native
+  // only: on web, hit tests and renders share the JS thread.
+  const onTouchStart = (event: GestureResponderEvent) => {
+    draxViewProps.onTouchStart?.(event);
+    if (Platform.OS === 'web') return;
+    const { pageX, pageY } = event.nativeEvent;
+    onItemTouchStart?.(index, () => {
+      const entries = spatialIndexSV.value;
+      const entryIndex = entries.findIndex((e) => e.id === viewIdRef.current);
+      const entry = entries[entryIndex];
+      if (!entry) return undefined;
+      const pos = computeAbsolutePositionWorklet(entryIndex, entries, scrollOffsetsSV.value);
+      const root = rootOffsetSV.value;
+      return {
+        finger: { x: pageX - root.x, y: pageY - root.y },
+        layout: { x: pos.x, y: pos.y, width: entry.width, height: entry.height },
+      };
+    });
+  };
 
   /** A follow-up measure is pending (see onMeasure). */
   const remeasureRef = useRef(false);
@@ -231,7 +255,9 @@ const SortableItemInner = ({
           // Capture the DraxView's registered ID so useAnimatedStyle can match
           // it against draggedIdSV for visibility control.
           viewIdSV.value = reg?.id ?? '';
+          viewIdRef.current = reg?.id ?? '';
         }}
+        onTouchStart={onTouchStart}
         onDragStart={(event) => {
           // Sync in handleDragStart, after the previous drag's finalize:
           // the list is busy before this drag's first monitor update.

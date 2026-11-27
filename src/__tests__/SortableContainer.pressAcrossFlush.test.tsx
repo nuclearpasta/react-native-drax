@@ -20,7 +20,9 @@ const mockDraxProps = new Map<string, DraxViewProps>();
 jest.mock('../DraxView', () => ({
   DraxView: (props: DraxViewProps & { children?: ReactNode }) => {
     const payload = props.payload as { index?: number } | undefined;
-    mockDraxProps.set(props.monitoring ? props.id ?? '' : `cell${payload?.index}`, props);
+    const id = props.monitoring ? props.id ?? '' : `cell${payload?.index}`;
+    mockDraxProps.set(id, props);
+    props.registration?.({ id, measure: () => {} } as never);
     return props.children ?? null;
   },
 }));
@@ -194,6 +196,23 @@ const touch = (type: 'onTouchStart' | 'onTouchEnd' | 'onTouchCancel', touches: n
   settle();
 };
 
+// A touch on a cell, bubbling to the list. pageX/pageY are root-relative here
+// (rootOffsetSV is 0,0).
+const touchCell = (cell: string, pos: { x: number; y: number }) => {
+  const event = { nativeEvent: { pageX: pos.x, pageY: pos.y, touches: [{}] } } as never;
+  act(() => {
+    mockDraxProps.get(cell)!.onTouchStart?.(event);
+    mockDraxProps.get('list')!.onTouchStart?.(event);
+  });
+  settle();
+};
+const releaseAt = (id: string) => {
+  mockCtx.dragPhaseSV.value = 'releasing';
+  act(() => mockCtx.handleDragEnd(id, receiver, false, ['list']));
+  receiver = '';
+  settle();
+};
+
 describe('SortableContainer: a press across the post-drop flush keeps its row', () => {
   it('a touch down before the flush drags the row it pressed', () => {
     const { onReorder } = setup();
@@ -240,9 +259,81 @@ describe('SortableContainer: a press across the post-drop flush keeps its row', 
     dragADownTwoAndRelease();
     finishSnap();
     expect(sortable.data).toEqual(MOVED);
-    touch('onTouchStart', 1);
+    // Hit-tested after the flush rendered: cell0 holds B at slot 0, unshifted.
+    touchCell('cell0', slot(0));
+    expect(sortable.data).toEqual(MOVED);
     start('cell0', slot(0));
     move(slot(0), 'cell0');
     expect(onDragStart).toHaveBeenLastCalledWith({ index: 0, item: 'B' });
+  });
+
+  // Real touch (touch7, gap 0.45 s): the finger lands 60-160 ms after the
+  // snap end, on the old tree (cell1 still shows B, shifted up to slot 0),
+  // but its touch start reaches JS after the flush ran and rendered cell1 as C.
+  it('a touch hit-tested before the flush rendered, seen after it, drags the item it pressed', () => {
+    const { onReorder } = setup();
+    dragADownTwoAndRelease();
+    finishSnap();
+    expect(sortable.data).toEqual(MOVED);
+    expect(mockDraxProps.get('cell1')!.children).toBe('C');
+
+    touchCell('cell1', slot(0));
+    mockCtx.dragPhaseSV.value = 'idle';
+    start('cell1', slot(0));
+    move(slot(0), 'cell1');
+    expect(onDragStart).toHaveBeenLastCalledWith({ index: 0, item: 'B' });
+    move(slot(1), 'cell2');
+    releaseAt('cell1');
+    touch('onTouchEnd', 0);
+    expect(onReorder).toHaveBeenLastCalledWith(expect.objectContaining({
+      fromIndex: 0, toIndex: 1, fromItem: 'B', data: ['C', 'B', 'A', 'D', 'E'],
+    }));
+    finishSnap();
+    expect(sortable.data).toEqual(['C', 'B', 'A', 'D', 'E']);
+    expect(mockDraxProps.get('cell0')!.children).toBe('C');
+    expect(sortable._internal.shiftsRef.value).toEqual({});
+  });
+
+  it('a touch seen after the flush ran but before its render commits keeps the old cells', () => {
+    setup();
+    dragADownTwoAndRelease();
+    const event = { nativeEvent: { pageX: slot(0).x, pageY: slot(0).y, touches: [{}] } } as never;
+    // One act: the snap end, finalizeDrag's rAF and the flush run, then the
+    // touch arrives before React renders the flush.
+    act(() => {
+      mockCtx.hoverPositionSV.finishSnap();
+      for (let g = 0; g < 200 && (mockUIQueue.length || mockJSQueue.length || jest.getTimerCount()); g++) {
+        if (mockUIQueue.length) mockUIQueue.shift()!();
+        else if (mockJSQueue.length) mockJSQueue.shift()!();
+        else jest.runOnlyPendingTimers();
+      }
+      expect(mockDraxProps.get('cell1')!.children).toBe('B'); // not rendered yet
+      mockDraxProps.get('cell1')!.onTouchStart?.(event);
+      mockDraxProps.get('list')!.onTouchStart!(event);
+    });
+    settle();
+    expect(sortable.data).toEqual(KEYS);
+    expect(mockDraxProps.get('cell1')!.children).toBe('B');
+    expect(sortable._internal.shiftsRef.value.B).toEqual({ x: 0, y: -ROW });
+    mockCtx.dragPhaseSV.value = 'idle';
+    start('cell1', slot(0));
+    move(slot(0), 'cell1');
+    expect(onDragStart).toHaveBeenLastCalledWith({ index: 0, item: 'B' });
+  });
+
+  it('a tap that undid the flush lets it apply when it ends', () => {
+    setup();
+    dragADownTwoAndRelease();
+    finishSnap();
+    touchCell('cell1', slot(0));
+    // The flush is undone: cell1 shows B again, at its permanent shift.
+    expect(sortable.data).toEqual(KEYS);
+    expect(mockDraxProps.get('cell1')!.children).toBe('B');
+    expect(sortable._internal.shiftsRef.value.B).toEqual({ x: 0, y: -ROW });
+    touch('onTouchEnd', 0);
+    settle(); // the flush render's shift clear
+    expect(sortable.data).toEqual(MOVED);
+    expect(mockDraxProps.get('cell0')!.children).toBe('B');
+    expect(sortable._internal.shiftsRef.value).toEqual({});
   });
 });
