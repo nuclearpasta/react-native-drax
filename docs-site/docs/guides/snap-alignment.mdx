@@ -21,7 +21,7 @@ import { snapToAlignment } from 'react-native-drax';
 />
 ```
 
-Return the result from `onDragDrop`, `onReceiveDragDrop`, or `onMonitorDragDrop` to override the default snap-back behavior.
+Return the result from `onDragDrop`, `onReceiveDragDrop`, or `onMonitorDragDrop` to override the default snap-back behavior. Exception: a foreign drop onto a sortable list with `onExternalDrop` snaps into the open gap; returns from `onDragDrop` and the row's `onReceiveDragDrop` are ignored there, while `onMonitorDragDrop` on the list container still wins.
 
 ## 9-Point Alignment
 
