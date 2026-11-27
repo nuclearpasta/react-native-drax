@@ -814,10 +814,22 @@ export const SortableContainer = ({
       // A list that accepts foreign drops opens a gap where the drop would
       // land (the same index onExternalDrop gets). As in 0.11, only while one
       // of its rows is the receiver, so a row that refuses the drag
-      // (receptive, dynamicReceptiveCallback) opens no gap.
+      // (receptive, dynamicReceptiveCallback) opens no gap. A 'touch' list
+      // indexes at the finger, as its drop does, so the gap is where the
+      // insert lands even for an off-centre grab.
+      const touch =
+        draxViewProps?.collisionAlgorithm === 'touch'
+          ? eventData.dragTouchPosition
+          : undefined;
+      const gapPos = touch
+        ? {
+            x: contentPos.x + touch.x - eventData.dragAbsolutePosition.x,
+            y: contentPos.y + touch.y - eventData.dragAbsolutePosition.y,
+          }
+        : contentPos;
       const toIndex =
         onExternalDrop && numColumns <= 1 && receiver?.parentId === id
-          ? getExternalDropIndex(contentPos)
+          ? getExternalDropIndex(gapPos)
           : undefined;
       const size = dragged.measurements
         ? horizontal ? dragged.measurements.width : dragged.measurements.height
