@@ -1,0 +1,10 @@
+{
+  // Jest tests: the library config (tsconfig.json) leaves out jest's ambient
+  // types so a bare `pending`, `fail` or `test` in src fails `yarn typecheck`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"]
+  },
+  "include": ["src"],
+  "exclude": []
+}
