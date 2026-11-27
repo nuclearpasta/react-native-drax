@@ -8,33 +8,73 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 ## [Unreleased]
 
+## [1.2.0-rc.3] - 2026-11-27
+
+Changes since 1.2.0-rc.2. The entries from rc.1 and rc.2 are listed below under "Already in 1.2.0-rc.1 / rc.2".
+
+### Breaking
+
+- (BREAKING) **`onReorder` fires at release.** Sortable lists (not board columns) now call `onReorder` when you let go, as 0.11's `onItemReorder` did. Before, it fired about 350 ms later, after the snap animation. The list still shows the rows in their new places only when the snap ends, so during the snap `renderItem`'s `info.index` still has the old order (#348).
+  - **Who is affected:** code that expects `onReorder` (and the new `data` you set from it) to arrive after the snap, and code that numbers rows from `info.index` during or right after a drop.
+  - **How to migrate:** keep setting your list `data` from `onReorder`; it just runs earlier. If you show row numbers, take them from your own data (for example `data.indexOf(item)`), not from `info.index`. Board columns still fire `onReorder` after the snap. See MIGRATION.md §4.1 and §7.
+
 ### Added
+
+- **`onExternalDrop`** on `useSortableList` / `DraxList` (opt-in). It fires when a view that is not one of the list's items is dropped inside the list, with `toIndex` (0 to `data.length`) for where it would go, plus the dragged view's data and payload. The list does not change your data; you insert the item yourself. Without the callback nothing changes. rc.2 contained an earlier, undocumented version of this. In rc.3, `toIndex` is taken at the centre of the dragged view (or at the finger with `collisionAlgorithm: 'touch'`), so a drop on the right half of a grid cell goes after it; a drop below the last row appends; and in a long virtualized list the index comes from the rows that are on screen, and the callback is skipped rather than given a wrong index (#333).
+- While a list has `onExternalDrop`, dragging a foreign view over it still auto-scrolls the list, so you can reach rows that are off screen (#337).
+- **Event data** again has the 0.11 fields: `absoluteMeasurements` on `dragged` and `receiver` (relative to the `DraxProvider` root), `dragged.hoverMeasurements`, `draggedParentId` in `dynamicReceptiveCallback` data, and `grabOffset` on `onSnapEnd` / `onReceiveSnapEnd`. To keep drags fast, `absoluteMeasurements` and `hoverMeasurements` are only filled at drag start, at drag end and when the receiver or monitor changes, not on every drag-over frame (#328).
+- **Render payload**: `renderContent` and `renderHoverContent` get an optional `payload`, the same value drag events carry as `dragged.payload`. In a sortable list it includes `item`, `index` and `originalIndex`, so a row's hover view can read its item (#349).
+
+### Changed
+
+- (BREAKING) Sortable lists check the auto-scroll edge zone at your **finger**, as 0.11 did, not at the centre of the dragged row. Picking up a row that is half cut off at the list edge no longer starts scrolling. When the list is scrolled, grabbing a fully visible edge row near its outer edge now scrolls once the finger moves 5 px. `DraxScrollView` and the `monitorOffset` / `monitorOffsetRatio` event fields are unchanged (#346).
+- Receivers are clipped to their parents' visible area again, as in 0.11. A receiver inside a parent view or list (for example a list row scrolled out of view) no longer gets drops outside that parent's visible area, so a drop on a view next to an auto-scrolled list reaches that view and not a hidden row. The `contain` hit test now needs the receiver's visible part to contain the whole dragged view (#350).
+
+### Fixed
+
+- **Long, virtualized lists reorder again** (as in 0.11). FlatList, FlashList and LegendList only measure the rows in their render window, and a drag in a long list used to never move. Single-column lists now work from the measured rows; past the last measured row the slot stays on that row. Grids still need every row measured (#375).
+- Dragging a row past a neighbour and then out of its list no longer reorders the list when you release it on another receiver, or over empty space more than 100 pt outside the list. Leaving the list undoes the pending move and the neighbours slide back, as in 0.11; bring the row back and it moves from its start slot again. A release over empty space within 100 pt of the list still drops into the list, as before. Board columns are unchanged (#345).
+- If the list's `data` changes from outside while a row is being dragged (different keys, for example after a quick second drop), the pending move is dropped and the release acts as a cancel: the row snaps back to its slot and `onReorder` does not fire. Before, `onReorder` mapped the old order onto the new data and an item could be lost. A new array with the same keys (a refetch) does not count as a change. Rows are no longer measured mid-animation, which made a drop land one slot short or a quick next drag start at the wrong slot (#347).
+- Lists whose parent echoes `onReorder` back late (async) no longer re-apply an old echo on a later drop, and a cancelled drag still applies an echo that arrived during it. A drag started during the previous drop's snap no longer starts from a mix of the old and new order (#334, #348).
+- A cancelled drag (for example `draggable` set to `false` mid-drag) no longer reorders a sortable list: drag updates that reach JS after the drag ended are now ignored (#336).
+- When a board transfer ends, the receiving column stops auto-scrolling. Before, it kept scrolling after you let go (#337).
+
+### Documentation
+
+- MIGRATION.md: notes for drop position, `grabOffset`, the new event fields and auto-scroll (#330); foreign-drop snap-back, `onReorder` / `onDragEnd` timing, cancel callbacks and auto-scroll thresholds (#341).
+- README, concept docs and CONTRIBUTING updated for 1.2 (#331).
+
+### Internal
+
+- Docs site: self-hosted Google Fonts (#361), removed unused `@docusaurus/plugin-ideal-image` (#357), lockfile security bumps and resolutions (#355, #356, #358).
+- Example app: Expo 58 web demo loads again (#360); lockfile audit patches (#340).
+- CI: prereleases publish to the `next` npm tag and are marked as prereleases on GitHub (#362).
+- Library typecheck no longer includes jest globals; tests are checked with `tsconfig.test.json` (#375).
+- Dependency/lockfile bumps (dependabot): hono (#359), body-parser (#353), postcss (#366), image-size (#368), @humanfs/node (#369), launch-editor (#370), zod (#371), compression (#373), source-map-js (#367).
+
+### Already in 1.2.0-rc.1 / rc.2
+
+These shipped in earlier release candidates and are listed here so the 1.2.0 notes are complete.
+
+#### Added
 
 - (BREAKING-TS) `collisionAlgorithm: 'touch'` on receiving/monitoring `DraxView`s: hit-tests at the finger instead of the hover view's center, so the receiver under the touch point receives wherever the item was grabbed (the 0.x behavior). The default `'center'` is unchanged. `CollisionAlgorithm` gains a `'touch'` member, so an exhaustive `switch` over it needs a new case (#282)
 - `dragTouchPosition` on drag end event data (`onDragEnd`, `onDragDrop`, `onReceiveDragDrop`, `onMonitorDragEnd`, `onMonitorDragDrop`, cancelled `onReceiveDragExit`): the finger position at release, relative to the `DraxProvider` root view. `dragAbsolutePosition` is unchanged (#282)
 - **Auto-scroll config**: `autoScrollEnabled` (default `true`) and `autoScrollInitialDelay` (ms in the edge band before the first jump, default `0`) on `DraxScrollView`, `useSortableList` and `DraxList`. `DraxList` now forwards all auto-scroll props to `useSortableList`.
 - **`draggedItemStyle`** on `DraxList` and `useSortableList`: style of the dragged row's in-list placeholder while its hover copy moves (default `{ opacity: 0 }`). Pass `{ opacity: 0.2 }` for a faint placeholder like 0.11. The placeholder stays at its pickup slot while the finger is down and moves to the target slot on release. Use visual props only (no layout props).
-- **Render payload**: `DraxRenderContentProps.payload` (`dragPayload ?? payload`, the value drag events carry as `dragged.payload`) is passed to `renderContent` and `renderHoverContent`. Sortable rows include `item`, `index` and `originalIndex`.
 
-### Changed
+#### Changed
 
 - (BREAKING-TS) `DraxContextValue.rootViewRef` is now a Reanimated `AnimatedRef<View>` instead of `{ current: HostInstance | null }`, so the root view can be measured on the UI thread at drag start. `.current` still holds the host view.
 - `autoScrollIntervalLength` is now honoured by `DraxScrollView` and sortable lists (it was ignored and the interval was fixed at 250 ms).
-- (BREAKING) Sortable lists (not board columns) fire `onReorder` at release, as 0.11 did, instead of about 350 ms later after the snap animation. The rows still move to their new positions in the list's render at snap end, so `renderItem`'s `info.index` reflects the pre-drop order until the snap ends. Number rows from your own data (for example `data.indexOf(item)`), not from `info.index`. A drag that starts during the previous drop's snap no longer has the parent's echo applied under it (the new drag started from a mix of the old and new order and dropped in the wrong slot), and a drag that starts just after the drop's rows settle no longer measures the first row mid-animation (its slots were off by rows).
-- A foreign drag over a sortable list (a `DraxView`, or an item from a list outside its board) no longer auto-scrolls the list, tracks slots, fires `onDragPositionChange` or shows the drop indicator. Board columns still react to items from other columns of the same board.
-- Behaviour change: receivers are clipped to their parents' visible area again, as in 0.11. A receiver inside a parent view or list (e.g. a list row scrolled out of view) no longer gets drops outside that parent's visible area, so a drop on a view next to an auto-scrolled list reaches that view instead of a hidden row. The `contain` hit test now needs the receiver's visible part to contain the dragged view's whole rect.
-- (BREAKING) Sortable lists test the auto-scroll edge band at the finger, as 0.11 did, instead of at the hover's centre. Picking up a row that is cut off at the list edge by its visible part no longer starts auto-scrolling. The other way round, when the list is scrolled, grabbing a fully visible edge row near its outer edge now auto-scrolls once the finger moves 5 px, as 0.11 did. `DraxScrollView` and the `monitorOffset` / `monitorOffsetRatio` event fields are unchanged.
+- A foreign drag over a sortable list (a `DraxView`, or an item from a list outside its board) no longer auto-scrolls the list, tracks slots, fires `onDragPositionChange` or shows the drop indicator. Board columns still react to items from other columns of the same board. (rc.3: a list with `onExternalDrop` still auto-scrolls, see above.)
 
-### Fixed
+#### Fixed
 
-- Sortable lists: own-list reorder works again in long, virtualized lists (as in 0.11). Slot detection, neighbour shifts, the snap target and the committed order used to give up while any row was unmeasured, and FlatList never measures rows outside its render window, so a drag in a long list never moved. Single-column lists now use only the measured rows; past the last measured row the slot clamps to it. Grids still need every row measured
 - Drag handles: the hover no longer lands one slot off when a `dragHandle` sortable item with permanent shifts is grabbed by its `DraxHandle`
 - Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover
 - Repeated drags no longer freeze the UI for seconds: drag updates only reach the JS thread when the receiver or monitors change or a continuous callback needs them, and a drop no longer waits behind a backlog of drag-over work
-- Sortable lists: when `data` changes from outside while a row is dragged (for example a quick second drop), the row's pending move is dropped. The drag stays active, but its drop is a cancel: the row snaps back to its own slot, with no `onReorder`. Before, `onReorder` got the old order mapped onto the new data, so an item was lost. A new array with the same keys (a refetch) doesn't count as a change, and rows already slid aside stay put. Rows are no longer measured with their in-flight shift (a refetch mid-drag dropped the row one slot short, and the drag after a drop could start at the wrong slot). The first row of a FlatList is measured by layout, so a quick second drag after the parent echoed `onReorder` no longer starts at the wrong slot with the rows collapsed.
 - Gesture Handler v3: the first long-press after `draggable` flips from `false` to `true` now starts a drag; `draggable` and `longPressDelay` changes reach the pan handler in the same render (#267)
-- A cancelled drag (e.g. `draggable` set to `false` mid-drag) no longer reorders a sortable list: drag updates that reach JS after the drag ended are ignored (#336)
-- Sortable lists: a row that crosses a neighbour and then leaves its list no longer reorders the list when it is released on another receiver, or over nothing more than 100 pt outside the list (the monitor hit-test padding, `MONITOR_HIT_TEST_PADDING` in `src/math.ts`). Leaving the list undoes the pending move and the neighbours slide back, as in 0.11; a row brought back in moves from its start slot again. A release over nothing within that 100 pt padding still counts as a drop in the list (the row takes its last hovered slot and `onReorder` fires), as before. Board columns are unchanged.
 
 ## [1.1.0] - 2026-03-23
 
