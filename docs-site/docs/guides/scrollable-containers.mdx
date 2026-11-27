@@ -67,6 +67,10 @@ const sortable = useSortableList({
 });
 ```
 
+:::note Virtualized lists
+If auto-scroll moves the dragged row out of a virtualized list's render window, the row unmounts and the drag ends as a cancel (`onDragEnd` with `cancelled: true`), even while the finger is still down. A small `windowSize` makes this happen on shorter drags; raise it if users drag far in a long list.
+:::
+
 ## Next Steps
 
 - **[Sortable List](/guides/sortable-list)** — Reorderable lists with auto-scroll

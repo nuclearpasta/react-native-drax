@@ -27,6 +27,7 @@ Changes marked as (BREAKING) may break your app logic. Changes marked as (BREAKI
 
 ### Fixed
 
+- Sortable lists: a drag whose row unmounts mid-drag (a virtualized list auto-scrolling it out of its render window) now ends as a cancel: `onDragEnd` fires with `cancelled: true`, autoscroll stops and the hover snaps back. Before, the drag never ended, autoscroll ran on and the next drag committed nothing. With a small `windowSize` this can cancel a long autoscroll drag while the finger is still down; raise `windowSize` to keep the dragged row mounted
 - Sortable lists: own-list reorder works again in long, virtualized lists (as in 0.11). Slot detection, neighbour shifts, the snap target and the committed order used to give up while any row was unmeasured, and FlatList never measures rows outside its render window, so a drag in a long list never moved. Single-column lists now use only the measured rows; past the last measured row the slot clamps to it. Grids still need every row measured
 - Drag handles: the hover no longer lands one slot off when a `dragHandle` sortable item with permanent shifts is grabbed by its `DraxHandle`
 - Web: the root offset is re-measured at drag start, so a `DraxProvider` inside a scrolled container no longer offsets the hover

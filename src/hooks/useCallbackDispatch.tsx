@@ -557,6 +557,10 @@ export const useCallbackDispatch = (deps: CallbackDispatchDeps) => {
     finalMonitorIds?: string[],
     touchPosition?: Position
   ) => {
+    // A drag ends once. After handleViewUnregister cancelled it, the
+    // gesture's own end can still arrive (onFinalize may beat the UI-thread
+    // 'releasing' write) and would reset the snap the cancel started.
+    if (dragEndedRef.current) return;
     dragEndedRef.current = true;
     // receiverIdSV is already cleared on the UI thread in onDeactivate/onFinalize,
     // so the receiver's animated style resets immediately.
