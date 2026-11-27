@@ -23,6 +23,7 @@ import type {
   SortableListInternal,
   SortablePhantomSlot,
   UseSortableListOptions,
+  ViewDimensions,
 } from '../types';
 import { DraxSnapbackTargetPreset } from '../types';
 import { useDraxId } from './useDraxId';
@@ -147,6 +148,8 @@ export const useSortableList = <T,>(
    *  pendingOrderRef (that needs finger movement), so a deferred flush
    *  never lands under a drag that has not moved yet. */
   const dragActiveRef = useRef(false);
+  /** A touch is down in the list (it may become a drag after the long press). */
+  const pressActiveRef = useRef(false);
   /**
    * Pending reorder during drag. Tracks the desired display order
    * as indices into rawData. Updated by moveDraggedItem (ref, not state).
@@ -214,6 +217,8 @@ export const useSortableList = <T,>(
     }
 
     // External data change or initial mount — update stableData and reset.
+    // (A re-run with the flushed data, e.g. an inline keyExtractor, keeps it.)
+    if (rawData !== lastFlushRef.current?.next) lastFlushRef.current = undefined;
     setStableData(rawData);
     committedOrderRef.current = [];
     committedKeyOrderRef.current = [];
@@ -685,6 +690,16 @@ export const useSortableList = <T,>(
   const pendingShiftFlushRef = useRef(false);
   /** Flag: flushVisualOrder was called and has not been applied yet */
   const flushRequestedRef = useRef(false);
+  /** Flag: next stableData change re-applies the permanent shifts (onItemTouchStart) */
+  const pendingShiftRestoreRef = useRef(false);
+  /** The last applied flush, until the next touch checks it (onItemTouchStart). */
+  const lastFlushRef = useRef<{
+    prev: T[];
+    next: T[];
+    order: number[];
+    keys: string[];
+    shifts: Record<string, Position>;
+  } | undefined>(undefined);
   const stableDataRef = useRef(stableData);
   stableDataRef.current = stableData;
 
@@ -709,11 +724,14 @@ export const useSortableList = <T,>(
    * committed key order; an earlier echo is not enough). Uncontrolled
    * parents never echo, so they keep the committed order and permanent
    * shifts. Never applied during a drag: pendingOrderRef indexes into
-   * stableData.
+   * stableData. Nor while a touch is down: cells are index-keyed, so the
+   * flush renders another item in the cell under the finger, and a long
+   * press that began on that cell would drag the new item.
    */
   const flushIfReady = () => {
     if (!flushRequestedRef.current) return;
-    if (dragActiveRef.current || pendingOrderRef.current.length > 0) return;
+    if (dragActiveRef.current || pressActiveRef.current
+      || pendingOrderRef.current.length > 0) return;
     const currentRawData = rawDataRef.current;
     if (currentRawData === stableDataRef.current) return;
     if (
@@ -723,6 +741,14 @@ export const useSortableList = <T,>(
       return;
     }
     flushRequestedRef.current = false;
+    lastFlushRef.current = {
+      prev: stableDataRef.current,
+      next: currentRawData,
+      order: committedOrderRef.current,
+      keys: committedKeyOrderRef.current,
+      shifts: committedShiftsRef.current,
+    };
+    pendingShiftRestoreRef.current = false;
     committedOrderRef.current = [];
     committedKeyOrderRef.current = [];
     committedShiftsRef.current = {};
@@ -736,6 +762,56 @@ export const useSortableList = <T,>(
   const flushVisualOrder = () => {
     flushRequestedRef.current = true;
     flushIfReady();
+  };
+
+  /**
+   * A touch that reaches JS after a flush may have been hit-tested before the
+   * flush rendered natively: it began on index-keyed cell `index` while that
+   * cell still showed its old item at its permanent shift, and the long press
+   * would then drag the cell's new item (pressed B, dragged C). The touched
+   * cell tells which: the finger is inside the cell's old shifted rect and
+   * outside its layout rect. Then undo the flush, so the cell shows the item
+   * that was under the finger again, and keep it requested: setPressActive
+   * holds it until the touch ends. The visual order is the same either way.
+   */
+  const onItemTouchStart = (
+    index: number,
+    getGeometry: () => { finger: Position; layout: Position & ViewDimensions } | undefined
+  ) => {
+    const flushed = lastFlushRef.current;
+    if (!flushed) return;
+    lastFlushRef.current = undefined;
+    if (dragActiveRef.current || pendingOrderRef.current.length > 0
+      || committedOrderRef.current.length > 0 || rawDataRef.current !== flushed.next) return;
+    const oldItem = flushed.prev[index];
+    const shift = oldItem !== undefined ? flushed.shifts[keyExtractor(oldItem, index)] : undefined;
+    if (!shift || (Math.abs(shift.x) < 1 && Math.abs(shift.y) < 1)) return;
+    const geometry = getGeometry();
+    if (!geometry) return;
+    const { finger, layout } = geometry;
+    const inside = (dx: number, dy: number) =>
+      finger.x >= layout.x + dx && finger.x <= layout.x + dx + layout.width
+      && finger.y >= layout.y + dy && finger.y <= layout.y + dy + layout.height;
+    if (inside(0, 0) || !inside(shift.x, shift.y)) return;
+    committedOrderRef.current = flushed.order;
+    committedKeyOrderRef.current = flushed.keys;
+    committedShiftsRef.current = flushed.shifts;
+    flushRequestedRef.current = true;
+    shiftsJSRef.current = flushed.shifts;
+    if (pendingShiftFlushRef.current) {
+      // Not rendered yet: the shifts were never cleared.
+      pendingShiftFlushRef.current = false;
+    } else {
+      pendingShiftRestoreRef.current = true;
+    }
+    setStableData(flushed.prev);
+  };
+
+  const setPressActive = (active: boolean) => {
+    pressActiveRef.current = active;
+    // A frame later: when the press became a drag, its handleDragStart
+    // (dragActiveRef) may reach JS after the touch cancel.
+    if (!active) requestAnimationFrame(flushIfReady);
   };
 
   // When flushVisualOrder updates stableData, clear shifts during the
@@ -752,6 +828,14 @@ export const useSortableList = <T,>(
         instantClearSV.value = true;
         shiftsRef.value = {};
       })();
+    } else if (pendingShiftRestoreRef.current) {
+      // onItemTouchStart undid the flush: put the permanent shifts back.
+      pendingShiftRestoreRef.current = false;
+      runOnUI((_shifts: Record<string, Position>) => {
+        'worklet';
+        instantClearSV.value = true;
+        shiftsRef.value = _shifts;
+      })(committedShiftsRef.current);
     }
   }, [stableData, instantClearSV, shiftsRef]);
 
@@ -778,6 +862,7 @@ export const useSortableList = <T,>(
    * Initialize pending order from current originalIndexes at drag start.
    */
   const initPendingOrder = () => {
+    lastFlushRef.current = undefined;
     // Start from the committed visual order (what the user sees),
     // NOT originalIndexes (always identity with permanent shifts).
     const committed = committedOrderRef.current;
@@ -1249,6 +1334,8 @@ export const useSortableList = <T,>(
     dropTargetVisibleSV,
     onItemSnapEndRef,
     dragActiveRef,
+    setPressActive,
+    onItemTouchStart,
     draggedDisplayIndexRef,
     dragStartIndexRef,
     shiftsRef,

@@ -890,6 +890,16 @@ export interface SortableListInternal<T> {
   /** True while a drag of one of this list's items is active (item
    *  onDragStart → finalizeDrag). Blocks the deferred flush. */
   dragActiveRef: RefObject<boolean>;
+  /** SortableContainer reports touches in the list: true on touch start,
+   *  false when the last touch ends. A touch down blocks the deferred flush. */
+  setPressActive: (active: boolean) => void;
+  /** SortableItem reports a touch start on cell `index`; `getGeometry` gives
+   *  the finger and the cell's layout rect (root-relative). Undoes a flush
+   *  the touch was hit-tested before. */
+  onItemTouchStart: (
+    index: number,
+    getGeometry: () => { finger: Position; layout: Position & ViewDimensions } | undefined
+  ) => void;
   /** Current display index of the dragged item (updated during live reorder) */
   draggedDisplayIndexRef: RefObject<number | undefined>;
   /** Original display index where the drag started */
