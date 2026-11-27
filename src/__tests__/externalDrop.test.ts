@@ -379,9 +379,15 @@ describe('onExternalDrop', () => {
   });
 });
 
-/** A foreign hover at content y; `receiver` is the row under it (a row id), the list, or none. */
-function hoverAt(props: Props, y: number, receiver: string | undefined) {
+/**
+ * A foreign hover with its centre at content y; `receiver` is the row under it
+ * (a row id), the list, or none. Like dispatch at drag-over, monitorOffset and
+ * dragAbsolutePosition are the hover centre; the finger is `fingerY` below it.
+ */
+function hoverAt(props: Props, y: number, receiver: string | undefined, fingerY = 0) {
   props.onMonitorDragOver({
+    dragAbsolutePosition: { x: 50, y },
+    dragTouchPosition: { x: 50, y: y + fingerY },
     dragged: {
       id: 'blank',
       parentId: 'bank',
@@ -425,6 +431,16 @@ describe('foreign drag gap (0.11 parity, #10)', () => {
     hoverAt(props, 100, 'B');
     dropAt(props, 100);
     expect(shifts()).toEqual({});
+    expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(2);
+  });
+
+  it("opens the gap at the finger on a 'touch' list, where the drop lands (edge grab)", () => {
+    const onExternalDrop = jest.fn();
+    const props = renderList(onExternalDrop, ITEMS, () => true, 1, { collisionAlgorithm: 'touch' });
+    // Hover centre on B's top half, finger 30pt lower on its bottom half.
+    hoverAt(props, 70, 'B', 30);
+    expect(shifts()).toEqual({ C: down(60) }); // gap after B, not before it
+    dropAt(props, 70, { fingerShift: { x: 0, y: 30 } });
     expect(onExternalDrop.mock.calls[0][0].toIndex).toBe(2);
   });
 
